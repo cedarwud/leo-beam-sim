@@ -248,7 +248,8 @@ export type WalkerForecastValidationCode =
   | 'INVALID_ANCHOR'
   | 'INVALID_SCENARIO'
   | 'INVALID_REQUEST_TIME'
-  | 'INVALID_GEOMETRY';
+  | 'INVALID_GEOMETRY'
+  | 'UNSUPPORTED_BEAM_HOPPING';
 
 export class WalkerForecastValidationError extends RangeError {
   readonly code: WalkerForecastValidationCode;
@@ -727,7 +728,7 @@ function normalizeScenarioState(input: WalkerScenarioState): WalkerScenarioState
   }
   if (enabled) {
     fail(
-      code,
+      'UNSUPPORTED_BEAM_HOPPING',
       'enabled beam-hopping forecast semantics are not implemented in the validation-only provider',
     );
   }
@@ -874,13 +875,22 @@ function normalizeScenarioState(input: WalkerScenarioState): WalkerScenarioState
   });
 }
 
-function validateAnchor(input: WalkerForecastAnchor): WalkerForecastAnchor {
+/**
+ * Validate, detach, and deeply freeze one accepted Walker forecast anchor.
+ *
+ * Runtime capture uses this strict constructor before an anchor can reach the
+ * forecast provider. It intentionally throws for malformed scientific facts;
+ * the validation-only capture envelope converts that failure into typed
+ * unavailable evidence for live publication.
+ */
+export function createWalkerForecastAnchor(input: WalkerForecastAnchor): WalkerForecastAnchor {
   const code: WalkerForecastValidationCode = 'INVALID_ANCHOR';
   requireRecord(input, 'anchor', code);
   const sourceFrameId = nonEmpty(input.sourceFrameId, 'anchor.sourceFrameId', code);
   const epochToken = nonEmpty(input.epochToken, 'anchor.epochToken', code);
   const epochUtcMs = integer(input.epochUtcMs, 'anchor.epochUtcMs', code);
   const simTimeMs = integer(input.simTimeMs, 'anchor.simTimeMs', code);
+  if (epochUtcMs < 0 || simTimeMs < 0) fail(code, 'anchor UTC timestamps must be non-negative');
   if (simTimeMs < epochUtcMs) fail(code, 'anchor.simTimeMs must not precede anchor.epochUtcMs');
   const policyConfigHash = nonEmpty(input.policyConfigHash, 'anchor.policyConfigHash', code);
   const immutableScenarioState = normalizeScenarioState(input.immutableScenarioState);
@@ -1297,7 +1307,7 @@ export function buildWalkerForecastFrames(
   anchorInput: WalkerForecastAnchor,
   sampleStartTimesUtcMs: readonly number[],
 ): readonly WalkerForecastFrame[] {
-  const anchor = validateAnchor(anchorInput);
+  const anchor = createWalkerForecastAnchor(anchorInput);
   const sampleTimes = validateRequestedTimes(anchor, sampleStartTimesUtcMs);
   const scenario = anchor.immutableScenarioState;
   if (sampleTimes.length > 1 && scenario.beams.some(beam => beam.axis.axisSource === 'accepted-sampled-axis')) {

@@ -12,9 +12,11 @@ import {
   WALKER_FORECAST_GEOMETRY_MODELS,
   WalkerForecastValidationError,
   buildWalkerForecastFrames,
+  createWalkerForecastAnchor,
   type WalkerForecastAnchor,
   type WalkerScenarioState,
 } from './walkerForecastFrameProvider';
+import { resolveWalkerForecastAnchorAvailability } from './walkerForecastAnchorAvailability';
 
 const EPOCH_UTC_MS = Date.UTC(2026, 7, 29, 0, 0, 0);
 const ANCHOR_UTC_MS = EPOCH_UTC_MS + 10_000;
@@ -139,6 +141,90 @@ const SAMPLE_TIMES = Object.freeze(Array.from(
   { length: 7 },
   (_, index) => ANCHOR_UTC_MS + index * 2_500,
 ));
+
+test('captures a detached immutable anchor or a typed unavailable result, never a partial anchor', () => {
+  const input = anchor();
+  const captured = resolveWalkerForecastAnchorAvailability({ status: 'available', anchor: input });
+  assert.equal(captured.status, 'available');
+  if (captured.status !== 'available') return;
+  assert.notEqual(captured.anchor, input);
+  assert.notEqual(captured.anchor.immutableScenarioState, input.immutableScenarioState);
+  assert.equal(Object.isFrozen(captured), true);
+  assert.equal(Object.isFrozen(captured.anchor), true);
+  assert.equal(Object.isFrozen(captured.anchor.immutableScenarioState.ues), true);
+
+  const unavailable = resolveWalkerForecastAnchorAvailability({
+    status: 'unavailable',
+    code: 'beam-axis-missing',
+    sourceFrameId: input.sourceFrameId,
+    absoluteUtcMs: input.simTimeMs,
+    detail: 'accepted frame does not expose a physical beam axis',
+  });
+  assert.deepEqual(unavailable, {
+    status: 'unavailable',
+    code: 'beam-axis-missing',
+    sourceFrameId: input.sourceFrameId,
+    absoluteUtcMs: input.simTimeMs,
+    detail: 'accepted frame does not expose a physical beam axis',
+  });
+  assert.equal(Object.isFrozen(unavailable), true);
+  assert.equal('anchor' in unavailable, false);
+});
+
+test('demotes invalid complete anchor facts and unsupported hopping to typed unavailable', () => {
+  const invalid = resolveWalkerForecastAnchorAvailability({
+    status: 'available',
+    anchor: { ...anchor(), simTimeMs: Number.MAX_SAFE_INTEGER + 1 },
+  });
+  assert.equal(invalid.status, 'unavailable');
+  if (invalid.status !== 'unavailable') return;
+  assert.equal(invalid.code, 'invalid-anchor-facts');
+  assert.equal(invalid.sourceFrameId, 'walker-frame-accepted-1');
+  assert.equal(invalid.absoluteUtcMs, null);
+  assert.match(invalid.detail, /safe integer/);
+
+  const base = scenario();
+  const hopping = resolveWalkerForecastAnchorAvailability({
+    status: 'available',
+    anchor: anchor({
+      ...base,
+      beamHopping: { ...base.beamHopping, enabled: true },
+    }),
+  });
+  assert.equal(hopping.status, 'unavailable');
+  if (hopping.status !== 'unavailable') return;
+  assert.equal(hopping.code, 'unsupported-beam-hopping');
+  assert.match(hopping.detail, /beam-hopping forecast semantics are not implemented/);
+
+  assert.throws(() => resolveWalkerForecastAnchorAvailability({
+    status: 'unavailable',
+    code: 'source-frame-missing',
+    sourceFrameId: '',
+    absoluteUtcMs: null,
+    detail: 'missing source frame',
+  }), /sourceFrameId/);
+  assert.throws(() => resolveWalkerForecastAnchorAvailability({
+    status: 'unavailable',
+    code: 'absolute-time-missing',
+    sourceFrameId: null,
+    absoluteUtcMs: Number.MAX_SAFE_INTEGER + 1,
+    detail: 'invalid time',
+  }), /absoluteUtcMs/);
+});
+
+test('strict anchor construction remains available to offline callers', () => {
+  const created = createWalkerForecastAnchor(anchor());
+  assert.equal(Object.isFrozen(created), true);
+  assert.throws(
+    () => createWalkerForecastAnchor({ ...anchor(), sourceFrameId: '' }),
+    (error: unknown) => error instanceof WalkerForecastValidationError
+      && error.code === 'INVALID_ANCHOR',
+  );
+  assert.throws(
+    () => createWalkerForecastAnchor({ ...anchor(), epochUtcMs: -1, simTimeMs: -1 }),
+    /must be non-negative/,
+  );
+});
 
 test('builds deterministic immutable future frames from direct Walker propagation', () => {
   const input = anchor();
@@ -300,7 +386,9 @@ test('fails closed instead of treating frozen anchor loads as a hopping forecast
       ...base,
       beamHopping: { ...base.beamHopping, enabled: true },
     }), SAMPLE_TIMES),
-    /beam-hopping forecast semantics are not implemented/,
+    (error: unknown) => error instanceof WalkerForecastValidationError
+      && error.code === 'UNSUPPORTED_BEAM_HOPPING'
+      && /beam-hopping forecast semantics are not implemented/.test(error.message),
   );
 });
 

@@ -1250,6 +1250,16 @@ buildWalkerForecastFrames(
 ): readonly WalkerForecastFrame[];
 ```
 
+A validation-only availability envelope defines the discriminated
+`available | unavailable` boundary before this provider. `available` carries
+only an anchor rebuilt by the strict `createWalkerForecastAnchor` constructor.
+`unavailable` carries a typed reason, the known source-frame identity and
+absolute time, but never a partial anchor. The envelope does not yet collect
+facts from the live runtime: a later adapter at the accepted-frame seam must
+detect missing satellite geometry, UE motion ownership, beam identity/axis,
+schedule/load/interference state, canonical configuration, policy identity,
+discontinuities, and unsupported hopping before calling the provider.
+
 All `simTimeMs`, `sampleStartTimesUtcMs`, returned `absoluteUtcMs`, and the
 canonical evaluator's existing `startSimTimeMs` use the same **absolute UTC
 millisecond** axis. Replay-relative time is derived only as
@@ -2423,6 +2433,7 @@ Likely seams; final names may vary while preserving ownership:
 |---|---|---|
 | Candidate measurement | `src/scene/sinrLiveCellModel.ts`, `src/engine/handover/candidateOpportunityProducer.ts` | populate primary-UE throughput/remaining-service evidence and attach canonical forecast evidence without truncating the scientific set |
 | Validation-only EE attachment | new `src/engine/handover/candidateForecastEeValidation.ts` | attach one complete same-frame and policy-matched cache publication; clear omitted evidence; preserve candidate order, gates, compatibility counts, and active SINR authority |
+| Walker anchor availability envelope | new `src/engine/handover/walkerForecastAnchorAvailability.ts`, `walkerForecastFrameProvider.ts` | deep-clone and freeze supplied complete anchors; normalize typed unavailable without a partial anchor; a later runtime adapter still owns accepted-fact collection |
 | Pure Walker forecast frames | new `src/engine/handover/walkerForecastFrameProvider.ts` | derive immutable future Walker geometry/schedule frames from one anchor without advancing live runtime, timers, assignments, or playback state |
 | Walker-to-canonical EE input | new `src/engine/handover/walkerCanonicalForecastBuilder.ts`, existing `canonicalForecastEeEvaluator.ts` | build full matched `CanonicalEeInput` samples with stable UE/beam index witnesses, policy hash, ownership/reuse vectors, and causal assignment/load/event deltas |
 | Stateful decision | `src/engine/handover/handoverDecisionEngine.ts`, `handoverSelectionPolicy.ts` | keep hard eligibility, EE trigger, TTT stability, leader, selection hold, and atomic commit distinct; retain SINR compatibility until activation |
