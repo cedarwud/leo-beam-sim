@@ -2232,6 +2232,22 @@ Forecast cache keys include source-frame bucket/sequence, candidate key,
 wireframe. A policy-hash change clears these caches atomically as specified in
 section 0.6.
 
+The validation foundation now implements `createWalkerForecastCacheKey` as a
+strict immutable full-tuple identity. In addition to the accepted source frame,
+absolute UTC, primary UE and candidate pair, it includes the source, model,
+canonical contract, geometry, scenario, schedule, assignment, power,
+canonical/profile/policy configuration, continuity-epoch and execution-budget
+identities. The serialized full tuple is the cache id; a short digest is not the
+sole scientific join. `classifyWalkerForecastCacheReset` separately identifies
+seek, loop-wrap, frame replacement, epoch/source/profile/focus/policy,
+continuity and budget discontinuities. A normal monotonically later frame in
+the same continuity receives new entry keys without clearing the whole cache.
+The mandatory `acceptedFrameLineageId` stays stable across those ordinary
+frames and changes when an accepted-frame stream is replaced, so replacement
+remains detectable even when both source-frame ID and UTC advance together.
+This is still a data-only contract: no executor/store or runtime EE activation
+is implied.
+
 Candidate evaluation must remain visible long enough to understand. The
 presentation controller may reduce playback speed, but it may not change
 simulation timestamps, `dt`, forecast refresh cadence, policy thresholds, TTT,
@@ -2444,6 +2460,7 @@ Likely seams; final names may vary while preserving ownership:
 | Validation-only EE attachment | new `src/engine/handover/candidateForecastEeValidation.ts` | attach one complete same-frame and policy-matched cache publication; clear omitted evidence; preserve candidate order, gates, compatibility counts, and active SINR authority |
 | Walker anchor availability envelope | new `src/engine/handover/walkerForecastAnchorAvailability.ts`, `walkerForecastFrameProvider.ts` | deep-clone and freeze supplied complete anchors; normalize typed unavailable without a partial anchor; a later runtime adapter still owns accepted-fact collection |
 | Accepted Walker frame identity | new `src/engine/handover/walkerAcceptedFrameIdentity.ts`, `src/scene/sinrLiveCellModel.ts` | create one safe-integer absolute UTC identity for candidate evidence and decision joins without changing either active SINR decision clock |
+| Walker forecast cache/reset contract | new `src/engine/handover/walkerForecastCache.ts` | isolate entries by complete source/model/config/policy/continuity identity and classify hard cache-reset boundaries without running forecasts or changing SINR authority |
 | Pure Walker forecast frames | new `src/engine/handover/walkerForecastFrameProvider.ts` | derive immutable future Walker geometry/schedule frames from one anchor without advancing live runtime, timers, assignments, or playback state |
 | Walker-to-canonical EE input | new `src/engine/handover/walkerCanonicalForecastBuilder.ts`, existing `canonicalForecastEeEvaluator.ts` | build full matched `CanonicalEeInput` samples with stable UE/beam index witnesses, policy hash, ownership/reuse vectors, and causal assignment/load/event deltas |
 | Stateful decision | `src/engine/handover/handoverDecisionEngine.ts`, `handoverSelectionPolicy.ts` | keep hard eligibility, EE trigger, TTT stability, leader, selection hold, and atomic commit distinct; retain SINR compatibility until activation |
