@@ -42,13 +42,14 @@ import {
   SINR_LIVE_FOOTPRINT_RING_OPACITY,
   SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR,
   SINR_LIVE_FOOTPRINT_RING_Y_LIFT,
-  resolveSinrLiveConeRoleStyle,
   type SinrLiveConePalette,
 } from '../constants/sinrLiveConeStyle';
 import { satelliteTint } from '../constants/beamRoleTokens';
 import {
   resolveSinrLiveConeRole,
+  resolveSinrLiveConeDisplayStyle,
   type SinrLiveCellBeamConeRenderItem,
+  type SinrLiveConeColorAuthority,
   type SinrLiveConeMountLayer,
 } from './SinrLiveCellBeamCones';
 
@@ -68,6 +69,8 @@ export interface SinrLiveCellFootprintRingsProps {
    */
   readonly layer?: SinrLiveConeMountLayer;
   readonly palette?: SinrLiveConePalette;
+  /** Must match the cone mount so the ground Cell and beam keep one identity. */
+  readonly colorAuthority?: SinrLiveConeColorAuthority;
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
   /** Optional canvas dataset key for the rendered-hex count (validator proof). */
@@ -120,7 +123,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
         // serving YELLOW / candidate BLUE / context GREY), resolved EXACTLY as the cone mount
         // does. So the hex matches its cone in role colour but keeps the white rim distinct.
         const borderColor = satelliteTint(item.satId);
-        const roleColor = resolveSinrLiveConeRoleStyle(
+        const roleColor = resolveSinrLiveConeDisplayStyle(
           resolveSinrLiveConeRole({
             layer,
             satId: item.satId,
@@ -131,6 +134,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
           }),
           palette,
           item,
+          props.colorAuthority,
         ).color;
         // ab861c4 3-layer hex: a faint additive FILL-glow under a WHITE outer BORDER ring
         // (proud rim 0.96→1.04r) and a bright role-colour inner ring (tight 0.78→0.84r).

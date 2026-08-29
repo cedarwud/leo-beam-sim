@@ -3,10 +3,12 @@ import test from 'node:test';
 
 import {
   candidateLinkKey,
+  createHandoverCommitReceipt,
   type HandoverDecisionFrame,
 } from '../engine/handover/candidateDecisionContract';
 import type { LinkSample } from '../engine/signal/types';
 import { sceneGeometryFromProfile } from '../scene/SceneGeometry';
+import { resolveHandoverAuthorityJoin } from '../scene/handoverAuthorityJoin';
 import { createEmptyFrame } from '../scene/simulationHelpers';
 import type { SinrLiveCellFrame } from '../scene/sinrLiveCellModel';
 import { liveSimToScene } from './liveSimToScene';
@@ -178,4 +180,110 @@ test('multi-candidate scene projects exactly the authoritative primary serving p
   assert.equal(staleSampleOnly.metrics.servingSatelliteId, SERVING_PAIR.satelliteId);
   assert.equal(staleSampleOnly.metrics.servingBeamId, String(SERVING_PAIR.beamId));
   assert.equal(Number.isNaN(staleSampleOnly.metrics.serving.dB), true);
+});
+
+test('authority guard cannot replay a retained legacy source-target transition', () => {
+  const authoritativeSample = sample(SERVING_PAIR.satelliteId, SERVING_PAIR.beamId, 8.5);
+  const frame = createEmptyFrame(14);
+  frame.serving = { satId: OLD_PAIR.satelliteId, beamId: OLD_PAIR.beamId, sinrDb: -3 };
+  frame.linkSamples = [authoritativeSample];
+  frame.perUePositions = [{
+    id: PRIMARY_UE_ID,
+    groundX: 12,
+    groundZ: 18,
+    eastKm: 12,
+    northKm: -18,
+    sinrDb: -3,
+    servingSatId: OLD_PAIR.satelliteId,
+    servingBeamId: OLD_PAIR.beamId,
+    pendingTargetSatId: null,
+    pendingTargetBeamId: null,
+    triggerProgressSec: 0,
+  }];
+  frame.sinrLiveCells = {
+    simTimeSec: 14,
+    cells: [],
+    ues: [{
+      ueId: PRIMARY_UE_ID,
+      cellId: SERVING_PAIR.beamId - 1,
+      cellDistanceKm: 3,
+      offAxisDeg: 0.4,
+      servingSatId: SERVING_PAIR.satelliteId,
+      servingBeamId: SERVING_PAIR.beamId,
+      beamIdentity: `${SERVING_PAIR.satelliteId}#cell${SERVING_PAIR.beamId - 1}`,
+      frequencyIndex: 1,
+      sinrDb: authoritativeSample.sinrDb,
+      servingLinkSample: authoritativeSample,
+      handoverKind: 'none',
+    }],
+    illuminatedBeams: [],
+    servedCellCount: 1,
+    servedUeCount: 1,
+    servingSatCount: 1,
+    intraHandoverCount: 0,
+    interHandoverCount: 1,
+    cumulativeIntraHandoverCount: 0,
+    cumulativeInterHandoverCount: 1,
+    primaryUeId: PRIMARY_UE_ID,
+    recentHandoverEvents: [{
+      ueId: PRIMARY_UE_ID,
+      kind: 'inter',
+      sourceTimeSec: 12,
+      fromSatId: OLD_PAIR.satelliteId,
+      fromCellId: OLD_PAIR.beamId - 1,
+      toSatId: SERVING_PAIR.satelliteId,
+      toCellId: SERVING_PAIR.beamId - 1,
+      fromSinrDb: -3,
+      toSinrDb: 8.5,
+      deltaDb: 11.5,
+    }],
+  };
+  frame.handoverDecisionFrame = {
+    ...decisionFrame(),
+    sourceFrameId: 'walker-frame-14',
+    simTimeMs: 14_000,
+    phase: 'guard',
+  };
+
+  const geometry = sceneGeometryFromProfile({
+    shell: { altitudeKm: 550 },
+    antenna: { beamwidth3dBRad: 0.08 },
+    handover: { triggerTimeSec: 1 },
+    orbit: { shells: [{ id: 'shell-0', altitudeKm: 550 }] },
+    beams: { frequencyReuse: 3 },
+  });
+  const projected = liveSimToScene(frame, geometry);
+
+  assert.equal(projected.handover.phase, 'guard');
+  assert.equal(projected.handover.kind, 'none');
+  assert.equal(projected.recentHo, undefined);
+  assert.equal(projected.transitionProgress.inter, undefined);
+  assert.equal(projected.transitionProgress.intra, undefined);
+  assert.equal(projected.eventRoles.bySatId.get(OLD_PAIR.satelliteId), undefined);
+  assert.equal(projected.eventRoles.bySatId.get(SERVING_PAIR.satelliteId), 'serving');
+});
+
+test('committed switching projects the decision receipt and never a second solid link', () => {
+  const receipt = createHandoverCommitReceipt({
+    episodeId: 'episode-1',
+    sourceFrameId: 'walker-frame-10',
+    simTimeMs: 10_000,
+    from: OLD_PAIR,
+    to: SERVING_PAIR,
+    kind: 'inter-satellite',
+    mode: 'service-continuity-protection',
+    reason: 'fixture',
+    oldLinkEnded: true,
+    newLinkStarted: true,
+  });
+  const switching = {
+    ...decisionFrame(),
+    phase: 'switching' as const,
+    recentCommit: receipt,
+  };
+
+  const projectedJoin = resolveHandoverAuthorityJoin(switching);
+  assert.equal(projectedJoin?.transition?.boundary, 'committed');
+  assert.deepEqual(projectedJoin?.solidDataLinkKey, SERVING_PAIR);
+  assert.equal(projectedJoin?.solidDataLinkCount, 1);
 });

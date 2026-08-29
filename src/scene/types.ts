@@ -8,6 +8,7 @@ import type {
 } from '../engine/signal/types';
 import type { HandoverEvent, IntraSwitchPreview } from '../engine/handover/types';
 import type { HandoverDecisionFrame } from '../engine/handover/candidateDecisionContract';
+import type { AcceptedHandoverPresentationSnapshot } from './acceptedHandoverPresentationSnapshot';
 import type { BeamFrequencyIndexResolution } from '../utils/beamFrequency';
 import type { CoreLayoutFrequencyReuse, ReuseGroupSource } from './beam-layout';
 import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
@@ -386,6 +387,12 @@ export interface SimState {
    * synthesize a second decision from legacy scalar comparison fields.
    */
   handoverDecisionFrame?: HandoverDecisionFrame | null;
+  /**
+   * One immutable presentation publication shared by the central scene and
+   * right rail. Consumers must not rebuild a candidate plan from the legacy
+   * handoverDecisionFrame field.
+   */
+  acceptedHandoverPresentation?: AcceptedHandoverPresentationSnapshot | null;
   physicalServing: SignalSourceState;
   panelPrimary: PanelPrimaryState;
   panelComparison: PanelComparisonState;

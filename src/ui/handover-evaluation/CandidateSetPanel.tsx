@@ -14,6 +14,8 @@ import type {
   CandidatePresentationPlan,
   CandidatePresentationRole,
 } from '../../engine/handover/candidatePresentationPlan';
+import { formatCandidateDisplayKey } from '../../engine/handover/candidateDisplayKey';
+import { formatSatelliteLabel } from '../../utils/formatSatelliteLabel';
 
 type Copy = (zh: string, en: string) => string;
 
@@ -84,18 +86,13 @@ function forecastSummary(evidence: ForecastEeEvidence | null, copy: Copy): strin
     : ee;
 }
 
-function beamLabel(link: CandidatePresentationLink, copy: Copy): string {
-  return link.opportunity?.beamIdentitySource === 'walker-cell-surrogate'
-    ? copy(`Walker 模型波束 B${link.beamId}`, `Walker beam surrogate B${link.beamId}`)
-    : copy(`波束 B${link.beamId}`, `Beam B${link.beamId}`);
-}
-
 function roleLabel(role: CandidatePresentationRole, state: CandidateDecisionState | null, copy: Copy): string {
   switch (role) {
     case 'serving': return copy('目前服務', 'Serving');
     case 'committed-serving': return copy('已接手服務', 'Committed serving');
     case 'selected-target': return copy('選定目標', 'Selected target');
     case 'provisional-leader': return copy('暫列第一', 'Provisional leader');
+    case 'hard-eligible': return copy('已通過服務資格', 'Service eligible');
     case 'qualified':
       return state?.stable
         ? copy('穩定候選', 'Stable candidate')
@@ -112,17 +109,6 @@ function rejectionLabel(state: CandidateDecisionState | null, copy: Copy): strin
   if (code === undefined) return null;
   const [zh, en] = GATE_LABELS[code];
   return copy(`主要未成立條件：${zh}`, `Primary unmet condition: ${en}`);
-}
-
-function relationLabel(
-  serving: CandidateLinkKey | null,
-  target: CandidateLinkKey,
-  copy: Copy,
-): string {
-  if (serving === null) return copy('初始連線候選', 'Initial-link candidate');
-  return serving.satelliteId === target.satelliteId
-    ? copy('同衛星波束候選', 'Same-satellite beam candidate')
-    : copy('跨衛星候選', 'Inter-satellite candidate');
 }
 
 function tttLabel(state: CandidateDecisionState | null, copy: Copy): string {
@@ -209,14 +195,12 @@ function CandidateRow({
   link,
   pinned,
   onTogglePin,
-  serving,
   copy,
   showForecastEe,
 }: {
   readonly link: CandidatePresentationLink;
   readonly pinned: boolean;
   readonly onTogglePin: (key: CandidateLinkKey) => void;
-  readonly serving: CandidateLinkKey | null;
   readonly copy: Copy;
   readonly showForecastEe: boolean;
 }) {
@@ -230,6 +214,11 @@ function CandidateRow({
       className="leo-handover-candidate"
       data-role={link.role}
       data-active-data-link="false"
+      data-satellite-id={link.satelliteId}
+      data-beam-id={link.beamId}
+      data-pair-key={candidateLinkKeyString(link.key)}
+      data-scene-join-key={link.sceneJoinKey}
+      data-rail-join-key={link.railJoinKey}
       data-pattern={link.beamIdentity?.pattern ?? link.satelliteIdentity.pattern}
       style={{ '--leo-handover-link-color': color } as CSSProperties}
     >
@@ -239,26 +228,29 @@ function CandidateRow({
         aria-expanded={pinned}
         aria-pressed={pinned}
         aria-controls={detailsId}
-        aria-label={`${link.satelliteId}, ${beamLabel(link, copy)}, ${roleLabel(link.role, state, copy)}`}
+        aria-label={`${link.displayKey}, ${roleLabel(link.role, state, copy)}`}
         onClick={() => onTogglePin(link.key)}
       >
         <span className="leo-handover-candidate__glyph" aria-hidden="true">
           {link.beamIdentity?.glyph ?? link.satelliteIdentity.glyph}
         </span>
         <span className="leo-handover-candidate__identity">
-          <strong>{beamLabel(link, copy)}</strong>
-          <small>{relationLabel(serving, link.key, copy)}</small>
+          <strong>{link.displayKey}</strong>
         </span>
-        <span className="leo-handover-candidate__status">{roleLabel(link.role, state, copy)}</span>
+        <span className="leo-handover-candidate__status">
+          {roleLabel(link.role, state, copy)}
+          {state?.rank !== null && state?.rank !== undefined && <b>#{state.rank}</b>}
+        </span>
       </button>
       <div className="leo-handover-candidate__metrics" data-forecast-ee={showForecastEe ? 'true' : 'false'}>
         <span><small>{ratedAdmission ? copy('資格 SINR', 'Admission SINR') : 'SINR'}</small><strong>{formatMetric(link.opportunity?.sinr, 1)}</strong></span>
+        <span><small>{copy('轉向角', 'Steering')}</small><strong>{formatMetric(link.opportunity?.steering, 1)}</strong></span>
         <span><small>TTT</small><strong>{tttLabel(state, copy)}</strong></span>
         {showForecastEe && (
           <span><small>{copy('預測 EE', 'Forecast EE')}</small><strong>{forecastSummary(link.opportunity?.forecastEe ?? null, copy)}</strong></span>
         )}
       </div>
-      {rejection !== null && <p className="leo-handover-candidate__reason">{rejection}</p>}
+      {rejection !== null && pinned && <p className="leo-handover-candidate__reason">{rejection}</p>}
       <div id={detailsId} hidden={!pinned}>
         {pinned && <CandidateDetails link={link} copy={copy} showForecastEe={showForecastEe} />}
       </div>
@@ -277,11 +269,19 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
   const titleId = useId();
   const [overflowOpen, setOverflowOpen] = useState(false);
   const hidden = hiddenKeys(plan);
+  const surrogateActive = plan.decision.opportunities.some(
+    opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate',
+  );
   return (
     <section className="leo-handover-candidate-set" aria-labelledby={titleId}>
       <header className="leo-handover-candidate-set__header">
-        <h3 id={titleId}>{copy('候選連線', 'Candidate links')}</h3>
-        <span>{plan.scientificCandidatePairCount}</span>
+        <h3 id={titleId}>{copy('候選連線比較', 'Candidate-link comparison')}</h3>
+        <span>
+          {copy(
+            `顯示 ${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount}`,
+            `Showing ${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount}`,
+          )}
+        </span>
       </header>
 
       <div className="leo-handover-candidate-set__groups">
@@ -297,8 +297,14 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
             >
               <header>
                 <span aria-hidden="true">{group.satelliteIdentity.glyph}</span>
-                <strong>{group.satelliteId}</strong>
-                {group.isServingSatellite && <small>{copy('同衛星', 'Same satellite')}</small>}
+                <strong>{formatSatelliteLabel(group.satelliteId)}</strong>
+                <small>
+                  {plan.decision.serving === null
+                    ? copy('初始連線候選', 'Initial-link candidate')
+                    : group.isServingSatellite
+                      ? copy('同衛星波束候選', 'Same-satellite beam candidate')
+                      : copy('跨衛星候選', 'Inter-satellite candidate')}
+                </small>
               </header>
               <div className="leo-handover-satellite-group__links">
                 {candidates.map(link => (
@@ -307,7 +313,6 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
                     link={link}
                     pinned={pinnedKey !== null && sameCandidateLinkKey(pinnedKey, link.key)}
                     onTogglePin={onTogglePin}
-                    serving={plan.decision.serving}
                     copy={copy}
                     showForecastEe={plan.decision.mode === 'ee-optimization'}
                   />
@@ -344,13 +349,16 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
                 <button
                   key={candidateLinkKeyString(key)}
                   type="button"
+                  data-satellite-id={key.satelliteId}
+                  data-beam-id={key.beamId}
                   style={{ '--leo-handover-link-color': beam?.cssColor ?? satellite?.cssColor ?? '#94a3b8' } as CSSProperties}
                   onClick={() => onTogglePin(key)}
                 >
                   <span aria-hidden="true">{beam?.glyph ?? satellite?.glyph ?? '○'}</span>
-                  {key.satelliteId} / {plan.decision.opportunities.some(opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate')
-                    ? copy(`Walker 模型波束 B${key.beamId}`, `Walker beam surrogate B${key.beamId}`)
-                    : copy(`波束 B${key.beamId}`, `Beam B${key.beamId}`)}
+                  {formatCandidateDisplayKey({
+                    key,
+                    beamIdentitySource: surrogateActive ? 'walker-cell-surrogate' : 'physical-beam',
+                  })}
                 </button>
               );
             })}

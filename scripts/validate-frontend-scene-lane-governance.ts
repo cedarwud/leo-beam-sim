@@ -2803,24 +2803,91 @@ assertContains(
   "input.sceneLane === 'modqn-replay-proof'",
   'Scene lane render plan models explicit MODQN replay proof lane',
 );
-// (S0 note: the lane-gating PROPERTY is covered behaviorally by the renderPlan
-// matrix; these whitespace-sensitive exact-JSX pins retire with S5.)
+// Visual-recovery amendment (2026-08-28): a decision frame may add candidate
+// geometry, but it must not erase the established carrier and event vocabulary.
+// The dedicated multi-candidate renderer remains the sole owner of solid links;
+// the legacy role-coloured HandoverLinks layer stays retired under that authority.
+assertContains(
+  mainSceneSource,
+  "{presentationPlan.visible['serving-footprints']\n        && showSinrLiveCellBeams",
+  'MainScene keeps the established serving footprint mounted independently of multi-candidate authority',
+);
+assertNotContains(
+  mainSceneSource,
+  "{!multiCandidateAuthorityActive && presentationPlan.visible['serving-footprints']",
+  'MainScene must not blanket-suppress the established serving footprint under multi-candidate authority',
+);
+assertContains(
+  mainSceneSource,
+  "&& !multiCandidateAuthorityActive\n        && !handoverDisplayIsolation.hideTimelineEffects\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\n        && (\n        <HandoverLinks",
+  'MainScene keeps legacy role-coloured handover links retired under multi-candidate authority',
+);
 for (const [needle, label] of [
-  // beam-stage ① #3: cell-truth footprint rings (gated with the serving cones) REPLACE
-  // the retired steered AmbientFootprintRings — rings now sit at the earth-fixed cell
-  // centres (aligned with the cones + UE membership), not the steered beam positions.
-  ["{!multiCandidateAuthorityActive && presentationPlan.visible['serving-footprints'] && showSinrLiveCellBeams && !handoverDisplayIsolation.active && (\\n        <SinrLiveCellFootprintRings", 'cell-truth footprint rings'],
-  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !multiCandidateAuthorityActive\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && (\\n        <HandoverLinks", 'handover links'],
-  ["{presentationPlan.visible['event-effects']\\n        && showLiveSceneEffects\\n        && !multiCandidateAuthorityActive\\n        && !handoverDisplayIsolation.hideTimelineEffects\\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\\n        && !concurrentIntraVisualSuppressed\\n        && <IntraGroundShockwave", 'intra ground shockwave'],
-  ["{presentationPlan.visible['event-effects']\\n        && showHandoverToastOverlay\\n        && !multiCandidateAuthorityActive\\n        && (\\n          (manualHandoverPresentationActive && manualHandoverEvent !== null)", 'handover toast overlay'],
+  ["{presentationPlan.visible['motion-guides'] && showOrbitTrail && (\n        <OrbitTrail", 'orbit trail'],
+  ["{presentationPlan.visible['motion-guides'] && showSpineParticles && (\n        <SpineParticles", 'spine particles'],
+  ["&& !handoverDisplayIsolation.suppressNaturalHandoverLayers\n        && (\n        <ServingGroundRipple", 'serving ground ripple'],
 ] as const) {
-  assertContains(mainSceneSource, needle.replaceAll('\\n', '\n'), `MainScene should source-gate ${label}`);
+  assertContains(mainSceneSource, needle, `MainScene preserves additive ${label} under multi-candidate authority`);
 }
+assertContains(
+  mainSceneSource,
+  '<DecisionHandoverCue',
+  'MainScene adds a decision-frame transition cue to the established event carrier',
+);
+for (const [needle, label] of [
+  ['multiCandidateAuthorityActive ? [] : sinrLiveCellPulseConeItems', 'legacy retained pulse cones'],
+  ['multiCandidateAuthorityActive ? [] : triggeredIntraConeItems', 'legacy triggered intra cones'],
+  ['multiCandidateAuthorityActive ? [] : sinrLiveCinemaHandoverPairConeItems', 'legacy cinema source-target cones'],
+] as const) {
+  assertNotContains(mainSceneSource, needle, `MainScene must not blanket-suppress ${label} under immutable decision authority`);
+}
+for (const [needle, label] of [
+  ['const additiveHandoverPulseConeItems = useMemo', 'retained pulse cones'],
+  ['const additiveTriggeredIntraConeItems = useMemo', 'triggered intra cones'],
+  ['const additiveCinemaHandoverPairConeItems = useMemo', 'cinema source-target cones'],
+] as const) {
+  assertContains(mainSceneSource, needle, `MainScene preserves additive ${label} under immutable decision authority`);
+}
+assertContains(
+  mainSceneSource,
+  'acceptedHandoverPresentation?.commit,',
+  'MainScene derives takeover only from the shared accepted commit receipt',
+);
+assertContains(
+  mainSceneSource,
+  'const visibleSatelliteId = authorityPresentationCommitObserved',
+  'MainScene gives an inter transition exactly one filled-cone owner across commit',
+);
+assertNotContains(
+  mainSceneSource,
+  "authorityPresentationCommitObserved\n      || handoverPresentation.phase === 'releasing'",
+  'wall-clock animation phase must not infer an authoritative commit',
+);
+assertContains(
+  mainSceneSource,
+  '&& (!multiCandidateAuthorityActive || handoverPresentation.active)',
+  'MainScene allows the handover toast under multi-candidate authority only while the accepted handover presentation is active',
+);
 
 assertContains(
   mainSceneSource,
   '<MultiCandidateBeamScene',
   'MainScene mounts the dedicated multi-candidate beam scene',
+);
+assertContains(
+  mainSceneSource,
+  'multiCandidateSceneRenderPlan?.telemetry.renderedPairCount',
+  'MainScene publishes actual multi-candidate rendered-pair telemetry',
+);
+assertContains(
+  mainSceneSource,
+  'multiCandidateSceneRenderPlan?.solidDataLinkCount',
+  'MainScene publishes the scene-global solid-link count from its identity-preserving link owner',
+);
+assertContains(
+  mainSceneSource,
+  'multiCandidateAuthorityActive && !multiCandidateServingCarrierRenderable',
+  'MainScene publishes whether the established serving carrier fallback is active',
 );
 assertContains(
   mainSceneSource,

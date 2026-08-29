@@ -83,12 +83,15 @@ export function resolveSpineParticlePlans(input: {
 export function SpineParticles({
   satellites,
   satBeams,
+  plans,
   enabled = true,
   paused = false,
   reducedMotion = false,
 }: {
   satellites: VisibleSat[];
   satBeams: Map<string, BeamTarget[]>;
+  /** Exact authority-owned active link. When present, legacy satBeams are ignored. */
+  plans?: readonly SpineParticlePlan[];
   enabled?: boolean;
   paused?: boolean;
   reducedMotion?: boolean;
@@ -100,8 +103,13 @@ export function SpineParticles({
     [],
   );
   const particles = useMemo(
-    () => resolveSpineParticlePlans({ satellites, satBeams, enabled, paused, reducedMotion }),
-    [enabled, paused, reducedMotion, satBeams, satellites],
+    () => {
+      if (!enabled || paused || reducedMotion) return [];
+      return plans === undefined
+        ? resolveSpineParticlePlans({ satellites, satBeams, enabled, paused, reducedMotion })
+        : [...plans];
+    },
+    [enabled, paused, plans, reducedMotion, satBeams, satellites],
   );
 
   useFrame(({ clock }) => {

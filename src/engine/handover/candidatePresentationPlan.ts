@@ -15,6 +15,7 @@ import {
   type HandoverSatelliteVisualIdentity,
   type HandoverVisualIdentityAllocation,
 } from '../../constants/handoverVisualIdentity';
+import { formatCandidateDisplayKey } from './candidateDisplayKey';
 
 /**
  * The presentation budget is deliberately separate from the scientific frame.
@@ -40,6 +41,7 @@ export type CandidatePresentationRole =
   | 'serving'
   | 'committed-serving'
   | 'observed'
+  | 'hard-eligible'
   | 'qualified'
   | 'provisional-leader'
   | 'selected-target';
@@ -65,6 +67,8 @@ export interface CandidatePresentationLink {
   readonly key: CandidateLinkKey;
   readonly satelliteId: string;
   readonly beamId: number;
+  /** Built once for both scene and rail; consumers must not reconstruct it. */
+  readonly displayKey: string;
   /** Null only for a serving link not present in the current opportunity set. */
   readonly opportunity: CandidateOpportunity | null;
   readonly state: CandidateDecisionState | null;
@@ -152,6 +156,7 @@ export interface CandidatePresentationOptions {
 interface CandidateRecord {
   readonly opportunity: CandidateOpportunity;
   readonly state: CandidateDecisionState;
+  readonly role: CandidatePresentationRole;
   readonly priority: number;
   readonly isPinned: boolean;
 }
@@ -167,7 +172,8 @@ const PRESENTATION_ROLE_PRIORITY: Readonly<Record<CandidatePresentationRole, num
   'selected-target': 1,
   'provisional-leader': 2,
   qualified: 4,
-  observed: 5,
+  'hard-eligible': 5,
+  observed: 6,
 });
 
 function fail(message: string): never {
@@ -218,6 +224,13 @@ function compareStableText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+function isEligiblePresentationRole(role: CandidatePresentationRole): boolean {
+  return role === 'hard-eligible'
+    || role === 'qualified'
+    || role === 'provisional-leader'
+    || role === 'selected-target';
+}
+
 function stateFor(
   decision: HandoverDecisionFrame,
   opportunity: CandidateOpportunity,
@@ -244,6 +257,7 @@ function roleFor(
     return 'provisional-leader';
   }
   if (state.hardEligibility === 'eligible' && state.triggerStatus === 'satisfied') return 'qualified';
+  if (state.hardEligibility === 'eligible') return 'hard-eligible';
   return 'observed';
 }
 
@@ -262,6 +276,7 @@ function priorityFor(
 function styleFor(
   role: CandidatePresentationRole,
   isPinned: boolean,
+  _phase: HandoverDecisionFrame['phase'],
 ): CandidatePresentationVisualTreatment {
   switch (role) {
     case 'serving':
@@ -305,15 +320,38 @@ function styleFor(
         role,
         footprintStyle: 'dashed',
         coneStyle: 'wireframe',
-        dataLinkStyle: isPinned ? 'measurement-dashed' : 'none',
+        // Every displayed qualified pair is an explicit measurement guide;
+        // it is never promoted to the single serving data link.
+        dataLinkStyle: 'measurement-dashed',
+        isMeasurementOnly: true,
+        isActiveDataLink: false,
+      });
+    case 'hard-eligible':
+      return Object.freeze({
+        role,
+        footprintStyle: 'dotted',
+        coneStyle: 'wireframe',
+        // Hard eligibility is the comparison cue, so keep its guide visible
+        // even before the trigger/TTT gate is satisfied.
+        dataLinkStyle: 'measurement-dashed',
         isMeasurementOnly: true,
         isActiveDataLink: false,
       });
     case 'observed':
+      // Observation is represented by its coloured ground Cell and identity
+      // label. Raising every measured pair into a full-height cone creates
+      // broad crossing walls whenever a satellite is near the horizon. A user
+      // pin remains the explicit inspection override; qualification promotes
+      // the pair to the cone grammar below.
+      const measurementConeVisible = isPinned;
       return Object.freeze({
         role,
         footprintStyle: 'dotted',
-        coneStyle: isPinned ? 'wireframe' : 'hidden',
+        coneStyle: measurementConeVisible ? 'wireframe' : 'hidden',
+        // The footprint and translucent volume already prove that this pair is
+        // being measured. Drawing a full UE-to-satellite dashed line for every
+        // observed pair turns the viewport into a line cage; reserve that
+        // explicit path for a pinned pair or a later qualified/leader role.
         dataLinkStyle: isPinned ? 'measurement-dashed' : 'none',
         isMeasurementOnly: true,
         isActiveDataLink: false,
@@ -369,9 +407,11 @@ function candidateRecords(
     .filter(opportunity => decision.serving === null || !sameKey(opportunity.key, decision.serving))
     .map(opportunity => {
       const state = stateFor(decision, opportunity);
+      const role = roleFor(decision, opportunity, state);
       return {
         opportunity,
         state,
+        role,
         priority: priorityFor(decision, opportunity, state),
         isPinned: pinnedKey !== null && sameKey(pinnedKey, opportunity.key),
       };
@@ -400,6 +440,14 @@ function selectDisplayRecords(
   const orderedGroupIds = [...bySatellite.entries()]
     .filter(([satelliteId]) => satelliteId !== servingSatelliteId)
     .sort((left, right) => {
+      // Candidate groups with hard-eligible/qualified evidence must occupy the
+      // bounded scene before observed-only decoration. The record order already
+      // prefers selected/qualified pairs, but this explicit group-level check
+      // prevents an observed first record from consuming an alternate slot when
+      // another pair in the same source group is eligible.
+      const leftHasEligible = left[1].some(record => isEligiblePresentationRole(record.role));
+      const rightHasEligible = right[1].some(record => isEligiblePresentationRole(record.role));
+      if (leftHasEligible !== rightHasEligible) return leftHasEligible ? -1 : 1;
       const byRecord = compareRecords(left[1][0]!, right[1][0]!);
       return byRecord !== 0 ? byRecord : compareStableText(left[0], right[0]);
     })
@@ -453,9 +501,28 @@ function selectDisplayRecords(
     budget.maxCandidatePairs,
     Math.max(0, budget.maxConeVolumes - (decision.serving === null ? 0 : 1)),
   );
-  const selectedRecords = groupRecords
-    .sort(compareRecords)
-    .slice(0, candidateCapacity);
+  const boundedRecords = groupRecords.sort(compareRecords);
+  // Preserve one eligible pair per eligible satellite whenever the pair cap
+  // permits it. This keeps the central scene able to show an actual
+  // multi-satellite comparison instead of spending the whole budget on two
+  // beams from the first satellite. The final fill still follows the normal
+  // stable role/rank ordering.
+  const reservedEligibleKeys = new Set<string>();
+  const reservedEligibleSatelliteIds = new Set<string>();
+  if (candidateCapacity > 0) {
+    for (const record of boundedRecords) {
+      if (!isEligiblePresentationRole(record.role)) continue;
+      if (reservedEligibleSatelliteIds.has(record.opportunity.key.satelliteId)) continue;
+      reservedEligibleSatelliteIds.add(record.opportunity.key.satelliteId);
+      reservedEligibleKeys.add(keyFor(record.opportunity.key));
+      if (reservedEligibleKeys.size >= candidateCapacity) break;
+    }
+  }
+  const selectedRecords = boundedRecords
+    .filter(record => reservedEligibleKeys.has(keyFor(record.opportunity.key)))
+    .concat(boundedRecords.filter(record => !reservedEligibleKeys.has(keyFor(record.opportunity.key))))
+    .slice(0, candidateCapacity)
+    .sort(compareRecords);
   return Object.freeze({
     records: Object.freeze(selectedRecords),
     groupIds: Object.freeze(selectedGroupIds),
@@ -495,7 +562,7 @@ function buildLink(
       ? 'observed'
       : roleFor(decision, opportunity, state);
   const isPinned = pinnedKey !== null && sameKey(pinnedKey, key);
-  const visual = styleFor(role, isPinned);
+  const visual = styleFor(role, isPinned, decision.phase);
   return Object.freeze({
     joinKey: stableJoinKey(decision.episodeId, key),
     sceneJoinKey: stableJoinKey(decision.episodeId, key),
@@ -503,6 +570,12 @@ function buildLink(
     key: copyKey(key),
     satelliteId: key.satelliteId,
     beamId: key.beamId,
+    displayKey: formatCandidateDisplayKey({
+      key,
+      beamIdentitySource: opportunity?.beamIdentitySource
+        ?? decision.opportunities[0]?.beamIdentitySource
+        ?? 'physical-beam',
+    }),
     opportunity,
     state,
     role,

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, type JSX } from 'react';
-import { Billboard, Line, Text } from '@react-three/drei';
+import { Billboard, Html, Line } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -21,10 +21,7 @@ import type {
 import {
   cellIdFromLinkBudgetBeamId,
 } from '../scene/sinrLiveCellModel';
-import {
-  computeFootprintEllipse,
-  type WorldPoint,
-} from './CellFootprints';
+import type { WorldPoint } from './CellFootprints';
 import {
   buildObliqueBeamConePositions,
   type SinrLiveCellPlacement,
@@ -34,6 +31,7 @@ import type {
   MultiCandidateSceneLinkInstruction,
   MultiCandidateScenePresentation,
 } from '../scene/multiCandidateScenePresentation';
+import type { CandidateSceneRenderReceipt } from '../scene/acceptedHandoverPresentationSnapshot';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 
 /** A renderer-neutral point in the shared scene coordinate system. */
@@ -130,14 +128,32 @@ export interface MultiCandidateBeamSceneTelemetry {
   readonly renderedSatelliteCount: number;
   readonly visibleConeVolumeCount: number;
   readonly solidDataLinkCount: 0 | 1;
+  /**
+   * Presentation instructions that could not be mapped to scene geometry.
+   * These are diagnostic facts, not alternate decision results.
+   */
+  readonly unmappedPairs: readonly MultiCandidateBeamSceneUnmappedPair[];
   readonly maxSatelliteGroups: number;
   readonly maxConeVolumes: number;
+}
+
+export type MultiCandidateBeamSceneUnmappedReason =
+  | 'missing-placement'
+  | 'missing-satellite-world'
+  | 'invalid-radius';
+
+export interface MultiCandidateBeamSceneUnmappedPair {
+  readonly satelliteId: string;
+  readonly beamId: number;
+  readonly sourceFrameId: string;
+  readonly reason: MultiCandidateBeamSceneUnmappedReason;
 }
 
 export interface MultiCandidateBeamSceneRenderPlan {
   readonly instructions: readonly MultiCandidateBeamSceneRenderInstruction[];
   readonly coneVolumeCount: number;
   readonly solidDataLinkCount: 0 | 1;
+  readonly unmappedPairs: readonly MultiCandidateBeamSceneUnmappedPair[];
   readonly telemetry: MultiCandidateBeamSceneTelemetry;
 }
 
@@ -152,8 +168,17 @@ export interface MultiCandidateSatelliteIdentityGroup {
 
 export interface MultiCandidateBeamSceneProps extends MultiCandidateBeamSceneResolverInput {
   readonly visible?: boolean;
+  /**
+   * The homepage keeps its established serving cone + hex footprint carrier.
+   * Set this false there so this layer adds candidate evidence without
+   * repainting the current serving geometry. The serving data link and join
+   * metadata remain here as the single decision-authority read-out.
+   */
+  readonly renderServingConeAndFootprint?: boolean;
   /** Presentation-only inspection; it never feeds the decision engine. */
   readonly onCandidateSelect?: (key: CandidateLinkKey) => void;
+  /** Actual mapping acknowledgement for the same accepted publication. */
+  readonly renderReceipt?: CandidateSceneRenderReceipt | null;
 }
 
 export const MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS = Object.freeze({
@@ -163,18 +188,58 @@ export const MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS = Object.freeze({
   satelliteIdentityColors: 'multiCandidateSceneSatelliteIdentityColors',
   coneVolumeCount: 'multiCandidateSceneConeVolumeCount',
   solidDataLinkCount: 'multiCandidateSceneSolidDataLinkCount',
+  unmappedPairCount: 'multiCandidateSceneUnmappedPairCount',
+  unmappedPairs: 'multiCandidateSceneUnmappedPairs',
+  acceptedSnapshotId: 'multiCandidateSceneAcceptedSnapshotId',
+  acceptedSourceFrameId: 'multiCandidateSceneAcceptedSourceFrameId',
+  renderedSceneJoinKeys: 'multiCandidateSceneRenderedSceneJoinKeys',
+  eventCueCount: 'multiCandidateSceneEventCueCount',
 });
 
 const GROUND_FOOTPRINT_Y = 0.12;
 const FOOTPRINT_OUTER_SCALE = 1.055;
+const HEX_SIDE_COUNT = 6;
 const ENDPOINT_RADIUS_WORLD = 2.2;
-const LABEL_FONT_SIZE = 8.5;
 /**
  * Raw triangle-mesh wireframe exposes every fan edge and turns an oblique beam
  * into a dense visual cage. Eight ribs keep the measurement-only volume
  * legible without competing with the single solid serving link.
  */
-export const MULTI_CANDIDATE_WIREFRAME_RIB_COUNT = 8;
+export const MULTI_CANDIDATE_WIREFRAME_RIB_COUNT = 3;
+
+/**
+ * Deterministic outer-edge slots for different satellite/beam identities that
+ * map to the same ground cell. Keeping the badges around the hex perimeter is
+ * both more legible and more truthful than stacking them above the UE.
+ */
+const CANDIDATE_LABEL_SLOT_AZIMUTH_DEG = Object.freeze([90, -30, 210, 30, 150, 270] as const);
+
+export function resolveCandidateLabelPosition(
+  instruction: MultiCandidateBeamSceneRenderInstruction,
+  candidateLane: number,
+  satelliteBiasLane = 0,
+): MultiCandidateScenePoint {
+  if (!Number.isInteger(candidateLane) || candidateLane < 0) {
+    fail('candidate label lane must be a non-negative integer');
+  }
+  if (!instruction.isCandidate || instruction.label === null) {
+    return instruction.label?.position ?? instruction.baseCenter;
+  }
+  if (!Number.isInteger(satelliteBiasLane)) {
+    fail('candidate satellite label bias lane must be an integer');
+  }
+  const slot = candidateLane % CANDIDATE_LABEL_SLOT_AZIMUTH_DEG.length;
+  const ring = Math.floor(candidateLane / CANDIDATE_LABEL_SLOT_AZIMUTH_DEG.length);
+  const azimuthRad = CANDIDATE_LABEL_SLOT_AZIMUTH_DEG[slot]! * Math.PI / 180;
+  const distance = instruction.cone.baseRadiusWorld * (1.16 + ring * 0.24);
+  return Object.freeze([
+    instruction.baseCenter[0]
+      + Math.cos(azimuthRad) * distance
+      + satelliteBiasLane * instruction.cone.baseRadiusWorld * 0.62,
+    GROUND_FOOTPRINT_Y + 12 + ring * 5,
+    instruction.baseCenter[2] + Math.sin(azimuthRad) * distance,
+  ] as const);
+}
 
 interface RoleVisualStyle {
   readonly coneOpacity: number;
@@ -186,6 +251,10 @@ interface RoleVisualStyle {
   readonly linkLineWidth: number;
   readonly linkOpacity: number;
 }
+
+type MultiCandidateBeamSceneMappingResult =
+  | MultiCandidateBeamSceneRenderInstruction
+  | MultiCandidateBeamSceneUnmappedPair;
 
 function fail(message: string): never {
   throw new TypeError(`multi-candidate beam scene: ${message}`);
@@ -217,6 +286,19 @@ function samePoint(a: MultiCandidateScenePoint, b: MultiCandidateScenePoint): bo
   return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 }
 
+function unmappedPair(
+  source: MultiCandidateSceneLinkInstruction,
+  sourceFrameId: string,
+  reason: MultiCandidateBeamSceneUnmappedReason,
+): MultiCandidateBeamSceneUnmappedPair {
+  return Object.freeze({
+    satelliteId: source.satelliteId,
+    beamId: source.beamId,
+    sourceFrameId,
+    reason,
+  });
+}
+
 export function buildSparseMultiCandidateConeRibs(
   instruction: MultiCandidateBeamSceneRenderInstruction,
   requestedCount: number = MULTI_CANDIDATE_WIREFRAME_RIB_COUNT,
@@ -242,12 +324,13 @@ export function buildSparseMultiCandidateConeRibs(
 function roleVisualStyle(
   role: CandidatePresentationRole,
   isPinned: boolean,
+  exposedMeasurementCue: boolean,
 ): RoleVisualStyle {
   switch (role) {
     case 'serving':
     case 'committed-serving':
       return {
-        coneOpacity: 0.18,
+        coneOpacity: 0.34,
         footprintLineWidth: 2.1,
         footprintOpacity: 0.82,
         footprintDashSize: 0,
@@ -269,12 +352,24 @@ function roleVisualStyle(
           linkOpacity: 0.86,
         };
       }
+      if (exposedMeasurementCue) {
+        return {
+          coneOpacity: 0.22,
+          footprintLineWidth: 1.5,
+          footprintOpacity: 0.62,
+          footprintDashSize: 2.4,
+          footprintGapSize: 3.2,
+          footprintOutlineCount: 1,
+          linkLineWidth: 1.35,
+          linkOpacity: 0.62,
+        };
+      }
       return {
         coneOpacity: 0,
-        footprintLineWidth: 1.3,
-        footprintOpacity: 0.46,
-        footprintDashSize: 1.4,
-        footprintGapSize: 2.8,
+        footprintLineWidth: 2,
+        footprintOpacity: 0.72,
+        footprintDashSize: 2.6,
+        footprintGapSize: 3.2,
         footprintOutlineCount: 1,
         linkLineWidth: 0,
         linkOpacity: 0,
@@ -289,6 +384,17 @@ function roleVisualStyle(
         footprintOutlineCount: 1,
         linkLineWidth: 1.45,
         linkOpacity: 0.68,
+      };
+    case 'hard-eligible':
+      return {
+        coneOpacity: 0.18,
+        footprintLineWidth: 1.7,
+        footprintOpacity: 0.68,
+        footprintDashSize: 3.4,
+        footprintGapSize: 3.6,
+        footprintOutlineCount: 1,
+        linkLineWidth: 1.3,
+        linkOpacity: 0.6,
       };
     case 'provisional-leader':
       return {
@@ -327,6 +433,20 @@ function scaledFootprintPoints(
   ] as const);
 }
 
+function buildHexFootprintPoints(
+  center: MultiCandidateScenePoint,
+  radiusWorld: number,
+): readonly MultiCandidateScenePoint[] {
+  return Object.freeze(Array.from({ length: HEX_SIDE_COUNT + 1 }, (_, index) => {
+    const angle = Math.PI / 6 + (index % HEX_SIDE_COUNT) * Math.PI / 3;
+    return [
+      center[0] + Math.cos(angle) * radiusWorld,
+      GROUND_FOOTPRINT_Y,
+      center[2] + Math.sin(angle) * radiusWorld,
+    ] as const;
+  }));
+}
+
 function buildFootprintRings(
   points: readonly MultiCandidateScenePoint[],
   center: MultiCandidateScenePoint,
@@ -357,10 +477,11 @@ function mapPresentationInstruction(
   source: MultiCandidateSceneLinkInstruction,
   placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>,
   satelliteWorldById: ReadonlyMap<string, WorldPoint>,
+  sourceFrameId: string,
   primaryUeWorld: MultiCandidateScenePoint,
   widthScale: number,
   reducedMotion: boolean,
-): MultiCandidateBeamSceneRenderInstruction | null {
+): MultiCandidateBeamSceneMappingResult {
   const expectedPairKey = candidateLinkKeyString(source.key);
   if (source.pairKey !== expectedPairKey
     || source.key.satelliteId !== source.satelliteId
@@ -383,28 +504,26 @@ function mapPresentationInstruction(
   const cellId = cellIdFromLinkBudgetBeamId(source.beamId);
   const placement = placementByCellId.get(cellId);
   const satelliteWorld = satelliteWorldById.get(source.satelliteId);
-  if (!placement || !satelliteWorld) return null;
+  if (!placement) return unmappedPair(source, sourceFrameId, 'missing-placement');
+  if (!satelliteWorld) return unmappedPair(source, sourceFrameId, 'missing-satellite-world');
   const satellite = pointFromWorld(satelliteWorld, `satellite ${source.satelliteId}`);
   const baseCenter: MultiCandidateScenePoint = [placement.worldX, 0, placement.worldZ];
-  const radiusWorld = finite(placement.radiusWorld * widthScale, `radius ${expectedPairKey}`);
-  if (!(radiusWorld > 0)) return null;
+  const radiusWorld = placement.radiusWorld * widthScale;
+  if (!Number.isFinite(radiusWorld) || !(radiusWorld > 0)) {
+    return unmappedPair(source, sourceFrameId, 'invalid-radius');
+  }
 
-  const ellipse = computeFootprintEllipse(
-    { x: satellite[0], y: satellite[1], z: satellite[2] },
-    { x: baseCenter[0], z: baseCenter[2] },
-    radiusWorld,
+  // The established homepage uses six-sided ground cells. Candidate authority
+  // changes identity colour and line grammar, not the footprint shape.
+  const footprintPoints = buildHexFootprintPoints(baseCenter, radiusWorld);
+  // An observed pair exposed during evaluation keeps a clean translucent
+  // volume even though its noisy full-height measurement line is suppressed.
+  // Pinning may add that line without changing serving authority.
+  const roleStyle = roleVisualStyle(
+    source.role,
+    source.isPinned,
+    source.cone.style === 'wireframe' && source.cone.visible,
   );
-  const footprintPoints = Object.freeze(ellipse.points.map(point => [
-    baseCenter[0] + point[0],
-    GROUND_FOOTPRINT_Y,
-    baseCenter[2] + point[2],
-  ] as const));
-  // A pinned observed pair is a presentation-only inspection state.  Its
-  // presentation plan deliberately exposes a wireframe cone and a dashed
-  // measurement link, so it must not inherit the normal observed opacity of
-  // zero.  This changes visibility only; it never promotes the pair to an
-  // eligible candidate or an active data link.
-  const roleStyle = roleVisualStyle(source.role, source.isPinned);
   const footprintDashed = source.footprint.style !== 'solid';
   const coneVisible = source.cone.visible && source.cone.volume === 1;
   const coneColor = source.identity.beam?.threeColor ?? source.identity.satellite.threeColor;
@@ -412,26 +531,17 @@ function mapPresentationInstruction(
   const linkVisible = source.link.style !== 'none';
   const solidData = source.link.isSolidData;
   const linkDashed = linkVisible && !solidData;
-  const label = source.isServing
-    || source.isPinned
-    || source.role === 'provisional-leader'
-    || source.role === 'selected-target'
-    ? Object.freeze({
-      text: `${formatSatelliteLabel(source.satelliteId)} / B${source.beamId}`,
-      position: source.isServing
-        ? [
-          baseCenter[0],
-          GROUND_FOOTPRINT_Y + 4,
-          baseCenter[2] + radiusWorld * 0.72,
-        ] as const
-        : [
-          (primaryUeWorld[0] + satellite[0]) / 2,
-          (primaryUeWorld[1] + satellite[1]) / 2 + 4,
-          (primaryUeWorld[2] + satellite[2]) / 2,
-        ] as const,
-      color: coneColor,
-    })
-    : null;
+  const label = Object.freeze({
+    // Produced once by CandidatePresentationPlan and consumed verbatim here
+    // and in the right rail; colour is never the only join cue.
+    text: source.displayKey,
+    position: [
+      baseCenter[0],
+      GROUND_FOOTPRINT_Y + 11,
+      baseCenter[2] + radiusWorld * 0.72,
+    ] as const,
+    color: coneColor,
+  });
 
   return Object.freeze({
     joinKey: source.joinKey,
@@ -510,6 +620,7 @@ export function resolveMultiCandidateBeamScene(
   const primaryUeWorld = pointFromWorld(input.primaryUeWorld, 'primaryUeWorld');
   const seenPairs = new Set<string>();
   const mapped: MultiCandidateBeamSceneRenderInstruction[] = [];
+  const unmappedPairs: MultiCandidateBeamSceneUnmappedPair[] = [];
   for (const source of input.presentation.instructions) {
     const pairKey = candidateLinkKeyString(source.key);
     if (seenPairs.has(pairKey)) fail(`duplicate displayed pair ${pairKey}`);
@@ -518,13 +629,16 @@ export function resolveMultiCandidateBeamScene(
       source,
       input.placementByCellId,
       input.satelliteWorldById,
+      input.presentation.sourceFrameId,
       primaryUeWorld,
       widthScale,
       reducedMotion,
     );
-    if (instruction !== null) mapped.push(instruction);
+    if ('reason' in instruction) unmappedPairs.push(instruction);
+    else mapped.push(instruction);
   }
   const instructions = Object.freeze(mapped);
+  const unmapped = Object.freeze(unmappedPairs);
   const renderedSatelliteCount = new Set(
     instructions.map(instruction => instruction.satelliteId),
   ).size;
@@ -550,6 +664,7 @@ export function resolveMultiCandidateBeamScene(
     renderedSatelliteCount,
     visibleConeVolumeCount: coneVolumeCount,
     solidDataLinkCount: solidDataLinkCount as 0 | 1,
+    unmappedPairs: unmapped,
     maxSatelliteGroups: input.presentation.budget.maxSatelliteGroups,
     maxConeVolumes: input.presentation.budget.maxConeVolumes,
   });
@@ -557,6 +672,7 @@ export function resolveMultiCandidateBeamScene(
     instructions,
     coneVolumeCount,
     solidDataLinkCount: solidDataLinkCount as 0 | 1,
+    unmappedPairs: unmapped,
     telemetry,
   });
 }
@@ -578,59 +694,63 @@ function MultiCandidateConeMesh({
     return next;
   }, [instruction]);
   const sparseRibs = useMemo(
+    // Wireframe candidates are measurement-only geometry. Keep the familiar
+    // cone axis, but replace the filled translucent wedge with a bounded set
+    // of ribs so several candidates remain legible at once.
     () => instruction.cone.wireframe
       ? buildSparseMultiCandidateConeRibs(instruction)
       : Object.freeze([]),
     [instruction],
   );
+  const renderFilledVolume = !instruction.cone.wireframe;
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
     <group name={`multi-candidate-cone-group-${instruction.satelliteId}-b${instruction.beamId}`}>
-      <mesh
-        geometry={geometry}
-        name={`multi-candidate-cone-${instruction.satelliteId}-b${instruction.beamId}`}
-        renderOrder={10}
-        frustumCulled={false}
-        userData={{
-          pairKey: instruction.pairKey,
-          joinKey: instruction.joinKey,
-          sceneJoinKey: instruction.sceneJoinKey,
-          satelliteId: instruction.satelliteId,
-          beamId: instruction.beamId,
-          cellId: instruction.cellId,
-          role: instruction.role,
-          coneStyle: instruction.cone.style,
-          coneVolume: instruction.cone.volume,
-          color: instruction.cone.color,
-          satelliteColor: instruction.satelliteColor,
-          beamColor: instruction.beamColor,
-          reducedMotion: instruction.reducedMotion,
-          sparseWireframeRibCount: sparseRibs.length,
-        }}
-      >
-        <meshBasicMaterial
-          color={instruction.cone.color}
-          transparent
-          opacity={instruction.cone.wireframe
-            ? instruction.cone.opacity * 0.28
-            : instruction.cone.opacity}
-          wireframe={false}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-          toneMapped={false}
-        />
-      </mesh>
+      {renderFilledVolume && (
+        <mesh
+          geometry={geometry}
+          name={`multi-candidate-cone-${instruction.satelliteId}-b${instruction.beamId}`}
+          renderOrder={10}
+          frustumCulled={false}
+          userData={{
+            pairKey: instruction.pairKey,
+            joinKey: instruction.joinKey,
+            sceneJoinKey: instruction.sceneJoinKey,
+            satelliteId: instruction.satelliteId,
+            beamId: instruction.beamId,
+            cellId: instruction.cellId,
+            role: instruction.role,
+            coneStyle: instruction.cone.style,
+            coneVolume: instruction.cone.volume,
+            color: instruction.cone.color,
+            satelliteColor: instruction.satelliteColor,
+            beamColor: instruction.beamColor,
+            reducedMotion: instruction.reducedMotion,
+            sparseWireframeRibCount: sparseRibs.length,
+          }}
+        >
+          <meshBasicMaterial
+            color={instruction.cone.color}
+            transparent
+            opacity={instruction.cone.opacity}
+            wireframe={false}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
       {sparseRibs.map((points, index) => (
         <Line
           key={`${instruction.sceneJoinKey}/wireframe-rib/${index}`}
           name={`multi-candidate-cone-rib-${instruction.satelliteId}-b${instruction.beamId}-${index}`}
           points={points}
           color={instruction.cone.color}
-          lineWidth={0.9}
+          lineWidth={1.6}
           transparent
-          opacity={Math.min(0.48, instruction.cone.opacity * 1.7)}
+          opacity={Math.min(0.82, Math.max(0.62, instruction.cone.opacity * 2.4))}
           depthWrite={false}
           renderOrder={11}
           userData={{
@@ -647,8 +767,11 @@ function MultiCandidateConeMesh({
 
 function MultiCandidateFootprint({
   instruction,
+  displayScale,
 }: {
   readonly instruction: MultiCandidateBeamSceneRenderInstruction;
+  /** Small presentation-only nesting when several pairs share one Cell. */
+  readonly displayScale: number;
 }): JSX.Element {
   return (
     <group
@@ -666,10 +789,30 @@ function MultiCandidateFootprint({
         color: instruction.footprint.color,
       }}
     >
+      <mesh
+        name={`multi-candidate-footprint-fill-${instruction.satelliteId}-b${instruction.beamId}`}
+        position={[instruction.baseCenter[0], GROUND_FOOTPRINT_Y - 0.01, instruction.baseCenter[2]]}
+        rotation={[-Math.PI / 2, 0, Math.PI / 6]}
+        renderOrder={12}
+      >
+        <circleGeometry args={[instruction.cone.baseRadiusWorld * displayScale, 6]} />
+        <meshBasicMaterial
+          color={instruction.footprint.color}
+          transparent
+          opacity={instruction.isServing
+            ? 0.08
+            : instruction.role === 'observed' ? 0.055 : 0.07}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
       {instruction.footprint.rings.map((ring, index) => (
         <Line
           key={`${instruction.sceneJoinKey}/footprint/${index}`}
-          points={ring.points}
+          points={displayScale === 1
+            ? ring.points
+            : scaledFootprintPoints(ring.points, instruction.baseCenter, displayScale)}
           color={instruction.footprint.color}
           lineWidth={ring.lineWidth}
           transparent
@@ -735,11 +878,33 @@ function MultiCandidateEndpoint({
 
 function MultiCandidatePair({
   instruction,
+  renderServingConeAndFootprint,
+  candidateLane,
+  satelliteBiasLane,
+  showSatelliteInLabel,
   onCandidateSelect,
 }: {
   readonly instruction: MultiCandidateBeamSceneRenderInstruction;
+  readonly renderServingConeAndFootprint: boolean;
+  readonly candidateLane: number;
+  readonly satelliteBiasLane: number;
+  readonly showSatelliteInLabel: boolean;
   readonly onCandidateSelect?: (key: CandidateLinkKey) => void;
 }): JSX.Element {
+  const renderCarrierGeometry = !instruction.isServing || renderServingConeAndFootprint;
+  const renderIdentityLabel = shouldRenderMultiCandidateIdentityLabel(
+    instruction,
+    renderServingConeAndFootprint,
+  );
+  const footprintDisplayScale = instruction.isCandidate ? 1 + candidateLane * 0.08 : 1;
+  const visibleIdentityLabel = showSatelliteInLabel
+    ? instruction.label?.text ?? ''
+    : `B${instruction.beamId} / C${instruction.cellId + 1}`;
+  const visibleLabelPosition = resolveCandidateLabelPosition(
+    instruction,
+    candidateLane,
+    satelliteBiasLane,
+  );
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     if (!instruction.isCandidate || onCandidateSelect === undefined) return;
     event.stopPropagation();
@@ -772,8 +937,10 @@ function MultiCandidatePair({
       }}
       onClick={handleClick}
     >
-      {instruction.cone.visible && <MultiCandidateConeMesh instruction={instruction} />}
-      {instruction.footprint.visible && <MultiCandidateFootprint instruction={instruction} />}
+      {renderCarrierGeometry && instruction.cone.visible && <MultiCandidateConeMesh instruction={instruction} />}
+      {renderCarrierGeometry && instruction.footprint.visible && (
+        <MultiCandidateFootprint instruction={instruction} displayScale={footprintDisplayScale} />
+      )}
       {instruction.link.visible && (
         <Line
           points={instruction.link.points}
@@ -802,32 +969,70 @@ function MultiCandidatePair({
         />
       )}
       <MultiCandidateEndpoint instruction={instruction} />
-      {instruction.label !== null && (
-        <Text
-          name={`multi-candidate-label-${instruction.satelliteId}-b${instruction.beamId}`}
-          position={instruction.label.position}
-          fontSize={LABEL_FONT_SIZE}
-          color={instruction.label.color}
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.45}
-          outlineColor="#020617"
-          renderOrder={24}
-          userData={{
-            pairKey: instruction.pairKey,
-            joinKey: instruction.joinKey,
-            sceneJoinKey: instruction.sceneJoinKey,
-            satelliteId: instruction.satelliteId,
-            beamId: instruction.beamId,
-            role: instruction.role,
-            label: instruction.label.text,
+      {renderIdentityLabel && instruction.label !== null && (
+        <Html
+          position={visibleLabelPosition}
+          center
+          zIndexRange={[80, 20]}
+          style={{
+            pointerEvents: 'none',
+            userSelect: 'none',
           }}
         >
-          {instruction.label.text}
-        </Text>
+          <div
+            className="multi-candidate-label"
+            data-testid="multi-candidate-label"
+            data-satellite-id={instruction.satelliteId}
+            data-beam-id={instruction.beamId}
+            data-cell-id={instruction.cellId}
+            data-scene-join-key={instruction.sceneJoinKey}
+            data-rail-join-key={instruction.railJoinKey}
+            data-pair-key={instruction.pairKey}
+            data-candidate-lane={candidateLane}
+            data-role={instruction.role}
+            data-label={visibleIdentityLabel}
+            data-show-satellite-in-label={showSatelliteInLabel ? '1' : '0'}
+            data-is-serving={instruction.isServing ? '1' : '0'}
+            data-is-candidate={instruction.isCandidate ? '1' : '0'}
+            data-is-pinned={instruction.isPinned ? '1' : '0'}
+            style={{
+              pointerEvents: 'none',
+              userSelect: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '3px 7px',
+              borderRadius: '4px',
+              border: `1px solid ${instruction.label.color}`,
+              background: 'rgba(2, 6, 23, 0.88)',
+              boxShadow: instruction.isPinned || instruction.role === 'provisional-leader' || instruction.role === 'selected-target'
+                ? `0 0 8px ${instruction.label.color}66`
+                : '0 2px 6px rgba(0, 0, 0, 0.6)',
+              color: '#f8fafc',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+              fontSize: '14px',
+              fontWeight: 600,
+              lineHeight: 1.2,
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
+            }}
+          >
+            <span>{visibleIdentityLabel}</span>
+          </div>
+        </Html>
       )}
     </group>
   );
+}
+
+export function shouldRenderMultiCandidateIdentityLabel(
+  instruction: MultiCandidateBeamSceneRenderInstruction,
+  renderServingConeAndFootprint: boolean,
+): boolean {
+  if (instruction.isServing) return renderServingConeAndFootprint;
+  if (instruction.role === 'observed') return instruction.isPinned;
+  return true;
 }
 
 export function groupMultiCandidateSatelliteIdentities(
@@ -835,7 +1040,6 @@ export function groupMultiCandidateSatelliteIdentities(
 ): readonly MultiCandidateSatelliteIdentityGroup[] {
   const bySatellite = new Map<string, MultiCandidateBeamSceneRenderInstruction[]>();
   for (const instruction of instructions) {
-    if (!instruction.isServing && !instruction.cone.visible && !instruction.isPinned) continue;
     const group = bySatellite.get(instruction.satelliteId) ?? [];
     group.push(instruction);
     bySatellite.set(instruction.satelliteId, group);
@@ -874,7 +1078,7 @@ function MultiCandidateSatelliteIdentityMarker({
       userData={joinMetadata}
     >
       <mesh renderOrder={28} userData={joinMetadata}>
-        <ringGeometry args={[14, 18, 48]} />
+        <ringGeometry args={[12, 17, 40]} />
         <meshBasicMaterial
           color={instruction.satelliteColor}
           transparent
@@ -885,19 +1089,32 @@ function MultiCandidateSatelliteIdentityMarker({
           toneMapped={false}
         />
       </mesh>
-      <Text
-        position={[0, 29, 0]}
-        fontSize={16}
-        color={instruction.satelliteColor}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.8}
-        outlineColor="#020617"
-        renderOrder={29}
-        userData={joinMetadata}
+      <Html
+        position={[0, 26, 0]}
+        center
+        zIndexRange={[90, 30]}
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
-        {formatSatelliteLabel(instruction.satelliteId)}
-      </Text>
+        <div
+          data-testid="multi-candidate-satellite-label"
+          data-satellite-id={instruction.satelliteId}
+          style={{
+            padding: '3px 8px',
+            border: `1px solid ${instruction.satelliteColor}`,
+            borderRadius: '999px',
+            background: 'rgba(2, 6, 23, 0.9)',
+            color: '#f8fafc',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            fontSize: '15px',
+            fontWeight: 760,
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.95)',
+          }}
+        >
+          {formatSatelliteLabel(instruction.satelliteId)}
+        </div>
+      </Html>
     </Billboard>
   );
 }
@@ -917,6 +1134,16 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
     props.widthScale,
     props.reducedMotion,
   ]);
+  const renderServingConeAndFootprint = props.renderServingConeAndFootprint !== false;
+  const mountedConeVolumeCount = resolved.instructions.reduce(
+    (count, instruction) => count + (
+      instruction.cone.visible
+      && (renderServingConeAndFootprint || !instruction.isServing)
+        ? 1
+        : 0
+    ),
+    0,
+  );
   const gl = useThree(state => state.gl);
 
   useLayoutEffect(() => {
@@ -935,9 +1162,28 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
         ])).entries()].sort((left, right) => left[0].localeCompare(right[0])),
       ));
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.coneVolumeCount]
-      = String(resolved.telemetry.visibleConeVolumeCount);
+      = String(mountedConeVolumeCount);
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.solidDataLinkCount]
       = String(resolved.telemetry.solidDataLinkCount);
+    dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.unmappedPairCount]
+      = String(resolved.telemetry.unmappedPairs.length);
+    dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.unmappedPairs]
+      = JSON.stringify(resolved.telemetry.unmappedPairs);
+    if (props.renderReceipt !== null && props.renderReceipt !== undefined) {
+      dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.acceptedSnapshotId]
+        = props.renderReceipt.snapshotId;
+      dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.acceptedSourceFrameId]
+        = props.renderReceipt.sourceFrameId;
+      dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedSceneJoinKeys]
+        = JSON.stringify(props.renderReceipt.renderedSceneJoinKeys);
+      dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.eventCueCount]
+        = String(props.renderReceipt.eventCueCount);
+    } else {
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.acceptedSnapshotId];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.acceptedSourceFrameId];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedSceneJoinKeys];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.eventCueCount];
+    }
     return () => {
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.instructionCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedPairCount];
@@ -945,11 +1191,33 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteIdentityColors];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.coneVolumeCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.solidDataLinkCount];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.unmappedPairCount];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.unmappedPairs];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.acceptedSnapshotId];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.acceptedSourceFrameId];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedSceneJoinKeys];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.eventCueCount];
     };
-  }, [gl, resolved]);
+  }, [gl, mountedConeVolumeCount, props.renderReceipt, resolved]);
 
   if (props.visible === false) return null;
   const satelliteIdentityGroups = groupMultiCandidateSatelliteIdentities(resolved.instructions);
+  const satelliteBiasLaneById = new Map(satelliteIdentityGroups.map((group, index) => [
+    group.satelliteId,
+    index,
+  ]));
+  const nextLaneByCellId = new Map<number, number>();
+  const candidateLaneByPair = new Map<string, number>();
+  const firstCandidatePairBySatelliteId = new Map<string, string>();
+  for (const instruction of resolved.instructions) {
+    if (!instruction.isCandidate) continue;
+    if (!firstCandidatePairBySatelliteId.has(instruction.satelliteId)) {
+      firstCandidatePairBySatelliteId.set(instruction.satelliteId, instruction.pairKey);
+    }
+    const lane = nextLaneByCellId.get(instruction.cellId) ?? 0;
+    candidateLaneByPair.set(instruction.pairKey, lane);
+    nextLaneByCellId.set(instruction.cellId, lane + 1);
+  }
   return (
     <group
       name="multi-candidate-beam-scene"
@@ -957,12 +1225,16 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
         instructionCount: resolved.telemetry.instructionCount,
         renderedPairCount: resolved.telemetry.renderedPairCount,
         renderedSatelliteCount: resolved.telemetry.renderedSatelliteCount,
-        coneCount: resolved.telemetry.visibleConeVolumeCount,
-        coneVolumeCount: resolved.telemetry.visibleConeVolumeCount,
+        coneCount: mountedConeVolumeCount,
+        coneVolumeCount: mountedConeVolumeCount,
         maxConeVolumes: resolved.telemetry.maxConeVolumes,
         maxSatelliteGroups: resolved.telemetry.maxSatelliteGroups,
         solidDataLinkCount: resolved.telemetry.solidDataLinkCount,
+        unmappedPairCount: resolved.telemetry.unmappedPairs.length,
+        unmappedPairs: resolved.telemetry.unmappedPairs,
         sceneJoinKeys: resolved.instructions.map(instruction => instruction.sceneJoinKey),
+        acceptedSnapshotId: props.renderReceipt?.snapshotId ?? null,
+        acceptedSourceFrameId: props.renderReceipt?.sourceFrameId ?? null,
         reducedMotion: props.reducedMotion === true,
       }}
     >
@@ -976,6 +1248,11 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
         <MultiCandidatePair
           instruction={instruction}
           key={instruction.sceneJoinKey}
+          renderServingConeAndFootprint={renderServingConeAndFootprint}
+          candidateLane={candidateLaneByPair.get(instruction.pairKey) ?? 0}
+          satelliteBiasLane={satelliteBiasLaneById.get(instruction.satelliteId) ?? 0}
+          showSatelliteInLabel={instruction.isServing
+            || firstCandidatePairBySatelliteId.get(instruction.satelliteId) === instruction.pairKey}
           onCandidateSelect={props.onCandidateSelect}
         />
       ))}

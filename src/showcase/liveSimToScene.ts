@@ -65,6 +65,7 @@ import type {
 import { isLiveSceneGeometry, type SceneGeometry } from '../scene/SceneGeometry';
 import type { SimFrame } from '../scene/types';
 import { resolvePrimaryCellServingRecord } from '../scene/sinrLiveCellModel';
+import { resolveHandoverAuthorityJoin } from '../scene/handoverAuthorityJoin';
 import {
   LIVE_CHANNEL_METRIC_KIND,
   deriveLiveSceneFields,
@@ -461,6 +462,60 @@ export function liveSimToScene(
     }
 
     eventRoles = { bySatId, byBeamId };
+
+    // Multi-candidate authority is the single scene/rail/event join. The raw
+    // cell-truth retention buffer above remains useful to legacy lanes, but it
+    // must not keep an older inter/intra animation alive after the immutable
+    // decision frame has moved to guard. In particular, publishing both here
+    // made the rail report the committed target while the centre still painted
+    // the legacy source/target pair.
+    const authorityJoin = resolveHandoverAuthorityJoin(authoritativeDecision);
+    if (authorityJoin !== null) {
+      const transition = authorityJoin.transition;
+      const committed = transition?.boundary === 'committed';
+      handover = {
+        kind: transition === null
+          ? 'none'
+          : transition.kind === 'intra'
+            ? 'intra-satellite-beam-switch'
+            : 'inter-satellite-handover',
+        phase: authorityJoin.phase,
+        servingSatelliteId: authorityJoin.serving?.satelliteId ?? '',
+        servingBeamId: authorityJoin.serving === null ? '' : String(authorityJoin.serving.beamId),
+        targetSatelliteId: transition?.to.satelliteId ?? null,
+        targetBeamId: transition === null ? null : String(transition.to.beamId),
+        sourceHandoverOccurred: committed,
+      };
+      recentHo = committed && transition !== null ? {
+        sourceSatId: transition.from.satelliteId,
+        sourceBeamId: String(transition.from.beamId),
+        sourceChannelMetric: undefined,
+        targetSatId: transition.to.satelliteId,
+        targetBeamId: String(transition.to.beamId),
+        ageSec: 0,
+      } : undefined;
+      pendingTarget = undefined;
+      // MultiCandidateBeamScene owns the selected-target dashed guide and the
+      // sole solid link. Publishing a second legacy transition object would
+      // cause useBeamViz to paint a DAPS-like source/target pair.
+      transitionProgress = { intra: undefined, inter: undefined };
+
+      const authorityBySatId = new Map<string, EventRole>();
+      const authorityByBeamId = new Map<string, EventRole>();
+      if (authorityJoin.serving !== null) {
+        const servingRole: EventRole = committed ? 'post-ho' : 'serving';
+        authorityBySatId.set(authorityJoin.serving.satelliteId, servingRole);
+        authorityByBeamId.set(
+          `${authorityJoin.serving.satelliteId}:${authorityJoin.serving.beamId}`,
+          servingRole,
+        );
+      }
+      if (transition?.boundary === 'selected') {
+        authorityBySatId.set(transition.to.satelliteId, 'prepared');
+        authorityByBeamId.set(`${transition.to.satelliteId}:${transition.to.beamId}`, 'prepared');
+      }
+      eventRoles = { bySatId: authorityBySatId, byBeamId: authorityByBeamId };
+    }
   }
 
   // Live: no per-UE MODQN decisions.

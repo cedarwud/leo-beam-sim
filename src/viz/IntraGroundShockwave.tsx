@@ -93,12 +93,16 @@ interface MeshProps {
   event: VizIntraHandoverEvent;
   footprintRadius: number;
   reducedMotion: boolean;
+  sourceColor: string;
+  targetColor: string;
 }
 
 function IntraGroundShockwaveMesh({
   event,
   footprintRadius,
   reducedMotion,
+  sourceColor,
+  targetColor,
 }: MeshProps) {
   const { gl } = useThree();
 
@@ -125,22 +129,22 @@ function IntraGroundShockwaveMesh({
   }, [footprintRadius]);
 
   const sourceMat = useMemo(() => new THREE.MeshBasicMaterial({
-    color: INTRA_HANDOVER_SOURCE_COLOR,
+    color: sourceColor,
     transparent: true,
     opacity: reducedMotion ? REDUCED_MOTION_SOURCE_OPACITY : SOURCE_OPACITY_START,
     depthWrite: false,
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
-  }), [reducedMotion]);
+  }), [reducedMotion, sourceColor]);
 
   const targetMat = useMemo(() => new THREE.MeshBasicMaterial({
-    color: INTRA_HANDOVER_TARGET_COLOR,
+    color: targetColor,
     transparent: true,
     opacity: reducedMotion ? REDUCED_MOTION_TARGET_OPACITY : 0,
     depthWrite: false,
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
-  }), [reducedMotion]);
+  }), [reducedMotion, targetColor]);
 
   const sourceMesh = useMemo(() => {
     const mesh = new THREE.Mesh(sourceGeo, sourceMat);
@@ -258,17 +262,26 @@ function IntraGroundShockwaveMesh({
 interface Props {
   vizFrame: VizFrame;
   runtime: RuntimeConfig;
+  /** Satellite identity hue; ring motion still distinguishes source and target. */
+  identityColorBySatelliteId?: ReadonlyMap<string, string>;
 }
 
-export function IntraGroundShockwave({ vizFrame, runtime }: Props) {
+export function IntraGroundShockwave({
+  vizFrame,
+  runtime,
+  identityColorBySatelliteId,
+}: Props) {
   const event = vizFrame.intraHandoverEvent;
   if (!event) return null;
+  const identityColor = identityColorBySatelliteId?.get(event.satId);
   return (
     <IntraGroundShockwaveMesh
       key={event.triggeredAtSec}
       event={event}
       footprintRadius={vizFrame.footprintRadiusWorld}
       reducedMotion={runtime.reducedMotion}
+      sourceColor={identityColor ?? INTRA_HANDOVER_SOURCE_COLOR}
+      targetColor={identityColor ?? INTRA_HANDOVER_TARGET_COLOR}
     />
   );
 }

@@ -938,6 +938,15 @@ interface CandidateSceneRenderReceipt {
 }
 ```
 
+`decision.recentCommit` is an instantaneous engine-frame fact, whereas the
+snapshot's `commit` is the latest authoritative receipt that still owns the
+current serving pair. The publisher may retain that receipt only across the
+same episode and epoch, only while simulation time moves forward, and only
+while `commit.to` remains the current `serving` pair. A rewind, epoch change,
+serving change, or missing match clears it. This shared retention lets the
+scene and rail finish one readable transition from the same receipt;
+consumer-local commit inference from wall-clock animation phase is forbidden.
+
 `displayKey` is produced once by a shared pure formatter from the accepted
 identity, for example `G42-22-02 / B2 / C2`; the scene and rail must not each
 derive cell numbers or add one-based offsets independently. When no cell
@@ -992,13 +1001,14 @@ new solid link begins in that snapshot, with no UI-throttle delay.
 The authority point is `useSimStatePublisher`: after it receives the live
 `HandoverDecisionFrame` plus the route-scoped, revalidated inspection request,
 it synchronously builds exactly one `CandidatePresentationPlan`, validates and
-deep-freezes one snapshot, and returns that snapshot/session to its calling
-`MainScene` render. Its publication effect inserts that **same object reference**
-as `SimState.acceptedHandoverPresentation` for App state/context,
-`WalkerResultsRail`, `InfoPanel`, and `HandoverEvaluationPanel`; it does not
-rebuild the snapshot inside the throttled effect. Thus `MainScene` consumes the
-hook return while the rail consumes the identical object carried by `SimState`.
-Those consumers must not call
+deep-freezes one snapshot, then inserts that **same object reference** as
+`SimState.acceptedHandoverPresentation` through the App state publication; it
+does not rebuild the snapshot inside the legacy scalar-throttled branch. On the
+resulting App commit, App passes the one accepted object to both `MainScene` and
+`InfoPanel` / `HandoverEvaluationPanel`. Both consumers therefore render the
+same committed object (or both retain the prior accepted object before that App
+commit); neither consumes a private synchronous hook return. Those consumers
+must not call
 `buildCandidatePresentationPlan`, lease separate identity allocations, or read
 different frame queues. The accepted-snapshot path is separate from the
 existing 1-second teaching/scalar throttle; source-frame, policy-hash, phase,
@@ -2000,10 +2010,10 @@ satellite GLBs and beam outlines must remain readable from that framing; size
 or opacity tuning is presentation-only and cannot alter scientific geometry.
 
 Data-transfer particles remain attached to the sole established serving path.
-Candidate measurement guides never carry throughput particles. To avoid line
-clutter, a hard-eligible candidate is identified primarily by its wireframe
-cone and hex footprint; its dashed UE guide is shown only when hovered, pinned,
-trigger-satisfied, provisional leader, or selected.
+Candidate measurement guides never carry throughput particles. A bounded
+hard-eligible candidate is identified by a sparse wireframe cone, hex
+footprint, and dashed measurement guide; the guide is never promoted to a
+solid data path before commit.
 
 This is a route-scoped replacement of the older homepage role-colour channel
 contract. The implementation must add named candidate-mode channels and update
@@ -2022,7 +2032,7 @@ which previously shifted the perceived hue to brown/violet.
 | Hard-eligible | visible wireframe cone and dashed footprint; no EE threshold required | dashed measurement guide, hollow endpoint, no solid link |
 | Trigger-satisfied / TTT | visible wireframe cone, dashed footprint, independent timer arc; public wording follows the accepted trigger objective | dashed measurement guide only when focused |
 | Provisional leader | stronger outline and one directional pulse | dashed, explicitly labelled evaluation path |
-| Selected target | double outline/chevron; low-alpha fill | dashed switch-preparation cue |
+| Selected target | double outline/chevron; sparse wireframe, no filled service cone | dashed switch-preparation cue |
 | Committed serving | same satellite hue and beam shade, now solid | becomes the sole solid data link |
 
 Candidate clarity comes from a strong identity outline and footprint, not from
@@ -2050,6 +2060,15 @@ Candidate paths must never look like simultaneous data service. The old solid
 link remains active until commit. At the commit boundary it ends and the new
 solid link begins. This is not DAPS and must not be animated as two active
 connections.
+
+For an inter-satellite event, the established filled transition carrier has
+exactly one owner at every instant: source before a matching commit receipt,
+target after that receipt. The candidate remains wireframe/dashed before
+commit. Wall-clock phases such as `holding`, `releasing`, or `settled` may pace
+the animation but may not declare takeover, change the filled owner, or produce
+completion wording. Only a matching authoritative receipt can do so. An intra
+beam switch may retain the established same-satellite cell cross-fade, but the
+data-link count remains one.
 
 The renderer enforces `activeDataLinkCount === 1` whenever a serving link
 exists, `0` only for a truthful detached/initial-attach state, and never a value
@@ -2308,10 +2327,10 @@ without misrepresenting an unfinished EE evaluator as decision authority.
   repair its stale serving-footprint and active-toast needles plus the earlier
   unrelated timeline-descriptor abort, while preserving every other lane rule.
   Record the green baseline; do not delete or weaken these assertions.
-- Make `useSimStatePublisher` synchronously build and return one immutable
+- Make `useSimStatePublisher` synchronously build one immutable
   `AcceptedHandoverPresentationSnapshot`, then publish that same reference as
-  `SimState.acceptedHandoverPresentation`; scene and rail consume that one object
-  with `acceptedSnapshotSkewMs = 0`.
+  `SimState.acceptedHandoverPresentation`; App passes that one committed object
+  to scene and rail with `acceptedSnapshotSkewMs = 0`.
 - When the publisher is disabled, the lane is not live Walker, or no decision
   frame exists, return a null session and publish
   `SimState.acceptedHandoverPresentation = null`; no consumer may retain or

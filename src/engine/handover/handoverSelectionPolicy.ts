@@ -190,6 +190,7 @@ function sinrTriggerStatus(
   intraOffsetDb: number,
 ): CandidateTriggerStatus {
   if (hardEligibility === 'unavailable') return 'unavailable';
+  if (hardEligibility === 'ineligible') return 'not-satisfied';
   if (serving === null) return hardEligibility === 'eligible' ? 'satisfied' : 'not-satisfied';
   if (hasSameKey(serving.key, candidate.key)) return 'not-satisfied';
   if (serving.sinr.status !== 'available' || serving.sinr.value === null
@@ -213,6 +214,7 @@ function forecastTriggerStatus(
   commonWindowValid: boolean,
 ): CandidateTriggerStatus {
   if (hardEligibility === 'unavailable') return 'unavailable';
+  if (hardEligibility === 'ineligible') return 'not-satisfied';
   if (serving !== null && hasSameKey(serving.key, candidate.key)) return 'not-satisfied';
   const eeGate = gateMap(candidate).get('ee-advantage');
   const evidence = candidate.forecastEe;

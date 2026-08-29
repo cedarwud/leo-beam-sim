@@ -113,6 +113,8 @@ export function isPendingRippleBeam(beam: Pick<BeamTarget, 'showBeam' | 'role' |
 export function resolveGroundRippleTargets(input: {
   satBeams: Map<string, BeamTarget[]>;
   footprintRadius: number;
+  /** Route-scoped episode identity colour; role motion remains unchanged. */
+  identityColorBySatelliteId?: ReadonlyMap<string, string>;
   servingEnabled?: boolean;
   pendingEnabled?: boolean;
   paused?: boolean;
@@ -133,8 +135,11 @@ export function resolveGroundRippleTargets(input: {
             : null;
       if (!role) continue;
 
+      const roleSpec = groundRippleSpec(role);
+
       targets.push({
-        ...groundRippleSpec(role),
+        ...roleSpec,
+        color: input.identityColorBySatelliteId?.get(satelliteId) ?? roleSpec.color,
         id: `${role}-ripple-${satelliteId}-B${beam.beamId}`,
         satelliteId,
         beamId: beam.beamId,
@@ -166,6 +171,7 @@ export function ServingGroundRipple({
   footprintRadius,
   servingEnabled = true,
   pendingEnabled = true,
+  identityColorBySatelliteId,
   paused = false,
   reducedMotion = false,
   recentHoActive = false,
@@ -174,6 +180,7 @@ export function ServingGroundRipple({
   footprintRadius: number;
   servingEnabled?: boolean;
   pendingEnabled?: boolean;
+  identityColorBySatelliteId?: ReadonlyMap<string, string>;
   paused?: boolean;
   reducedMotion?: boolean;
   recentHoActive?: boolean;
@@ -190,11 +197,21 @@ export function ServingGroundRipple({
       footprintRadius,
       servingEnabled,
       pendingEnabled,
+      identityColorBySatelliteId,
       paused,
       reducedMotion,
       recentHoActive,
     }),
-    [footprintRadius, paused, pendingEnabled, recentHoActive, reducedMotion, satBeams, servingEnabled],
+    [
+      footprintRadius,
+      identityColorBySatelliteId,
+      paused,
+      pendingEnabled,
+      recentHoActive,
+      reducedMotion,
+      satBeams,
+      servingEnabled,
+    ],
   );
   const instances = useMemo(() => createGroundRippleInstances(targets), [targets]);
 

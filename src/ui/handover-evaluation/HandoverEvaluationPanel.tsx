@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 
 import {
+  candidateLinkKeyString,
   sameCandidateLinkKey,
   type CandidateLinkKey,
   type HandoverCommitReceipt,
@@ -10,15 +11,19 @@ import {
 import {
   type CandidatePresentationPlan,
 } from '../../engine/handover/candidatePresentationPlan';
+import { formatCandidateDisplayKey } from '../../engine/handover/candidateDisplayKey';
 import { useLocale } from '../../i18n';
+import type { AcceptedHandoverPresentationSnapshot } from '../../scene/acceptedHandoverPresentationSnapshot';
 import { CandidateSetPanel } from './CandidateSetPanel';
-import { useCandidateInspectionSelection } from './candidateInspectionSelection';
-import { useHomepageCandidatePresentationPlan } from './useHomepageCandidatePresentationPlan';
+import {
+  useCandidateInspectionSelection,
+  type CandidateInspectionSnapshotInput,
+} from './candidateInspectionSelection';
 
 const RECEIPT_VISIBLE_MS = 8_000;
 
 interface HandoverEvaluationPanelProps {
-  readonly decision: HandoverDecisionFrame;
+  readonly snapshot: AcceptedHandoverPresentationSnapshot;
 }
 
 export interface HandoverDecisionTimeDisplay {
@@ -67,20 +72,17 @@ function keyExists(frame: HandoverDecisionFrame, key: CandidateLinkKey | null): 
   return frame.opportunities.some(opportunity => sameCandidateLinkKey(opportunity.key, key));
 }
 
-function formatLink(
-  key: CandidateLinkKey | null,
-  frame: HandoverDecisionFrame,
-  copy: (zh: string, en: string) => string,
-): string {
+function displayKeyFor(plan: CandidatePresentationPlan, key: CandidateLinkKey | null): string {
   if (key === null) return '—';
-  const opportunity = frame.opportunities.find(candidate => sameCandidateLinkKey(candidate.key, key));
-  const walkerSurrogate = opportunity?.beamIdentitySource === 'walker-cell-surrogate'
-    || (opportunity === undefined
-      && frame.opportunities.some(candidate => candidate.beamIdentitySource === 'walker-cell-surrogate'));
-  const beam = walkerSurrogate
-    ? copy(`Walker 模型波束 B${key.beamId}`, `Walker beam surrogate B${key.beamId}`)
-    : copy(`波束 B${key.beamId}`, `Beam B${key.beamId}`);
-  return `${key.satelliteId} / ${beam}`;
+  const displayed = plan.displayedLinks.find(link => sameCandidateLinkKey(link.key, key));
+  if (displayed !== undefined) return displayed.displayKey;
+  const opportunity = plan.decision.opportunities.find(candidate => sameCandidateLinkKey(candidate.key, key));
+  return formatCandidateDisplayKey({
+    key,
+    beamIdentitySource: opportunity?.beamIdentitySource
+      ?? plan.decision.opportunities[0]?.beamIdentitySource
+      ?? 'physical-beam',
+  });
 }
 
 function phaseTitle(phase: HandoverPhase, copy: (zh: string, en: string) => string): string {
@@ -154,10 +156,15 @@ function ServingLink({ plan, copy }: {
       ) : (
         <div
           className="leo-handover-serving__link"
+          data-satellite-id={serving.key.satelliteId}
+          data-beam-id={serving.key.beamId}
+          data-pair-key={candidateLinkKeyString(serving.key)}
+          data-scene-join-key={serving.sceneJoinKey}
+          data-rail-join-key={serving.railJoinKey}
           style={{ '--leo-handover-link-color': serving.beamIdentity?.cssColor ?? serving.satelliteIdentity.cssColor } as CSSProperties}
         >
           <span aria-hidden="true">{serving.beamIdentity?.glyph ?? serving.satelliteIdentity.glyph}</span>
-          <strong>{formatLink(serving.key, plan.decision, copy)}</strong>
+          <strong>{serving.displayKey}</strong>
           <small>
             {ratedAdmission
               ? copy('資格 SINR', 'Admission SINR')
@@ -171,16 +178,38 @@ function ServingLink({ plan, copy }: {
   );
 }
 
-export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelProps) {
+function countHardEligibleCandidateSatellites(decision: HandoverDecisionFrame): number {
+  return new Set(decision.states
+    .filter(state => (
+      state.hardEligibility === 'eligible'
+      && (decision.serving === null || !sameCandidateLinkKey(state.key, decision.serving))
+    ))
+    .map(state => state.key.satelliteId)).size;
+}
+
+function countDisplayedHardEligibleCandidates(plan: CandidatePresentationPlan): number {
+  return plan.displayedLinks.filter(link => (
+    link.isCandidate && link.state?.hardEligibility === 'eligible'
+  )).length;
+}
+
+export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelProps) {
+  const decision = snapshot.decision;
+  const plan = snapshot.plan;
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
   const copy = (zh: string, en: string) => (isEnglish ? en : zh);
-  const { pinnedKey, setPinnedKey, togglePinnedKey } = useCandidateInspectionSelection(decision.episodeId);
-  const [receipt, setReceipt] = useState<HandoverCommitReceipt | null>(decision.recentCommit);
+  const candidateInspectionSnapshot = useMemo<CandidateInspectionSnapshotInput>(() => ({
+    episodeId: snapshot.episodeId,
+    snapshotId: snapshot.snapshotId,
+    validKeys: plan.scientificCandidateKeys,
+  }), [plan.scientificCandidateKeys, snapshot.episodeId, snapshot.snapshotId]);
+  const { pinnedKey, setPinnedKey, togglePinnedKey } = useCandidateInspectionSelection(
+    decision.episodeId,
+    candidateInspectionSnapshot,
+  );
+  const [receipt, setReceipt] = useState<HandoverCommitReceipt | null>(snapshot.commit);
   const receiptEpisodeId = useRef(decision.episodeId);
-
-  const effectivePin = keyExists(decision, pinnedKey) ? pinnedKey : null;
-  const plan = useHomepageCandidatePresentationPlan('rail', decision, effectivePin);
 
   useEffect(() => {
     if (pinnedKey !== null && !keyExists(decision, pinnedKey)) setPinnedKey(null);
@@ -191,8 +220,19 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
       receiptEpisodeId.current = decision.episodeId;
       setReceipt(null);
     }
-    if (decision.recentCommit !== null) setReceipt(decision.recentCommit);
-  }, [decision.episodeId, decision.recentCommit]);
+    if (snapshot.commit !== null) {
+      setReceipt(snapshot.commit);
+      return;
+    }
+    setReceipt(current => (
+      current !== null
+      && snapshot.simTimeMs >= current.simTimeMs
+      && snapshot.serving !== null
+      && sameCandidateLinkKey(snapshot.serving.key, current.to)
+        ? current
+        : null
+    ));
+  }, [decision.episodeId, snapshot.commit, snapshot.serving, snapshot.simTimeMs]);
 
   useEffect(() => {
     if (receipt === null) return undefined;
@@ -208,6 +248,9 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
     opportunity.sinrMeasurementContext?.purpose === 'sinr-offset-admission'
     && opportunity.sinrMeasurementContext.powerModel === 'profile-rated-rf'
   ));
+  const hardEligibleSatelliteCount = countHardEligibleCandidateSatellites(decision);
+  const displayedHardEligibleCount = countDisplayedHardEligibleCandidates(plan);
+  const overflowHardEligibleCount = Math.max(0, snapshot.counts.hardEligible - displayedHardEligibleCount);
 
   return (
     <section
@@ -215,14 +258,24 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
       data-testid="handover-evaluation-panel"
       data-decision-phase={decision.phase}
       data-decision-mode={decision.mode}
-      data-active-data-link-count={plan.activeDataLinkCount}
+      data-accepted-snapshot-id={snapshot.snapshotId}
+      data-policy-config-hash={snapshot.policyConfigHash}
+      data-active-data-link-count={snapshot.activeDataLinkCount}
       data-scientific-candidate-count={plan.scientificCandidatePairCount}
+      data-hard-eligible-candidate-count={snapshot.counts.hardEligible}
+      data-hard-eligible-satellite-count={hardEligibleSatelliteCount}
+      data-displayed-hard-eligible-candidate-count={displayedHardEligibleCount}
+      data-overflow-hard-eligible-candidate-count={overflowHardEligibleCount}
+      data-trigger-satisfied-candidate-count={snapshot.counts.triggerSatisfied}
+      data-ttt-stable-candidate-count={snapshot.counts.tttStable}
+      data-displayed-candidate-count={snapshot.counts.displayed}
+      data-overflow-candidate-count={snapshot.counts.overflow}
       data-satellite-identity-colors={JSON.stringify(Object.fromEntries(
         [...plan.groups]
           .sort((left, right) => left.satelliteId.localeCompare(right.satelliteId))
           .map(group => [group.satelliteId, group.satelliteIdentity.cssColor]),
       ))}
-      data-source-frame-id={decision.sourceFrameId}
+      data-source-frame-id={snapshot.sourceFrameId}
       aria-label={copy('多候選換手評估', 'Multi-candidate handover evaluation')}
     >
       <header className="leo-handover-evaluation__header">
@@ -232,8 +285,8 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
           <small className="leo-handover-evaluation__source">
             {decision.opportunities.some(opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate')
               ? ratedAdmission
-                ? copy('資料來源：Walker 同幀額定功率資格量測', 'Source: same-frame Walker rated-power admission')
-                : copy('資料來源：Walker 模型同幀量測', 'Source: same-frame Walker model measurements')
+                ? copy('資料來源：模擬星座同時刻額定功率量測', 'Source: same-frame simulated-constellation rated-power measurements')
+                : copy('資料來源：模擬星座同時刻量測', 'Source: same-frame simulated-constellation measurements')
               : copy('資料來源：同幀候選量測', 'Source: same-frame candidate measurements')}
           </small>
         </div>
@@ -255,21 +308,66 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
         ))}
       </ol>
 
+      <section className="leo-handover-counts" aria-label={copy('候選篩選狀態', 'Candidate filtering status')}>
+        <header>
+          <strong>{copy('候選篩選狀態', 'Candidate filtering status')}</strong>
+          <small>
+            {copy('目前判斷基準：', 'Current decision basis: ')}
+            {snapshot.activeTriggerObjective === 'sinr-offset'
+              ? copy('SINR 相容條件', 'SINR compatibility')
+              : snapshot.activeTriggerObjective === 'initial-attach-compatibility'
+                ? copy('初始連線相容條件', 'Initial-link compatibility')
+                : copy('服務連續性條件', 'Service-continuity compatibility')}
+            {copy(
+              ` · 合格 ${snapshot.counts.hardEligible}（${hardEligibleSatelliteCount} 星）· 顯示 ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible}`,
+              ` · eligible ${snapshot.counts.hardEligible} (${hardEligibleSatelliteCount} sats) · shown ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible}`,
+            )}
+          </small>
+        </header>
+        <dl>
+          <div><dt>{copy('已觀測', 'Observed')}</dt><dd>{snapshot.counts.observed}</dd></div>
+          <div>
+            <dt>{copy('服務資格通過', 'Hard eligible')}</dt>
+            <dd>{snapshot.counts.hardEligible}</dd>
+          </div>
+          <div><dt>{copy('觸發條件成立', 'Trigger satisfied')}</dt><dd>{snapshot.counts.triggerSatisfied}</dd></div>
+          <div><dt>{copy('TTT 已完成', 'TTT stable')}</dt><dd>{snapshot.counts.tttStable}</dd></div>
+          <div><dt>{copy('畫面顯示', 'Displayed')}</dt><dd>{snapshot.counts.displayed}</dd></div>
+        </dl>
+      </section>
+
       <ServingLink plan={plan} copy={copy} />
 
       {receipt !== null && (
-        <aside className="leo-handover-receipt" role="status" aria-live="polite">
+        <aside
+          className="leo-handover-receipt"
+          role="status"
+          aria-live="polite"
+          data-from-satellite-id={receipt.from?.satelliteId}
+          data-from-beam-id={receipt.from?.beamId}
+          data-to-satellite-id={receipt.to.satelliteId}
+          data-to-beam-id={receipt.to.beamId}
+        >
           <strong>{receiptTitle(receipt, copy)}</strong>
-          <span>{formatLink(receipt.from, decision, copy)} → {formatLink(receipt.to, decision, copy)}</span>
+          <span>
+            {displayKeyFor(plan, receipt.from)}
+            {' → '}
+            {displayKeyFor(plan, receipt.to)}
+          </span>
           <p>{decisionBasis(receipt, copy)}</p>
         </aside>
       )}
 
       {(decision.provisionalLeader !== null || decision.selectedTarget !== null) && (
-        <section className="leo-handover-selection" aria-label={copy('候選選定狀態', 'Candidate selection state')}>
+        <section
+          className="leo-handover-selection"
+          aria-label={copy('候選選定狀態', 'Candidate selection state')}
+          data-satellite-id={(decision.selectedTarget ?? decision.provisionalLeader)?.satelliteId}
+          data-beam-id={(decision.selectedTarget ?? decision.provisionalLeader)?.beamId}
+        >
           <div>
             <small>{decision.selectedTarget !== null ? copy('已選定', 'Selected') : copy('暫列第一', 'Provisional leader')}</small>
-            <strong>{formatLink(decision.selectedTarget ?? decision.provisionalLeader, decision, copy)}</strong>
+            <strong>{displayKeyFor(plan, decision.selectedTarget ?? decision.provisionalLeader)}</strong>
           </div>
           <span>
             {copy('選定保持', 'Selection hold')} {Math.min(decision.selectionHoldSec, decision.selectionHoldRequiredSec).toFixed(1)} / {decision.selectionHoldRequiredSec.toFixed(1)} s
@@ -277,7 +375,7 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
         </section>
       )}
 
-      <CandidateSetPanel plan={plan} pinnedKey={effectivePin} onTogglePin={togglePin} copy={copy} />
+      <CandidateSetPanel plan={plan} pinnedKey={plan.pinnedKey} onTogglePin={togglePin} copy={copy} />
 
       <footer className="leo-handover-evaluation__footnote">
         <span>
@@ -289,7 +387,7 @@ export function HandoverEvaluationPanel({ decision }: HandoverEvaluationPanelPro
         </span>
         {decision.opportunities.some(opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate') && (
           <span>
-            {copy('B 編號為 Walker 模型的地面服務單元，不是 TLE 提供的實體波束識別碼。', 'B identifies a Walker ground-service surrogate, not a physical beam ID provided by TLE.')}
+            {copy('B 與 C 編號用來對應模擬波束及其地面服務 Cell，並非實體衛星波束識別碼。', 'B and C identify a simulated beam and its ground-service cell, not a physical satellite beam ID.')}
           </span>
         )}
       </footer>

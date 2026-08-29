@@ -126,7 +126,7 @@ export function InfoPanel({
   sinrDb,
   physicalServingBudget,
   angleAwareFormulaFrame,
-  handoverDecisionFrame = null,
+  acceptedHandoverPresentation = null,
   handoverOffsetDb,
   handoverTriggerProgressSec,
   handoverTriggerSec,
@@ -244,8 +244,8 @@ export function InfoPanel({
         {/* SIGNAL PROFILE + HANDOVER MODE cards removed (older-tuning right-sidebar
             restore): the right sidebar leads straight with the BEAM DUEL. Profile +
             formula family stay visible in the LEFT tuning panel. */}
-        {handoverDecisionFrame !== null ? (
-          <HandoverEvaluationPanel decision={handoverDecisionFrame} />
+        {acceptedHandoverPresentation !== null ? (
+          <HandoverEvaluationPanel snapshot={acceptedHandoverPresentation} />
         ) : (
           <div role="status" aria-live="polite" aria-label="Serving and comparison beam status">
           <DuelCard

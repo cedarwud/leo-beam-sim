@@ -8,13 +8,19 @@ import {
   createHandoverDecisionFrame,
   createMetricEvidence,
   freezeCandidateOpportunity,
+  type CandidateLinkKey,
   type CandidateDecisionState,
   type CandidateGateResult,
   type CandidateOpportunity,
+  type HandoverDecisionFrame,
 } from '../../engine/handover/candidateDecisionContract';
 import { buildCandidatePresentationPlan } from '../../engine/handover/candidatePresentationPlan';
 import { LocaleProvider } from '../../i18n';
 import { loadProfile } from '../../profiles';
+import {
+  buildAcceptedHandoverPresentationSession,
+  createHandoverPresentationPolicyConfigHash,
+} from '../../scene/acceptedHandoverPresentationSnapshot';
 import { createInitialSimState } from '../../scene/initialSimState';
 import { InfoPanel } from '../InfoPanel';
 import { CandidateSetPanel } from './CandidateSetPanel';
@@ -24,6 +30,7 @@ import {
 } from './HandoverEvaluationPanel';
 
 const SOURCE_FRAME_ID = 'walker:fixture:12000.000';
+const POLICY_CONFIG_HASH = createHandoverPresentationPolicyConfigHash('ui-fixture');
 
 assert.deepEqual(
   formatHandoverDecisionTime(Date.UTC(2026, 7, 25, 10, 30, 15)),
@@ -138,6 +145,7 @@ const opportunities = [
 const decision = createHandoverDecisionFrame({
   episodeId: 'homepage-handover/1',
   sourceFrameId: SOURCE_FRAME_ID,
+  epochToken: 'walker:fixture',
   simTimeMs: 12_000,
   phase: 'selection-hold',
   serving: candidateLinkKey('STARLINK-101', 1),
@@ -185,9 +193,24 @@ const decision = createHandoverDecisionFrame({
   recentCommit: null,
 });
 
+function acceptedSnapshot(
+  frame: HandoverDecisionFrame,
+  pinnedKey: CandidateLinkKey | null = null,
+  previousSnapshot: ReturnType<typeof buildAcceptedHandoverPresentationSession>['snapshot'] | null = null,
+) {
+  return buildAcceptedHandoverPresentationSession({
+    decision: frame,
+    policyConfigHash: POLICY_CONFIG_HASH,
+    pinnedKey,
+    previousSnapshot,
+  }).snapshot;
+}
+
+const decisionSnapshot = acceptedSnapshot(decision);
+
 const zhMarkup = renderToStaticMarkup(
   <LocaleProvider initialLocale="zh-TW">
-    <HandoverEvaluationPanel decision={decision} />
+    <HandoverEvaluationPanel snapshot={decisionSnapshot} />
   </LocaleProvider>,
 );
 
@@ -201,13 +224,22 @@ assert.match(zhMarkup, /同衛星波束候選/);
 assert.match(zhMarkup, /跨衛星候選/);
 assert.match(zhMarkup, /暫列第一/);
 assert.match(zhMarkup, /預測能源效率尚未啟用/);
-assert.match(zhMarkup, /Walker 同幀額定功率資格量測/);
+assert.match(zhMarkup, /模擬星座同時刻額定功率量測/);
+assert.doesNotMatch(zhMarkup, />[^<]*Walker[^<]*</);
+assert.match(zhMarkup, /STARLINK-101 \/ B1 \/ C1/);
+assert.match(zhMarkup, /STARLINK-101 \/ B2 \/ C2/);
 assert.match(zhMarkup, /資格 SINR/);
-assert.match(zhMarkup, /不是 TLE 提供的實體波束識別碼/);
+assert.match(zhMarkup, /並非實體衛星波束識別碼/);
 assert.match(zhMarkup, /data-active-data-link-count="1"/);
+assert.match(zhMarkup, /data-pair-key="STARLINK-101\|1"/);
+assert.match(zhMarkup, /data-scene-join-key="homepage-handover\/1\/link\/STARLINK-101%7C1"/);
+assert.match(zhMarkup, /data-rail-join-key="homepage-handover\/1\/link\/STARLINK-101%7C1"/);
 assert.equal(zhMarkup.match(/data-active-data-link="true"/g)?.length, 1);
 assert.ok((zhMarkup.match(/data-active-data-link="false"/g)?.length ?? 0) >= 1);
 assert.match(zhMarkup, /data-scientific-candidate-count="6"/);
+assert.match(zhMarkup, /data-displayed-hard-eligible-candidate-count="/);
+assert.match(zhMarkup, /data-overflow-hard-eligible-candidate-count="/);
+assert.match(zhMarkup, /顯示 \d+ \/ \d+/);
 assert.match(zhMarkup, /檢視其餘 2 組/);
 assert.doesNotMatch(zhMarkup, />0 bit\/J</);
 assert.ok(
@@ -217,16 +249,18 @@ assert.ok(
 
 const enMarkup = renderToStaticMarkup(
   <LocaleProvider initialLocale="en">
-    <HandoverEvaluationPanel decision={decision} />
+    <HandoverEvaluationPanel snapshot={decisionSnapshot} />
   </LocaleProvider>,
 );
 
 assert.match(enMarkup, /Multi-candidate handover evaluation/);
 assert.match(enMarkup, /Leader confirmation/);
 assert.match(enMarkup, /Only active data link/);
+assert.match(enMarkup, /STARLINK-101 \/ B1 \/ C1/);
 assert.match(enMarkup, /forecast EE is not active/i);
 assert.match(enMarkup, /rated-power RF admission/i);
 assert.match(enMarkup, /Admission SINR/);
+assert.doesNotMatch(enMarkup, />[^<]*Walker[^<]*</);
 
 const committedTarget = candidateLinkKey('STARLINK-202', 1);
 const committedDecision = createHandoverDecisionFrame({
@@ -252,7 +286,7 @@ const committedDecision = createHandoverDecisionFrame({
 });
 const receiptMarkup = renderToStaticMarkup(
   <LocaleProvider initialLocale="zh-TW">
-    <HandoverEvaluationPanel decision={committedDecision} />
+    <HandoverEvaluationPanel snapshot={acceptedSnapshot(committedDecision)} />
   </LocaleProvider>,
 );
 assert.match(receiptMarkup, /跨衛星換手完成/);
@@ -316,6 +350,7 @@ const integratedMarkup = renderToStaticMarkup(
     <InfoPanel
       {...createInitialSimState(profile)}
       handoverDecisionFrame={decision}
+      acceptedHandoverPresentation={decisionSnapshot}
       profile={profile}
     />
   </LocaleProvider>,
@@ -323,5 +358,147 @@ const integratedMarkup = renderToStaticMarkup(
 
 assert.match(integratedMarkup, /data-testid="handover-evaluation-panel"/);
 assert.doesNotMatch(integratedMarkup, /data-testid="info-panel-duel-card"/);
+
+const walkerOpportunities = [
+  opportunity('shell-pro-42-P21-S1', 1, 9.4),
+  opportunity('shell-pro-42-P21-S1', 2, 11.1),
+  opportunity('shell-pro-42-P22-S0', 1, 13.8),
+  opportunity('shell-pro-42-P22-S0', 3, 12.9),
+  opportunity('shell-pro-42-P23-S0', 1, 8.2),
+  opportunity('shell-pro-42-P24-S0', 1, 2.1, false),
+  opportunity('shell-pro-42-P25-S0', 1, 7.8),
+];
+
+const walkerDecision = createHandoverDecisionFrame({
+  episodeId: 'homepage-handover/walker-1',
+  sourceFrameId: SOURCE_FRAME_ID,
+  epochToken: 'walker:fixture',
+  simTimeMs: 12_000,
+  phase: 'selection-hold',
+  serving: candidateLinkKey('shell-pro-42-P21-S1', 1),
+  opportunities: walkerOpportunities,
+  states: [
+    state('shell-pro-42-P21-S1', 1, {
+      hardEligibility: 'unavailable',
+      triggerStatus: 'not-satisfied',
+      qualificationSec: 0,
+      requiredTttSec: 0,
+      stable: false,
+      rank: null,
+      rejectionCodes: ['throughput', 'remaining-service-time'],
+    }),
+    state('shell-pro-42-P21-S1', 2, { rank: 3 }),
+    state('shell-pro-42-P22-S0', 1, { rank: 1 }),
+    state('shell-pro-42-P22-S0', 3, { rank: 2 }),
+    state('shell-pro-42-P23-S0', 1, {
+      qualificationSec: 1.4,
+      stable: false,
+      rank: null,
+    }),
+    state('shell-pro-42-P24-S0', 1, {
+      hardEligibility: 'ineligible',
+      triggerStatus: 'not-satisfied',
+      qualificationSec: 0,
+      stable: false,
+      rank: null,
+      rejectionCodes: ['sinr'],
+    }),
+    state('shell-pro-42-P25-S0', 1, {
+      triggerStatus: 'not-satisfied',
+      qualificationSec: 0,
+      stable: false,
+      rank: null,
+      rejectionCodes: ['sinr'],
+    }),
+  ],
+  provisionalLeader: candidateLinkKey('shell-pro-42-P22-S0', 1),
+  selectedTarget: null,
+  selectedKind: null,
+  selectionHoldSec: 0.8,
+  selectionHoldRequiredSec: 1.5,
+  mode: 'sinr-offset',
+  recentCommit: null,
+});
+
+const walkerMarkup = renderToStaticMarkup(
+  <LocaleProvider initialLocale="zh-TW">
+    <HandoverEvaluationPanel snapshot={acceptedSnapshot(walkerDecision)} />
+  </LocaleProvider>,
+);
+
+// Assert formatted satellite names appear in visible UI elements
+assert.match(walkerMarkup, />G42-22-02 \/ B1 \/ C1</);
+assert.match(walkerMarkup, />G42-23-01 \/ B1 \/ C1</);
+assert.match(walkerMarkup, />G42-22-02</);
+assert.match(walkerMarkup, />G42-23-01</);
+assert.match(walkerMarkup, /aria-label="[^"]*G42-23-01[^"]*"/);
+
+// Assert raw satellite IDs do NOT appear in visible text nodes
+assert.doesNotMatch(walkerMarkup, />[^<]*shell-pro-42-P21-S1[^<]*</);
+assert.doesNotMatch(walkerMarkup, />[^<]*shell-pro-42-P22-S0[^<]*</);
+assert.doesNotMatch(walkerMarkup, />[^<]*shell-pro-42-P23-S0[^<]*</);
+assert.doesNotMatch(walkerMarkup, />[^<]*shell-pro-42-P24-S0[^<]*</);
+assert.doesNotMatch(walkerMarkup, />[^<]*shell-pro-42-P25-S0[^<]*</);
+assert.doesNotMatch(walkerMarkup, /aria-label="[^"]*shell-pro-42-P21-S1[^"]*"/);
+assert.doesNotMatch(walkerMarkup, /aria-label="[^"]*shell-pro-42-P22-S0[^"]*"/);
+
+// Assert raw satellite IDs are retained in data-* attributes and decision metadata
+assert.match(walkerMarkup, /data-satellite-id="shell-pro-42-P21-S1"/);
+assert.match(walkerMarkup, /data-satellite-id="shell-pro-42-P22-S0"/);
+assert.match(walkerMarkup, /data-satellite-identity-colors="[^"]*shell-pro-42-P21-S1[^"]*"/);
+
+const walkerCommittedTarget = candidateLinkKey('shell-pro-42-P22-S0', 1);
+const walkerCommittedDecision = createHandoverDecisionFrame({
+  ...walkerDecision,
+  phase: 'guard',
+  serving: walkerCommittedTarget,
+  provisionalLeader: null,
+  selectedTarget: null,
+  selectedKind: null,
+  selectionHoldSec: 0,
+  recentCommit: {
+    episodeId: walkerDecision.episodeId,
+    sourceFrameId: walkerDecision.sourceFrameId,
+    simTimeMs: walkerDecision.simTimeMs,
+    from: candidateLinkKey('shell-pro-42-P21-S1', 1),
+    to: walkerCommittedTarget,
+    kind: 'inter-satellite',
+    mode: 'sinr-offset',
+    reason: 'Walker inter-satellite handover fixture',
+    oldLinkEnded: true,
+    newLinkStarted: true,
+  },
+});
+
+const walkerReceiptMarkup = renderToStaticMarkup(
+  <LocaleProvider initialLocale="zh-TW">
+    <HandoverEvaluationPanel snapshot={acceptedSnapshot(walkerCommittedDecision)} />
+  </LocaleProvider>,
+);
+
+assert.match(walkerReceiptMarkup, /G42-22-02 \/ B1 \/ C1 → G42-23-01 \/ B1 \/ C1/);
+assert.match(walkerReceiptMarkup, /data-from-satellite-id="shell-pro-42-P21-S1"/);
+assert.match(walkerReceiptMarkup, /data-to-satellite-id="shell-pro-42-P22-S0"/);
+assert.doesNotMatch(walkerReceiptMarkup, />[^<]*shell-pro-42-P21-S1[^<]*</);
+assert.doesNotMatch(walkerReceiptMarkup, />[^<]*shell-pro-42-P22-S0[^<]*</);
+
+const walkerPinnedKey = candidateLinkKey('shell-pro-42-P22-S0', 1);
+const walkerCandidateSetMarkup = renderToStaticMarkup(
+  <CandidateSetPanel
+    plan={buildCandidatePresentationPlan(walkerDecision, undefined, walkerPinnedKey)}
+    pinnedKey={walkerPinnedKey}
+    onTogglePin={() => undefined}
+    copy={(zh) => zh}
+  />,
+);
+
+assert.match(walkerCandidateSetMarkup, />G42-22-02</);
+assert.match(walkerCandidateSetMarkup, />G42-23-01</);
+assert.match(walkerCandidateSetMarkup, /data-satellite-id="shell-pro-42-P21-S1"/);
+assert.match(walkerCandidateSetMarkup, /data-satellite-id="shell-pro-42-P22-S0"/);
+assert.doesNotMatch(walkerCandidateSetMarkup, />[^<]*shell-pro-42-P21-S1[^<]*</);
+assert.doesNotMatch(walkerCandidateSetMarkup, />[^<]*shell-pro-42-P22-S0[^<]*</);
+assert.doesNotMatch(walkerCandidateSetMarkup, /aria-label="[^"]*shell-pro-42-P22-S0[^"]*"/);
+assert.match(walkerCandidateSetMarkup, /aria-label="[^"]*G42-23-01[^"]*"/);
 
 console.log('Handover evaluation panel contract test passed.');

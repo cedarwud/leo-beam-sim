@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -23,7 +24,9 @@ import {
   MULTI_CANDIDATE_WIREFRAME_RIB_COUNT,
   buildSparseMultiCandidateConeRibs,
   groupMultiCandidateSatelliteIdentities,
+  resolveCandidateLabelPosition,
   resolveMultiCandidateBeamScene,
+  shouldRenderMultiCandidateIdentityLabel,
   type MultiCandidateBeamSceneResolverInput,
 } from './MultiCandidateBeamScene';
 
@@ -31,6 +34,14 @@ test('publishes a stable browser telemetry key for scene satellite identity colo
   assert.equal(
     MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteIdentityColors,
     'multiCandidateSceneSatelliteIdentityColors',
+  );
+  assert.equal(
+    MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.acceptedSnapshotId,
+    'multiCandidateSceneAcceptedSnapshotId',
+  );
+  assert.equal(
+    MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedSceneJoinKeys,
+    'multiCandidateSceneRenderedSceneJoinKeys',
   );
 });
 
@@ -190,14 +201,15 @@ test('resolves an exact surrogate cell footprint on the ground and an oblique co
   assert.ok(candidateInstruction?.footprint.points.every(point => point[1] === 0.12));
   assert.deepEqual(candidateInstruction?.apex, [40, 110, -10]);
   assert.equal(servingInstruction?.link.style, 'solid-data');
-  assert.equal(candidateInstruction?.link.style, 'none');
+  assert.equal(candidateInstruction?.link.style, 'measurement-dashed');
+  assert.equal(candidateInstruction?.link.isMeasurementOnly, true);
   assert.equal(candidateInstruction?.link.isSolidData, false);
   assert.equal(resolved.coneVolumeCount, 2);
   assert.equal(resolved.solidDataLinkCount, 1);
   assert.equal(resolved.telemetry.renderedSatelliteCount, 2);
 });
 
-test('maps observed, qualified, leader, and selected roles to the S5 visual grammar', () => {
+test('maps observed, qualified, leader, and selected roles to the additive evaluation grammar', () => {
   const serving = candidateLinkKey('sat-serving', 1);
   const observed = candidateLinkKey('sat-observed', 2);
   const qualified = candidateLinkKey('sat-qualified', 3);
@@ -240,27 +252,32 @@ test('maps observed, qualified, leader, and selected roles to the S5 visual gram
   assert.equal(observedRender?.role, 'observed');
   assert.equal(observedRender?.cone.visible, false);
   assert.equal(observedRender?.cone.volume, 0);
+  assert.equal(observedRender?.cone.opacity, 0);
   assert.equal(observedRender?.footprint.style, 'dotted');
   assert.equal(observedRender?.link.style, 'none');
+  assert.equal(observedRender?.link.isMeasurementOnly, true);
+  assert.equal(observedRender?.link.opacity, 0);
   assert.equal(
     groupMultiCandidateSatelliteIdentities(resolved.instructions)
       .some(group => group.satelliteId === 'sat-observed'),
-    false,
+    true,
   );
   assert.equal(qualifiedRender?.role, 'qualified');
   assert.equal(qualifiedRender?.cone.style, 'wireframe');
   assert.equal(qualifiedRender?.footprint.style, 'dashed');
-  assert.equal(qualifiedRender?.link.style, 'none');
+  assert.equal(qualifiedRender?.link.style, 'measurement-dashed');
+  assert.equal(qualifiedRender?.link.dashed, true);
+  assert.equal(qualifiedRender?.link.isSolidData, false);
   assert.equal(leaderRender?.role, 'provisional-leader');
   assert.equal(leaderRender?.cone.style, 'wireframe');
   assert.equal(leaderRender?.footprint.outlineCount, 2);
   assert.equal(leaderRender?.link.isMeasurementOnly, true);
-  assert.equal(leaderRender?.label?.text, 'sat-leader / B4');
+  assert.equal(leaderRender?.label?.text, 'sat-leader / B4 / C4');
   assert.equal(selectedRender?.role, 'selected-target');
   assert.equal(selectedRender?.cone.style, 'low-alpha');
   assert.equal(selectedRender?.footprint.outlineCount, 2);
   assert.equal(selectedRender?.link.isSolidData, false);
-  assert.equal(selectedRender?.label?.text, 'sat-selected / B5');
+  assert.equal(selectedRender?.label?.text, 'sat-selected / B5 / C5');
   assert.ok(resolved.instructions.filter(item => item.isCandidate).every(item => !item.link.isSolidData));
   assert.equal(resolved.solidDataLinkCount, 1);
 });
@@ -302,11 +319,33 @@ test('makes a pinned observed pair inspectable without creating a second data li
   assert.equal(pinned.link.isMeasurementOnly, true);
   assert.equal(pinned.link.isSolidData, false);
   assert.ok(pinned.link.opacity > 0);
+  assert.equal(shouldRenderMultiCandidateIdentityLabel(pinned, false), true);
   assert.equal(resolved.coneVolumeCount, 2);
   assert.equal(resolved.solidDataLinkCount, 1);
 });
 
-test('replaces dense triangle wireframe with a bounded sparse rib set', () => {
+test('keeps ordinary observed labels off the scene until inspection', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const observed = candidateLinkKey('sat-observed', 2);
+  const presentation = buildMultiCandidateScenePresentation(
+    buildCandidatePresentationPlan(
+      decision(serving, [serving, observed], [
+        state(serving),
+        state(observed, {
+          stable: false,
+          hardEligibility: 'ineligible',
+          triggerStatus: 'not-satisfied',
+        }),
+      ]),
+    ),
+  );
+  const resolved = resolveMultiCandidateBeamScene(sceneInput(presentation));
+  const ordinaryObserved = resolved.instructions.find(item => item.pairKey === 'sat-observed|2');
+  assert.ok(ordinaryObserved);
+  assert.equal(shouldRenderMultiCandidateIdentityLabel(ordinaryObserved, false), false);
+});
+
+test('keeps an explicit inspection wireframe to a bounded three-rib silhouette', () => {
   const serving = candidateLinkKey('sat-serving', 1);
   const qualified = candidateLinkKey('sat-qualified', 2);
   const presentation = buildMultiCandidateScenePresentation(
@@ -316,6 +355,7 @@ test('replaces dense triangle wireframe with a bounded sparse rib set', () => {
         state(qualified, { stable: true }),
       ]),
       DEFAULT_CANDIDATE_DISPLAY_BUDGET,
+      { pinnedKey: qualified },
     ),
   );
   const resolved = resolveMultiCandidateBeamScene(sceneInput(presentation));
@@ -331,6 +371,15 @@ test('replaces dense triangle wireframe with a bounded sparse rib set', () => {
     () => buildSparseMultiCandidateConeRibs(instruction, 0),
     /wireframe rib count must be a positive integer/,
   );
+});
+
+test('renders every wireframe candidate as sparse ribs without a filled cone mesh', async () => {
+  const source = await readFile(new URL('./MultiCandidateBeamScene.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /const renderFilledVolume = !instruction\.cone\.wireframe/);
+  assert.match(source, /\{renderFilledVolume && \(\s*<mesh/);
+  assert.match(source, /\(\) => instruction\.cone\.wireframe\s*\? buildSparseMultiCandidateConeRibs/);
+  assert.match(source, /MULTI_CANDIDATE_WIREFRAME_RIB_COUNT = 3/);
 });
 
 test('keeps same-satellite beam pairs separate and within the presentation budget', () => {
@@ -359,7 +408,42 @@ test('keeps same-satellite beam pairs separate and within the presentation budge
   assert.equal(resolved.instructions[0]?.sceneJoinKey, presentation.instructions[0]?.sceneJoinKey);
 });
 
-test('skips an undisplayable pair without inventing geometry or exceeding the budget', () => {
+test('places identities sharing one cell in deterministic outer-edge slots', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const first = candidateLinkKey('sat-alpha', 2);
+  const second = candidateLinkKey('sat-beta', 2);
+  const presentation = buildMultiCandidateScenePresentation(
+    buildCandidatePresentationPlan(
+      decision(serving, [serving, first, second]),
+      { maxSatelliteGroups: 3, maxCandidatePairs: 6, maxConeVolumes: 3 },
+    ),
+  );
+  const resolved = resolveMultiCandidateBeamScene(sceneInput(presentation));
+  const candidates = resolved.instructions.filter(item => item.cellId === 1 && item.isCandidate);
+  assert.equal(candidates.length, 2);
+
+  const firstPosition = resolveCandidateLabelPosition(candidates[0]!, 0, 0);
+  const secondPosition = resolveCandidateLabelPosition(candidates[1]!, 1, 1);
+  assert.notDeepEqual(firstPosition, secondPosition);
+  assert.ok(Math.hypot(
+    firstPosition[0] - candidates[0]!.baseCenter[0],
+    firstPosition[2] - candidates[0]!.baseCenter[2],
+  ) > candidates[0]!.cone.baseRadiusWorld);
+  assert.ok(Math.hypot(
+    secondPosition[0] - candidates[1]!.baseCenter[0],
+    secondPosition[2] - candidates[1]!.baseCenter[2],
+  ) > candidates[1]!.cone.baseRadiusWorld);
+  assert.throws(
+    () => resolveCandidateLabelPosition(candidates[0]!, -1),
+    /candidate label lane must be a non-negative integer/,
+  );
+  assert.throws(
+    () => resolveCandidateLabelPosition(candidates[0]!, 0, 0.5),
+    /candidate satellite label bias lane must be an integer/,
+  );
+});
+
+test('reports an undisplayable pair without inventing geometry or exceeding the budget', () => {
   const serving = candidateLinkKey('sat-serving', 1);
   const missing = candidateLinkKey('sat-missing', 2);
   const presentation = buildMultiCandidateScenePresentation(
@@ -372,6 +456,52 @@ test('skips an undisplayable pair without inventing geometry or exceeding the bu
   assert.deepEqual(resolved.instructions.map(item => item.pairKey), ['sat-serving|1']);
   assert.equal(resolved.coneVolumeCount, 1);
   assert.equal(resolved.solidDataLinkCount, 1);
+  assert.deepEqual(resolved.telemetry.unmappedPairs, [{
+    satelliteId: 'sat-missing',
+    beamId: 2,
+    sourceFrameId: SOURCE_FRAME_ID,
+    reason: 'missing-satellite-world',
+  }]);
+});
+
+test('reports exact placement and radius failures without altering mapped links', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const missingPlacement = candidateLinkKey('sat-missing-placement', 6);
+  const invalidRadius = candidateLinkKey('sat-invalid-radius', 5);
+  const presentation = buildMultiCandidateScenePresentation(
+    buildCandidatePresentationPlan(
+      decision(serving, [serving, missingPlacement, invalidRadius]),
+      { maxSatelliteGroups: 3, maxCandidatePairs: 6, maxConeVolumes: 3 },
+    ),
+  );
+  const placements = [
+    { cellId: 0, worldX: 0, worldZ: 0, radiusWorld: 10 },
+    { cellId: 4, worldX: 25, worldZ: -20, radiusWorld: 0 },
+  ];
+  const resolved = resolveMultiCandidateBeamScene(sceneInput(presentation, {
+    placementByCellId: new Map(placements.map(placement => [placement.cellId, placement])),
+    satelliteWorldById: new Map([
+      ['sat-serving', { x: 0, y: 100, z: 0 }],
+      ['sat-invalid-radius', { x: 20, y: 110, z: 5 }],
+    ]),
+  }));
+
+  assert.deepEqual(resolved.instructions.map(item => item.pairKey), ['sat-serving|1']);
+  assert.deepEqual(resolved.telemetry.unmappedPairs, [
+    {
+      satelliteId: 'sat-missing-placement',
+      beamId: 6,
+      sourceFrameId: SOURCE_FRAME_ID,
+      reason: 'missing-placement',
+    },
+    {
+      satelliteId: 'sat-invalid-radius',
+      beamId: 5,
+      sourceFrameId: SOURCE_FRAME_ID,
+      reason: 'invalid-radius',
+    },
+  ]);
+  assert.equal(resolved.telemetry.solidDataLinkCount, 1);
 });
 
 test('fails closed when a renderer input exceeds the satellite-group budget', () => {
@@ -392,4 +522,96 @@ test('fails closed when a renderer input exceeds the satellite-group budget', ()
     () => resolveMultiCandidateBeamScene(sceneInput(overBudgetPresentation)),
     /visible satellite budget exceeded/,
   );
+});
+
+test('candidate identity labels use camera-facing Html badges with full data attributes and non-blocking pointer events', async () => {
+  const source = await readFile(new URL('./MultiCandidateBeamScene.tsx', import.meta.url), 'utf8');
+
+  // Must use Html component, not Text or Billboard for candidate identity label
+  assert.match(source, /import\s*\{[^}]*Html[^}]*\}\s*from\s*['"]@react-three\/drei['"]/);
+  assert.doesNotMatch(source, /import\s*\{[^}]*Text[^}]*\}\s*from\s*['"]@react-three\/drei['"]/);
+  assert.doesNotMatch(source, /LABEL_FONT_SIZE/);
+
+  // Html badge mounting with position, centering, and non-blocking pointer events
+  assert.match(source, /const visibleLabelPosition = resolveCandidateLabelPosition\([\s\S]*instruction,[\s\S]*candidateLane,[\s\S]*satelliteBiasLane/);
+  assert.match(source, /<Html[\s\S]*position=\{visibleLabelPosition\}[\s\S]*center/);
+  assert.match(source, /pointerEvents:\s*['"]none['"]/);
+  assert.match(source, /userSelect:\s*['"]none['"]/);
+
+  // Data attributes for testing, scene join, and rail correspondence
+  assert.match(source, /data-satellite-id=\{instruction\.satelliteId\}/);
+  assert.match(source, /data-beam-id=\{instruction\.beamId\}/);
+  assert.match(source, /data-cell-id=\{instruction\.cellId\}/);
+  assert.match(source, /data-scene-join-key=\{instruction\.sceneJoinKey\}/);
+  assert.match(source, /data-rail-join-key=\{instruction\.railJoinKey\}/);
+  assert.match(source, /data-pair-key=\{instruction\.pairKey\}/);
+  assert.match(source, /data-candidate-lane=\{candidateLane\}/);
+  assert.match(source, /data-role=\{instruction\.role\}/);
+  assert.match(source, /data-label=\{visibleIdentityLabel\}/);
+  assert.match(source, /fontSize:\s*['"]14px['"]/);
+  assert.match(source, /data-testid="multi-candidate-satellite-label"/);
+  assert.match(source, /fontSize:\s*['"]15px['"]/);
+
+  // Visual styling: dark semi-transparent background, subtle colored border, compact padding
+  assert.match(source, /background:\s*['"]rgba\(2,\s*6,\s*23,\s*0\.88\)['"]/);
+  assert.match(source, /border:\s*`1px solid \$\{instruction\.label\.color\}`/);
+});
+
+test('formats same-satellite candidate labels with sat name on first candidate and B#/C# only on subsequent candidates', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const candidate1 = candidateLinkKey('sat-same', 2);
+  const candidate2 = candidateLinkKey('sat-same', 3);
+  const decisionFrame = decision(serving, [serving, candidate1, candidate2]);
+  const presentation = buildMultiCandidateScenePresentation(
+    buildCandidatePresentationPlan(decisionFrame, {
+      maxSatelliteGroups: 3,
+      maxCandidatePairs: 6,
+      maxConeVolumes: 3,
+    }),
+  );
+  const resolved = resolveMultiCandidateBeamScene(sceneInput(presentation, {
+    satelliteWorldById: new Map([
+      ['sat-serving', { x: 0, y: 100, z: 0 }],
+      ['sat-same', { x: 25, y: 110, z: 5 }],
+    ]),
+    placementByCellId: new Map([
+      [0, { cellId: 0, worldX: 0, worldZ: 0, radiusWorld: 10 }],
+      [1, { cellId: 1, worldX: 24, worldZ: 4, radiusWorld: 11 }],
+      [2, { cellId: 2, worldX: -22, worldZ: 5, radiusWorld: 9 }],
+    ]),
+  }));
+
+  const sameSatInstructions = resolved.instructions.filter(item => item.satelliteId === 'sat-same');
+  assert.equal(sameSatInstructions.length, 2);
+
+  // Identify first candidate pair per satellite
+  const firstCandidatePairBySatelliteId = new Map<string, string>();
+  for (const instruction of resolved.instructions) {
+    if (!instruction.isCandidate) continue;
+    if (!firstCandidatePairBySatelliteId.has(instruction.satelliteId)) {
+      firstCandidatePairBySatelliteId.set(instruction.satelliteId, instruction.pairKey);
+    }
+  }
+
+  // Check showSatelliteInLabel logic
+  const firstCandidate = sameSatInstructions[0]!;
+  const secondCandidate = sameSatInstructions[1]!;
+
+  const showSatFirst = firstCandidate.isServing
+    || firstCandidatePairBySatelliteId.get(firstCandidate.satelliteId) === firstCandidate.pairKey;
+  const showSatSecond = secondCandidate.isServing
+    || firstCandidatePairBySatelliteId.get(secondCandidate.satelliteId) === secondCandidate.pairKey;
+
+  assert.equal(showSatFirst, true);
+  assert.equal(showSatSecond, false);
+
+  const firstLabel = showSatFirst
+    ? firstCandidate.label?.text ?? ''
+    : `B${firstCandidate.beamId} / C${firstCandidate.cellId + 1}`;
+  const secondLabel = showSatSecond
+    ? secondCandidate.label?.text ?? ''
+    : `B${secondCandidate.beamId} / C${secondCandidate.cellId + 1}`;
+
+  assert.match(firstLabel, /sat-same \/ B2 \/ C2/);
+  assert.equal(secondLabel, 'B3 / C3');
 });

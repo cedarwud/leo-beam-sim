@@ -357,6 +357,8 @@ export function hasUiStateBoundaryChanged(previous: SimState | null, next: SimSt
     || hasAngleAwareFormulaIdentityChanged(previous.angleAwareFormulaFrame, next.angleAwareFormulaFrame)
     || handoverDecisionBoundaryKey(previous.handoverDecisionFrame)
       !== handoverDecisionBoundaryKey(next.handoverDecisionFrame)
+    || previous.acceptedHandoverPresentation?.snapshotId
+      !== next.acceptedHandoverPresentation?.snapshotId
     || previous.visualFrequencyDiagnostics?.primary.satId !== next.visualFrequencyDiagnostics?.primary.satId
     || previous.visualFrequencyDiagnostics?.primary.beamId !== next.visualFrequencyDiagnostics?.primary.beamId
     || previous.visualFrequencyDiagnostics?.comparison.satId !== next.visualFrequencyDiagnostics?.comparison.satId
@@ -406,6 +408,7 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || hasSatelliteVisualIdentityChanged(previous.satelliteVisualIdentityById, next.satelliteVisualIdentityById)
     || hasAngleAwareFormulaChanged(previous.angleAwareFormulaFrame, next.angleAwareFormulaFrame)
     || previous.handoverDecisionFrame !== next.handoverDecisionFrame
+    || previous.acceptedHandoverPresentation !== next.acceptedHandoverPresentation
     || hasSignalSourceChanged(previous.physicalServing, next.physicalServing)
     || hasSignalSourceChanged(previous.panelPrimary, next.panelPrimary)
     || previous.panelPrimary.role !== next.panelPrimary.role

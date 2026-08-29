@@ -27,6 +27,10 @@ const decisionFrame = {
   recentCommit: null,
 } as unknown as HandoverDecisionFrame;
 
+const acceptedSnapshot = {
+  snapshotId: 'episode/1:snapshot-frame-1',
+} as NonNullable<SimState['acceptedHandoverPresentation']>;
+
 const baseState = {
   profileId: 'profile-a',
   satelliteVisualIdentityById: {},
@@ -49,6 +53,7 @@ const baseState = {
   physicalServingBudget: null,
   angleAwareFormulaFrame: null,
   handoverDecisionFrame: decisionFrame,
+  acceptedHandoverPresentation: acceptedSnapshot,
 } as unknown as SimState;
 
 const numericOnlyChange = {
@@ -77,6 +82,20 @@ const decisionPhaseChange = {
   handoverDecisionFrame: { ...decisionFrame, phase: 'selection-hold' },
 } as SimState;
 
+const acceptedSnapshotSourceFrameChange = {
+  ...baseState,
+  acceptedHandoverPresentation: {
+    ...acceptedSnapshot,
+    snapshotId: 'episode/1:snapshot-frame-2',
+  },
+} as SimState;
+
+const acceptedSnapshotCleared = {
+  ...baseState,
+  handoverDecisionFrame: null,
+  acceptedHandoverPresentation: null,
+} as SimState;
+
 assert.equal(
   hasUiStateBoundaryChanged(baseState, numericOnlyChange),
   false,
@@ -96,6 +115,16 @@ assert.equal(
   hasUiStateBoundaryChanged(baseState, decisionPhaseChange),
   true,
   'decision phase transitions publish immediately',
+);
+assert.equal(
+  hasUiStateBoundaryChanged(baseState, acceptedSnapshotSourceFrameChange),
+  true,
+  'each newly accepted scene/rail snapshot publishes atomically even within one phase',
+);
+assert.equal(
+  hasUiStateBoundaryChanged(baseState, acceptedSnapshotCleared),
+  true,
+  'leaving the authoritative candidate lane clears scene and rail together',
 );
 assert.equal(
   shouldPublishUiState({

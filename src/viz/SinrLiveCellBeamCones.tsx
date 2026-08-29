@@ -145,6 +145,29 @@ export interface SinrLiveCellBeamConeRenderItem {
   readonly displayOnly?: boolean;
 }
 
+/**
+ * Selects the presentation colour authority without changing cone geometry,
+ * opacity, role, or scientific state. The established lane keeps
+ * `semantic-role`; the accepted multi-candidate lane uses the item's
+ * publisher-owned satellite/beam identity colour so a satellite does not
+ * change hue when it becomes serving.
+ */
+export type SinrLiveConeColorAuthority = 'semantic-role' | 'item-identity';
+
+export function resolveSinrLiveConeDisplayStyle(
+  role: SinrLiveConeRole,
+  palette: SinrLiveConePalette | undefined,
+  cone: SinrLiveCellBeamConeRenderItem,
+  colorAuthority: SinrLiveConeColorAuthority = 'semantic-role',
+): ReturnType<typeof resolveSinrLiveConeRoleStyle> {
+  const semantic = resolveSinrLiveConeRoleStyle(role, palette, cone);
+  if (colorAuthority !== 'item-identity' || cone.color.trim().length === 0) return semantic;
+  return {
+    ...semantic,
+    color: cone.color,
+  };
+}
+
 function resolveBeamBaseCenter(placement: SinrLiveCellPlacement): THREE.Vector3 {
   const worldUnitsPerKm = placement.worldUnitsPerKm ?? 1;
   return new THREE.Vector3(
@@ -1076,6 +1099,8 @@ export interface SinrLiveCellBeamConesRenderProps {
    * what the fixture gates rely on.
    */
   readonly palette?: SinrLiveConePalette;
+  /** Colour identity only; role opacity and all existing animation stay intact. */
+  readonly colorAuthority?: SinrLiveConeColorAuthority;
   /**
    * Display-only WIDTH multiplier on every cone's RENDERED base radius
    * (`beamDisplaySpec.coneWidthScale`, SDD §3.3). Applied in `ObliqueConeMesh` to
@@ -1251,7 +1276,12 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           heroSatId: props.primaryServingSatId,
           heroCellId: props.primaryServingCellId,
         });
-        const style = resolveSinrLiveConeRoleStyle(role, palette, cone);
+        const style = resolveSinrLiveConeDisplayStyle(
+          role,
+          palette,
+          cone,
+          props.colorAuthority,
+        );
         const fog = resolveSinrLiveConeFog(role);
         return (
           <ObliqueConeMesh

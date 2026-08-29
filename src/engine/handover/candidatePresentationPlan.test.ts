@@ -7,6 +7,7 @@ import {
   createMetricEvidence,
   createHandoverDecisionFrame,
   freezeCandidateOpportunity,
+  sameCandidateLinkKey,
   type CandidateDecisionState,
   type CandidateGateResult,
   type CandidateOpportunity,
@@ -180,15 +181,17 @@ test('groups mixed intra/inter pairs, preserves priority, and exposes one active
   assert.equal(serving.visual.dataLinkStyle, 'solid-data');
   assert.equal(serving.visual.isMeasurementOnly, false);
   assert.equal(serving.visual.isActiveDataLink, true);
+  assert.equal(serving.displayKey, 'sat-a / B1 / C1');
   const candidates = plan.displayedLinks.filter(link => link.isCandidate);
   assert.equal(candidates.length, 5);
   assert.ok(candidates.every(link => link.visual.isMeasurementOnly));
   assert.ok(candidates.every(link => !link.visual.isActiveDataLink));
+  assert.ok(candidates.every(link => link.displayKey.includes(` / B${link.beamId} / C${link.beamId}`)));
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-b' && link.beamId === 1)?.role, 'selected-target');
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-a' && link.beamId === 2)?.role, 'qualified');
   assert.equal(
     candidates.find(link => link.key.satelliteId === 'sat-a' && link.beamId === 2)?.visual.dataLinkStyle,
-    'none',
+    'measurement-dashed',
   );
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-d') ?? null, null);
 
@@ -197,6 +200,132 @@ test('groups mixed intra/inter pairs, preserves priority, and exposes one active
   assert.notEqual(satABeams[0]!.beamIdentity?.cssColor, satABeams[1]!.beamIdentity?.cssColor);
   assert.equal(satABeams[0]!.sceneJoinKey, satABeams[0]!.railJoinKey);
   assert.equal(JSON.stringify(decision), decisionSnapshot);
+});
+
+test('evaluating reveals observed alternatives as ground-cell cues without raising a line cage', () => {
+  const baseline = decisionFixture();
+  const observedStates = baseline.states.map(candidate => ({
+    ...candidate,
+    hardEligibility: candidate.key.satelliteId === baseline.serving?.satelliteId
+      && candidate.key.beamId === baseline.serving.beamId
+      ? candidate.hardEligibility
+      : 'ineligible' as const,
+    triggerStatus: 'not-satisfied' as const,
+    qualificationSec: 0,
+    stable: false,
+    rank: null,
+  }));
+  const evaluating = createHandoverDecisionFrame({
+    ...baseline,
+    phase: 'evaluating',
+    states: observedStates,
+    provisionalLeader: null,
+    selectedTarget: null,
+    selectedKind: null,
+    selectionHoldSec: 0,
+  });
+  const evaluatingPlan = buildCandidatePresentationPlan(evaluating);
+  const observed = evaluatingPlan.displayedLinks.filter(link => link.role === 'observed');
+
+  assert.ok(observed.length >= 2);
+  assert.ok(observed.every(link => link.visual.coneStyle === 'hidden'));
+  assert.ok(observed.every(link => link.visual.dataLinkStyle === 'none'));
+  assert.ok(observed.every(link => link.visual.isMeasurementOnly));
+  assert.equal(evaluatingPlan.activeDataLinkCount, 1);
+
+  const monitoring = createHandoverDecisionFrame({
+    ...evaluating,
+    phase: 'monitoring',
+  });
+  const monitoringObserved = buildCandidatePresentationPlan(monitoring)
+    .displayedLinks.filter(link => link.role === 'observed');
+  assert.ok(monitoringObserved.every(link => link.visual.coneStyle === 'hidden'));
+  assert.ok(monitoringObserved.every(link => link.visual.dataLinkStyle === 'none'));
+});
+
+test('hard-eligible pairs remain visible before their active trigger is satisfied', () => {
+  const baseline = decisionFixture();
+  const target = candidateLinkKey('sat-c', 1);
+  const decision = createHandoverDecisionFrame({
+    ...baseline,
+    phase: 'evaluating',
+    states: baseline.states.map(candidate => sameCandidateLinkKey(candidate.key, target)
+      ? {
+          ...candidate,
+          hardEligibility: 'eligible' as const,
+          triggerStatus: 'not-satisfied' as const,
+          qualificationSec: 0,
+          stable: false,
+          rank: null,
+        }
+      : candidate),
+    provisionalLeader: null,
+    selectedTarget: null,
+    selectedKind: null,
+    selectionHoldSec: 0,
+  });
+  const link = buildCandidatePresentationPlan(decision).displayedLinks.find(candidate => (
+    sameCandidateLinkKey(candidate.key, target)
+  ));
+
+  assert.ok(link);
+  assert.equal(link.role, 'hard-eligible');
+  assert.equal(link.visual.coneStyle, 'wireframe');
+  assert.equal(link.visual.dataLinkStyle, 'measurement-dashed');
+  assert.equal(link.visual.isMeasurementOnly, true);
+  assert.equal(link.visual.isActiveDataLink, false);
+});
+
+test('reserves distinct eligible satellite identities before observed decoration when caps permit', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const eligibleA = candidateLinkKey('sat-eligible-a', 2);
+  const eligibleB = candidateLinkKey('sat-eligible-b', 3);
+  const observed = candidateLinkKey('sat-observed', 4);
+  const keys = [serving, eligibleA, eligibleB, observed];
+  const opportunities = keys.map(key => opportunity(key.satelliteId, key.beamId));
+  const decision = createHandoverDecisionFrame({
+    episodeId: 'eligible-satellite-reservation-episode',
+    sourceFrameId: SOURCE_FRAME_ID,
+    simTimeMs: 12_000,
+    phase: 'evaluating',
+    serving,
+    opportunities,
+    states: [
+      state(serving, { stable: true, rank: 99 }),
+      state(eligibleA, { stable: true, rank: 1 }),
+      state(eligibleB, { stable: false, rank: null }),
+      state(observed, {
+        stable: false,
+        hardEligibility: 'ineligible',
+        triggerStatus: 'not-satisfied',
+      }),
+    ],
+    provisionalLeader: null,
+    selectedTarget: null,
+    selectedKind: null,
+    selectionHoldSec: 0,
+    selectionHoldRequiredSec: 1,
+    mode: 'sinr-offset',
+    recentCommit: null,
+  });
+
+  const plan = buildCandidatePresentationPlan(decision, budget({
+    maxSatelliteGroups: 3,
+    maxCandidatePairs: 2,
+    maxConeVolumes: 3,
+  }));
+  const displayedCandidates = plan.displayedLinks.filter(link => link.isCandidate);
+
+  assert.deepEqual(
+    displayedCandidates.map(link => link.satelliteId).sort(),
+    ['sat-eligible-a', 'sat-eligible-b'],
+  );
+  assert.ok(displayedCandidates.every(link => (
+    link.role === 'qualified' || link.role === 'hard-eligible'
+      ? link.visual.dataLinkStyle === 'measurement-dashed'
+      : true
+  )));
+  assert.equal(plan.activeDataLinkCount, 1);
 });
 
 test('enforces the seven-cone scene cap independently of scientific candidates', () => {

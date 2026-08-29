@@ -34,6 +34,8 @@ export function createInitialSimState(profile: Profile): SimState {
     livePaperEnergyEfficiency: null,
     ch5DemoPaperEnergyEfficiency: null,
     canonicalEe: createPendingCanonicalEeSnapshot(),
+    handoverDecisionFrame: null,
+    acceptedHandoverPresentation: null,
     servingSatId: null,
     servingBeamId: null,
     servingCellId: null,

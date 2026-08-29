@@ -58,6 +58,7 @@ export interface MultiCandidateSceneLinkInstruction {
   readonly key: CandidateLinkKey;
   readonly satelliteId: string;
   readonly beamId: number;
+  readonly displayKey: string;
   readonly role: CandidatePresentationRole;
   readonly isServing: boolean;
   readonly isCandidate: boolean;
@@ -159,6 +160,7 @@ function mapLink(link: CandidatePresentationLink): {
     key: copyKey(link.key),
     satelliteId: link.satelliteId,
     beamId: link.beamId,
+    displayKey: link.displayKey,
     role: link.role,
     isServing: link.isServing,
     isCandidate: link.isCandidate,

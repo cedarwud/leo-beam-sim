@@ -189,6 +189,29 @@ test('SINR policy applies a compatibility gate mask without relabelling unavaila
   assert.equal(candidate.gates.find(item => item.code === 'throughput')?.result, 'unavailable');
 });
 
+test('a hard-ineligible pair cannot be reported as trigger-satisfied', () => {
+  const candidate = opportunity(candidateLinkKey('SAT-B', 1), {
+    sinrDb: 18,
+    eeBitPerJ: 110,
+    eeGate: 'pass',
+    scheduled: 'fail',
+  });
+  const serving = opportunity(SERVING, { sinrDb: 10, eeBitPerJ: 80 });
+  const sinr = new SinrOffsetPolicy(sinrConfig).evaluate({
+    serving,
+    alternatives: [candidate],
+  }).assessments[0];
+  const ee = new ForecastEePolicy(eeConfig).evaluate({
+    serving,
+    alternatives: [candidate],
+  }).assessments[0];
+
+  assert.equal(sinr?.hardEligibility, 'ineligible');
+  assert.equal(sinr?.triggerStatus, 'not-satisfied');
+  assert.equal(ee?.hardEligibility, 'ineligible');
+  assert.equal(ee?.triggerStatus, 'not-satisfied');
+});
+
 test('scheduled illumination cannot pass without boolean scheduling evidence', () => {
   const valid = opportunity(candidateLinkKey('SAT-B', 1), { sinrDb: 16 });
   const missingScheduleEvidence = {

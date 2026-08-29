@@ -12,6 +12,10 @@ interface Props {
   frame: NormalizedSceneFrame;
   interTriggerSec: number;
   preferredKind?: 'intra' | 'inter' | null;
+  /** Source-owned semantic override (for example TLE forced continuity). */
+  eventLabel?: string;
+  /** Source-owned reason shown instead of implying Offset+TTT progress. */
+  eventReason?: string;
   /** The normalized display owner is authoritative when the live frame has already committed. */
   presentationHandover?: Pick<
     HandoverToastState,
@@ -39,6 +43,8 @@ export function HandoverToastOverlay({
   frame,
   interTriggerSec,
   preferredKind = null,
+  eventLabel,
+  eventReason,
   presentationHandover = null,
   manualHandover = null,
 }: Props) {
@@ -77,7 +83,7 @@ export function HandoverToastOverlay({
 
   if (!toast) return null;
 
-  const label = toast.kind === 'intra' ? 'Intra handover' : 'Inter handover';
+  const label = eventLabel ?? (toast.kind === 'intra' ? 'Intra handover' : 'Inter handover');
   const progressLabel = `${toast.progressSec.toFixed(1)} / ${toast.targetSec.toFixed(1)} s`;
 
   return (
@@ -92,10 +98,14 @@ export function HandoverToastOverlay({
           role="status"
           data-testid="handover-toast"
           data-handover-toast-kind={toast.kind}
+          data-handover-toast-semantic={eventLabel ?? ''}
+          data-handover-toast-has-reason={eventReason === undefined ? 'false' : 'true'}
         >
           <span className="leo-handover-toast__label">{label}</span>
           <span className="leo-handover-toast__path">{formatToastPath(toast)}</span>
-          <span className="leo-handover-toast__progress">{progressLabel}</span>
+          <span className="leo-handover-toast__progress">
+            {eventReason ?? progressLabel}
+          </span>
         </div>
       </div>
     </Html>

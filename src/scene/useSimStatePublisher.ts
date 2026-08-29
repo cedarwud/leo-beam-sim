@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import { getFormulaFamilyLabel } from '../profiles';
 import { resolveMaxTxPowerDbm, type Profile } from '../profiles/types';
 import type {
@@ -48,6 +48,13 @@ import {
 import {
   CanonicalEeInputError,
 } from '../teaching/canonicalEnergyEfficiency';
+import type { CandidateLinkKey } from '../engine/handover/candidateDecisionContract';
+import {
+  buildAcceptedHandoverPresentationSession,
+  createHandoverPresentationPolicyConfigHash,
+  type AcceptedHandoverPresentationSession,
+  type AcceptedHandoverPresentationSnapshot,
+} from './acceptedHandoverPresentationSnapshot';
 
 // P1d: this hook now receives `frame: NormalizedSceneFrame` and forwards it
 // to `usePanelModeInference`. The bulk of the SimState publication still
@@ -767,6 +774,7 @@ export function useSimStatePublisher({
   beamCountBySatellite = {},
   servingBeamCount,
   candidateBeamCount,
+  candidateInspectionPinnedKey = null,
 }: {
   profile: Profile;
   sim: SimFrame;
@@ -784,7 +792,8 @@ export function useSimStatePublisher({
   beamCountBySatellite?: Readonly<Record<string, number>>;
   servingBeamCount?: number;
   candidateBeamCount?: number;
-}) {
+  candidateInspectionPinnedKey?: CandidateLinkKey | null;
+}): AcceptedHandoverPresentationSession | null {
   const latched = useLatchedSignals({
     signalResetKey,
     handoverResetKey,
@@ -802,6 +811,24 @@ export function useSimStatePublisher({
   // is published), to detect a SEEK / loop-wrap reseat — a discontinuous simTimeSec
   // jump vs the immediately preceding frame — and force that frame past the UI throttle.
   const prevSimTimeSecRef = useRef<number | null>(null);
+  const previousAcceptedSnapshotRef = useRef<AcceptedHandoverPresentationSnapshot | null>(null);
+  const policyConfigHash = useMemo(
+    () => createHandoverPresentationPolicyConfigHash(JSON.stringify(profile)),
+    [profile],
+  );
+  const acceptedHandoverPresentationSession = useMemo(() => {
+    if (!enabled || sim.handoverDecisionFrame === null || sim.handoverDecisionFrame === undefined) {
+      return null;
+    }
+    const session = buildAcceptedHandoverPresentationSession({
+      decision: sim.handoverDecisionFrame,
+      policyConfigHash,
+      pinnedKey: candidateInspectionPinnedKey,
+      previousSnapshot: previousAcceptedSnapshotRef.current,
+    });
+    previousAcceptedSnapshotRef.current = session.snapshot;
+    return session;
+  }, [candidateInspectionPinnedKey, enabled, policyConfigHash, sim.handoverDecisionFrame]);
 
   useEffect(() => {
     lastUiUpdateAtRef.current = 0;
@@ -820,8 +847,21 @@ export function useSimStatePublisher({
     canonicalEePublisherRef.current?.resetWindow();
     prevSimTimeSecRef.current = null;
     lastUiUpdateAtRef.current = 0;
-    lastUiStateRef.current = null;
-  }, [enabled]);
+    const previous = lastUiStateRef.current;
+    if (previous?.acceptedHandoverPresentation !== null
+      && previous?.acceptedHandoverPresentation !== undefined) {
+      const cleared = Object.freeze({
+        ...previous,
+        handoverDecisionFrame: null,
+        acceptedHandoverPresentation: null,
+      });
+      lastUiStateRef.current = cleared;
+      onSimUpdate(cleared);
+    } else {
+      lastUiStateRef.current = null;
+    }
+    previousAcceptedSnapshotRef.current = null;
+  }, [enabled, onSimUpdate]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -1256,7 +1296,8 @@ export function useSimStatePublisher({
       angleAwareFormulaFrame: sim.sinrLiveCells?.angleAwareFormulaFrame
         ?? sim.angleAwareFormulaFrame
         ?? null,
-      handoverDecisionFrame: sim.handoverDecisionFrame ?? null,
+      handoverDecisionFrame: acceptedHandoverPresentationSession?.snapshot.decision ?? null,
+      acceptedHandoverPresentation: acceptedHandoverPresentationSession?.snapshot ?? null,
       servingSatId: publishedPrimaryServing.servingSatId,
       servingBeamId: publishedPrimaryServing.servingBeamId,
       servingCellId: publishedPrimaryServing.servingCellId,
@@ -1350,9 +1391,11 @@ export function useSimStatePublisher({
     profile,
     beamCountBySatellite,
     candidateBeamCount,
+    acceptedHandoverPresentationSession,
     servingBeamCount,
     seekRequestKey,
     signalResetKey,
     sim,
   ]);
+  return acceptedHandoverPresentationSession;
 }

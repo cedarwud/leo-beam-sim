@@ -71,6 +71,12 @@ export interface SceneTelemetryProps {
   sinrLiveCellUeOffAxisMaxDeg: string;
   /** G2c ambient live-pulse cones currently lit (real per-frame handovers, age-faded); empty off the sinr-live lane. */
   sinrLiveHandoverPulseConeCount: string;
+  multiCandidateAuthorityActive: string;
+  multiCandidateDecisionPhase: string;
+  multiCandidateRenderedPairCount: string | number;
+  multiCandidateSceneGlobalSolidDataLinkCount: string | number;
+  multiCandidateCarrierFallbackActive: string;
+  multiCandidateEventCueCount: string | number;
   /** One display-owner contract for diagnosing beam-layer precedence. */
   handoverPresentationActive: string;
   handoverPresentationSource: string;
@@ -157,6 +163,12 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.sinrLiveCellServedCount = props.sinrLiveCellServedCount;
     el.dataset.sinrLiveCellUeOffAxisMaxDeg = props.sinrLiveCellUeOffAxisMaxDeg;
     el.dataset.sinrLiveHandoverPulseConeCount = props.sinrLiveHandoverPulseConeCount;
+    el.dataset.multiCandidateAuthorityActive = props.multiCandidateAuthorityActive;
+    el.dataset.multiCandidateDecisionPhase = props.multiCandidateDecisionPhase;
+    el.dataset.multiCandidateRenderedPairCount = String(props.multiCandidateRenderedPairCount);
+    el.dataset.multiCandidateSceneGlobalSolidDataLinkCount = String(props.multiCandidateSceneGlobalSolidDataLinkCount);
+    el.dataset.multiCandidateCarrierFallbackActive = props.multiCandidateCarrierFallbackActive;
+    el.dataset.multiCandidateEventCueCount = String(props.multiCandidateEventCueCount);
     el.dataset.handoverPresentationActive = props.handoverPresentationActive;
     el.dataset.handoverPresentationSource = props.handoverPresentationSource;
     el.dataset.handoverPresentationKind = props.handoverPresentationKind;
@@ -231,6 +243,12 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.sinrLiveCellServedCount,
     props.sinrLiveHandoverPulseConeCount,
     props.sinrLiveCellUeOffAxisMaxDeg,
+    props.multiCandidateAuthorityActive,
+    props.multiCandidateDecisionPhase,
+    props.multiCandidateRenderedPairCount,
+    props.multiCandidateSceneGlobalSolidDataLinkCount,
+    props.multiCandidateCarrierFallbackActive,
+    props.multiCandidateEventCueCount,
     props.handoverPresentationActive,
     props.handoverPresentationSource,
     props.handoverPresentationKind,

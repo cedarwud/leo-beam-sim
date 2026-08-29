@@ -382,13 +382,14 @@ Four interfaces own different concerns:
 4. The accepted-snapshot publisher validates and deep-freezes one presentation
    publication for all consumers; it is not a second decision engine.
 
-`useSimStatePublisher` synchronously builds and returns one accepted
-`AcceptedHandoverPresentationSnapshot` to its calling `MainScene` render, then
-publishes that same object reference as
-`SimState.acceptedHandoverPresentation`. The right sidebar
-(`WalkerResultsRail` / `HandoverEvaluationPanel`) consumes the object carried by
-that state. `HandoverDecisionFrame` and `CandidatePresentationPlan` are inputs
-to the immutable publication, not independently recomputed feeds.
+`useSimStatePublisher` synchronously builds one accepted
+`AcceptedHandoverPresentationSnapshot` and publishes that exact object reference
+as `SimState.acceptedHandoverPresentation`. On the resulting App commit, App
+passes the same accepted object to both `MainScene` and the right sidebar
+(`WalkerResultsRail` / `HandoverEvaluationPanel`). Neither consumer reads a
+private synchronous hook return. `HandoverDecisionFrame` and
+`CandidatePresentationPlan` are inputs to the immutable publication, not
+independently recomputed feeds.
 
 The snapshot is built once per authoritative decision publication; scene and
 rail receive the same instance. It includes the concrete satellite/beam colour,
@@ -403,6 +404,14 @@ throttle for source-frame, config, phase, leader, selected, and commit changes.
 Hover/pin state is a separate route-scoped inspection object and never mutates
 scientific evidence. Pin swaps are resolved once by the central publisher, not
 once per consumer.
+
+Because `recentCommit` exists only on the engine's atomic commit frame, the
+accepted snapshot retains the latest receipt while all of these remain true:
+same episode, same epoch, non-decreasing simulation time, and the receipt target
+is still the current serving pair. The retained receipt is cleared on rewind or
+identity change. Both scene and rail use this one snapshot field; neither may
+infer commit from a wall-clock animation phase or maintain a competing
+scientific receipt latch.
 
 For every candidate present in the snapshot, the candidate overlay and rail row
 must join with zero field divergence on identity, phase, role, metric evidence, and `sourceFrameId`.
@@ -472,6 +481,13 @@ At no point in time may two solid links appear simultaneously. The count is
 `1` when service is established, `0` only while detached or before initial
 attach, and never greater than one. Dual active links (DAPS) must not be
 rendered or implied.
+
+For inter-satellite presentation, this also applies to filled cone ownership:
+before the matching receipt, only the source may own the established filled
+transition cone and the target remains wireframe/dashed; after the receipt,
+only the target may own it. `holding`, `releasing`, and `settled` are timing
+vocabulary, not commit evidence, and cannot change the owner or completion
+copy by themselves.
 
 The satellite GLB keeps its realistic material. Identity colour is applied to
 its label/ring, beam family, footprints, and corresponding right-rail group.

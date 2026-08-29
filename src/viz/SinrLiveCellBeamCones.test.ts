@@ -39,6 +39,7 @@ import {
   shouldDimSinrLiveConeRole,
   resolveSinrLiveConeRenderColor,
   resolveSinrLiveConeRole,
+  resolveSinrLiveConeDisplayStyle,
   resolveCandidateBeamConeItems,
   resolveBudgetedSinrLiveBeamConeItems,
   sinrLiveHandoverPulseOpacity,
@@ -1029,6 +1030,24 @@ check('role → style: the MOUNT palette (beamDisplaySpec) overrides every token
   approx(resolveSinrLiveConeRoleStyle('background', palette).opacity, 0.11, 1e-9, 'palette backgroundOpacity wins');
   approx(resolveSinrLiveConeRoleStyle('candidateFan', palette).opacity, 0.21, 1e-9, 'palette candidateFanOpacity wins');
   approx(resolveSinrLiveConeRoleStyle('nonServing', palette).opacity, 0.01, 1e-9, 'palette nonServingOpacity wins');
+});
+
+check('multi-candidate colour authority keeps publisher identity while preserving role opacity', () => {
+  const identityCone: SinrLiveCellBeamConeRenderItem = {
+    cellId: 0,
+    satId: 'sat-identity',
+    frequencyIndex: 0,
+    color: '#d97706',
+    serving: true,
+    apex: new THREE.Vector3(0, 100, 0),
+    baseCenter: new THREE.Vector3(0, 0, 0),
+    baseRadiusWorld: 10,
+  };
+  const semantic = resolveSinrLiveConeDisplayStyle('hero', {}, identityCone, 'semantic-role');
+  const identity = resolveSinrLiveConeDisplayStyle('hero', {}, identityCone, 'item-identity');
+  assertEqual(semantic.color, SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, 'legacy semantic-role mode stays yellow');
+  assertEqual(identity.color, identityCone.color, 'accepted multi-candidate mode keeps the satellite/beam identity hue');
+  assertEqual(identity.opacity, semantic.opacity, 'changing colour authority does not change carrier opacity');
 });
 
 check('FINAL COLOUR SPEC: colour marks ROLE and only role — exactly two coloured roles, everything else neutral grey', () => {

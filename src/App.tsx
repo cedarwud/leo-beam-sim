@@ -2969,6 +2969,7 @@ export function App() {
               sceneLane={sceneLane}
               campusVisible={campusVisible}
               onSimUpdate={handleSimUpdate}
+              acceptedHandoverPresentation={simState.acceptedHandoverPresentation ?? null}
               onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}
               canonicalAnalysisFrame={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
