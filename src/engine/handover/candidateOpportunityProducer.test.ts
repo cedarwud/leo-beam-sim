@@ -4,8 +4,10 @@ import test from 'node:test';
 import {
   candidateLinkKey,
   candidateLinkKeyString,
+  type CandidateLinkKey,
   type CandidateGateResult,
   type EvidenceStatus,
+  type ForecastEeEvidence,
   type MetricEvidence,
 } from './candidateDecisionContract';
 import { HandoverManager } from './handover-manager';
@@ -16,9 +18,16 @@ import {
   selectLegacyInterSinrOffsetTarget,
   type CandidateLinkMeasurement,
 } from './candidateOpportunityProducer';
+import {
+  attachCandidateForecastEeValidation,
+  type CandidateForecastEeValidationBatch,
+} from './candidateForecastEeValidation';
 
 const PRIMARY_UE = 'ue-primary';
 const SOURCE_FRAME = 'walker:2026-08-27T12:00:00.000Z:42';
+const FORECAST_POLICY_HASH = 'homepage-ee-handover-v1:policy';
+const FORECAST_FROM = candidateLinkKey('SAT-A', 0);
+const FORECAST_TO = candidateLinkKey('SAT-B', 1);
 
 function metric(
   value: number | null,
@@ -86,6 +95,72 @@ const thresholds = {
   minimumThroughputBps: 1_000_000,
   minimumRemainingServiceTimeSec: 12,
 };
+
+function forecastEvidence(target: CandidateLinkKey = FORECAST_TO): ForecastEeEvidence {
+  return {
+    status: 'valid',
+    horizonSec: 17.5,
+    deliveredBits: 1_750,
+    consumedJoules: 17.5,
+    eeBitPerJ: 100,
+    baselineDeliveredBits: 1_400,
+    baselineConsumedJoules: 17.5,
+    baselineEeBitPerJ: 80,
+    relativeDelta: 0.25,
+    action: {
+      primaryUeId: PRIMARY_UE,
+      from: FORECAST_FROM,
+      to: target,
+      affectedUeIds: [PRIMARY_UE],
+      affectedBeamKeys: [FORECAST_FROM, target],
+    },
+    provenance: {
+      epochUtcMs: 0,
+      startSimTimeMs: 1_000,
+      endSimTimeMs: 18_500,
+      frameIdsOrDigest: 'walker-forecast-frames:fixture',
+      sampleDurationsDigest: 'walker-forecast-durations:fixture',
+      baselineAssignmentKey: 'SAT-A|0',
+      canonicalInputHash: 'canonical-input:fixture',
+      assignmentStateHash: 'assignment:fixture',
+      powerStateHash: 'power:fixture',
+      scenarioStateHash: 'scenario:fixture',
+      geometryModelHash: 'geometry:fixture',
+      canonicalConfigHash: 'canonical-config:fixture',
+      policyConfigHash: FORECAST_POLICY_HASH,
+      switchEventAccountingMode: 'target-once-at-horizon-start',
+      switchBoundarySimTimeMs: 1_000,
+      switchTargetBeamIndex: 1,
+      switchIndicatorDigest: 'switch-indicator:fixture',
+    },
+    modelVersion: 'family-b-thesis-3.13-3.17-v1',
+    reason: null,
+  };
+}
+
+function forecastOpportunitySet() {
+  return produceCandidateOpportunitySet({
+    primaryUeId: PRIMARY_UE,
+    sourceFrameId: SOURCE_FRAME,
+    thresholds,
+    measurements: [
+      measurement('SAT-A', 0, 10, { remainingServiceTimeSec: 80 }),
+      measurement('SAT-B', 1, 12, { remainingServiceTimeSec: 80 }),
+    ],
+  });
+}
+
+function forecastBatch(
+  overrides: Partial<CandidateForecastEeValidationBatch> = {},
+): CandidateForecastEeValidationBatch {
+  return {
+    primaryUeId: PRIMARY_UE,
+    sourceFrameId: SOURCE_FRAME,
+    policyConfigHash: FORECAST_POLICY_HASH,
+    receipts: [{ key: FORECAST_TO, evidence: forecastEvidence() }],
+    ...overrides,
+  };
+}
 
 test('preserves every satellite-beam pair and reports honest stage counts', () => {
   const set = produceCandidateOpportunitySet({
@@ -157,6 +232,63 @@ test('rejects mixed UE, mixed frame, and duplicate-pair measurements', () => {
     thresholds,
     measurements: [measurement('SAT-A', 1, 5), measurement('SAT-A', 1, 6)],
   }), /duplicate candidate measurement/);
+});
+
+test('attaches validation EE without changing compatibility gates, ordering, or counts', () => {
+  const source = forecastOpportunitySet();
+  const sourceBefore = JSON.stringify(source);
+  const batch = forecastBatch();
+  const inputEvidence = batch.receipts[0]!.evidence;
+  const attached = attachCandidateForecastEeValidation(source, batch);
+
+  assert.equal(JSON.stringify(source), sourceBefore);
+  assert.equal(source.opportunities[1]!.forecastEe, null);
+  assert.equal(attached.opportunities[0]!.forecastEe, null);
+  assert.equal(attached.opportunities[1]!.forecastEe?.status, 'valid');
+  assert.notEqual(attached.opportunities[1]!.forecastEe, inputEvidence);
+  assert.notEqual(attached.opportunities[1]!.forecastEe?.action, inputEvidence.action);
+  assert.notEqual(attached.opportunities[1]!.forecastEe?.provenance, inputEvidence.provenance);
+  assert.deepEqual(attached.opportunities.map(item => item.key), source.opportunities.map(item => item.key));
+  assert.deepEqual(attached.opportunities.map(item => item.gates), source.opportunities.map(item => item.gates));
+  assert.equal(attached.opportunities[1]!.gates.find(gate => gate.code === 'ee-advantage')?.result, 'unavailable');
+  assert.equal(attached.counts, source.counts);
+  assert.equal(Object.isFrozen(attached.opportunities[1]!.forecastEe), true);
+
+  const cleared = attachCandidateForecastEeValidation(attached, forecastBatch({ receipts: [] }));
+  assert.equal(cleared.opportunities.every(item => item.forecastEe === null), true);
+});
+
+test('validation EE attachment fails closed across frame, policy, identity, and duplicate drift', () => {
+  const source = forecastOpportunitySet();
+  assert.throws(
+    () => attachCandidateForecastEeValidation(source, forecastBatch({ sourceFrameId: 'walker:another-frame' })),
+    /sourceFrameId does not match/,
+  );
+  assert.throws(
+    () => attachCandidateForecastEeValidation(source, forecastBatch({ policyConfigHash: 'another-policy' })),
+    /another policy configuration/,
+  );
+  assert.throws(
+    () => attachCandidateForecastEeValidation(source, forecastBatch({
+      receipts: [{
+        key: candidateLinkKey('SAT-C', 2),
+        evidence: forecastEvidence(candidateLinkKey('SAT-C', 2)),
+      }],
+    })),
+    /absent from the opportunity set/,
+  );
+  assert.throws(
+    () => attachCandidateForecastEeValidation(source, forecastBatch({
+      receipts: [forecastBatch().receipts[0]!, forecastBatch().receipts[0]!],
+    })),
+    /duplicate receipt/,
+  );
+  assert.throws(
+    () => attachCandidateForecastEeValidation(source, forecastBatch({
+      receipts: [{ key: FORECAST_TO, evidence: forecastEvidence(candidateLinkKey('SAT-C', 2)) }],
+    })),
+    /action target does not match/,
+  );
 });
 
 test('migration-only SINR projection matches the legacy inter-satellite argmax rule', () => {

@@ -2330,6 +2330,10 @@ without misrepresenting an unfinished EE evaluator as decision authority.
 - Cache by source-frame bucket, candidate pair, horizon/sample step, model, and
   policy hash; keep refresh cadence and cache/compute budget separate from the
   horizon sample step and do not run a full counterfactual at render rate.
+- Attach validation-only results as one complete, same-frame and
+  policy-matched cache publication. Omitted receipts clear prior Forecast-EE
+  evidence, while opportunity order, hard gates, compatibility counts, active
+  ranking, TTT, leader, selection, and commit remain unchanged.
 - Add missing-data and provenance gates.
 
 ### S3 — Unified decision engine
@@ -2416,6 +2420,7 @@ Likely seams; final names may vary while preserving ownership:
 | Concern | Current seam | Intended change |
 |---|---|---|
 | Candidate measurement | `src/scene/sinrLiveCellModel.ts`, `src/engine/handover/candidateOpportunityProducer.ts` | populate primary-UE throughput/remaining-service evidence and attach canonical forecast evidence without truncating the scientific set |
+| Validation-only EE attachment | new `src/engine/handover/candidateForecastEeValidation.ts` | attach one complete same-frame and policy-matched cache publication; clear omitted evidence; preserve candidate order, gates, compatibility counts, and active SINR authority |
 | Pure Walker forecast frames | new `src/engine/handover/walkerForecastFrameProvider.ts` | derive immutable future Walker geometry/schedule frames from one anchor without advancing live runtime, timers, assignments, or playback state |
 | Walker-to-canonical EE input | new `src/engine/handover/walkerCanonicalForecastBuilder.ts`, existing `canonicalForecastEeEvaluator.ts` | build full matched `CanonicalEeInput` samples with stable UE/beam index witnesses, policy hash, ownership/reuse vectors, and causal assignment/load/event deltas |
 | Stateful decision | `src/engine/handover/handoverDecisionEngine.ts`, `handoverSelectionPolicy.ts` | keep hard eligibility, EE trigger, TTT stability, leader, selection hold, and atomic commit distinct; retain SINR compatibility until activation |
