@@ -50,14 +50,14 @@ test('Walker S1 publishes a complete same-UE candidate-pair set without activati
       satellite('SAT-C', -0.8),
     ],
     ues: [{ id: 'ue-primary', eastKm: 8, northKm: 2 }],
-    simTimeSec: 42,
+    simTimeSec: 42.0004,
     dtSec: 1,
   });
 
   const set = frame.primaryCandidateOpportunities;
   assert.ok(set);
   assert.equal(set.primaryUeId, 'ue-primary');
-  assert.match(set.sourceFrameId, /^walker:/);
+  assert.equal(set.sourceFrameId, `walker:${EPOCH_MS}:${EPOCH_MS + 42_000}`);
   assert.ok(set.opportunities.length >= 6, 'several satellite-beam pairs must survive measurement');
   assert.equal(set.counts.observed, set.opportunities.length);
   assert.ok(set.counts.scheduledAndIlluminated >= 3);
@@ -68,6 +68,8 @@ test('Walker S1 publishes a complete same-UE candidate-pair set without activati
   for (const opportunity of set.opportunities) {
     assert.equal(opportunity.primaryUeId, 'ue-primary');
     assert.equal(opportunity.sourceFrameId, set.sourceFrameId);
+    assert.equal(opportunity.sinr.measuredAtSimTimeMs, EPOCH_MS + 42_000);
+    assert.equal(opportunity.remainingServiceTime.measuredAtSimTimeMs, EPOCH_MS + 42_000);
     assert.equal(opportunity.beamIdentitySource, 'walker-cell-surrogate');
     assert.equal(opportunity.forecastEe, null);
     assert.equal(opportunity.predictedThroughput.value, null);

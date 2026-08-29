@@ -1270,6 +1270,15 @@ window, or a mixed absolute/relative sequence fails closed. If a future API
 accepts offsets instead, it must be named `sampleStartOffsetsMs` and explicitly
 compute `absoluteUtcMs = epochUtcMs + offsetMs` before propagation.
 
+The live candidate-measurement lane creates this identity once through
+`createWalkerAcceptedFrameIdentity`: replay seconds are rounded once to the
+nearest safe integer millisecond, then the same `epochToken` and `sourceFrameId`
+join the opportunity set and decision frame while `absoluteUtcMs` stamps each
+metric and supplies the future forecast anchor. Both the legacy per-cell SINR
+managers and the active primary SINR decision retain their existing
+high-resolution runtime clock; identity quantization therefore cannot reset or
+advance their TTT, guard, selection, or serving decisions.
+
 `WalkerScenarioState` and `WalkerForecastFrame` in this target signature are
 new data-only contracts, not claims that those names already exist. The frozen
 anchor contains the constellation/orbit seed, profile and antenna settings,
@@ -2434,6 +2443,7 @@ Likely seams; final names may vary while preserving ownership:
 | Candidate measurement | `src/scene/sinrLiveCellModel.ts`, `src/engine/handover/candidateOpportunityProducer.ts` | populate primary-UE throughput/remaining-service evidence and attach canonical forecast evidence without truncating the scientific set |
 | Validation-only EE attachment | new `src/engine/handover/candidateForecastEeValidation.ts` | attach one complete same-frame and policy-matched cache publication; clear omitted evidence; preserve candidate order, gates, compatibility counts, and active SINR authority |
 | Walker anchor availability envelope | new `src/engine/handover/walkerForecastAnchorAvailability.ts`, `walkerForecastFrameProvider.ts` | deep-clone and freeze supplied complete anchors; normalize typed unavailable without a partial anchor; a later runtime adapter still owns accepted-fact collection |
+| Accepted Walker frame identity | new `src/engine/handover/walkerAcceptedFrameIdentity.ts`, `src/scene/sinrLiveCellModel.ts` | create one safe-integer absolute UTC identity for candidate evidence and decision joins without changing either active SINR decision clock |
 | Pure Walker forecast frames | new `src/engine/handover/walkerForecastFrameProvider.ts` | derive immutable future Walker geometry/schedule frames from one anchor without advancing live runtime, timers, assignments, or playback state |
 | Walker-to-canonical EE input | new `src/engine/handover/walkerCanonicalForecastBuilder.ts`, existing `canonicalForecastEeEvaluator.ts` | build full matched `CanonicalEeInput` samples with stable UE/beam index witnesses, policy hash, ownership/reuse vectors, and causal assignment/load/event deltas |
 | Stateful decision | `src/engine/handover/handoverDecisionEngine.ts`, `handoverSelectionPolicy.ts` | keep hard eligibility, EE trigger, TTT stability, leader, selection hold, and atomic commit distinct; retain SINR compatibility until activation |

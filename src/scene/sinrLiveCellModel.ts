@@ -76,6 +76,10 @@ import {
   type CandidateLinkMeasurement,
   type CandidateOpportunitySet,
 } from '../engine/handover/candidateOpportunityProducer';
+import {
+  createWalkerAcceptedFrameIdentity,
+  type WalkerAcceptedFrameIdentity,
+} from '../engine/handover/walkerAcceptedFrameIdentity';
 import { HandoverDecisionEngine } from '../engine/handover/handoverDecisionEngine';
 import { SinrOffsetPolicy } from '../engine/handover/handoverSelectionPolicy';
 import {
@@ -1353,7 +1357,8 @@ export class SinrLiveCellModel {
     // Remember the population so a focus change arriving between frames can pin
     // its protagonist at focus-change time (see `setFocusCell`).
     this.lastSteppedUes = ues;
-    const simTimeMs = this.epochUtcMs + simTimeSec * 1000;
+    const runtimeSimTimeMs = this.epochUtcMs + simTimeSec * 1000;
+    const acceptedFrameIdentity = createWalkerAcceptedFrameIdentity(this.epochUtcMs, simTimeSec);
     const linkSats = visibleSats.filter(sat => sat.topo.elevationDeg >= this.minElevationDeg);
     const satById = new Map(linkSats.map(sat => [sat.id, sat]));
     // Use the EFFECTIVE (possibly overridden) steering limit so the candidate
@@ -1440,7 +1445,7 @@ export class SinrLiveCellModel {
       // (D != C); cell C is NOT lit here so a cell never self-interferes. Each
       // candidate beam is measured but kept out of activeAssignments.
       const candidateSamples = this.measureCellCandidates(cell, candidates, satById, preLitByCell, simTimeSec);
-      manager.update(candidateSamples, dtSec, simTimeMs);
+      manager.update(candidateSamples, dtSec, runtimeSimTimeMs);
 
       const servingSatId = manager.state.satId;
       if (servingSatId !== null) finalServingByCell.set(cell.cellId, servingSatId);
@@ -1604,7 +1609,7 @@ export class SinrLiveCellModel {
       this.lastHandoverDecisionFrame = null;
     }
 
-    const candidateSourceFrameId = `walker:${this.epochUtcMs}:${simTimeMs.toFixed(3)}`;
+    const candidateSourceFrameId = acceptedFrameIdentity.sourceFrameId;
     let primaryCandidateOpportunities = primaryUe === undefined || !this.candidateOpportunityMeasurementEnabled
       ? null
       : this.measurePrimaryCandidateOpportunitySet(
@@ -1615,7 +1620,7 @@ export class SinrLiveCellModel {
         finalLit,
         finalActive,
         simTimeSec,
-        candidateSourceFrameId,
+        acceptedFrameIdentity,
       );
 
     const assignmentRows = (primaryAssignment: PrimaryServingAssignment | null): PrimaryUeAssignment[] => (
@@ -1648,9 +1653,9 @@ export class SinrLiveCellModel {
       && primaryCandidateOpportunities !== null
       && this.primaryDecisionEngine !== null
     ) {
-      const epochToken = `walker:${this.epochUtcMs}`;
+      const epochToken = acceptedFrameIdentity.epochToken;
       const decisionClock = {
-        simTimeMs,
+        simTimeMs: runtimeSimTimeMs,
         dtSec: Number.isFinite(dtSec) && dtSec > 0 ? dtSec : 0,
         sourceFrameId: candidateSourceFrameId,
         epochToken,
@@ -1793,7 +1798,7 @@ export class SinrLiveCellModel {
             finalLit,
             finalActive,
             simTimeSec,
-            candidateSourceFrameId,
+            acceptedFrameIdentity,
           );
           const reconciledFrame = this.primaryDecisionEngine.step(primaryCandidateOpportunities, {
             ...decisionClock,
@@ -2146,8 +2151,9 @@ export class SinrLiveCellModel {
     finalLit: readonly SatelliteSnapshot[],
     finalActive: readonly ActiveBeamAssignment[],
     simTimeSec: number,
-    sourceFrameId: string,
+    acceptedFrameIdentity: WalkerAcceptedFrameIdentity,
   ): CandidateOpportunitySet {
+    const sourceFrameId = acceptedFrameIdentity.sourceFrameId;
     const pairKey = (satId: string, beamId: number) => `${satId}:${beamId}`;
     const scheduledKeys = new Set<string>();
     for (const [cellId, geometries] of scheduledCandidatesByCell) {
@@ -2187,7 +2193,7 @@ export class SinrLiveCellModel {
       purpose: 'sinr-offset-admission' as const,
       powerModel: 'profile-rated-rf' as const,
       profileId: this.profile.id,
-      epochToken: `walker:${this.epochUtcMs}`,
+      epochToken: acceptedFrameIdentity.epochToken,
       ratedTransmitPowerDbm: this.profile.channel.maxTxPowerDbm ?? null,
       activeInterferenceKeys: Object.freeze([...new Set(finalActive.map(
         assignment => `${assignment.satId}|${assignment.beamId}`,
@@ -2215,6 +2221,7 @@ export class SinrLiveCellModel {
       unit,
       sourceFrameId,
       reason: null,
+      measuredAtSimTimeMs: acceptedFrameIdentity.absoluteUtcMs,
     });
     const unavailableMetric = (unit: string, reason: string): MetricEvidence => ({
       status: 'unavailable',
@@ -2222,6 +2229,7 @@ export class SinrLiveCellModel {
       unit,
       sourceFrameId: null,
       reason,
+      measuredAtSimTimeMs: acceptedFrameIdentity.absoluteUtcMs,
     });
 
     const measurements: CandidateLinkMeasurement[] = measuredPairs.map(({ geometry, pointing }) => {
