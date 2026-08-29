@@ -24,6 +24,7 @@ export interface WalkerForecastCacheKeyInput {
   readonly assignmentStateHash: string;
   readonly canonicalPowerStateHash: string;
   readonly canonicalConfigHash: string;
+  readonly canonicalConfigurationProvenanceId: string;
   readonly profileConfigHash: string;
   readonly policyConfigHash: string;
   readonly continuityEpochId: string;
@@ -161,6 +162,10 @@ export function createWalkerForecastCacheKey(
       'Walker forecast cache key.canonicalPowerStateHash',
     ),
     canonicalConfigHash: nonEmpty(input.canonicalConfigHash, 'Walker forecast cache key.canonicalConfigHash'),
+    canonicalConfigurationProvenanceId: nonEmpty(
+      input.canonicalConfigurationProvenanceId,
+      'Walker forecast cache key.canonicalConfigurationProvenanceId',
+    ),
     profileConfigHash: continuity.profileConfigHash,
     policyConfigHash: continuity.policyConfigHash,
     continuityEpochId: continuity.continuityEpochId,
@@ -185,6 +190,7 @@ export function createWalkerForecastCacheKey(
     normalized.assignmentStateHash,
     normalized.canonicalPowerStateHash,
     normalized.canonicalConfigHash,
+    normalized.canonicalConfigurationProvenanceId,
     normalized.profileConfigHash,
     normalized.policyConfigHash,
     normalized.continuityEpochId,

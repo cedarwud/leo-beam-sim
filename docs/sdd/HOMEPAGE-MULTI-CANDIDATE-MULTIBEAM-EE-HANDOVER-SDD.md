@@ -1288,6 +1288,21 @@ Each returned frame carries its derived source-frame identity, absolute time,
 satellite/UE geometry, schedule state, and the immutable scenario facts needed
 by the canonical builder. Neither type imports React or Three.js.
 
+`buildWalkerCanonicalConfiguration` now maps the homepage's formal
+`SimulatorParameters` into the same Family-B configuration boundary used by
+the existing canonical simulator: per-beam bandwidth and thermal noise are
+derived identically, full HPBW is converted once to the producer's one-sided
+half-power angle, and the formal channel bundle retains carrier, atmospheric,
+Rician and receive-gain inputs. Legacy channel extensions fail closed rather
+than being silently mixed into the formal path. Switch energy is mandatory and
+typed either as a sourced positive configuration or an explicit `0 J`
+validation diagnostic; the latter remains ineligible for activation or savings
+claims. The numerical `canonicalConfigHash` remains compatible with the
+existing producer, while a separate full-tuple
+`canonicalConfigurationProvenanceId` includes switch-energy mode, value and
+source. That provenance identity is mandatory in the forecast cache key, so
+equal numeric values from different authorities cannot reuse evidence.
+
 The authoritative satellite source is the existing deterministic orbit seam:
 generate the frozen orbital elements once with `generateWalkerConstellation`
 from the anchor's profile shells, observer and epoch, then evaluate each
@@ -2461,6 +2476,7 @@ Likely seams; final names may vary while preserving ownership:
 | Walker anchor availability envelope | new `src/engine/handover/walkerForecastAnchorAvailability.ts`, `walkerForecastFrameProvider.ts` | deep-clone and freeze supplied complete anchors; normalize typed unavailable without a partial anchor; a later runtime adapter still owns accepted-fact collection |
 | Accepted Walker frame identity | new `src/engine/handover/walkerAcceptedFrameIdentity.ts`, `src/scene/sinrLiveCellModel.ts` | create one safe-integer absolute UTC identity for candidate evidence and decision joins without changing either active SINR decision clock |
 | Walker forecast cache/reset contract | new `src/engine/handover/walkerForecastCache.ts` | isolate entries by complete source/model/config/policy/continuity identity and classify hard cache-reset boundaries without running forecasts or changing SINR authority |
+| Walker canonical configuration adapter | new `src/engine/handover/walkerCanonicalConfiguration.ts` | map formal homepage controls into the existing Family-B config/channel boundary while keeping sourced switch energy distinct from the biased zero-energy diagnostic |
 | Pure Walker forecast frames | new `src/engine/handover/walkerForecastFrameProvider.ts` | derive immutable future Walker geometry/schedule frames from one anchor without advancing live runtime, timers, assignments, or playback state |
 | Walker-to-canonical EE input | new `src/engine/handover/walkerCanonicalForecastBuilder.ts`, existing `canonicalForecastEeEvaluator.ts` | build full matched `CanonicalEeInput` samples with stable UE/beam index witnesses, policy hash, ownership/reuse vectors, and causal assignment/load/event deltas |
 | Stateful decision | `src/engine/handover/handoverDecisionEngine.ts`, `handoverSelectionPolicy.ts` | keep hard eligibility, EE trigger, TTT stability, leader, selection hold, and atomic commit distinct; retain SINR compatibility until activation |
