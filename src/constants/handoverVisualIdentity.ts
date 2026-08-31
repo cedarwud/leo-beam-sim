@@ -1,3 +1,10 @@
+import {
+  servingIdentityPaletteColorAt,
+  servingIdentityPaletteHueAt,
+  servingIdentityPaletteIndex,
+  servingIdentityPaletteNameAt,
+} from './servingColour';
+
 /**
  * Presentation-only identity allocation for the homepage handover episode.
  *
@@ -13,7 +20,11 @@ export const HANDOVER_VISUAL_IDENTITY_MIN_CONTRAST_RATIO = 3 as const;
 /** Conservative solid-color preflight samples; browser compositing is still required. */
 const DARK_SCENE_CONTRAST_PREFLIGHT = '#07111f';
 const DARK_RAIL_CONTRAST_PREFLIGHT = '#0e1726';
-const OVERFLOW_FALLBACK_COLOR = '#94a3b8';
+/**
+ * Neutral fail-closed colour for a presentation link whose satellite/beam
+ * identity cannot be resolved.  It must never imply serving/candidate role.
+ */
+export const HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR = '#94a3b8';
 const OVERFLOW_FALLBACK_HUE_DEGREES = 215;
 const DEFAULT_BEAM_CHROMA = 0.14;
 
@@ -189,7 +200,10 @@ const BEAM_PATTERNS: readonly HandoverVisualIdentityPattern[] = [
   'cross-hatch',
   'zigzag',
 ];
-const BEAM_LIGHTNESSES = [0.59, 0.64, 0.69, 0.74, 0.78, 0.62, 0.67, 0.72] as const;
+// Rail shades intentionally span a wider range than the former 0.03 steps;
+// adjacent beam IDs must remain readable during an intra-satellite switch.
+// The floor stays high enough that blue/violet identities never become navy.
+const BEAM_LIGHTNESSES = [0.62, 0.67, 0.72, 0.77, 0.82, 0.65, 0.70, 0.75] as const;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -216,6 +230,13 @@ export function handoverVisualPaletteStartIndex(
 ): number {
   if (!Number.isInteger(paletteSize) || paletteSize <= 0) {
     throw new RangeError(`paletteSize must be a positive integer; got ${paletteSize}`);
+  }
+  // Keep the rail's default identity allocation on the same stable slot as
+  // the central serving-colour authority. For custom/smaller palettes the
+  // slot is reduced deterministically; linear probing in the allocator still
+  // resolves collisions without making the colour depend on display order.
+  if (/^(.*)-P\d+-S\d+$/.test(satelliteId)) {
+    return servingIdentityPaletteIndex(satelliteId) % paletteSize;
   }
   return stableHashUint32(satelliteId) % paletteSize;
 }
@@ -378,23 +399,15 @@ function oklchToHex(color: OklchColor): string {
   return `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
 }
 
-const DEFAULT_PALETTE_HUES: readonly { readonly name: string; readonly hueDegrees: number }[] = [
-  { name: 'coral', hueDegrees: 24 },
-  { name: 'gold', hueDegrees: 62 },
-  { name: 'green', hueDegrees: 136 },
-  { name: 'cyan', hueDegrees: 188 },
-  { name: 'blue', hueDegrees: 232 },
-  { name: 'violet', hueDegrees: 276 },
-  { name: 'magenta', hueDegrees: 321 },
-  { name: 'rose', hueDegrees: 350 },
-];
-
 export const DEFAULT_HANDOVER_VISUAL_IDENTITY_PALETTE: readonly HandoverVisualPaletteEntry[] = Object.freeze(
-  DEFAULT_PALETTE_HUES.map(({ name, hueDegrees }) => Object.freeze({
-    cssColor: oklchToHex({ lightness: 0.72, chroma: DEFAULT_BEAM_CHROMA, hueDegrees }),
-    colorName: name,
-    hueDegrees,
-    colorSpace: 'oklch' as const,
+  Array.from({ length: 16 }, (_, index) => Object.freeze({
+    // The central scene and the right rail now consume these exact same
+    // non-red tokens. A satellite therefore keeps its colour at the handover
+    // boundary instead of being recoloured by a second palette allocator.
+    cssColor: servingIdentityPaletteColorAt(index),
+    colorName: servingIdentityPaletteNameAt(index),
+    hueDegrees: servingIdentityPaletteHueAt(index),
+    colorSpace: 'provided' as const,
   })),
 );
 
@@ -536,7 +549,7 @@ function buildOverflowAssignment(
   satelliteId: string,
   overflowIndex: number,
 ): HandoverVisualIdentityAssignment {
-  const color = OVERFLOW_FALLBACK_COLOR;
+  const color = HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR;
   const contrast = assignmentContrast(color);
   const glyph = satelliteGlyph(overflowIndex);
   const pattern = satellitePattern(overflowIndex);

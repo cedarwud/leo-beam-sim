@@ -445,11 +445,12 @@ export interface SinrLiveCellModelConfig {
   readonly maxGainDbiOverrideDbi?: number;
   /**
    * Override the antenna max steering angle (deg) — S-cells-4a. SINR-live-only.
-   * The profile's 12° lets only 1–3 of the ~46 above-mask sats reach the 200×90
-   * service area (coverage dropouts); ~50° lets 6–8 serve continuously. Gates BOTH
-   * the per-cell candidate list (steering reach to the cell centre) and the
-   * link-budget scan-loss ceiling, so the two stay consistent. Default `undefined`
-   * = use the profile antenna's steering limit.
+   * The candidate-rich profile uses a 40° steering envelope so the measured
+   * Walker population contains multiple simultaneous alternatives; the 50°
+   * presentation guard only keeps the fixed seven-cell substrate populated.
+   * This override gates BOTH the per-cell candidate list (steering reach to the
+   * cell centre) and the link-budget scan-loss ceiling, so the two stay
+   * consistent. Default `undefined` = use the profile antenna's steering limit.
    */
   readonly maxSteeringAngleOverrideDeg?: number;
   /**
@@ -788,13 +789,24 @@ export class SinrLiveCellModel {
       policy: new SinrOffsetPolicy({
         initialTttSec: this.profile.handover.triggerTimeSec,
         interTttSec: this.profile.handover.triggerTimeSec,
-        intraTttSec: this.profile.handover.triggerTimeSec,
+        // A same-satellite beam switch is the short intra procedure described
+        // by the profile.  Reusing the inter-satellite trigger here made the
+        // primary decision lane wait 3.5 s for a beam change even though the
+        // canonical handover policy explicitly provides a 0.75 s intra dwell;
+        // most measured intra opportunities expired before they could commit.
+        intraTttSec: this.profile.handover.intraSwitchTimeSec,
         interOffsetDb: this.profile.handover.offsetDb,
-        intraOffsetDb: this.profile.handover.offsetDb,
+        // The legacy HandoverManager's intra path already uses a strict
+        // stronger-beam comparison (no extra inter-satellite hysteresis). Keep
+        // the primary multi-candidate authority aligned with that policy so a
+        // same-satellite beam opportunity can produce an actual intra commit
+        // instead of being filtered by the 3 dB inter margin.
+        intraOffsetDb: 0,
       }),
       selectionHoldSec: SINR_LIVE_SELECTION_HOLD_SEC,
       guardSec: this.profile.handover.pingPongGuardSec,
       candidateAbsenceToleranceSec: 0,
+      minimumDistinctCandidateSatellites: this.profile.handover.minimumDistinctCandidateSatellites,
     });
   }
 
@@ -1001,6 +1013,7 @@ export class SinrLiveCellModel {
     const handoverChanged = profile.handover.sinrThresholdDb !== this.profile.handover.sinrThresholdDb
       || profile.handover.offsetDb !== this.profile.handover.offsetDb
       || profile.handover.triggerTimeSec !== this.profile.handover.triggerTimeSec
+      || profile.handover.intraSwitchTimeSec !== this.profile.handover.intraSwitchTimeSec
       || profile.handover.pingPongGuardSec !== this.profile.handover.pingPongGuardSec;
     this.profile = profile;
     this.beamsPerSat = beamsPerSat;
@@ -1218,15 +1231,29 @@ export class SinrLiveCellModel {
       simTimeSec,
       this.hopSlotSec,
     );
+    // The homepage multi-candidate lane owns the primary UE decision.  Do not
+    // let the legacy per-cell manager's `pendingTarget` decide which satellite
+    // receives the candidate beam budget: that silently collapses the measured
+    // set back to one pre-selected target.  Keep the old manager as the source
+    // for legacy/background lanes only, while every geometrically reachable
+    // satellite keeps the primary cell lit for the multi-candidate measurement.
     const primaryManager = primaryCellId === null ? undefined : this.cellManagers.get(primaryCellId);
-    const primaryServingSatId = primaryManager?.state.satId ?? null;
-    const primaryCandidateSatId = primaryManager?.state.pendingTarget?.satId ?? null;
+    const primaryServingSatId = this.multiCandidateDecisionEnabled
+      // The authority assignment owns every later target choice.  During the
+      // very first frame it is not seeded until after this scheduling pass, so
+      // retain the manager's already-serving satellite as a startup origin;
+      // this keeps a one-beam service alive while alternatives are measured.
+      ? this.primaryServingAssignment?.key.satelliteId ?? primaryManager?.state.satId ?? null
+      : primaryManager?.state.satId ?? null;
+    const primaryCandidateCellId = this.multiCandidateDecisionEnabled ? primaryCellId : null;
     const illuminated = new Set<string>();
     for (const [satId, cellIds] of cellsBySat) {
       const sorted = [...new Set(cellIds)].sort((a, b) => a - b);
+      const primaryCellIsReachable = primaryCandidateCellId !== null
+        && sorted.includes(primaryCandidateCellId);
       const role = satId === primaryServingSatId
         ? 'serving'
-        : satId === primaryCandidateSatId
+        : primaryCellIsReachable
           ? 'candidate'
           : undefined;
       const rawBeamBudget = resolveSinrLiveBeamBudget({
@@ -1259,6 +1286,15 @@ export class SinrLiveCellModel {
           ? [primaryServingCellId]
           : []),
         ...sorted.filter(cellId => this.cellManagers.get(cellId)?.state.satId === satId),
+        // A multi-candidate primary frame keeps the primary cell measurable on
+        // every reachable alternative satellite, but only after that
+        // satellite's own serving continuity cells have been reserved.  A
+        // one-beam satellite therefore never drops an established service just
+        // to expose a comparison measurement; the candidate appears as soon as
+        // a spare slot is available.
+        ...(primaryCellIsReachable && satId !== primaryServingSatId
+          ? [primaryCandidateCellId!]
+          : []),
       ].filter((cellId, index, values) => values.indexOf(cellId) === index).slice(0, beams);
       const lockedSet = new Set(locked);
       for (const cellId of locked) illuminated.add(`${satId}#${cellId}`);
@@ -1677,6 +1713,10 @@ export class SinrLiveCellModel {
         engineReceipt = selectServiceContinuityFallback({
           serving: this.primaryServingAssignment.key,
           opportunitySet: primaryCandidateOpportunities,
+          // The distinct-satellite floor belongs to normal candidate selection.
+          // This path is only entered after the committed serving pair vanished;
+          // applying that floor here would turn a measured, safe replacement
+          // into a detach whenever only one compatible link remains.
           clock: {
             episodeId: decisionFrame.episodeId,
             sourceFrameId: decisionFrame.sourceFrameId,
@@ -1809,6 +1849,11 @@ export class SinrLiveCellModel {
             phase: 'switching',
             mode: engineReceipt.mode,
             recentCommit: engineReceipt,
+            // Preserve the pre-transaction candidate-floor witness. The
+            // post-commit remeasurement may no longer contain the source-frame
+            // alternatives, but the handover was admitted only after this
+            // frame's selection floor had passed.
+            selectionGate: decisionFrame.selectionGate,
           });
         } else {
           // The engine's receipt remains private until the RF transaction has
