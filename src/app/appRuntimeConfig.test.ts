@@ -5,11 +5,15 @@ import { loadProfile } from '../profiles';
 import { createSceneTopologyState } from '../sceneTopology';
 import { buildAppRuntimeConfig, type AppRuntimeConfigInput } from './appRuntimeConfig';
 
-function buildRuntime(sceneTopology: AppRuntimeConfigInput['sceneTopology']) {
+function buildRuntime(
+  sceneTopology: AppRuntimeConfigInput['sceneTopology'],
+  liveEpochUtcMs?: number,
+) {
   return buildAppRuntimeConfig({
     appMode: 'sinr-experiment',
     effectiveProfile: loadProfile('hobs-2024-candidate-rich'),
     demoStartOffsetSec: 12,
+    liveEpochUtcMs,
     liveTimelineSeekTargetSec: 24,
     liveTimelineSeekRequestKey: 'seek-7',
     measurementResetEpoch: 17,
@@ -43,6 +47,13 @@ assert.equal(runtime.signalResetKey, 'signal-1');
 assert.equal(runtime.handoverResetKey, 'handover-1');
 assert.equal(runtime.viewport.width, 1280);
 assert.equal(runtime.replay.startOffsetSec, 12);
+
+const selectedEpochUtcMs = Date.parse('2026-08-12T12:00:00.000Z');
+assert.equal(
+  buildRuntime(createSceneTopologyState(), selectedEpochUtcMs).replay.epochUtcMs,
+  selectedEpochUtcMs,
+  'the public Walker scenario instant must reach the runtime replay epoch',
+);
 
 const legacyWithStaleDistribution = buildRuntime({ ...createSceneTopologyState(), ueDistributionMode: 'random' });
 assert.equal(

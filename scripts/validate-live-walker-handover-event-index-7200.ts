@@ -60,7 +60,11 @@ function validateHelperStaticBoundary(): void {
   assertContains(adapterSource, 'export function liveWalkerHandoverEventIndexToRailEvents', 'plain rail adapter');
   assertContains(source, 'createTrajectoryCache', 'event index helper reuses trajectory cache');
   assertContains(source, 'stepRuntimeFrame', 'event index helper reuses runtime frame path');
-  assertContains(source, 'new HandoverManager(input.profile.handover)', 'event index helper reuses HandoverManager');
+  assert.match(
+    source,
+    /new HandoverManager\(\s*input\.profile\.handover(?:\s*,|\s*\))/,
+    'event index helper must reuse HandoverManager, with or without runtime options',
+  );
   assertContains(source, "sourceOwner: 'live-walker'", 'event index source owner');
   assertContains(source, "horizonKind: 'live-walker-window'", 'event index horizon kind');
   assertContains(source, "aggregateClaim: 'not-100-ue-aggregate'", 'event index primary UE claim boundary');

@@ -145,6 +145,7 @@ function engine(options: {
   readonly selectionHoldSec?: number;
   readonly guardSec?: number;
   readonly absenceToleranceSec?: number;
+  readonly minimumDistinctCandidateSatellites?: number;
 } = {}) {
   return new HandoverDecisionEngine({
     episodeId: 'decision-fixture',
@@ -152,6 +153,7 @@ function engine(options: {
     selectionHoldSec: options.selectionHoldSec ?? 2,
     guardSec: options.guardSec ?? 2,
     candidateAbsenceToleranceSec: options.absenceToleranceSec ?? 0,
+    minimumDistinctCandidateSatellites: options.minimumDistinctCandidateSatellites,
     initialServing: options.initialServing === undefined ? SERVING : options.initialServing,
   });
 }
@@ -206,6 +208,74 @@ test('independent pair TTT survives leader changes and commits exactly one inter
   assert.equal(guarded.recentCommit, null);
   assert.deepEqual(guarded.serving, interOne);
   assert.equal(guarded.states.filter(item => item.stable).length, 0);
+});
+
+test('selection floor keeps one alternate in comparison but waits for two satellites before selecting', () => {
+  const subject = engine({
+    tttSec: 1,
+    selectionHoldSec: 1,
+    minimumDistinctCandidateSatellites: 2,
+  });
+  const firstAlternate = candidateLinkKey('SAT-B', 1);
+  const secondAlternate = candidateLinkKey('SAT-C', 1);
+
+  const oneSatellite = subject.step(set('floor-one', [
+    { key: SERVING, sinrDb: 10 },
+    { key: firstAlternate, sinrDb: 20 },
+  ]), clock('floor-one', 1_000, 1));
+  assert.equal(oneSatellite.selectionGate?.minimumDistinctCandidateSatellites, 2);
+  assert.equal(oneSatellite.selectionGate?.eligibleDistinctCandidateSatellites, 1);
+  assert.equal(oneSatellite.selectionGate?.satisfied, false);
+  assert.equal(oneSatellite.phase, 'qualifying');
+  assert.equal(state(oneSatellite, firstAlternate).stable, false);
+  assert.equal(oneSatellite.selectedTarget, null);
+  assert.equal(oneSatellite.recentCommit, null);
+
+  const twoSatellites = subject.step(set('floor-two', [
+    { key: SERVING, sinrDb: 10 },
+    { key: firstAlternate, sinrDb: 20 },
+    { key: secondAlternate, sinrDb: 19 },
+  ]), clock('floor-two', 2_000, 1));
+  assert.equal(twoSatellites.selectionGate?.eligibleDistinctCandidateSatellites, 2);
+  assert.equal(twoSatellites.selectionGate?.satisfied, true);
+  assert.equal(twoSatellites.phase, 'switching');
+  assert.deepEqual(twoSatellites.selectedTarget, firstAlternate);
+  assert.equal(twoSatellites.recentCommit, null);
+
+  const committed = subject.step(set('floor-three', [
+    { key: SERVING, sinrDb: 10 },
+    { key: firstAlternate, sinrDb: 20 },
+    { key: secondAlternate, sinrDb: 19 },
+  ]), clock('floor-three', 3_000, 1));
+  assert.equal(committed.selectionGate?.satisfied, true);
+  assert.deepEqual(committed.recentCommit?.to, firstAlternate);
+  assert.deepEqual(committed.serving, firstAlternate);
+});
+
+test('selection floor does not suppress a same-satellite intra beam switch', () => {
+  const subject = engine({
+    tttSec: 1,
+    selectionHoldSec: 1,
+    minimumDistinctCandidateSatellites: 2,
+  });
+  const intra = candidateLinkKey('SAT-A', 2);
+  const oneInterSatellite = candidateLinkKey('SAT-B', 1);
+  const values = [
+    { key: SERVING, sinrDb: 10 },
+    { key: intra, sinrDb: 15 },
+    { key: oneInterSatellite, sinrDb: 12 },
+  ];
+
+  const selected = subject.step(set('floor-intra-1', values), clock('floor-intra-1', 1_000, 1));
+  assert.equal(selected.selectionGate?.satisfied, false, 'inter floor remains unsatisfied with one alternate satellite');
+  assert.equal(state(selected, intra).stable, true, 'same-satellite target remains eligible for intra');
+  assert.deepEqual(selected.selectedTarget, intra, 'the strongest same-satellite beam may enter selection hold');
+  assert.equal(selected.selectedKind, 'intra-satellite');
+
+  const committed = subject.step(set('floor-intra-2', values), clock('floor-intra-2', 2_000, 1));
+  assert.equal(committed.recentCommit?.kind, 'intra-satellite');
+  assert.deepEqual(committed.serving, intra);
+  assert.equal(committed.selectionGate?.satisfied, false, 'the frame still reports the unmet inter floor honestly');
 });
 
 test('the same TTT, hold, selected, and atomic-commit phases handle an intra target', () => {
@@ -514,7 +584,7 @@ test('snapshot and restore preserve the policy mode boundary for EE evaluations'
   const restored = subject.step(nextSet, nextClock);
   assert.equal(restored.mode, 'ee-optimization');
   assert.deepEqual(restored.states, changed.states);
-  assert.equal(restored.recentCommit?.reason.includes('forecast EE'), true);
+  assert.equal(restored.recentCommit?.reason.includes('EE target'), true);
 });
 
 test('an accepted service-continuity transaction preserves the episode and enters guard', () => {

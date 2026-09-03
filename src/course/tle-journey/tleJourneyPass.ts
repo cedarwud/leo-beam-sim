@@ -1,13 +1,15 @@
 /**
- * Act 2 station 4 — the elevation-versus-time "mountain" for one pass.
+ * Act 2 station 5 — the elevation-versus-time "mountain" and sky dome pass.
  *
- * Reuses `simulator/observer` for look angles and satellite.js for SGP4, so the
- * curve the room reads is the same geometry every other act uses.
+ * Validates TLE input before propagation and projects the repository SGP4 /
+ * observer APIs (`src/simulator/observer.ts` and `src/tle/propagation.ts`).
  */
 
-import { propagate, twoline2satrec } from 'satellite.js';
-
+import { validateTleLines } from '../../tle/validation';
+import { propagateTleSnapshot } from '../../tle/propagation';
+import { TLE_SOURCE_KIND, type ResolvedTleSnapshot } from '../../tle/types';
 import { NTPU_TLE_OBSERVER, deriveObserverLinkGeometry } from '../../simulator/observer';
+import { SAMPLE_TLE } from './tleJourneyStations';
 
 export interface TleJourneySample {
   readonly instantMs: number;
@@ -34,23 +36,56 @@ export function sampleTleJourneyTrack(
   endMs: number,
   stepSec: number,
 ): readonly TleJourneySample[] {
-  const satrec = twoline2satrec(line1, line2);
+  let validated;
+  try {
+    validated = validateTleLines(line1, line2);
+  } catch {
+    return Object.freeze([]);
+  }
+
   const samples: TleJourneySample[] = [];
   for (let instantMs = startMs; instantMs <= endMs; instantMs += stepSec * 1000) {
     const when = new Date(instantMs);
-    const propagated = propagate(satrec, when);
-    if (propagated?.position === undefined || satrec.error !== 0) continue;
-    const geometry = deriveObserverLinkGeometry(
-      propagated.position as { x: number; y: number; z: number },
-      when.toISOString(),
-      NTPU_TLE_OBSERVER,
-    );
-    samples.push(Object.freeze({
-      instantMs,
-      elevationDeg: geometry.elevationDeg,
-      azimuthDeg: geometry.azimuthDeg,
-      rangeKm: geometry.rangeKm,
-    }));
+    const instantUtc = when.toISOString();
+
+    const snapshot: ResolvedTleSnapshot = {
+      satelliteId: validated.identity.satelliteId,
+      satelliteName: SAMPLE_TLE.name,
+      epochUtc: validated.epoch.epochUtc,
+      line1: validated.line1,
+      line2: validated.line2,
+      sourcePath: SAMPLE_TLE.sourcePath,
+      sourceKind: TLE_SOURCE_KIND,
+      requestedInstantUtc: instantUtc,
+      ageMs: Math.abs(instantMs - validated.epoch.epochMs),
+      maxPropagationAgeMs: 7 * 86_400_000,
+      provenance: {
+        satelliteId: validated.identity.satelliteId,
+        satelliteName: SAMPLE_TLE.name,
+        sourcePath: SAMPLE_TLE.sourcePath,
+        sourceKind: TLE_SOURCE_KIND,
+        epochUtc: validated.epoch.epochUtc,
+        line1: validated.line1,
+        line2: validated.line2,
+      },
+    };
+
+    try {
+      const propagated = propagateTleSnapshot(snapshot, instantUtc);
+      const geometry = deriveObserverLinkGeometry(
+        propagated.positionTemeKm,
+        instantUtc,
+        NTPU_TLE_OBSERVER,
+      );
+      samples.push(Object.freeze({
+        instantMs,
+        elevationDeg: geometry.elevationDeg,
+        azimuthDeg: geometry.azimuthDeg,
+        rangeKm: geometry.rangeKm,
+      }));
+    } catch {
+      // Propagation failed; skip sample
+    }
   }
   return Object.freeze(samples);
 }
@@ -59,8 +94,7 @@ export function sampleTleJourneyTrack(
  * The first pass at or after `fromMs` that clears `minimumElevationDeg`.
  *
  * Rise and set are the first and last samples above the threshold, not
- * interpolated crossings: the curve the room reads is the sampled one, and a
- * smoothed boundary would disagree with the picture.
+ * interpolated crossings: the curve the room reads is the sampled one.
  */
 export function findTleJourneyPass(
   line1: string,
@@ -91,7 +125,9 @@ function buildPass(
 ): TleJourneyPass | null {
   if (window.length < 2) return null;
   let peak = window[0]!;
-  for (const sample of window) if (sample.elevationDeg > peak.elevationDeg) peak = sample;
+  for (const sample of window) {
+    if (sample.elevationDeg > peak.elevationDeg) peak = sample;
+  }
   const rise = window[0]!;
   const set = window[window.length - 1]!;
   return Object.freeze({

@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import type { CalculatePosition } from '@react-three/drei/web/Html';
 import type { NormalizedSceneFrame } from '../scene/NormalizedSceneFrame';
 import { formatBeamLabel, formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
@@ -11,6 +13,8 @@ import {
 interface Props {
   frame: NormalizedSceneFrame;
   interTriggerSec: number;
+  /** Homepage toast is screen chrome; other routes retain world-projected placement. */
+  homepageVisualIdentity?: boolean;
   preferredKind?: 'intra' | 'inter' | null;
   /** Source-owned semantic override (for example TLE forced continuity). */
   eventLabel?: string;
@@ -27,6 +31,11 @@ interface Props {
   > | null;
 }
 
+const calculateHomepageToastPosition: CalculatePosition = (_group, _camera, size) => [
+  size.width / 2,
+  size.height / 2,
+];
+
 function formatEndpoint(satId: string | null, beamId: number | null): string {
   return `${formatSatelliteLabel(satId)} ${formatBeamLabel(beamId)}`;
 }
@@ -42,6 +51,7 @@ function formatToastPath(state: HandoverToastState): string {
 export function HandoverToastOverlay({
   frame,
   interTriggerSec,
+  homepageVisualIdentity = false,
   preferredKind = null,
   eventLabel,
   eventReason,
@@ -49,6 +59,14 @@ export function HandoverToastOverlay({
   manualHandover = null,
 }: Props) {
   const { gl } = useThree();
+  const homepagePortal = useMemo(
+    () => ({
+      current: homepageVisualIdentity
+        ? gl.domElement.closest<HTMLElement>('.leo-main-scene')
+        : null,
+    }) as { current: HTMLElement },
+    [gl.domElement, homepageVisualIdentity],
+  );
   const wallClockNowMs = typeof performance === 'undefined' ? Date.now() : performance.now();
   const manualToast: HandoverToastState | null = manualHandover === null
     ? null
@@ -86,12 +104,7 @@ export function HandoverToastOverlay({
   const label = eventLabel ?? (toast.kind === 'intra' ? 'Intra handover' : 'Inter handover');
   const progressLabel = `${toast.progressSec.toFixed(1)} / ${toast.targetSec.toFixed(1)} s`;
 
-  return (
-    <Html
-      fullscreen
-      zIndexRange={[95, 95]}
-      style={{ pointerEvents: 'none' }}
-    >
+  const toastMarkup = (
       <div className="leo-handover-toast-layer" aria-live="polite">
         <div
           className="leo-handover-toast"
@@ -108,6 +121,17 @@ export function HandoverToastOverlay({
           </span>
         </div>
       </div>
+  );
+
+  return (
+    <Html
+      fullscreen
+      portal={homepageVisualIdentity ? homepagePortal : undefined}
+      calculatePosition={homepageVisualIdentity ? calculateHomepageToastPosition : undefined}
+      zIndexRange={[95, 95]}
+      style={{ pointerEvents: 'none' }}
+    >
+      {toastMarkup}
     </Html>
   );
 }

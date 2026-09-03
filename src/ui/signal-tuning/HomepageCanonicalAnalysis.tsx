@@ -11,7 +11,18 @@ import {
   formatRate,
 } from './formatters';
 import { txBi } from './labels';
-import { SystemAngleState } from './FormulaSymbols';
+import {
+  BeamEfficiency,
+  BeamSupplyPower,
+  LinkChannel,
+  LinkEnergyEfficiency,
+  LinkInterference,
+  LinkRate,
+  LinkRfPower,
+  LinkTransmitGain,
+  SystemAngleState,
+  Theta3db,
+} from './FormulaSymbols';
 import {
   captionTextStyle,
   groupTitleStyle,
@@ -105,9 +116,9 @@ function SinrProjection({ frame }: { readonly frame: SimulationAnalysisFrame }) 
         <CanonicalReadout testId="sinr-result-off-axis-angle" label={<>θ</>} value={formatCompactNumber(link.offAxisAngleRad, 'rad', 4)} note={say('homepage.param.theta', '服務鏈路的離軸角', 'Off-axis angle of the serving link')} accent={SINR_ACCENT} />
         <CanonicalReadout testId="sinr-result-distance" label={say('homepage.param.distance.label', '斜距', 'Slant range')} value={formatCompactNumber(link.distanceKm, 'km', 4)} note={say('homepage.param.distance', '衛星至使用者的鏈路斜距', 'Satellite-to-user slant range')} accent={SINR_ACCENT} />
         <CanonicalReadout testId="sinr-result-elevation" label={say('homepage.param.elevation.label', '仰角', 'Elevation')} value={formatCompactNumber(link.elevationDeg, '°', 4)} note={say('homepage.param.elevation', '衛星仰角', 'Satellite elevation')} accent={SINR_ACCENT} />
-        <CanonicalReadout testId="sinr-result-channel-gain" label={<>H<sub>u,s,v</sub>(t)</>} value={formatLinearGain(frame.inputs.frame.propagationGainUb[userIndex]?.[beam], 'dB')} note={say('homepage.param.propagation', '非角度相關的有效通道因子', 'Non-angle effective-channel factor')} accent={SINR_ACCENT} />
-        <CanonicalReadout testId="sinr-result-beam-gain" label={<>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>} value={formatLinearGain(frame.canonical.transmitGainUb[userIndex]?.[beam], 'dBi')} note={say('homepage.sinr.gt.result', '由鏈路離軸角得到的發射增益', 'Transmit gain for the link off-axis angle')} accent={SINR_ACCENT} />
-        <CanonicalReadout testId="sinr-result-interference" label={<>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={formatPower(link.interferenceW)} note={say('sinr.result.interference.note', 'SINR 分母使用的總同頻干擾', 'Total co-channel interference used by the SINR denominator')} accent={SINR_ACCENT} />
+        <CanonicalReadout testId="sinr-result-channel-gain" label={<LinkChannel />} value={formatLinearGain(frame.inputs.frame.propagationGainUb[userIndex]?.[beam], 'dB')} note={say('homepage.param.propagation', 'H_{u,s,v}(t) 的有效通道因子', 'Effective channel factor H_{u,s,v}(t)')} accent={SINR_ACCENT} />
+        <CanonicalReadout testId="sinr-result-beam-gain" label={<LinkTransmitGain />} value={formatLinearGain(frame.canonical.transmitGainUb[userIndex]?.[beam], 'dBi')} note={say('homepage.sinr.gt.result', '由鏈路離軸角與 θ₃dB 得到的發射增益', 'Transmit gain from the link off-axis angle and θ₃dB')} accent={SINR_ACCENT} />
+        <CanonicalReadout testId="sinr-result-interference" label={<LinkInterference />} value={formatPower(link.interferenceW)} note={say('sinr.result.interference.note', 'SINR 分母使用的總同頻干擾', 'Total co-channel interference used by the SINR denominator')} accent={SINR_ACCENT} />
         <CanonicalReadout testId="sinr-result-reuse-color" label={say('homepage.sinr.interference.color', '重用群組', 'Reuse group')} value={String(reuseGroup ?? '—')} note={say('homepage.sinr.interference.color.note', '服務波束的頻率重用群組', 'Frequency-reuse group of the serving beam')} accent={SINR_ACCENT} />
         <CanonicalReadout testId="sinr-result-beam-bandwidth" label={<>B<sup>w</sup></>} value={formatFrequency(derived.beamBandwidthHz)} note={say('homepage.sinr.frequencyReuse.bbeam', '單一波束頻寬', 'Bandwidth of one beam')} accent={SINR_ACCENT} />
         <CanonicalReadout testId="sinr-result-noise" label={<>σ²</>} value={formatPower(link.noiseW)} note={say('sinr.result.noise.note', 'SINR 分母中的雜訊功率', 'Noise power in the SINR denominator')} accent={SINR_ACCENT} />
@@ -134,9 +145,9 @@ function EeProjection({ analysis }: { readonly analysis: HomepageCanonicalAnalys
         {say('panel.ee.result.title', 'EE', 'EE')}
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
-        <CanonicalReadout testId="ee-result-throughput" label={<>R<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={formatRate(representativeLink.rateBps)} note={say('ee.result.throughput.note', '代表服務鏈路的速率', 'Rate of the representative serving link')} accent={EE_ACCENT} />
-        <CanonicalReadout testId="ee-result-system-power" label={<>P<sup>N</sup>(t, <SystemAngleState />)</>} value={formatPower(frame.power.systemPowerW)} note={say('ee.result.power.note', '系統總功率', 'System total power')} accent={EE_ACCENT} />
-        <CanonicalReadout testId="ee-result-evaluation" label={<>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={formatEnergyEfficiency(representativeLink.instantaneousEeBitsPerJ ?? frame.ee.instantaneousBitsPerJ)} note={say('ee.result.link.note', '代表服務鏈路的實際 EE', 'Realized EE of the representative serving link')} accent={EE_ACCENT} />
+        <CanonicalReadout testId="ee-result-throughput" label={<LinkRate />} value={formatRate(representativeLink.rateBps)} note={say('ee.result.throughput.note', '代表服務鏈路的速率', 'Rate of the representative serving link')} accent={EE_ACCENT} />
+        <CanonicalReadout testId="ee-result-system-power" label={<>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />)</>} value={formatPower(frame.power.systemPowerW)} note={say('ee.result.power.note', '系統總功率', 'System total power')} accent={EE_ACCENT} />
+        <CanonicalReadout testId="ee-result-evaluation" label={<LinkEnergyEfficiency />} value={formatEnergyEfficiency(representativeLink.instantaneousEeBitsPerJ ?? frame.ee.instantaneousBitsPerJ)} note={say('ee.result.link.note', '代表服務鏈路的實際 EE', 'Realized EE of the representative serving link')} accent={EE_ACCENT} />
       </div>
       <p style={captionTextStyle}>
         {say(
@@ -167,13 +178,13 @@ function PowerProjection({ frame }: { readonly frame: SimulationAnalysisFrame })
         {say('panel.power.result.title', '功率計算結果', 'Power results')}
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
-        <CanonicalReadout testId="power-result-requested" label={<>p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>} value={formatPower(value(power.pDlActualBW))} note={say('power.result.link.note', '單一鏈路實際 RF 功率', 'Actual RF power of the representative link')} accent={POWER_ACCENT} />
-        <CanonicalReadout testId="power-result-pa" label={<>P<sup>p</sup><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>} value={formatPower(value(power.pPaBW))} note={say('power.result.pa.note', '由 p 與 ξ 得到的 PA 輸入功率', 'PA input power from p and ξ')} accent={POWER_ACCENT} />
-        <CanonicalReadout testId="power-result-pa-efficiency" label={<>ξ<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>} value={formatCompactNumber(value(power.paEfficiencyB), isEnglish ? 'dimensionless' : '無因次', 4)} note={say('power.result.eta.note', '鏈路功率模型中的效率因子', 'Efficiency factor in the link power model')} accent={POWER_ACCENT} />
+        <CanonicalReadout testId="power-result-requested" label={<LinkRfPower />} value={formatPower(value(power.pDlActualBW))} note={say('power.result.link.note', '單一鏈路實際 RF 功率', 'Actual RF power of the representative link')} accent={POWER_ACCENT} />
+        <CanonicalReadout testId="power-result-pa" label={<BeamSupplyPower />} value={formatPower(value(power.pPaBW))} note={say('power.result.pa.note', '由波束最大 RF 功率與波束效率得到的電源端功率', 'Beam-level supply power from maximum beam RF power and beam efficiency')} accent={POWER_ACCENT} />
+        <CanonicalReadout testId="power-result-pa-efficiency" label={<BeamEfficiency />} value={formatCompactNumber(value(power.paEfficiencyB), isEnglish ? 'dimensionless' : '無因次', 4)} note={say('power.result.eta.note', '波束功率模型中的效率因子', 'Efficiency factor in the beam power model')} accent={POWER_ACCENT} />
         <CanonicalReadout testId="power-result-fixed" label={<>P<sup>f</sup>(t)</>} value={formatPower(value(power.pRfcBW) + value(power.pBbBW) + value(power.pEventBW))} note={say('power.result.fixed.note', '固定功率組成', 'Fixed-power components')} accent={POWER_ACCENT} />
-        <CanonicalReadout testId="power-result-system" label={<>P<sup>N</sup>(t, <SystemAngleState />)</>} value={formatPower(power.systemPowerW)} note={say('power.result.system.note', 'EE 使用的系統總功率', 'System total power used by EE')} accent={POWER_ACCENT} />
+        <CanonicalReadout testId="power-result-system" label={<>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />)</>} value={formatPower(power.systemPowerW)} note={say('power.result.system.note', 'EE 使用的系統總功率', 'System total power used by EE')} accent={POWER_ACCENT} />
       </div>
-      <p style={captionTextStyle}>{say('panel.power.result.interpretation', 'P^N 是整個系統的值；p、P^p 與 ξ 是代表鏈路的值。', 'P^N is the system value; p, P^p, and ξ are representative-link values.')}</p>
+      <p style={captionTextStyle}>{say('panel.power.result.interpretation', 'P^N 是整個系統的值；p 是代表鏈路值，P^p 與 ξ 是服務波束層級的值。', 'P^N is the system value; p is representative-link level, while P^p and ξ are beam-level values.')}</p>
     </section>
   );
 }
@@ -199,7 +210,7 @@ function ThroughputProjection({ frame }: { readonly frame: SimulationAnalysisFra
         <CanonicalReadout testId="throughput-result-beam-bandwidth" label={<>B<sup>w</sup></>} value={formatFrequency(frame.scenario.derived.beamBandwidthHz)} note={say('throughput.result.beamBandwidth.note', '單一波束頻寬', 'Bandwidth of one beam')} accent={THROUGHPUT_ACCENT} />
         <CanonicalReadout testId="throughput-result-serving-beam-load" label={<>U<sub>s,v</sub>(t)</>} value={formatCompactNumber(servingBeamLoad, 'UE')} note={say('throughput.result.servingLoad.note', '服務波束的實際負載', 'Actual load of the serving beam')} accent={THROUGHPUT_ACCENT} />
         <CanonicalReadout testId="throughput-result-sinr" label="SINR" value={formatCompactNumber(sinrDb, 'dB', 3)} note={say('throughput.result.sinr.note', '實際鏈路品質', 'Realized link quality')} accent={THROUGHPUT_ACCENT} />
-        <CanonicalReadout testId="throughput-result-rate" label={<>R<sub>u,s,v</sub>(t, <SystemAngleState />)</>} value={`≈ ${formatRate(rate)}`} note={say('throughput.result.rate.note', '代表服務鏈路的實際速率', 'Realized rate of the representative serving link')} accent={THROUGHPUT_ACCENT} />
+        <CanonicalReadout testId="throughput-result-rate" label={<LinkRate />} value={`≈ ${formatRate(rate)}`} note={say('throughput.result.rate.note', '代表服務鏈路的實際速率', 'Realized rate of the representative serving link')} accent={THROUGHPUT_ACCENT} />
         <CanonicalReadout testId="throughput-result-total-rate" label={say('throughput.result.total.label', '系統總速率', 'Total rate')} value={`≈ ${formatRate(totalRate)}`} note={say('throughput.result.total.note', '所有服務鏈路的實際速率總和', 'Total realized rate across serving links')} accent={THROUGHPUT_ACCENT} />
       </div>
       <p style={captionTextStyle}>{say('panel.throughput.result.interpretation', 'R、B^w、U 與 SINR 都是同一 accepted frame 的結果。', 'R, B^w, U, and SINR are results from the same accepted frame.')}</p>
@@ -235,7 +246,7 @@ export function HomepageCanonicalAnalysis({
         {activeTab === 'ee' && (
           <CanonicalReadout
             testId="ee-result-evaluation"
-            label={<>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>}
+            label={<LinkEnergyEfficiency />}
             value="—"
             note={say('ee.result.link.waitingNote', '尚未有可用結果。', 'No result is available yet.')}
             accent={EE_ACCENT}

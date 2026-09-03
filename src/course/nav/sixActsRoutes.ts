@@ -6,9 +6,14 @@
  * two "same fact, two numbers" bugs from exactly that.
  */
 
+import {
+  GOLDEN_FLOW_ACT3_HREF,
+  GOLDEN_FLOW_ACT4_HREF,
+} from '../../prototype/golden-flow/goldenFlowRoutes';
+
 export interface SixActsRouteEntry {
   readonly id: string;
-  /** Acts sharing a page share an order label; null for the index itself. */
+  /** Display order in the six-scene curriculum; null only for a non-act entry. */
   readonly actLabel: string | null;
   readonly href: string;
   readonly titleZhHant: string;
@@ -17,10 +22,15 @@ export interface SixActsRouteEntry {
   readonly minutesZhHant: string;
   /** The question this act leaves for the next one, or null at the end. */
   readonly bridgeZhHant: string | null;
+  /** Preserve the direct route while withholding an experiment from public navigation. */
+  readonly hiddenFromNavigation?: boolean;
 }
 
 export const SIX_ACTS_INDEX_HREF = '/course/six-acts';
-export const SIX_ACTS_HANDOVER_PRESET_HREF = '/?teaching=1&preset=handover';
+export const SIX_ACTS_ACT3_HREF = GOLDEN_FLOW_ACT3_HREF;
+export const SIX_ACTS_ACT4_HREF = GOLDEN_FLOW_ACT4_HREF;
+export const SIX_ACTS_ACT5_HREF = '/course/beam-layout-lab' as const;
+export const SIX_ACTS_ACT6_HREF = '/course/frequency-reuse-lab' as const;
 
 export const SIX_ACTS_ROUTES: readonly SixActsRouteEntry[] = Object.freeze([
   Object.freeze({
@@ -28,8 +38,8 @@ export const SIX_ACTS_ROUTES: readonly SixActsRouteEntry[] = Object.freeze([
     actLabel: '1',
     href: '/prototype/global-constellation',
     titleZhHant: '全球星座',
-    questionZhHant: '星座包含多少衛星？兩份資料為何相差 16 倍？',
-    handsOnZhHant: '分析衛星數量、切換殼層篩選、拖曳時間軸、檢視 NTPU 可見圓錐',
+    questionZhHant: '星座規模與 NTPU 當下可見數量，如何由資料與幾何計算？',
+    handsOnZhHant: '切換星座、比較軌道高度，並檢視封存 TLE 經 SGP4 推算的 NTPU 幾何可見衛星',
     minutesZhHant: '12–15',
     bridgeZhHant: '同一顆衛星僅在觀測點上空停留數分鐘。這些位置由何種模型計算？',
   }),
@@ -37,70 +47,85 @@ export const SIX_ACTS_ROUTES: readonly SixActsRouteEntry[] = Object.freeze([
     id: 'act2',
     actLabel: '2',
     href: '/course/tle-journey',
-    titleZhHant: 'TLE 之旅',
+    titleZhHant: '星曆與通聯預測',
     questionZhHant: '衛星位置是誰算出來的？',
-    handsOnZhHant: '逐欄解讀 69 個字元、改壞數字看檢核碼、拖出一次通過',
+    handsOnZhHant: '逐欄解讀 69 個字元、修改欄位並觀察檢核失敗，再推演一次通過事件',
     minutesZhHant: '20–25',
-    bridgeZhHant: '知道位置還不夠——訊號從幾百公里外打下來，夠不夠、準不準，取決於幾何。',
+    bridgeZhHant: '僅知道衛星位置仍不足以判讀鏈路；數百公里尺度下的接收條件取決於幾何關係。',
   }),
   Object.freeze({
     id: 'act3',
     actLabel: '3',
-    href: SIX_ACTS_HANDOVER_PRESET_HREF,
+    href: SIX_ACTS_ACT3_HREF,
     titleZhHant: '離軸角實驗室',
-    questionZhHant: '離軸角與仰角有何差異？角度如何影響功率？',
-    handsOnZhHant: '切換教學視角、調整波束中軸、觀察 θ = 3 dB 邊界',
+    questionZhHant: '離軸角與仰角有何差異？波束指向如何改變離軸角與天線增益？',
+    handsOnZhHant: '固定時間與幾何仰角，只調整波束指向，觀察離軸角與天線增益的關係',
     minutesZhHant: '15–20',
     bridgeZhHant: '即使只有一顆衛星與一個 UE，鏈路已涉及多項幾何量；當整個星座運動時，系統必須即時決定是否換手及其目標。',
   }),
   Object.freeze({
     id: 'act4',
     actLabel: '4',
-    href: SIX_ACTS_HANDOVER_PRESET_HREF,
-    titleZhHant: '換手劇場',
-    questionZhHant: '為何換手？何時換？換給誰？為何有時「被迫」換？',
-    handsOnZhHant: '走六個 Phase、在條件成立那一秒自動暫停、讀換手收據',
+    href: SIX_ACTS_ACT4_HREF,
+    titleZhHant: '衛星服務換手',
+    questionZhHant: 'Starlink 服務衛星離開可見範圍時，系統如何選定換手目標？',
+    handsOnZhHant: '預設重播 Starlink 的可見性中斷與服務換手；需要時再切換 OneWeb，比較具有門檻與觸發時間（TTT）的換手事件',
     minutesZhHant: '22–25',
-    bridgeZhHant: '每張收據都對應能量成本。接著進行正式節能實驗，先建立可檢驗的預測。',
-  }),
-  Object.freeze({
-    id: 'act56',
-    actLabel: '5·6',
-    href: '/course/energy-lab',
-    titleZhHant: '節能實驗與平台記錄',
-    questionZhHant: '降低發射功率是否必然提升能源效率？量測結果如何形成可追溯證據？',
-    handsOnZhHant: '提出可檢驗預測、掃描功率形成曲線、選取欄位建立上傳台帳',
-    minutesZhHant: '30–35',
     bridgeZhHant: null,
   }),
+  Object.freeze({
+    id: 'act5',
+    actLabel: '5',
+    href: SIX_ACTS_ACT5_HREF,
+    titleZhHant: '通聯預測導讀',
+    questionZhHant: '如何由衛星星曆與最低仰角讀出 AOS、LOS 與通聯時長？',
+    handsOnZhHant: '依序觀察 Starlink 仰角曲線、最低仰角門檻、AOS、LOS 與 LOS−AOS 時長',
+    minutesZhHant: '8–10',
+    bridgeZhHant: '已看懂三個預測結果如何產生；下一幕只改最低仰角，親手完成一次重算與比較。',
+    hiddenFromNavigation: true,
+  }),
+  Object.freeze({
+    id: 'act6',
+    actLabel: '6',
+    href: SIX_ACTS_ACT6_HREF,
+    titleZhHant: '通聯預測實作',
+    questionZhHant: '最低可通聯仰角改變時，AOS、LOS 與通聯時長如何重新計算？',
+    handsOnZhHant: '固定同一筆 Starlink TLE 與 NTPU，只調整最低仰角並執行預測，比較三個核心輸出',
+    minutesZhHant: '8–10',
+    bridgeZhHant: null,
+    hiddenFromNavigation: true,
+  }),
 ]);
+
+/** The currently released teaching sequence. Hidden experiments keep stable direct URLs. */
+export const SIX_ACTS_VISIBLE_ROUTES: readonly SixActsRouteEntry[] = Object.freeze(
+  SIX_ACTS_ROUTES.filter(entry => entry.hiddenFromNavigation !== true),
+);
 
 export function sixActsRouteFor(href: string): SixActsRouteEntry | null {
   return SIX_ACTS_ROUTES.find(entry => entry.href === href) ?? null;
 }
 
 function firstRouteIndexFor(href: string): number {
-  return SIX_ACTS_ROUTES.findIndex(entry => entry.href === href);
+  return SIX_ACTS_VISIBLE_ROUTES.findIndex(entry => entry.href === href);
 }
 
 function lastRouteIndexFor(href: string): number {
-  for (let index = SIX_ACTS_ROUTES.length - 1; index >= 0; index -= 1) {
-    if (SIX_ACTS_ROUTES[index]!.href === href) return index;
+  for (let index = SIX_ACTS_VISIBLE_ROUTES.length - 1; index >= 0; index -= 1) {
+    if (SIX_ACTS_VISIBLE_ROUTES[index]!.href === href) return index;
   }
   return -1;
 }
 
 /** The next act, for the "continue" affordance at the end of a page. */
 export function nextSixActsRoute(href: string): SixActsRouteEntry | null {
-  // Acts 3 and 4 are one homepage surface. Once on that surface, continue
-  // after the last alias so the same href cannot loop back to Act 4 forever.
   const index = lastRouteIndexFor(href);
-  if (index === -1 || index === SIX_ACTS_ROUTES.length - 1) return null;
-  return SIX_ACTS_ROUTES[index + 1]!;
+  if (index === -1 || index === SIX_ACTS_VISIBLE_ROUTES.length - 1) return null;
+  return SIX_ACTS_VISIBLE_ROUTES[index + 1]!;
 }
 
 export function previousSixActsRoute(href: string): SixActsRouteEntry | null {
   const index = firstRouteIndexFor(href);
   if (index <= 0) return null;
-  return SIX_ACTS_ROUTES[index - 1]!;
+  return SIX_ACTS_VISIBLE_ROUTES[index - 1]!;
 }

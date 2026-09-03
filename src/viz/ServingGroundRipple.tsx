@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BEAM_ROLE_TOKENS } from '../constants/beamRoleTokens';
+import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
 import type { BeamTarget } from '../scene/beamTargetTypes';
 
 export type GroundRippleRole = 'serving' | 'pending';
@@ -115,6 +116,8 @@ export function resolveGroundRippleTargets(input: {
   footprintRadius: number;
   /** Route-scoped episode identity colour; role motion remains unchanged. */
   identityColorBySatelliteId?: ReadonlyMap<string, string>;
+  /** Same-satellite beam shade keyed as `${satelliteId}/${beamId}`. */
+  identityColorBySatelliteBeamId?: ReadonlyMap<string, string>;
   servingEnabled?: boolean;
   pendingEnabled?: boolean;
   paused?: boolean;
@@ -136,10 +139,16 @@ export function resolveGroundRippleTargets(input: {
       if (!role) continue;
 
       const roleSpec = groundRippleSpec(role);
+      const identityAuthorityActive = input.identityColorBySatelliteBeamId !== undefined
+        || input.identityColorBySatelliteId !== undefined;
 
       targets.push({
         ...roleSpec,
-        color: input.identityColorBySatelliteId?.get(satelliteId) ?? roleSpec.color,
+        color: input.identityColorBySatelliteBeamId?.get(`${satelliteId}/${beam.beamId}`)
+          ?? input.identityColorBySatelliteId?.get(satelliteId)
+          ?? (identityAuthorityActive
+            ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
+            : roleSpec.color),
         id: `${role}-ripple-${satelliteId}-B${beam.beamId}`,
         satelliteId,
         beamId: beam.beamId,
@@ -172,6 +181,7 @@ export function ServingGroundRipple({
   servingEnabled = true,
   pendingEnabled = true,
   identityColorBySatelliteId,
+  identityColorBySatelliteBeamId,
   paused = false,
   reducedMotion = false,
   recentHoActive = false,
@@ -181,6 +191,7 @@ export function ServingGroundRipple({
   servingEnabled?: boolean;
   pendingEnabled?: boolean;
   identityColorBySatelliteId?: ReadonlyMap<string, string>;
+  identityColorBySatelliteBeamId?: ReadonlyMap<string, string>;
   paused?: boolean;
   reducedMotion?: boolean;
   recentHoActive?: boolean;
@@ -198,6 +209,7 @@ export function ServingGroundRipple({
       servingEnabled,
       pendingEnabled,
       identityColorBySatelliteId,
+      identityColorBySatelliteBeamId,
       paused,
       reducedMotion,
       recentHoActive,
@@ -205,6 +217,7 @@ export function ServingGroundRipple({
     [
       footprintRadius,
       identityColorBySatelliteId,
+      identityColorBySatelliteBeamId,
       paused,
       pendingEnabled,
       recentHoActive,

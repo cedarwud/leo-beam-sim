@@ -9,7 +9,14 @@ import {
 } from './formatters';
 import { usePanelCopy } from './panelHelp';
 import { AngleAwareValueRows } from '../signal-tuning/AngleAwareValueRows';
-import { LinkAngle, SystemAngleState } from '../signal-tuning/FormulaSymbols';
+import {
+  LinkAngle,
+  LinkChannel,
+  LinkInterference,
+  LinkRfPower,
+  LinkSinr,
+  LinkTransmitGain,
+} from '../signal-tuning/FormulaSymbols';
 
 type FormulaEvidenceStatus = 'current' | 'stale' | 'waiting';
 
@@ -95,7 +102,7 @@ function FormulaValueRows({
         },
         {
           testId: 'formula-frame-power',
-          symbol: <><i>p</i><sub>u,s,v</sub>(t, <LinkAngle />)</>,
+          symbol: <LinkRfPower />,
           label: tx('panel.activeFormula.rfPower'),
           scope: 'primary-ue',
           value: terms?.powerW,
@@ -103,21 +110,21 @@ function FormulaValueRows({
         },
         {
           testId: 'formula-frame-channel',
-          symbol: <>H<sub>u,s,v</sub>(t)</>,
+          symbol: <LinkChannel />,
           label: tx('panel.activeFormula.channel'),
           scope: 'primary-ue',
           value: terms?.channelGainLinear,
         },
         {
           testId: 'formula-frame-transmit-gain',
-          symbol: <>G<sup>T</sup>(<LinkAngle />)</>,
+          symbol: <LinkTransmitGain />,
           label: tx('panel.activeFormula.transmitGain'),
           scope: 'primary-ue',
           value: terms?.transmitGainLinear,
         },
         {
           testId: 'formula-frame-interference',
-          symbol: <>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>,
+          symbol: <LinkInterference />,
           label: tx('panel.activeFormula.interference'),
           scope: 'primary-ue',
           value: terms?.interferenceW,
@@ -133,7 +140,7 @@ function FormulaValueRows({
         },
         {
           testId: 'formula-frame-sinr',
-          symbol: <>γ<sub>u,s,v</sub>(t, <SystemAngleState />)</>,
+          symbol: <LinkSinr />,
           label: tx('panel.activeFormula.sinr'),
           scope: 'primary-ue',
           value: terms?.gammaLinear,
@@ -175,6 +182,7 @@ export function FormulaTermsReadout({
       data-formula-evidence-status={status}
       data-embedded={embedded ? 'true' : 'false'}
       data-formula-contract="simplified-ee-c1-c9"
+      data-formula-contract-version={formulaFrame?.terms.contractVersion ?? ''}
       style={{
         display: 'grid',
         gap: 10,

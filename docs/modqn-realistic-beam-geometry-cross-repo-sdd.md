@@ -161,7 +161,7 @@ Each satellite has 7 beams (paper Table I). Per slot, each satellite's beams are
 
 **Revised 2026-05-28 (v3, empirically grounded).** Earlier drafts conflated three distinct quantities. They are separated here:
 
-1. **Constellation pool size `P`** — the total number of satellites propagated in the orbit model. This is the *coverage substrate*. The SINR-experiment profile (`hobs-2024-candidate-rich`) already uses `P ≈ 2928` (5 Walker shells @ 550 km), proving the renderer + topocentric pipeline handle large pools (it filters to visible, then caps display at `MAX_DISPLAY_SATS = 12`).
+1. **Constellation pool size `P`** — the total number of satellites propagated in the orbit model. This is the *coverage substrate*. The SINR-experiment profile (`hobs-2024-candidate-rich`) uses `P = 3432` (six Walker shells @ 550 km, including a candidate-coverage reserve shell), proving the renderer + topocentric pipeline handle large pools (it filters to visible, then caps display at `MAX_DISPLAY_SATS = 12`).
 2. **Serving / candidate count `L`** — the number of satellites visible to the
    200×90 km area (elevation > 15°) that the MDP actually considers per
    decision. **This is what the paper's "L satellites serving I users" means**

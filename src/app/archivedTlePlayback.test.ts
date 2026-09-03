@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { advanceArchivedTlePlaybackCursor } from './archivedTlePlayback';
+import {
+  advanceArchivedTlePlaybackCursor,
+  resolveArchivedTlePlaybackStart,
+} from './archivedTlePlayback';
 
 const appSource = readFileSync(
   fileURLToPath(new URL('../App.tsx', import.meta.url)),
@@ -38,6 +41,16 @@ assert.equal(
   7200,
   'archived playback must clamp at the complete run end',
 );
+assert.deepEqual(
+  resolveArchivedTlePlaybackStart(7200, 7200),
+  { currentTimeSec: 0, restarted: true },
+  'pressing Play after the final archived anchor must restart from the run origin',
+);
+assert.deepEqual(
+  resolveArchivedTlePlaybackStart(240, 7200),
+  { currentTimeSec: 240, restarted: false },
+  'pressing Play during a run must preserve the current cursor',
+);
 
 const archivedPlaybackEffect = appSource.match(
   /Archived-TLE homepage playback advances[\s\S]*?\n  }, \[[\s\S]*?\n  \]\);/,
@@ -51,6 +64,11 @@ assert.doesNotMatch(
   archivedPlaybackEffect,
   /selectedSpeed:\s*playback\.effectiveSpeed/,
   'legacy Walker auto-slow must not control archived-TLE playback',
+);
+assert.match(
+  archivedPlaybackEffect,
+  /resolveArchivedTlePlaybackStart\(initialTimeSec, timelineDurationSec\)/,
+  'the archived-TLE effect must explicitly restart from zero after a completed run',
 );
 
 console.log('Archived-TLE playback uses selected transport speed and clamps to the published run.');

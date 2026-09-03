@@ -33,6 +33,8 @@ assert.equal(pending.sourceOwner, 'archived-tle-run');
 assert.equal(pending.currentTimeSec, 7200);
 assert.equal(pending.sourceGapReasons.length, 1);
 assert.match(pending.sourceGapReasons[0]!, /timeline remains locked/);
+assert.match(pending.horizonLabel, /building 2 h run/);
+assert.doesNotMatch(pending.horizonLabel, /complete 2 h/);
 
 assert.equal(clampTimelineTime(7201, ready.durationSec), 7200);
 assert.equal(clampTimelineTime(-30, ready.durationSec), 0);

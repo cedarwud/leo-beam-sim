@@ -10,7 +10,10 @@ const EARTH_RADIUS_KM = 6371;
 const DEG_TO_RAD = Math.PI / 180;
 const ALPHA_3DB_BESSEL_J1 = 1.6137411963697343;
 /**
- * HOBS Eq.(3) angle argument: mu(theta) = 2.07123 · sin(theta) / sin(theta_3dB).
+ * HOBS Eq.(3) angle argument under the active contract:
+ * mu(theta, theta_3dB) = 2.07123 · sin(theta) / sin(theta_3dB / 2).
+ * `beamwidth3dBDeg` is the full 3 dB beamwidth; the pattern uses its
+ * one-sided half-power angle in the denominator.
  *
  * The same 2.07123 appears verbatim in PAP-2024-HOBS Eq.(3), in the 2024-06
  * mega-constellation handover paper and in sensors-22-09304: it is the standard
@@ -59,7 +62,12 @@ export function computeBeamGainDb(
   if (offAxisDeg <= 0 || beamwidth3dBDeg <= 0) return 0;
 
   const sinTheta = Math.sin((offAxisDeg * Math.PI) / 180);
-  const sin3dB = Math.sin((beamwidth3dBDeg * Math.PI) / 180);
+  // The active J1/J3 contract carries the full 3 dB beamwidth. The legacy
+  // J1-only sensitivity branch keeps its historical argument convention.
+  const patternBeamwidthDeg = gainModel === 'bessel-j1-j3'
+    ? beamwidth3dBDeg / 2
+    : beamwidth3dBDeg;
+  const sin3dB = Math.sin((patternBeamwidthDeg * Math.PI) / 180);
   const alphaScale = gainModel === 'bessel-j1' ? ALPHA_3DB_BESSEL_J1 : MU_3DB_BESSEL_J1_J3;
   const alpha = alphaScale * sinTheta / Math.max(sin3dB, 1e-12);
 

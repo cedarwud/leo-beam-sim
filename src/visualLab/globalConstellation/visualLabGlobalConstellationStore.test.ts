@@ -8,7 +8,7 @@ import {
 import { parseVisualLabGlobalConstellationArtifact } from './visualLabGlobalConstellationArtifact';
 
 async function fixture(constellation: 'oneweb' | 'starlink'): Promise<VisualLabGlobalConstellationArtifact> {
-  const raw = JSON.parse(await readFile(`public/global-first-frame/${constellation}-20260812.json`, 'utf8')) as unknown;
+  const raw = JSON.parse(await readFile(`public/global-first-frame/${constellation}-20260825.json`, 'utf8')) as unknown;
   return parseVisualLabGlobalConstellationArtifact(raw, { expectedConstellation: constellation });
 }
 

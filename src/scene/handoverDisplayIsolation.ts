@@ -6,6 +6,8 @@ import {
 export interface HandoverDisplayIsolationState {
   readonly active: boolean;
   readonly hidePrimaryServingBeam: boolean;
+  /** Explicit homepage opt-in to keep the existing configured serving fan during inter. */
+  readonly preserveConfiguredServingFan: boolean;
   readonly hideCandidateFan: boolean;
   /** Inter cinema replaces the normal live beam field with one explicit pair + target fan. */
   readonly hideNormalBeamField: boolean;
@@ -62,6 +64,14 @@ export function selectHandoverEventsForDisplay<T extends HandoverDisplayEventRef
 export const INTRA_HANDOVER_CINEMA_DISPLAY_MS = 8000;
 /** Inter's six-second story keeps a one-second serving-only lead-in. */
 export const INTER_HANDOVER_CINEMA_DISPLAY_MS = 6000;
+
+/**
+ * React may receive the seek-landed callback one render before the newly
+ * reseated simulation frame is visible to MainScene.  Keep the cinema parked
+ * until the same source clock is visibly at the requested landing; a small
+ * tolerance covers the first playback tick after the reseat.
+ */
+export const HANDOVER_CINEMA_SEEK_LANDING_TOLERANCE_SEC = 1;
 
 /**
  * Inter's six-second story is allocated as approximately 1.0 s serving-only,
@@ -129,21 +139,35 @@ export function resolveHandoverCinemaDisplayMs(kind: 'intra' | 'inter' | null): 
 }
 
 /**
- * Inter's clock starts when the requested live frame has actually landed. The
- * candidate may be known during the fade/seek arm window, but that is not yet
- * the visible handover story.
+ * Cinema's clock starts when the requested live frame has actually landed.
+ * The candidate may be known during the fade/seek arm window, but that is not
+ * yet the visible handover story.  This applies to both kinds: starting an
+ * intra envelope before its seek landed made the scene/rail pair briefly read
+ * from different source frames, even though inter already waited correctly.
  */
 export function resolveHandoverCinemaReady(input: {
   readonly active: boolean;
   readonly kind: 'intra' | 'inter' | null | undefined;
   readonly requestedSeekKey: string | null | undefined;
   readonly landedSeekKey: string | null | undefined;
+  readonly requestedSeekTargetSec: number | null | undefined;
+  readonly currentSimTimeSec: number | null | undefined;
 }): boolean {
   if (!input.active) return false;
-  if (input.kind !== 'inter') return true;
-  return input.requestedSeekKey !== null
+  const matchingSeek = input.requestedSeekKey !== null
     && input.requestedSeekKey !== undefined
     && input.requestedSeekKey === input.landedSeekKey;
+  if (!matchingSeek) return false;
+  if (
+    input.requestedSeekTargetSec === null
+    || input.requestedSeekTargetSec === undefined
+    || input.currentSimTimeSec === null
+    || input.currentSimTimeSec === undefined
+    || !Number.isFinite(input.requestedSeekTargetSec)
+    || !Number.isFinite(input.currentSimTimeSec)
+  ) return false;
+  return Math.abs(input.currentSimTimeSec - input.requestedSeekTargetSec)
+    <= HANDOVER_CINEMA_SEEK_LANDING_TOLERANCE_SEC;
 }
 
 export function resolveHandoverDisplayIsolation(input: {
@@ -155,6 +179,8 @@ export function resolveHandoverDisplayIsolation(input: {
   readonly cinemaCandidateArmed?: boolean;
   readonly cinemaCandidateReady?: boolean;
   readonly cinemaCandidateKind?: 'intra' | 'inter' | null;
+  /** Display-only opt-in; the renderer still resolves the configured 1/7/19 fan. */
+  readonly preserveConfiguredServingFan?: boolean;
   /** Source of the normalized presentation owner, when one is visible. */
   readonly presentationSource?: HandoverDisplayPresentationSource;
   /** The normalized owner currently presents a natural Walker/TLE handover. */
@@ -172,20 +198,24 @@ export function resolveHandoverDisplayIsolation(input: {
 }): HandoverDisplayIsolationState {
   // Keep the old flag-only contract for existing pure callers/tests. A natural
   // source claims the display only after the normalized presentation owner has
-  // acquired a drawable INTER story. Natural intra events keep their ordinary
-  // live field; only the inter pair needs an alternate source/target frame.
+  // acquired a drawable story. Intra keeps the existing beam field geometry;
+  // inter additionally replaces that field with its alternate source/target frame.
   const sourceOwnsPresentation = input.presentationSource === undefined
     || input.presentationSource === 'manual'
     || input.presentationSource === 'cinema';
   const presentationKind = input.presentationKind ?? input.cinemaCandidateKind ?? null;
-  const naturalInterPresentationActive = (
+  const naturalPresentationActive = (
     input.presentationSource === 'walker' || input.presentationSource === 'tle'
   ) && input.naturalPresentationActive === true
+    && presentationKind !== null;
+  const naturalInterPresentationActive = naturalPresentationActive
     && presentationKind === 'inter';
   const explicitPresentationActive = sourceOwnsPresentation
     && (input.manualHandoverActive || input.cinemaCandidateActive);
-  const active = explicitPresentationActive || naturalInterPresentationActive;
+  const active = explicitPresentationActive || naturalPresentationActive;
   const interCinemaActive = active && presentationKind === 'inter';
+  const preserveConfiguredServingFan = input.preserveConfiguredServingFan === true
+    && interCinemaActive;
   const cinemaPending = sourceOwnsPresentation
     && input.cinemaCandidateArmed === true
     && input.cinemaCandidateReady !== true
@@ -200,7 +230,7 @@ export function resolveHandoverDisplayIsolation(input: {
   const explicitClaimMayPaint = !naturalPresentationOwns
     && (explicitPresentationOwns || input.presentationMode === undefined || input.presentationMode === 'idle');
   // A natural Walker/TLE source owns this policy only through the normalized
-  // inter story above. A manual request, however, is an explicit claim even during the one render in
+  // story above. A manual request, however, is an explicit claim even during the one render in
   // which its pair is not drawable yet; otherwise the old natural pulse can
   // leak through before the fail-closed manual story is resolved.
   const manualClaimed = explicitClaimMayPaint && (input.manualHandoverRequested === true
@@ -211,12 +241,16 @@ export function resolveHandoverDisplayIsolation(input: {
     && !naturalInterPresentationActive
     && !explicitPresentationActive
     && !cinemaPending;
-  const suppressNaturalHandoverLayers = naturalInterPresentationActive || manualClaimed || cinemaClaimed;
+  const suppressNaturalHandoverLayers = naturalPresentationActive || manualClaimed || cinemaClaimed;
 
   return {
     active,
     hidePrimaryServingBeam: active,
-    hideCandidateFan: active || cinemaPending || naturalInterCandidatePending,
+    preserveConfiguredServingFan,
+    // A natural pending frame is still ordinary live playback. Keep the
+    // candidate fan visible until the accepted event claims the presentation
+    // so the user can compare the measured candidates before commit.
+    hideCandidateFan: active || cinemaPending,
     hideNormalBeamField: interCinemaActive,
     showCinemaCandidateFan: interCinemaActive,
     hideTimelinePulse: active || cinemaPending || manualClaimed,

@@ -84,9 +84,9 @@ export function SinrOverview({
         </div>
         <div data-prominence="canonical-copy">
           <span>SINR Formula Tuning</span>
-          <span>γ<sub>u,s,v</sub>(t, <strong>θ</strong>) = p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(θ<sub>u,s,v</sub>)</span>
-          <span>Signal side p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>), H<sub>u,s,v</sub>(t), G<sup>T</sup>(θ<sub>u,s,v</sub>)</span>
-          <span>Noise side I<sub>u,s,v</sub>(t, <strong>θ</strong>), σ²</span>
+          <span>γ<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>, θ<sub>3dB</sub>) = p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>, θ<sub>3dB</sub>) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(θ<sub>u,s,v</sub>, θ<sub>3dB</sub>)</span>
+          <span>Signal side p<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>, θ<sub>3dB</sub>), H<sub>u,s,v</sub>(t), G<sup>T</sup>(θ<sub>u,s,v</sub>, θ<sub>3dB</sub>)</span>
+          <span>Noise side I<sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>, θ<sub>3dB</sub>), σ²</span>
         </div>
       </div>
     </details>

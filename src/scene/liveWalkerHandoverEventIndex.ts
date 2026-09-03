@@ -75,16 +75,16 @@ export interface LiveWalkerHandoverEvent {
   readonly kind: LiveWalkerHandoverEventKind;
   readonly fromSatId: string;
   /**
-   * Steered beam id (live-walker rows). Cell-truth rows carry NULL here — the
-   * earth-fixed `from/toCellId` is their handover identity; the old
-   * `fromBeamId := cellId` pun is retired (S4-2).
+   * Beam id from the source handover assignment. Cell-truth rows use the
+   * measured serving-beam key as well as the geographic `from/toCellId`, so a
+   * same-cell intra switch can be rendered as two distinct beams on one cell.
    */
   readonly fromBeamId: number | null;
   readonly toSatId: string;
   readonly toBeamId: number | null;
   /** UE that produced this row. Old live-Walker forecast rows are always `live-ue-0`. */
   readonly ueId?: string;
-  /** Cell-truth rows use earth-fixed cell ids as the handover identity. */
+  /** Geographic scene-cell identity carried by the source transition. */
   readonly fromCellId?: number;
   readonly toCellId?: number;
   readonly fromBeamIdentity?: string;

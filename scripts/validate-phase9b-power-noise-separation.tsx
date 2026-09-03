@@ -6,9 +6,7 @@ import {
   assertContainsTestId,
   assertNoTestId,
   assertNotContainsTestId,
-  assertTestId,
   assertTestIdAttr,
-  assertValueInTestId,
   extractElementByTestId,
 } from './lib/dom-structure.ts';
 import { loadProfile } from '../src/profiles/index.ts';
@@ -46,7 +44,7 @@ function createBudgetTerms(): LinkBudgetTerms {
   };
 }
 
-type TestTab = 'signal-power' | 'beam' | 'receiver-gain' | 'thermal-noise';
+type TestTab = 'signal-power' | 'channel' | 'beam' | 'thermal-noise';
 
 function renderPanel(
   initialActiveTab: TestTab,
@@ -99,7 +97,7 @@ const TUNING_GROUPS = {
     section: 'signal-power-controls',
     side: 'numerator',
     ownControls: [],
-    ownFormulaRows: ['signal-power-output-formula'],
+    ownFormulaRows: [],
     foreignControls: ['gtmax-transmit-gain-control', 'gr-receiver-gain-control', 'bandwidth-thermal-noise-control', 'n0-thermal-noise-control'],
     helpTriggers: [],
   },
@@ -107,14 +105,14 @@ const TUNING_GROUPS = {
     tab: 'beam',
     section: 'beam-gain-controls',
     side: 'numerator',
-    ownControls: ['gtmax-transmit-gain-control'],
+    ownControls: ['gtmax-transmit-gain-control', 'beamwidth3db-transmit-gain-control'],
     ownFormulaRows: [],
     foreignControls: ['walker-power-output-control', 'gr-receiver-gain-control', 'bandwidth-thermal-noise-control', 'n0-thermal-noise-control'],
     helpTriggers: ['help-popover-trigger-param.maxGainDbi'],
   },
-  receiverGain: {
-    tab: 'receiver-gain',
-    section: 'receiver-gain-controls',
+  channel: {
+    tab: 'channel',
+    section: 'loss-formula-controls',
     side: 'numerator',
     ownControls: ['gr-receiver-gain-control'],
     ownFormulaRows: [],
@@ -165,7 +163,16 @@ function assertGroupStructure(group: TuningGroup): string {
 
   // The group states its own formula context (the section header block), rather
   // than borrowing the neighbouring group's.
-  assertContainsTestId(markup, group.section, `${group.section}-formula-context`, where);
+  if (group.section !== 'signal-power-controls') {
+    assertContainsTestId(
+      markup,
+      group.section,
+      group.section === 'loss-formula-controls'
+        ? `${group.section}-formula`
+        : `${group.section}-formula-context`,
+      where,
+    );
+  }
 
   // The parameter identity is asserted through the help-popover id, which names
   // the tuning FIELD (`param.<field>`) — locale-independent and unambiguous.
@@ -197,28 +204,18 @@ function assertUiSeparation(): void {
     assertGroupStructure(group);
   }
 
-  // P^o is presented in the SINR numerator, while its one real Walker control
-  // lives on the Power main page so the formula term is not duplicated as a
-  // fake read-only p^r slider.
+  // p is runtime-selected RF output.  The Power page explains the derived
+  // recurrence and system-power chain; it must not invent a second slider.
   const powerPage = renderPanel('signal-power', false, 'power');
-  assertContainsTestId(powerPage.markup, 'walker-power-page', 'walker-power-output-control');
-  assertContainsTestId(powerPage.markup, 'walker-power-output-control', 'walker-power-output-control-details');
-  assertContainsTestId(powerPage.markup, 'walker-power-output-control', 'walker-power-output-control-range-endpoints');
-  assertContainsTestId(powerPage.markup, 'walker-power-output-control', 'help-popover-trigger-param.maxTxPowerDbm');
+  assertTestIdAttr(powerPage.markup, 'walker-power-page', 'data-readonly', 'true');
+  assertTestIdAttr(powerPage.markup, 'walker-power-page', 'data-control-surface', 'derived-only');
+  assertNoTestId(powerPage.markup, 'walker-power-output-control', 'Walker derived Power page');
+  assert.ok(!/<input\b|<select\b|<textarea\b/.test(extractElementByTestId(powerPage.markup, 'walker-power-page')));
 
-  // Thermal-noise extras: sigma^2 is a READ-ONLY derived readout, not a fourth
-  // editable knob, and it reports its own evidence freshness.
+  // Thermal-noise keeps only its two public inputs.  Accepted-frame values are
+  // owned by the right rail, so the left page must not duplicate a stale result.
   const noise = renderPanel('thermal-noise');
-  assertContainsTestId(noise.markup, 'thermal-noise-controls', 'thermal-noise-floor-readout');
-  assertTestIdAttr(noise.markup, 'thermal-noise-floor-readout', 'data-readonly', 'true');
-  assertTestIdAttr(noise.markup, 'thermal-noise-floor-readout', 'data-formula-evidence-status', 'current');
-  // The computed noise floor still shows the value it was handed. Numbers and
-  // unit symbols survive translation, so pinning them stays honest.
-  assertValueInTestId(noise.markup, 'thermal-noise-floor-readout', '-104.2 dBm');
-
-  const staleNoise = renderPanel('thermal-noise', true);
-  assertTestId(staleNoise.markup, 'thermal-noise-floor-readout');
-  assertTestIdAttr(staleNoise.markup, 'thermal-noise-floor-readout', 'data-formula-evidence-status', 'stale');
+  assertNoTestId(noise.markup, 'thermal-noise-floor-readout', 'left-side input page');
 }
 
 function assertTuningWiringAndEvidencePath(): void {
@@ -231,17 +228,11 @@ function assertTuningWiringAndEvidencePath(): void {
     label: string;
     field: keyof Pick<
       SignalTuningState,
-      'maxTxPowerDbm' | 'maxGainDbi' | 'ueAntennaMaxGainDbi' | 'bandwidthMHz' | 'noisePsdDbmHz'
+      'maxGainDbi' | 'ueAntennaMaxGainDbi' | 'bandwidthMHz' | 'noisePsdDbmHz'
     >;
     value: number;
     assertApplied: (tuned: ReturnType<typeof applySignalTuning>, value: number) => void;
   }> = [
-    {
-      label: 'P_t',
-      field: 'maxTxPowerDbm',
-      value: base.maxTxPowerDbm + 1,
-      assertApplied: (tuned, value) => assert.equal(tuned.channel.maxTxPowerDbm, value),
-    },
     {
       label: 'G_{t,max}',
       field: 'maxGainDbi',
@@ -298,15 +289,15 @@ function run(): void {
   console.log(JSON.stringify({
     asserted: {
       ui: [
-        'each SINR group declares its own data-formula-side (P^o / G^T / G^R numerator, B + N_0 denominator)',
-        'the P^o term is formula-only in SINR and the actual RF slider is owned by the Power main page',
+        'each SINR group declares its own data-formula-side (p / H / G^T numerator, B + N_0 denominator)',
+        'p is a runtime selected-link output and the Power page remains derived-only',
         'each editable scalar renders inside its own group, with its -details and -range-endpoints hooks',
         'no term control leaks into another term group, or onto another term tab at all',
-        'sigma^2 renders as a data-readonly="true" derived readout carrying its evidence status',
+        'accepted-frame output values remain on the right rail rather than being duplicated on the input page',
         'the retired combined "power" tab is gone from the rendered tab strip',
       ],
       wiring: [
-        'P^o, G_{t,max}, G^R, B, and N_0 still map to the same tuning/profile fields',
+        'G_0, G^R, B^w, and N_0 still map to the same tuning/profile fields',
         'each affected scalar edit changes the same signal tuning evidence key',
         'affected scalar edits do not enter the structural reset key',
       ],

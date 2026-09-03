@@ -87,7 +87,9 @@ export function createArchivedTleRunTimelineDescriptor(
   const sourceGapReasons = input.runReady
     ? []
     : ['The complete archived-TLE run is still computing; the timeline remains locked until all anchors are published.'];
-  const sourceLabel = `TLE-derived SGP4 · complete ${formatDurationLabel(durationSec)}`;
+  const sourceLabel = input.runReady
+    ? `TLE-derived SGP4 · complete ${formatDurationLabel(durationSec)}`
+    : `TLE-derived SGP4 · building ${formatDurationLabel(durationSec)} run`;
 
   return {
     sourceLabel,

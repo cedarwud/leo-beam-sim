@@ -123,16 +123,16 @@ timestamp is forbidden.
 
 The current year-scale sources are the read-only external archives at
 `/home/u24/demo/tle_data/oneweb/tle` and
-`/home/u24/demo/tle_data/starlink/tle`. At the 2026-08-11 inventory they contain
-363 OneWeb snapshots and 361 Starlink source snapshots spanning 2025-07-27
-through 2026-08-08. The external repository is not an implementation target
-and must not be modified.
+`/home/u24/demo/tle_data/starlink/tle`. At the 2026-08-26 inventory they contain
+379 OneWeb snapshots through 2026-08-25 and 377 Starlink source snapshots
+through 2026-08-24; both series begin on 2025-07-27. The external repository is
+not an implementation target and must not be modified.
 
-All 363 OneWeb snapshots validate. Exactly one Starlink source snapshot,
+All 379 OneWeb snapshots validate. Exactly one Starlink source snapshot,
 `starlink_20260528.tle`, contains an invalid 70-column line 1. The browser
 archive excludes that whole snapshot through a reviewed filename + SHA-256
 allowlist and records the exclusion reason in `catalog.json`; the remaining
-360 snapshots retain byte-exact source content. Unexpected validation errors
+376 snapshots retain byte-exact source content. Unexpected validation errors
 or changes to the excluded source hash fail the build.
 
 `scripts/tle_archive_query.py` is the existing build-time catalog and

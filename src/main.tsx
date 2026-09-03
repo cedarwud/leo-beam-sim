@@ -2,6 +2,7 @@ import { StrictMode, useState, type CSSProperties, type ReactNode } from 'react'
 import ReactDOM from 'react-dom/client';
 
 import { SixActsLauncher } from './course/nav/SixActsLauncher';
+import { isSixActsLightCaptureMode } from './course/nav/lightCapture';
 
 const root = document.getElementById('root');
 
@@ -20,12 +21,20 @@ const isC90Route = window.location.pathname === '/course/c90'
 // deliberately NOT a gated course shell (see tleJourneyStations.ts).
 const isSixActsIndexRoute = window.location.pathname === '/course/six-acts';
 const isTleJourneyRoute = window.location.pathname === '/course/tle-journey';
-const isEnergyLabRoute = window.location.pathname === '/course/energy-lab';
+const isBeamLayoutExperimentRoute = window.location.pathname === '/course/beam-layout-lab'
+  || window.location.pathname === '/course/energy-lab';
+const isFrequencyReuseExperimentRoute = window.location.pathname === '/course/frequency-reuse-lab'
+  || window.location.pathname === '/course/energy-evidence';
+const isCanonicalExperimentRoute = isBeamLayoutExperimentRoute || isFrequencyReuseExperimentRoute;
+const isHomepageAuthorityBrowserGate = import.meta.env.DEV
+  && query.get('browserGate') === 'homepage-authority';
 // Compatibility routes for the pre-canonical Walker shell. The homepage and the
 // explicit alias deliberately fall through to App, where the route selects
 // the legacy presentation layer; keeping them out of the canonical development
 // query avoids an accidental second simulator runtime on an old bookmark.
-const isLegacyWalkerRoute = window.location.pathname === '/'
+const isHomepageRoute = window.location.pathname === '/';
+const isBeamColorsRoute = window.location.pathname === '/beam-colors';
+const isLegacyWalkerRoute = isHomepageRoute
   || window.location.pathname === '/legacy';
 // /walker is a working sandbox: a decoupled copy of the Walker shell (never
 // the live App.tsx, which is still being tuned) used to graft the
@@ -45,6 +54,10 @@ const isStandaloneScientificExplain3DRoute = window.location.pathname === '/prot
 const isStandaloneScientificExplain2DRoute = window.location.pathname === '/prototype/scientific-explain-legacy-2d'
   || window.location.pathname === '/prototype/scientific-explain-2d';
 const isStandaloneGlobalConstellationRoute = window.location.pathname === '/prototype/global-constellation';
+const isVisualFirstGoldenFlowRoute = window.location.pathname === '/prototype/visual-first-golden-flow'
+  || window.location.pathname === '/course/off-axis-lab'
+  || window.location.pathname === '/course/handover-theater';
+const isIntraHandoverTeachingRoute = window.location.pathname === '/prototype/intra-handover-teaching';
 const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
   || window.location.pathname === '/visual-lab'
   || window.location.pathname === '/explain'
@@ -56,8 +69,9 @@ const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
 /**
  * Every successful route render goes through here.
  *
- * The six-acts routes carry their own nav strip; every OTHER surface gets the
- * corner launcher. Mounted at the router rather than inside a route component
+ * The six-acts routes carry their own nav strip. Other standalone surfaces get
+ * the corner launcher, while the homepage relies on its visible top-band entry.
+ * Mounted at the router rather than inside a route component
  * because five different root components serve "the app" (App,
  * UnifiedVisualLabPrototype, AppWalkerSandbox and the two standalone
  * prototypes) — putting the entry inside one of them left the other four with
@@ -66,8 +80,10 @@ const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
  */
 const isSixActsSurface = isSixActsIndexRoute
   || isTleJourneyRoute
-  || isEnergyLabRoute
-  || isStandaloneGlobalConstellationRoute;
+  || isCanonicalExperimentRoute
+  || isStandaloneGlobalConstellationRoute
+  || isVisualFirstGoldenFlowRoute
+  || isIntraHandoverTeachingRoute;
 const isSixActsTeachingStage = query.get('teaching') === '1'
   || query.get('preset') === 'handover';
 
@@ -75,7 +91,7 @@ function Shell({ children }: { readonly children: ReactNode }) {
   return (
     <StrictMode>
       {children}
-      {isSixActsSurface || isSixActsTeachingStage ? null : <SixActsLauncher />}
+      {isHomepageRoute || isBeamColorsRoute || isSixActsSurface || isSixActsTeachingStage ? null : <SixActsLauncher />}
     </StrictMode>
   );
 }
@@ -123,6 +139,23 @@ function C120BootstrapFailure({ message }: { readonly message: string }) {
 }
 
 async function bootstrap() {
+  if (isSixActsLightCaptureMode()) {
+    await import('./course/nav/SixActsLightCapture.scss');
+  }
+
+  if (isHomepageAuthorityBrowserGate) {
+    const { CanonicalControlBrowserProbe } = await import('./ui/signal-tuning/CanonicalControlBrowserProbe');
+    ReactDOM.createRoot(container).render(<Shell><CanonicalControlBrowserProbe /></Shell>);
+    return;
+  }
+
+  if (isBeamColorsRoute) {
+    await import('./styles/main.scss');
+    const { HomepageBeamColorsPage } = await import('./ui/homepage/HomepageBeamColorsPage');
+    ReactDOM.createRoot(container).render(<Shell><HomepageBeamColorsPage /></Shell>);
+    return;
+  }
+
   if (isC120Route) {
     const { C120CourseRoute } = await import('./course/c120/C120CourseRoute');
     ReactDOM.createRoot(container).render(
@@ -145,9 +178,25 @@ async function bootstrap() {
     return;
   }
 
-  if (isEnergyLabRoute) {
-    const { EnergyLabRoute } = await import('./course/energy-lab/EnergyLabRoute');
-    ReactDOM.createRoot(container).render(<Shell><EnergyLabRoute /></Shell>);
+  if (isBeamLayoutExperimentRoute) {
+    if (window.location.pathname === '/course/beam-layout-lab') {
+      const { ContactWindowLabRoute } = await import('./course/contact-window-labs/ContactWindowLabRoute');
+      ReactDOM.createRoot(container).render(<Shell><ContactWindowLabRoute act={5} /></Shell>);
+      return;
+    }
+    const { BeamLayoutExperimentRoute } = await import('./course/canonical-experiments/CanonicalExperimentRoute');
+    ReactDOM.createRoot(container).render(<Shell><BeamLayoutExperimentRoute /></Shell>);
+    return;
+  }
+
+  if (isFrequencyReuseExperimentRoute) {
+    if (window.location.pathname === '/course/frequency-reuse-lab') {
+      const { ContactWindowLabRoute } = await import('./course/contact-window-labs/ContactWindowLabRoute');
+      ReactDOM.createRoot(container).render(<Shell><ContactWindowLabRoute act={6} /></Shell>);
+      return;
+    }
+    const { FrequencyReuseExperimentRoute } = await import('./course/canonical-experiments/CanonicalExperimentRoute');
+    ReactDOM.createRoot(container).render(<Shell><FrequencyReuseExperimentRoute /></Shell>);
     return;
   }
 
@@ -196,6 +245,26 @@ async function bootstrap() {
     ReactDOM.createRoot(container).render(
       <Shell>
         <GlobalConstellationPrototype />
+      </Shell>,
+    );
+    return;
+  }
+
+  if (isVisualFirstGoldenFlowRoute) {
+    const { GoldenFlowPrototype } = await import('./prototype/golden-flow/GoldenFlowPrototype');
+    ReactDOM.createRoot(container).render(
+      <Shell>
+        <GoldenFlowPrototype />
+      </Shell>,
+    );
+    return;
+  }
+
+  if (isIntraHandoverTeachingRoute) {
+    const { IntraHandoverTeachingPrototype } = await import('./prototype/intra-handover-teaching/IntraHandoverTeachingPrototype');
+    ReactDOM.createRoot(container).render(
+      <Shell>
+        <IntraHandoverTeachingPrototype />
       </Shell>,
     );
     return;

@@ -172,10 +172,10 @@ try {
     '/tle-archive/starlink/catalog.json',
     fetchFromPublic,
   );
-  const artifact = JSON.parse(await readFile('public/homepage-first-frame/starlink-20260812.json', 'utf8')) as unknown;
+  const artifact = JSON.parse(await readFile('public/homepage-first-frame/starlink-20260825.json', 'utf8')) as unknown;
   const artifactState = parseHomepageFirstFrameArtifact(artifact, {
-    requestedInstantUtc: '2026-08-12T12:00:00.000Z',
-    appliedInstantUtc: '2026-08-12T12:00:00.000Z',
+    requestedInstantUtc: '2026-08-25T12:00:00.000Z',
+    appliedInstantUtc: '2026-08-25T12:00:00.000Z',
     catalog: starlinkCatalog,
     parameters: DEFAULT_SIMULATOR_PARAMETERS,
   });
@@ -193,8 +193,8 @@ try {
     parseHomepageFirstFrameArtifact(
       { ...(artifact as Record<string, unknown>), schema: 'homepage-first-frame-artifact-v1' },
       {
-        requestedInstantUtc: '2026-08-12T12:00:00.000Z',
-        appliedInstantUtc: '2026-08-12T12:00:00.000Z',
+        requestedInstantUtc: '2026-08-25T12:00:00.000Z',
+        appliedInstantUtc: '2026-08-25T12:00:00.000Z',
         catalog: starlinkCatalog,
         parameters: DEFAULT_SIMULATOR_PARAMETERS,
       },
@@ -204,8 +204,8 @@ try {
   );
   assert.equal(
     parseHomepageFirstFrameArtifact(artifact, {
-      requestedInstantUtc: '2026-08-12T12:00:00.000Z',
-      appliedInstantUtc: '2026-08-12T12:00:00.000Z',
+      requestedInstantUtc: '2026-08-25T12:00:00.000Z',
+      appliedInstantUtc: '2026-08-25T12:00:00.000Z',
       catalog: { ...starlinkCatalog, archiveId: `${starlinkCatalog.archiveId}-stale` },
       parameters: DEFAULT_SIMULATOR_PARAMETERS,
     }),
@@ -214,8 +214,8 @@ try {
   );
   assert.equal(
     parseHomepageFirstFrameArtifact(artifact, {
-      requestedInstantUtc: '2026-08-12T12:00:00.000Z',
-      appliedInstantUtc: '2026-08-12T12:00:00.000Z',
+      requestedInstantUtc: '2026-08-25T12:00:00.000Z',
+      appliedInstantUtc: '2026-08-25T12:00:00.000Z',
       catalog: starlinkCatalog,
       parameters: DEFAULT_SIMULATOR_PARAMETERS,
       frameOptions: { representativeUserIndex: 1 },

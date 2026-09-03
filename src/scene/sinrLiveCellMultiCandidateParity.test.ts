@@ -38,6 +38,14 @@ function createProfile() {
   const baseProfile = loadProfile('hobs-2024-candidate-rich');
   return {
     ...baseProfile,
+    // This fixture isolates the legacy/new authority seam. Keep its narrow
+    // antenna envelope and the historical single-target admission rule so a
+    // production candidate-rich steering/readability setting cannot change
+    // the expected handover timing of this fixed synthetic geometry.
+    antenna: {
+      ...baseProfile.antenna,
+      maxSteeringAngleDeg: 12,
+    },
     handover: {
       ...baseProfile.handover,
       // Keep the fixture focused on the target/clock seam, not the profile's
@@ -47,6 +55,7 @@ function createProfile() {
       triggerTimeSec: 1,
       pendingTargetHoldSec: 0,
       pingPongGuardSec: 1,
+      minimumDistinctCandidateSatellites: 0,
     },
   };
 }
@@ -176,7 +185,12 @@ test('fixed-frame S1 compatibility keeps legacy and multi-candidate inter-HO par
   assert.equal(legacyCommitFrame.ues[0]?.servingBeamId, newCommit.to.beamId);
   assert.equal(newCommit.oldLinkEnded, true);
   assert.equal(newCommit.newLinkStarted, true);
-  assert.equal(newCommit.mode, 'sinr-offset');
+  // The fixed fixture still uses the historical profile admission values above,
+  // but the homepage multi-candidate lane now has one explicit decision
+  // authority: same-frame instantaneous EE. Keep this assertion aligned with
+  // that authority rather than treating the profile's legacy policy label as a
+  // second runtime decision source.
+  assert.equal(newCommit.mode, 'ee-optimization');
   assert.equal(profile.handover.policy, 'sinr-offset');
   assert.equal(cellLayout.centers.length, 1);
 });

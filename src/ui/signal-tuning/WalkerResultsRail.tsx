@@ -5,10 +5,19 @@ import type { Profile } from '../../profiles/types';
 import type { SimState } from '../../scene/types';
 import type { AngleAwareFormulaFrame } from '../../engine/signal/types';
 import { FormulaTermsReadout } from '../info-panel/FormulaTermsReadout';
-import { SystemAngleState } from './FormulaSymbols';
-import { LinkAngle } from './FormulaSymbols';
+import {
+  BeamEfficiency,
+  BeamSupplyPower,
+  LinkChannel,
+  LinkEnergyEfficiency,
+  LinkInterference,
+  LinkRate,
+  LinkRfPower,
+  LinkTransmitGain,
+  SystemAngleState,
+  Theta3db,
+} from './FormulaSymbols';
 import { txBi } from './labels';
-import { SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
 import { formatPower } from './formatters';
 
 type WalkerResultsRailState = Pick<
@@ -169,6 +178,14 @@ export function WalkerResultsRail({
       data-testid="walker-results-rail"
       data-right-rail-source="walker-live-scene-frame"
       data-angle-aware-frame-status={terms === undefined ? 'waiting' : 'current'}
+      data-formula-contract-version={terms?.contractVersion ?? ''}
+      data-angle-aware-frame-time-sec={terms?.timeSec.toFixed(3) ?? ''}
+      data-angle-aware-frame-sat-id={angleAwareFormulaFrame?.satId ?? ''}
+      data-angle-aware-frame-beam-id={angleAwareFormulaFrame?.beamId.toString() ?? ''}
+      data-angle-aware-frame-sinr-db={terms?.gammaDb.toFixed(6) ?? ''}
+      data-angle-aware-frame-throughput-bps={terms?.throughputBps.toFixed(6) ?? ''}
+      data-angle-aware-frame-system-power-w={terms?.systemPowerW.toFixed(6) ?? ''}
+      data-angle-aware-frame-ee-bits-per-joule={terms?.energyEfficiencyBitsPerJoule.toFixed(6) ?? ''}
       data-sim-time-sec={Number.isFinite(simTimeSec) ? simTimeSec.toFixed(2) : ''}
       data-serving-satellite-id={physicalServing.satId ?? ''}
       data-candidate-satellite-id={pendingTargetSatId ?? ''}
@@ -205,7 +222,7 @@ export function WalkerResultsRail({
           <div className="leo-walker-result-rows">
             <ResultRow
               testId="walker-result-power-output"
-              symbol={<><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>}
+              symbol={<LinkRfPower />}
               scope="primary-ue"
               scopeLabel={scopePrimaryUe}
               note={say('walker.results.power.output', '選定 UE-link 的 RF 功率', 'RF power of the selected UE-link')}
@@ -213,7 +230,7 @@ export function WalkerResultsRail({
             />
             <ResultRow
               testId="walker-result-system-power"
-              symbol={<>P<sup>N</sup>(t, <SystemAngleState />)</>}
+              symbol={<>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />)</>}
               scope="system"
               scopeLabel={scopeSystem}
               note={say('walker.results.power.system', '系統總功率', 'System total power')}
@@ -221,7 +238,7 @@ export function WalkerResultsRail({
             />
             <ResultRow
               testId="walker-result-power-signal"
-              symbol={<><i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />) H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) G<sup>T</sup>(<LinkAngle />)</>}
+              symbol={<><LinkRfPower /> <LinkChannel /> <LinkTransmitGain /></>}
               scope="primary-ue"
               scopeLabel={scopePrimaryUe}
               note={say('walker.results.power.signal', '選定鏈路的 wanted-link 訊號功率', 'Wanted-link signal power of the selected link')}
@@ -229,7 +246,7 @@ export function WalkerResultsRail({
             />
             <ResultRow
               testId="walker-result-power-interference"
-              symbol={<>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+              symbol={<LinkInterference />}
               scope="primary-ue"
               scopeLabel={scopePrimaryUe}
               note={say('walker.results.power.interference', '總同頻干擾功率', 'Total co-channel interference power')}
@@ -245,24 +262,22 @@ export function WalkerResultsRail({
             />
             <ResultRow
               testId="walker-result-power-consumption"
-              symbol={<>P<sup>p</sup><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>}
-              scope="primary-ue"
-              scopeLabel={scopePrimaryUe}
-              note={say('walker.results.power.consumption', '選定鏈路的電源端功率', 'Supply-side power of the selected link')}
+              symbol={<BeamSupplyPower />}
+              scope="beam-aggregate"
+              scopeLabel={scopeBeamAggregate}
+              note={say('walker.results.power.consumption', '服務波束的電源端功率', 'Supply-side power of the serving beam')}
               value={formatValue(terms?.powerConsumptionW, 'W', locale)}
             />
-            {/* xi and P^f are scenario constants, not tunable parameters: they carry
-                no control anywhere in the panel. They still appear as symbols in the
-                left Power formula (P^p = p / xi, P^N = P^f + sum), so the rail shows
-                their current values read-only, letting a student check the two
-                formulas by hand. Display only — both values come from the same
-                published frame the engine already produced. */}
+            {/* The Walker route is a derived-value rail. The canonical homepage
+                owns the editable beam/satellite and EE inputs; this rail only
+                projects the accepted frame's current beam efficiency and fixed
+                power values. */}
             <ResultRow
               testId="walker-result-conversion-efficiency"
-              symbol={<>ξ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <LinkAngle />)</>}
-              scope="primary-ue"
-              scopeLabel={scopePrimaryUe}
-              note={say('walker.results.power.efficiency', '有效功率轉換效率（情境常數，不可調）', 'Effective conversion efficiency (scenario constant, not tunable)')}
+              symbol={<BeamEfficiency />}
+              scope="beam-aggregate"
+              scopeLabel={scopeBeamAggregate}
+              note={say('walker.results.power.efficiency', '服務波束的功率轉換效率', 'Power-conversion efficiency of the serving beam')}
               value={formatValue(terms?.conversionEfficiency, '', locale, 3)}
             />
             <ResultRow
@@ -270,7 +285,7 @@ export function WalkerResultsRail({
               symbol={<>P<sup>f</sup>(t)</>}
               scope="system"
               scopeLabel={scopeSystem}
-              note={say('walker.results.power.fixed', '系統固定／circuit 功率（情境常數，不可調）', 'Fixed / circuit system power (scenario constant, not tunable)')}
+              note={say('walker.results.power.fixed', '系統固定／電路功率組成', 'Fixed / circuit system-power components')}
               value={formatValue(terms?.fixedPowerW, 'W', locale)}
             />
           </div>
@@ -286,7 +301,7 @@ export function WalkerResultsRail({
           <div className="leo-walker-result-rows">
             <ResultRow
               testId="walker-result-link-throughput"
-              symbol={<>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+              symbol={<LinkRate />}
               scope="primary-ue"
               scopeLabel={scopePrimaryUe}
               note={say('walker.results.throughput.link', '主要 UE-link 的實際速率', 'Realized rate of the primary UE-link')}
@@ -321,7 +336,7 @@ export function WalkerResultsRail({
           <div className="leo-walker-result-rows">
             <ResultRow
               testId="walker-result-link-ee"
-              symbol={<>η<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+              symbol={<LinkEnergyEfficiency />}
               scope="primary-ue"
               scopeLabel={scopePrimaryUe}
               note={say('walker.results.ee.link', '選定 UE-link 的 EE 顯示量', 'EE display value of the selected UE-link')}
@@ -329,7 +344,7 @@ export function WalkerResultsRail({
             />
             <ResultRow
               testId="walker-result-instantaneous-ee"
-              symbol={<>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+              symbol={<LinkRate />}
               scope="primary-ue"
               scopeLabel={scopePrimaryUe}
               note={say('walker.results.ee.rate', 'EE 分子中的 throughput', 'Throughput in the EE numerator')}
@@ -337,7 +352,7 @@ export function WalkerResultsRail({
             />
             <ResultRow
               testId="walker-result-ee-system-power"
-              symbol={<>P<sup>N</sup>(t, <SystemAngleState />)</>}
+              symbol={<>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />)</>}
               scope="system"
               scopeLabel={scopeSystem}
               note={say('walker.results.ee.systemPower', 'EE 分母中的系統總功率', 'System total power in the EE denominator')}

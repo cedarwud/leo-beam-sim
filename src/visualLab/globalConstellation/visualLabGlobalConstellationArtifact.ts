@@ -17,6 +17,12 @@ import {
   type Vector3,
 } from '../../tle/types';
 import type { SimulatorConstellation } from '../../simulator/types';
+import {
+  LATEST_TLE_ARCHIVE_DATES,
+  LATEST_TLE_REFERENCE_ARTIFACT_DATE,
+  LATEST_TLE_REFERENCE_INSTANT_UTC,
+  latestTleSnapshotPath,
+} from '../../tle/latestTleDefaults';
 
 /** The only precomputed global artifact schema accepted by this lane. */
 export const VISUAL_LAB_GLOBAL_CONSTELLATION_ARTIFACT_SCHEMA =
@@ -24,9 +30,9 @@ export const VISUAL_LAB_GLOBAL_CONSTELLATION_ARTIFACT_SCHEMA =
 
 /** All default global artifacts are pinned to the same UTC instant. */
 export const VISUAL_LAB_GLOBAL_CONSTELLATION_INSTANT_UTC =
-  '2026-08-12T12:00:00.000Z' as const;
+  LATEST_TLE_REFERENCE_INSTANT_UTC;
 
-export const VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE = '20260812' as const;
+export const VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES = LATEST_TLE_ARCHIVE_DATES;
 export const VISUAL_LAB_GLOBAL_CONSTELLATION_WORLD_FRAME =
   'earth-fixed-radius-2.48-v1' as const;
 export const VISUAL_LAB_GLOBAL_CONSTELLATION_EARTH_RADIUS_WORLD = 2.48 as const;
@@ -35,8 +41,8 @@ export const VISUAL_LAB_GLOBAL_CONSTELLATION_EARTH_RADIUS_KM = 6_378.137 as cons
 export const VISUAL_LAB_GLOBAL_CONSTELLATION_ARTIFACT_URLS: Readonly<
   Record<SimulatorConstellation, string>
 > = Object.freeze({
-  oneweb: '/global-first-frame/oneweb-20260812.json',
-  starlink: '/global-first-frame/starlink-20260812.json',
+  oneweb: `/global-first-frame/oneweb-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`,
+  starlink: `/global-first-frame/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`,
 });
 
 export interface VisualLabGlobalConstellationArtifact {
@@ -154,7 +160,7 @@ function canonicalUtc(value: unknown, path: string): string {
 }
 
 function snapshotPathFor(constellation: SimulatorConstellation): string {
-  return `/tle-archive/${constellation}/${constellation}_${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE}.tle`;
+  return latestTleSnapshotPath(constellation);
 }
 
 function assertSnapshotPath(
@@ -164,8 +170,9 @@ function assertSnapshotPath(
 ): string {
   const snapshotPath = requiredString(value, path);
   const match = SNAPSHOT_PATH_PATTERN.exec(snapshotPath);
-  if (match === null || match[1] !== constellation || match[2] !== VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE) {
-    fail(path, `must be the ${constellation} ${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE} archived TLE path`);
+  const expectedArchiveDate = VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES[constellation];
+  if (match === null || match[1] !== constellation || match[2] !== expectedArchiveDate) {
+    fail(path, `must be the ${constellation} ${expectedArchiveDate} archived TLE path`);
   }
   return snapshotPath;
 }
@@ -205,7 +212,7 @@ function manifestForEntries(
   return Object.freeze({
     entries,
     maxPropagationAgeMs,
-    archiveId: `global-first-frame-${options.constellation}-${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE}`,
+    archiveId: `global-first-frame-${options.constellation}-${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES[options.constellation]}`,
   });
 }
 

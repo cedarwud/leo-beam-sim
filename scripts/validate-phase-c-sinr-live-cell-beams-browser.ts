@@ -130,14 +130,25 @@ async function main(): Promise<void> {
     // candidate highlight + pair cone INTO this pulse, so it is the only HO layer).
     const fastButton = page.locator('[data-testid="timeline-speed-20x"]').first();
     if (await fastButton.count()) await fastButton.click();
-    let pulse = 0;
-    let pulseRendered = 0;
-    for (let i = 0; i < 60; i += 1) {
-      await page.waitForTimeout(700);
-      pulse = await numAttr(page, CANVAS, 'data-sinr-live-handover-pulse-cone-count');
-      pulseRendered = await numAttr(page, CANVAS, 'data-sinr-live-handover-pulse-cone-rendered-count');
-      if (pulse > 0 && pulseRendered > 0) break;
-    }
+    // Pulse retention is four SIMULATION seconds. At 20x that can be only
+    // 200 ms of wall time, so the old 700 ms sampling loop could step cleanly
+    // over a valid pulse. Poll the same exact positive control atomically at
+    // 50 ms; this changes no runtime or pass criterion, only removes aliasing.
+    const pulseHandle = await page.waitForFunction(
+      () => {
+        const canvas = document.querySelector('canvas[data-camera-position]');
+        if (!canvas) return false;
+        const pulse = Number(canvas.getAttribute('data-sinr-live-handover-pulse-cone-count') || 0);
+        const pulseRendered = Number(canvas.getAttribute('data-sinr-live-handover-pulse-cone-rendered-count') || 0);
+        return pulse > 0 && pulseRendered > 0 ? { pulse, pulseRendered } : false;
+      },
+      undefined,
+      { timeout: 90000, polling: 50 },
+    );
+    const { pulse, pulseRendered } = await pulseHandle.jsonValue() as {
+      readonly pulse: number;
+      readonly pulseRendered: number;
+    };
     // The pulse fires with NO director arm anywhere in this run — it is the always-on
     // ambient handover layer, mounted on its own flag (not a manual cinema).
     assert.ok(pulse > 0, `live-handover pulse lights real handovers WITHOUT a director arm — always-on ambient layer (data-sinr-live-handover-pulse-cone-count=${pulse})`);

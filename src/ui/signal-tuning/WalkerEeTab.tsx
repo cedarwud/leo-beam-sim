@@ -2,7 +2,14 @@ import { UI_TOKENS } from '../../constants/uiTokens';
 import type { AngleAwareFormulaFrame } from '../../engine/signal/types';
 import { useLocale } from '../../i18n';
 import { FormulaFraction, FormulaHeader, FormulaRow, InlineFormulaFraction } from './FormulaHeader';
-import { SystemAngleState, SystemPowerSum } from './FormulaSymbols';
+import {
+  LinkEnergyEfficiency,
+  LinkRate,
+  LinkSinr,
+  SystemAngleState,
+  SystemPowerSum,
+  Theta3db,
+} from './FormulaSymbols';
 import { txBi } from './labels';
 import { SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
 import { FormulaSymbolGuide } from './FormulaSymbolGuide';
@@ -24,6 +31,9 @@ export function WalkerEeTab({
     <section
       id="tuning-page-panel-energy"
       data-testid="walker-ee-page"
+      data-readonly="true"
+      data-control-surface="derived-only"
+      data-canonical-state-owner="walker-live-scene-frame"
       role="tabpanel"
       aria-label={say('tab.energy.label', 'EE', 'EE')}
       style={pagePanelStyle}
@@ -41,9 +51,9 @@ export function WalkerEeTab({
           emphasis
           expression={(
             <FormulaFraction
-              lhs={<>η<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              numerator={<>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
-              denominator={<>P<sup>N</sup>(t, <SystemAngleState />)</>}
+              lhs={<LinkEnergyEfficiency />}
+              numerator={<LinkRate />}
+              denominator={<>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />)</>}
               numeratorAccent={UI_TOKENS.color.semantic.info}
               denominatorAccent={UI_TOKENS.color.semantic.good}
               lhsFontSize={21}
@@ -69,18 +79,18 @@ export function WalkerEeTab({
             },
             {
               testId: 'walker-ee-symbol-rate',
-              symbol: <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
+              symbol: <LinkRate />,
               explanation: isEnglish
-                ? <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) = <InlineFormulaFraction numerator={<>B<sup>w</sup></>} denominator={<>U<sub>s,v</sub>(t)</>} label="beam bandwidth divided by serving users" /> · log<sub>2</sub>(1 + γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)).</>
-                : <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) = <InlineFormulaFraction numerator={<>B<sup>w</sup></>} denominator={<>U<sub>s,v</sub>(t)</>} label="beam bandwidth divided by serving users" /> · log<sub>2</sub>(1 + γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />))；分子沿用同一條選定鏈路。</>,
+                ? <><LinkRate /> = <InlineFormulaFraction numerator={<>B<sup>w</sup></>} denominator={<>U<sub>s,v</sub>(t)</>} label="beam bandwidth divided by serving users" /> · log<sub>2</sub>(1 + <LinkSinr />).</>
+                : <><LinkRate /> = <InlineFormulaFraction numerator={<>B<sup>w</sup></>} denominator={<>U<sub>s,v</sub>(t)</>} label="beam bandwidth divided by serving users" /> · log<sub>2</sub>(1 + <LinkSinr />)；分子沿用同一條選定鏈路。</>,
               accent: UI_TOKENS.color.semantic.info,
             },
             {
               testId: 'walker-ee-symbol-system-power',
-              symbol: <>P<sup>N</sup>(t, <SystemAngleState />)</>,
+              symbol: <>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />)</>,
               explanation: isEnglish
-                ? <>P<sup>N</sup>(t, <SystemAngleState />) = P<sup>f</sup>(t) + <SystemPowerSum />; this is the shared system denominator.</>
-                : <>P<sup>N</sup>(t, <SystemAngleState />) = P<sup>f</sup>(t) + <SystemPowerSum />；這是所有作用中鏈路共用的系統分母。</>,
+                ? <>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />) = P<sup>f</sup>(t) + <SystemPowerSum />; this is the shared system denominator.</>
+                : <>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />) = P<sup>f</sup>(t) + <SystemPowerSum />；這是所有作用中鏈路共用的系統分母。</>,
               accent: UI_TOKENS.color.semantic.good,
             },
           ]}

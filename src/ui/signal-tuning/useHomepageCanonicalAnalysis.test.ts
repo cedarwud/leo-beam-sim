@@ -34,7 +34,7 @@ const fetchFromPublic = async (path: RequestInfo | URL): Promise<Response> => (
 const hookSource = await readFile(new URL('./useHomepageCanonicalAnalysis.ts', import.meta.url), 'utf8');
 assert.match(
   hookSource,
-  /const HOMEPAGE_CANONICAL_TAIPEI_LOCAL = '2026-08-12T20:00';/,
+  /const HOMEPAGE_CANONICAL_TAIPEI_LOCAL = LATEST_TLE_REFERENCE_TAIPEI_LOCAL;/,
   'homepage default must open on the latest checked-in archive date',
 );
 assert.match(
@@ -49,13 +49,13 @@ assert.match(
 );
 assert.match(
   hookSource,
-  /new URLSearchParams\(window\.location\.search\)\.get\('visualLabFullRun'\) === '1'/,
-  'the 66 MB complete-run artifact requires explicit URL opt-in',
+  /new URLSearchParams\(window\.location\.search\)\.get\('visualLabFullRun'\) === '0'/,
+  'the checked-in complete run is the default path with one explicit diagnostic opt-out',
 );
 assert.doesNotMatch(
   hookSource,
-  /fullRunArtifactOptIn\s*=\s*import\.meta\.env\.DEV/,
-  'development startup must not silently download the complete-run artifact',
+  /fullRunArtifactOptOut\s*=\s*import\.meta\.env\.DEV/,
+  'development mode must not silently disable the immutable complete-run artifact',
 );
 assert.match(
   hookSource,
@@ -110,7 +110,7 @@ assert.doesNotMatch(
 );
 assert.match(
   hookSource,
-  /useEffect\(\(\) => \{[\s\S]*?\}, \[appliedOrbitRequest\]\);/,
+  /useEffect\(\(\) => \{[\s\S]*?\}, \[appliedOrbitRequest(?:, enabled)?\]\);/,
   'draft constellation/time edits must not trigger the archived-TLE build effect',
 );
 const applyBlock = hookSource.match(
@@ -126,10 +126,15 @@ assert.match(
   /analysisRebuildAbortController\.current\?\.abort\(\);[\s\S]*?analysisWorkerTransport\.current\?\.dispose\(\);[\s\S]*?analysisWorkerTransport\.current = null;[\s\S]*?activeAbortController\.current\?\.abort\(\);/,
   'source Apply must terminate any synchronous analysis Worker before starting the replacement source run',
 );
-assert.doesNotMatch(
+assert.match(
   applyBlock,
-  /lastAcceptedFrame\.current = null|setPublishedRun\(null\)|evaluationSession\.current!\.reset\(\)/,
-  'explicit Apply must retain the previous accepted scene, results, and evaluation while rebuilding',
+  /publishedRunRef\.current = null;[\s\S]*?setPublishedRun\(null\);[\s\S]*?lastAcceptedFrame\.current = null;[\s\S]*?publishEvaluation\(evaluationSession\.current!\.reset\(\)\);[\s\S]*?setTimelineSelection\(\{ currentTimeSec: 0, anchorIndex: 0 \}\);/,
+  'explicit Apply must clear the accepted scene, results, evaluation, and timeline before rebuilding',
+);
+assert.match(
+  hookSource,
+  /const allowFirstFramePublication = appliedOrbitRequest\.revision === 0;[\s\S]*?if \(allowFirstFramePublication && !retainPreviousAccepted\)/,
+  'only initial load may expose a verified first frame; explicit Apply stays empty until complete',
 );
 assert.match(
   hookSource,

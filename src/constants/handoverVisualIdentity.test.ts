@@ -202,6 +202,33 @@ test('same-satellite beam shades are deterministic, distinct, and stay in one hu
   assert.equal('role' in beamOne, false);
 });
 
+test('blue-purple rail keeps the configured B2 to B7 switch visibly separated', () => {
+  const allocation = allocateHandoverVisualIdentities({
+    episodeId: 'blue-purple-contrast-episode',
+    servingSatelliteId: 'shell-pro-53-P13-S6',
+    satelliteIds: ['shell-pro-53-P13-S6'],
+    beamIdsBySatellite: { 'shell-pro-53-P13-S6': [1, 2, 3, 4, 5, 6, 7] },
+  });
+  const beamTwo = resolveHandoverBeamVisualIdentity(allocation, 'shell-pro-53-P13-S6', 2);
+  const beamSeven = resolveHandoverBeamVisualIdentity(allocation, 'shell-pro-53-P13-S6', 7);
+  assert.ok(beamTwo);
+  assert.ok(beamSeven);
+  assert.notEqual(beamTwo.cssColor, beamSeven.cssColor);
+  const brightness = (color: string) => color.slice(1).match(/../g)!
+    .map(value => Number.parseInt(value, 16))
+    .reduce((sum, channel) => sum + channel, 0);
+  assert.ok(
+    brightness(beamSeven.cssColor) - brightness(beamTwo.cssColor) >= 100,
+    `B2 → B7 must have a visible tonal separation: ${beamTwo.cssColor} → ${beamSeven.cssColor}`,
+  );
+  for (const beam of [beamTwo, beamSeven]) {
+    assert.ok(
+      Math.max(...beam.cssColor.slice(1).match(/../g)!.map(value => Number.parseInt(value, 16))) >= 190,
+      `${beam.cssColor} is too dark for the blue/purple rail`,
+    );
+  }
+});
+
 test('more than eight episode beams reuse shades explicitly instead of truncating scientific identity', () => {
   const beamIds = Array.from({ length: 10 }, (_, index) => index + 1);
   const allocation = allocateHandoverVisualIdentities({

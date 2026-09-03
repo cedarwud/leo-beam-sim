@@ -10,7 +10,14 @@ const markup = renderToStaticMarkup(
 );
 const connectedMarkup = renderToStaticMarkup(
   <LocaleProvider initialLocale="en">
-    <ScenarioDataTab connection="live-scene" servingBeamLayoutCount={1} />
+    <ScenarioDataTab
+      connection="live-scene"
+      servingBeamLayoutCount={1}
+      scenarioDate="2027-01-02"
+      scenarioTime="03:04"
+      onScenarioDateChange={() => undefined}
+      onScenarioTimeChange={() => undefined}
+    />
   </LocaleProvider>,
 );
 const oneCellMarkup = renderToStaticMarkup(
@@ -33,6 +40,17 @@ const nineteenCellMarkup = renderToStaticMarkup(
     />
   </LocaleProvider>,
 );
+const canonicalMarkup = renderToStaticMarkup(
+  <LocaleProvider initialLocale="en">
+    <ScenarioDataTab
+      connection="canonical-analysis"
+      beamLayoutCount={7}
+      beamLayoutOptions={[7]}
+      servingBeamLayoutCount={7}
+      candidateBeamLayoutCount={7}
+    />
+  </LocaleProvider>,
+);
 
 assert.match(markup, /id="tuning-page-panel-scenario-data"/);
 assert.match(markup, /data-testid="scenario-data-constellation-control"/);
@@ -52,8 +70,16 @@ const timeControls = markup.match(/data-testid="scenario-data-time"[\s\S]*?data-
 assert.doesNotMatch(timeControls, /AM|PM|上午|下午|seconds|milliseconds|秒|毫秒/i);
 assert.match(markup, /data-testid="scenario-data-beam-configuration-control"/);
 assert.match(connectedMarkup, /data-scenario-connection="live-scene"/);
+assert.match(connectedMarkup, /data-scenario-epoch-owner="walker-runtime"/);
+assert.match(connectedMarkup, /data-testid="scenario-data-date"[^>]*value="2027-01-02"/);
+assert.match(connectedMarkup, /data-testid="scenario-data-hour"[\s\S]*value="03"[^>]*selected=""/);
+assert.match(connectedMarkup, /data-testid="scenario-data-minute"[\s\S]*value="04"[^>]*selected=""/);
 assert.doesNotMatch(connectedMarkup, /id="scenario-data-beam-layout-1"/);
 assert.match(connectedMarkup, /id="scenario-data-serving-beam-layout-1"[^>]*checked=""/);
+assert.match(canonicalMarkup, /data-scenario-connection="canonical-analysis"/);
+assert.match(canonicalMarkup, /id="scenario-data-serving-beam-layout-7"[^>]*checked=""/);
+assert.match(canonicalMarkup, /id="scenario-data-candidate-beam-layout-7"[^>]*checked=""/);
+assert.doesNotMatch(canonicalMarkup, /scenario-data-(?:serving|candidate)-beam-layout-(?:1|19)/);
 assert.match(markup, /每顆衛星波束配置|Beams per satellite/);
 for (const beamCount of [1, 7, 19]) {
   assert.match(markup, new RegExp(`scenario-data-beam-layout-${beamCount}`));

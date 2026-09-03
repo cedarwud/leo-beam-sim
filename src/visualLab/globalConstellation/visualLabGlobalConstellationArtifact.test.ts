@@ -5,13 +5,14 @@ import {
   loadVisualLabGlobalConstellationArtifact,
   parseVisualLabGlobalConstellationArtifact,
   VISUAL_LAB_GLOBAL_CONSTELLATION_ARTIFACT_URLS,
+  VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES,
   VISUAL_LAB_GLOBAL_CONSTELLATION_INSTANT_UTC,
   type VisualLabGlobalConstellationArtifact,
 } from './visualLabGlobalConstellationArtifact';
 
 async function readArtifact(constellation: 'oneweb' | 'starlink'): Promise<VisualLabGlobalConstellationArtifact> {
   const raw = JSON.parse(
-    await readFile(`public/global-first-frame/${constellation}-20260812.json`, 'utf8'),
+    await readFile(`public/global-first-frame/${constellation}-20260825.json`, 'utf8'),
   ) as unknown;
   return parseVisualLabGlobalConstellationArtifact(raw, { expectedConstellation: constellation });
 }
@@ -47,11 +48,10 @@ function expectReject(mutator: (artifact: VisualLabGlobalConstellationArtifact) 
 }
 
 expectReject(artifact => ({ ...artifact, sourceKind: 'SYNTHETIC' }));
-expectReject(artifact => ({ ...artifact, instantUtc: '2026-08-12T12:00:01.000Z' }));
-expectReject(artifact => ({ ...artifact, snapshotPath: '/tle-archive/oneweb/oneweb_20260812.tle' }));
+expectReject(artifact => ({ ...artifact, instantUtc: '2026-08-25T12:00:01.000Z' }));
+expectReject(artifact => ({ ...artifact, snapshotPath: `/tle-archive/oneweb/oneweb_${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES.oneweb}.tle` }));
 expectReject(artifact => ({ ...artifact, satelliteIds: [...artifact.satelliteIds.slice(0, -1), artifact.satelliteIds[0]] }));
 expectReject(artifact => ({ ...artifact, positionsWorld: artifact.positionsWorld.slice(0, -1) }));
 expectReject(artifact => ({ ...artifact, visibility: [...artifact.visibility.slice(0, -1), 2] }));
 
 console.log('visual-lab global constellation artifact loader is strict and source-bound');
-

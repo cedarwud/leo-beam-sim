@@ -824,9 +824,6 @@ export function AppWalkerSandbox() {
     // The display-only fallback must keep the source timeline running so the
     // source satellite and its beam apex continue to move during the cue.
     playback.setPaused(false);
-    setBeamDisplaySpec(current => current.beamCalloutsEnabled
-      ? { ...current, beamCalloutsEnabled: false }
-      : current);
     manualHandoverRequestSeqRef.current += 1;
     setManualHandoverRequest({
       id: manualHandoverRequestSeqRef.current,
@@ -1971,16 +1968,18 @@ export function AppWalkerSandbox() {
     () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'intra'),
     [directorCinematicEnabled, artifactHandoverRailEvents],
   );
-  // The next-event buttons are source-gated when an indexed event exists. The live
-  // sinr lane keeps Show Intra actionable when its static cell-truth index has zero
-  // intra rows: the DirectorControls trigger remains the real UE-jog path, while the
-  // top-bar fallback is a moving, display-only same-satellite beam-switch cue.
+  // The next-event buttons prefer the source-backed index. If the current static
+  // window has no same-satellite row (or the index is rebuilding), keep the action
+  // live through the same real UE-jog path used by Trigger Intra. This keeps the
+  // Director and quick-control surfaces semantically identical on the legacy entry.
   const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
   const directorIntraIndexedEnabled =
     directorCinematicIntraEnabled
-    || (directorFocusEnabled && liveWalkerDirectorHandoverRailEvents.some(event => event.kind === 'intra'));
-  const directorNextIntraEnabled = directorIntraIndexedEnabled || sceneSource === 'live-sim';
-  const directorIntraTriggerEnabled = sceneSource === 'live-sim';
+    || (directorFocusEnabled
+      && liveWalkerDirectorHandoverRailEvents.some(event => event.kind === 'intra'));
+  const liveIntraFallbackEnabled = sceneSource === 'live-sim';
+  const directorNextIntraEnabled = directorIntraIndexedEnabled || liveIntraFallbackEnabled;
+  const directorIntraTriggerEnabled = liveIntraFallbackEnabled;
 
   const {
     handleDirectorIntraFocus,
@@ -2047,12 +2046,6 @@ export function AppWalkerSandbox() {
   handoverControlBusyRef.current = handoverControlBusy;
   handoverBusyRef.current = handoverControlBusy || handoverPresentationBusyRef.current;
 
-  const hideBeamInfoForHandover = useCallback(() => {
-    setBeamDisplaySpec(current => current.beamCalloutsEnabled
-      ? { ...current, beamCalloutsEnabled: false }
-      : current);
-  }, []);
-
   const triggerPrimaryIntra = useCallback(() => {
     if (handoverBusyRef.current) return;
     // Keep the real jog seek-free. A timeline seek rebases the model before it can
@@ -2062,35 +2055,31 @@ export function AppWalkerSandbox() {
   }, []);
   const handleDirectorNextIntra = useCallback(() => {
     if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
     if (directorIntraIndexedEnabled) {
       handoverCinema.armIntra();
       return;
     }
     // Current static cell-truth has no natural intra rows. The fallback is still a
     // real engine event, not a fabricated rail marker, and the scene's wall-clock
-    // latch keeps its yellow -> blue handover flash visible.
-    if (sceneSource === 'live-sim') triggerPrimaryIntra();
-  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, sceneSource, triggerPrimaryIntra]);
+    // latch keeps the same-satellite beam-shade transition visible.
+    if (liveIntraFallbackEnabled) triggerPrimaryIntra();
+  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, liveIntraFallbackEnabled, triggerPrimaryIntra]);
   const handleQuickIntra = useCallback(() => {
     if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
     if (directorIntraIndexedEnabled) {
       handoverCinema.armIntra();
       return;
     }
-    if (sceneSource === 'live-sim') requestMovingIntraDemo();
-  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, requestMovingIntraDemo, sceneSource]);
+    if (liveIntraFallbackEnabled) triggerPrimaryIntra();
+  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, liveIntraFallbackEnabled, triggerPrimaryIntra]);
   const handleDirectorNextInter = useCallback(() => {
     if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
     handoverCinema.armInter();
-  }, [handoverCinema.armInter, hideBeamInfoForHandover]);
+  }, [handoverCinema.armInter]);
   const handleQuickInter = useCallback(() => {
     if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
     handoverCinema.armInter();
-  }, [handoverCinema.armInter, hideBeamInfoForHandover]);
+  }, [handoverCinema.armInter]);
 
   // While the explicit intra story is visible, latch the two measured links in
   // the right rail as well. The scene keeps moving, so reading the live frame
@@ -2258,7 +2247,9 @@ export function AppWalkerSandbox() {
         interEnabled={directorInterButtonEnabled}
         intraTriggerEnabled={directorIntraTriggerEnabled}
         nextIntraMode={directorIntraIndexedEnabled ? 'indexed' : 'real-trigger'}
-        nextIntraCount={handoverRailEvents.filter(event => event.kind === 'intra').length}
+        nextIntraCount={directorIntraIndexedEnabled
+          ? handoverRailEvents.filter(event => event.kind === 'intra').length
+          : undefined}
         nextInterCount={handoverRailEvents.filter(event => event.kind === 'inter').length}
         phase={camera.directorPhase}
         onIntraTrigger={triggerPrimaryIntra}
@@ -2680,15 +2671,15 @@ export function AppWalkerSandbox() {
           && directorInterButtonEnabled
           && camera.directorPhase === 'idle'
           && !handoverControlBusy}
-        nextIntraCount={sceneSource === 'live-sim'
-          ? undefined
-          : handoverRailEvents.filter(event => event.kind === 'intra').length}
+        nextIntraCount={directorIntraIndexedEnabled
+          ? sceneSource === 'live-sim'
+            ? liveWalkerDirectorHandoverRailEvents.filter(event => event.kind === 'intra').length
+            : handoverRailEvents.filter(event => event.kind === 'intra').length
+          : undefined}
         nextInterCount={sceneSource === 'live-sim'
           ? undefined
           : handoverRailEvents.filter(event => event.kind === 'inter').length}
-        nextIntraMode={sceneSource === 'live-sim'
-          ? (directorIntraIndexedEnabled ? 'indexed' : 'moving-beam-demo')
-          : (directorIntraIndexedEnabled ? 'indexed' : 'real-trigger')}
+        nextIntraMode={directorIntraIndexedEnabled ? 'indexed' : 'real-trigger'}
         manualHandoverKind={sceneSource === 'live-sim' ? manualHandoverRequest?.kind ?? null : null}
         onNextIntra={handleQuickIntra}
         onNextInter={handleQuickInter}

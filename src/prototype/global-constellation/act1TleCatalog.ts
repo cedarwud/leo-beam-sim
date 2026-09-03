@@ -19,11 +19,10 @@ import {
   type SixActsShellId,
 } from '../../course/sixActs/act1Shells';
 import type { SimulatorConstellation } from '../../simulator/types';
-
-export const ACT1_ARCHIVE_DATE = '20260812' as const;
+import { latestTleSnapshotPath } from '../../tle/latestTleDefaults';
 
 export function act1ArchiveUrl(constellation: SimulatorConstellation): string {
-  return `/tle-archive/${constellation}/${constellation}_${ACT1_ARCHIVE_DATE}.tle`;
+  return latestTleSnapshotPath(constellation);
 }
 
 export interface Act1OrbitRecord {

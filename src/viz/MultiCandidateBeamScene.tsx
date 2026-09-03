@@ -14,16 +14,19 @@ import {
   candidateLinkKeyString,
   type CandidateLinkKey,
 } from '../engine/handover/candidateDecisionContract';
-import type {
-  HandoverBeamVisualIdentity,
-  HandoverSatelliteVisualIdentity,
+import {
+  HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
+  type HandoverBeamVisualIdentity,
+  type HandoverSatelliteVisualIdentity,
 } from '../constants/handoverVisualIdentity';
+import { homepageSatelliteColorForBeam } from '../homepage/controller/homepageSatelliteVisualIdentity';
 import {
   cellIdFromLinkBudgetBeamId,
 } from '../scene/sinrLiveCellModel';
 import type { WorldPoint } from './CellFootprints';
 import {
   buildObliqueBeamConePositions,
+  homepageBeamEeKey,
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
 import type {
@@ -32,7 +35,7 @@ import type {
   MultiCandidateScenePresentation,
 } from '../scene/multiCandidateScenePresentation';
 import type { CandidateSceneRenderReceipt } from '../scene/acceptedHandoverPresentationSnapshot';
-import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
+import { resolveHomepageSatelliteDisplayName } from '../homepage/controller/homepageSatelliteDisplayName';
 
 /** A renderer-neutral point in the shared scene coordinate system. */
 export type MultiCandidateScenePoint = readonly [number, number, number];
@@ -46,6 +49,20 @@ export interface MultiCandidateBeamSceneResolverInput {
   readonly widthScale?: number;
   /** Reduced motion keeps the same static decision distinctions without pulses. */
   readonly reducedMotion?: boolean;
+  /** Root-only compact identity projection; omitted consumers keep snapshot colours. */
+  readonly homepageVisualIdentity?: boolean;
+  /**
+   * Optional frame-local EE normalization keyed exactly as `${satId}:${beamId}`.
+   * The homepage integration owner in `MainScene` will provide this map; leaving
+   * it omitted preserves the existing deterministic beam-slot colour fallback.
+   */
+  readonly homepageBeamEeByKey?: ReadonlyMap<string, number | null>;
+  /** Episode-stable palette slots published by the accepted snapshot. */
+  readonly homepageIdentityPaletteIndexBySatelliteId?: ReadonlyMap<string, number | null>;
+  /** Exact active-TLE display names; raw IDs remain scene join keys. */
+  readonly satelliteNameById?: ReadonlyMap<string, string> | null;
+  /** Display-only intra cue: keep source/target ground footprints on the serving cell. */
+  readonly anchorIntraCandidatesToServingCell?: boolean;
 }
 
 export interface MultiCandidateBeamSceneFootprintRing {
@@ -64,6 +81,7 @@ export interface MultiCandidateBeamSceneRenderInstruction {
   readonly railJoinKey: string;
   readonly pairKey: string;
   readonly key: CandidateLinkKey;
+  readonly sourceFrameId: string;
   readonly satelliteId: string;
   readonly beamId: number;
   /** Recovered from the link-budget beam surrogate, never inferred from rank. */
@@ -151,30 +169,99 @@ export interface MultiCandidateBeamSceneUnmappedPair {
 
 export interface MultiCandidateBeamSceneRenderPlan {
   readonly instructions: readonly MultiCandidateBeamSceneRenderInstruction[];
+  /** Actual pair count painted after the centre-stage density gate. */
+  readonly centralRenderedPairCount: number;
   readonly coneVolumeCount: number;
   readonly solidDataLinkCount: 0 | 1;
   readonly unmappedPairs: readonly MultiCandidateBeamSceneUnmappedPair[];
   readonly telemetry: MultiCandidateBeamSceneTelemetry;
 }
 
+/** A rendered beam's explicit ground-cell join, kept beside the satellite badge. */
+export interface MultiCandidateBeamCellPair {
+  readonly beamId: number;
+  /** Zero-based scene cell identity; labels expose the corresponding one-based C#. */
+  readonly cellId: number;
+}
+
 export interface MultiCandidateSatelliteIdentityGroup {
   readonly satelliteId: string;
   readonly identityInstruction: MultiCandidateBeamSceneRenderInstruction;
+  /** True when this satellite owns the committed/serving pair in the scene. */
+  readonly isServingSatellite: boolean;
+  /** True when at least one displayed pair is a candidate for this satellite. */
+  readonly hasCandidatePairs: boolean;
+  /** True when at least one displayed candidate has hard/qualified evidence. */
+  readonly hasEligibleCandidatePairs: boolean;
+  /** True when the displayed candidate set contains an observation-only pair. */
+  readonly hasObservedCandidatePairs: boolean;
+  /** True when one of the displayed candidate pairs is the provisional leader. */
+  readonly hasProvisionalLeader: boolean;
+  /** True when one of the displayed candidate pairs is the selected target. */
+  readonly hasSelectedTarget: boolean;
+  /** True when an inspection pin currently points into this satellite group. */
+  readonly isPinnedSatellite: boolean;
+  readonly candidatePairCount: number;
+  readonly eligibleCandidatePairCount: number;
   readonly pairKeys: readonly string[];
   readonly sceneJoinKeys: readonly string[];
   readonly railJoinKeys: readonly string[];
+  /** Beam IDs carrying the currently committed service link. */
+  readonly servingBeamIds: readonly number[];
+  /** Beam IDs shown as alternate candidate measurements for this satellite. */
+  readonly candidateBeamIds: readonly number[];
   readonly beamIds: readonly number[];
+  /** Exact beam/cell pairs represented by the group's displayed scene instructions. */
+  readonly beamCellPairs: readonly MultiCandidateBeamCellPair[];
 }
 
 export interface MultiCandidateBeamSceneProps extends MultiCandidateBeamSceneResolverInput {
   readonly visible?: boolean;
   /**
-   * The homepage keeps its established serving cone + hex footprint carrier.
-   * Set this false there so this layer adds candidate evidence without
-   * repainting the current serving geometry. The serving data link and join
-   * metadata remain here as the single decision-authority read-out.
+   * The homepage mounts this layer as the sole centre-stage carrier while the
+   * accepted comparison snapshot is active. Keeping the switch explicit lets
+   * other consumers add only candidate geometry when they need the legacy
+   * ambient carrier; the serving data link and join metadata remain here as
+   * the single decision-authority read-out.
    */
   readonly renderServingConeAndFootprint?: boolean;
+  /**
+   * Candidate carrier geometry is intentionally opt-in.  The homepage uses a
+   * single measured link per shortlisted satellite during the brief review
+   * beat; the complete cone/footprint roster remains available in the rail and
+   * accepted snapshot without painting a wire cage over the scene.
+   */
+  readonly renderCandidateCarrierGeometry?: boolean;
+  /**
+   * Candidate ground cells can be shown without painting a translucent cone.
+   * This is the default review-stage cue: a dashed footprint says where the
+   * measured beam lands while the existing serving cone remains unobstructed.
+   */
+  readonly renderCandidateFootprints?: boolean;
+  /**
+   * Restrict candidate cone/footprint painting to the existing selected or
+   * provisional leader. This is display-only: the other candidate links and
+   * satellite identity markers remain available as dashed/marker-only cues.
+   * The homepage passes this explicitly; omitted consumers retain their
+   * existing candidate-render switches.
+   */
+  readonly limitCandidateCarrierToLeader?: boolean;
+  /** Display-only link-density gate; the accepted plan and rail remain complete. */
+  readonly limitCandidateLinksToLeader?: boolean;
+  /**
+   * Keep the established service link owned by the legacy handover carrier
+   * when this layer is used as an additive candidate read-out. Candidate
+   * measurement links remain rendered regardless of this flag.
+   */
+  readonly renderServingDataLink?: boolean;
+  /** Satellite identity halos are useful in the scene, while their HTML
+   * badges are intentionally optional so a comparison beat never becomes a
+   * stack of floating windows over the globe.
+   */
+  readonly renderSatelliteIdentityMarkers?: boolean;
+  readonly renderSatelliteIdentityLabels?: boolean;
+  /** Pair-level HTML labels are an inspection aid, not the default scene UI. */
+  readonly renderPairLabels?: boolean;
   /** Presentation-only inspection; it never feeds the decision engine. */
   readonly onCandidateSelect?: (key: CandidateLinkKey) => void;
   /** Actual mapping acknowledgement for the same accepted publication. */
@@ -194,6 +281,8 @@ export const MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS = Object.freeze({
   acceptedSourceFrameId: 'multiCandidateSceneAcceptedSourceFrameId',
   renderedSceneJoinKeys: 'multiCandidateSceneRenderedSceneJoinKeys',
   eventCueCount: 'multiCandidateSceneEventCueCount',
+  /** Actual pair count painted in the centre after the display-density gate. */
+  centralRenderedPairCount: 'multiCandidateSceneCentralRenderedPairCount',
 });
 
 const GROUND_FOOTPRINT_Y = 0.12;
@@ -201,11 +290,74 @@ const FOOTPRINT_OUTER_SCALE = 1.055;
 const HEX_SIDE_COUNT = 6;
 const ENDPOINT_RADIUS_WORLD = 2.2;
 /**
+ * Satellite identity markers intentionally use a much larger visual scale
+ * than the old single ring. The centre-stage camera is shared with the live
+ * satellite models, so the marker must be legible at the normal 1680x1050
+ * composition without moving that camera.
+ */
+const SATELLITE_IDENTITY_HALO_SEGMENTS = 48;
+const SATELLITE_SERVING_HALO_INNER_RADIUS_WORLD = 12;
+const SATELLITE_SERVING_HALO_OUTER_RADIUS_WORLD = 16;
+const SATELLITE_OBSERVED_HALO_INNER_RADIUS_WORLD = 14;
+const SATELLITE_OBSERVED_HALO_OUTER_RADIUS_WORLD = 18;
+// Keep the candidate ring a cue around the GLB rather than a large disc that
+// competes with its identity label.  The label is owned by SatelliteMarker and
+// is lifted above the ring in MainScene.
+const SATELLITE_CANDIDATE_HALO_INNER_RADIUS_WORLD = 13;
+const SATELLITE_CANDIDATE_HALO_OUTER_RADIUS_WORLD = 18;
+/**
+ * Satellite labels stay over their own spacecraft projection.  Earlier
+ * versions pushed lanes horizontally by a fixed world-space distance; that
+ * made a valid label leave the narrow centre-stage viewport whenever the
+ * satellite was near an edge.  Reading lanes vertically is deterministic and
+ * keeps the identity attached to the moving GLB instead of to an arbitrary
+ * screen-side offset.
+ */
+// Keep the badge directly above the GLB.  Earlier versions used a world-space
+// left/centre/right ladder here; at the homepage camera that detached the
+// candidate window from its spacecraft and made it look like a floating panel
+// in the middle of the scene.  Close projections are separated by the
+// screen-space Y ladder below, so no horizontal world offset is needed.
+const SATELLITE_LABEL_LANE_OFFSET_WORLD = 0;
+const SATELLITE_LABEL_LANE_BAND_OFFSET_WORLD = 10;
+// A 64px ladder still collided at the narrow 1366px acceptance viewport when
+// two Walker spacecraft projected within one label-height of one another.
+// Keep the ladder screen-space (marker/beam/camera remain untouched) and give
+// each satellite identity badge enough vertical separation to be read as a
+// distinct candidate at the default scene scale.
+const SATELLITE_LABEL_SCREEN_LANE_GAP_PX = 26;
+// Keep the badge close to its spacecraft.  The earlier 82px baseline was
+// added to compensate for a world-space -100 offset; once the badge is
+// anchored beside the GLB it pushed the identity far below the satellite and
+// made the scene-to-label relationship impossible to read.  A positive ladder
+// starts below the canvas seam, which matters on the compact 780px acceptance
+// viewport where a centred lane-0 badge would otherwise clip at the top.
+const SATELLITE_LABEL_SCREEN_BASE_OFFSET_PX = 4;
+/**
  * Raw triangle-mesh wireframe exposes every fan edge and turns an oblique beam
- * into a dense visual cage. Eight ribs keep the measurement-only volume
+ * into a dense visual cage. Three ribs keep the measurement-only volume
  * legible without competing with the single solid serving link.
  */
 export const MULTI_CANDIDATE_WIREFRAME_RIB_COUNT = 3;
+
+/**
+ * The rail keeps the complete measured beam roster, but the centre stage is a
+ * visual explanation rather than a beam inventory.  Showing one representative
+ * pair per candidate satellite is enough to answer "which spacecrafts are in
+ * contention?" while keeping the established serving field visible.  The
+ * representative is chosen from the same role/rank ordering as the accepted
+ * presentation plan; it never re-ranks or changes the decision.
+ */
+export const MAX_CENTRAL_CANDIDATE_PAIRS_PER_SATELLITE = 1 as const;
+
+/**
+ * A normal comparison scene should communicate a small shortlist, not paint
+ * every measured spacecraft in the constellation.  The rail still retains
+ * the complete accepted measurement/qualification roster; this cap applies
+ * only to the central visual layer and keeps the service satellite plus at
+ * most two alternate candidate satellites readable at once.
+ */
+export const MAX_CENTRAL_CANDIDATE_SATELLITES = 2 as const;
 
 /**
  * Deterministic outer-edge slots for different satellite/beam identities that
@@ -213,6 +365,72 @@ export const MULTI_CANDIDATE_WIREFRAME_RIB_COUNT = 3;
  * both more legible and more truthful than stacking them above the UE.
  */
 const CANDIDATE_LABEL_SLOT_AZIMUTH_DEG = Object.freeze([90, -30, 210, 30, 150, 270] as const);
+
+/**
+ * Keep the one satellite badge per displayed satellite readable when the
+ * projected spacecraft positions are close. Lanes are offsets in the
+ * Billboard's camera plane, so this does not move the camera or the marker
+ * itself and remains deterministic across frames.
+ */
+export function resolveSatelliteIdentityLabelPosition(
+  satelliteLane: number,
+  satelliteLaneCount: number,
+): MultiCandidateScenePoint {
+  if (!Number.isInteger(satelliteLane) || satelliteLane < 0) {
+    fail('satellite label lane must be a non-negative integer');
+  }
+  if (!Number.isInteger(satelliteLaneCount) || satelliteLaneCount < 1) {
+    fail('satellite label lane count must be a positive integer');
+  }
+  const laneCount = Math.min(3, satelliteLaneCount);
+  const lane = satelliteLane % 3;
+  const laneCenter = (laneCount - 1) / 2;
+  const band = Math.floor(satelliteLane / 3);
+  return Object.freeze([
+    (lane - laneCenter) * SATELLITE_LABEL_LANE_OFFSET_WORLD || 0,
+    // Place the badge just above its own spacecraft.  A small per-band lift
+    // separates any fourth-or-later group without moving the satellite, beam,
+    // footprint, or camera pose.
+    // The GLB carrier is scaled independently of this HTML badge.  Ten world
+    // units keeps the badge in the same visual neighbourhood as the model at
+    // the homepage camera; the old 20-unit lift made it read like a panel in
+    // the middle of the canvas rather than an identity attached to a satellite.
+    10 + band * SATELLITE_LABEL_LANE_BAND_OFFSET_WORLD,
+    0,
+  ] as const);
+}
+
+/**
+ * Clamp an identity badge's visual centre to the R3F canvas without moving
+ * its spacecraft anchor. `projectedNdcX` is the camera projection of the
+ * satellite apex; the returned pixel delta is applied only to the HTML badge.
+ */
+export function resolveSatelliteIdentityLabelHorizontalCorrection(
+  projectedNdcX: number,
+  viewportWidth: number,
+  labelMaxWidth = 300,
+  edgeInset = 12,
+): number {
+  if (!Number.isFinite(projectedNdcX)) fail('projected label x must be finite');
+  if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) {
+    fail('label viewport width must be positive');
+  }
+  if (!Number.isFinite(labelMaxWidth) || labelMaxWidth <= 0) {
+    fail('label max width must be positive');
+  }
+  if (!Number.isFinite(edgeInset) || edgeInset < 0) {
+    fail('label edge inset must be non-negative');
+  }
+  const projectedPx = ((projectedNdcX + 1) / 2) * viewportWidth;
+  const availableWidth = Math.max(0, viewportWidth - edgeInset * 2);
+  const labelWidth = Math.min(labelMaxWidth, availableWidth);
+  if (labelWidth <= 0) return 0;
+  const halfWidth = labelWidth / 2;
+  const minCenter = halfWidth + edgeInset;
+  const maxCenter = Math.max(minCenter, viewportWidth - halfWidth - edgeInset);
+  const clampedCenter = Math.min(maxCenter, Math.max(minCenter, projectedPx));
+  return clampedCenter - projectedPx;
+}
 
 export function resolveCandidateLabelPosition(
   instruction: MultiCandidateBeamSceneRenderInstruction,
@@ -376,7 +594,7 @@ function roleVisualStyle(
       };
     case 'qualified':
       return {
-        coneOpacity: 0.24,
+        coneOpacity: 0.16,
         footprintLineWidth: 1.7,
         footprintOpacity: 0.62,
         footprintDashSize: 4.5,
@@ -387,7 +605,7 @@ function roleVisualStyle(
       };
     case 'hard-eligible':
       return {
-        coneOpacity: 0.18,
+        coneOpacity: 0.12,
         footprintLineWidth: 1.7,
         footprintOpacity: 0.68,
         footprintDashSize: 3.4,
@@ -398,7 +616,7 @@ function roleVisualStyle(
       };
     case 'provisional-leader':
       return {
-        coneOpacity: 0.32,
+        coneOpacity: 0.26,
         footprintLineWidth: 2.25,
         footprintOpacity: 0.9,
         footprintDashSize: 5.5,
@@ -409,7 +627,7 @@ function roleVisualStyle(
       };
     case 'selected-target':
       return {
-        coneOpacity: 0.14,
+        coneOpacity: 0.16,
         footprintLineWidth: 2.1,
         footprintOpacity: 0.84,
         footprintDashSize: 6,
@@ -481,12 +699,19 @@ function mapPresentationInstruction(
   primaryUeWorld: MultiCandidateScenePoint,
   widthScale: number,
   reducedMotion: boolean,
+  homepageVisualIdentity: boolean,
+  homepageBeamEeByKey: ReadonlyMap<string, number | null> | undefined,
+  homepageIdentityPaletteIndexBySatelliteId: ReadonlyMap<string, number | null> | undefined,
+  anchorCellId: number | null,
 ): MultiCandidateBeamSceneMappingResult {
   const expectedPairKey = candidateLinkKeyString(source.key);
   if (source.pairKey !== expectedPairKey
     || source.key.satelliteId !== source.satelliteId
     || source.key.beamId !== source.beamId) {
     fail(`displayed pair is not joined by satellite and beam: ${source.joinKey}`);
+  }
+  if (source.sourceFrameId !== sourceFrameId) {
+    fail(`source-frame mismatch for ${expectedPairKey}`);
   }
   if (source.isServing === source.isCandidate) {
     fail(`displayed pair must be exactly serving or candidate: ${expectedPairKey}`);
@@ -502,9 +727,14 @@ function mapPresentationInstruction(
   // lane.  Never use rank, array position, or a satellite-only fallback to
   // fabricate a footprint.
   const cellId = cellIdFromLinkBudgetBeamId(source.beamId);
-  const placement = placementByCellId.get(cellId);
+  const sourcePlacement = placementByCellId.get(cellId);
+  const placement = anchorCellId === null
+    ? sourcePlacement
+    : placementByCellId.get(anchorCellId) ?? sourcePlacement;
   const satelliteWorld = satelliteWorldById.get(source.satelliteId);
-  if (!placement) return unmappedPair(source, sourceFrameId, 'missing-placement');
+  // Validate the source beam's real cell first. The shared-cell anchor is only
+  // a presentation override; it must never make an invalid pair drawable.
+  if (!sourcePlacement || !placement) return unmappedPair(source, sourceFrameId, 'missing-placement');
   if (!satelliteWorld) return unmappedPair(source, sourceFrameId, 'missing-satellite-world');
   const satellite = pointFromWorld(satelliteWorld, `satellite ${source.satelliteId}`);
   const baseCenter: MultiCandidateScenePoint = [placement.worldX, 0, placement.worldZ];
@@ -516,9 +746,8 @@ function mapPresentationInstruction(
   // The established homepage uses six-sided ground cells. Candidate authority
   // changes identity colour and line grammar, not the footprint shape.
   const footprintPoints = buildHexFootprintPoints(baseCenter, radiusWorld);
-  // An observed pair exposed during evaluation keeps a clean translucent
-  // volume even though its noisy full-height measurement line is suppressed.
-  // Pinning may add that line without changing serving authority.
+  // An unqualified observation stays a neutral dotted footprint. Pinning may
+  // add its identity-coloured sparse guide without changing serving authority.
   const roleStyle = roleVisualStyle(
     source.role,
     source.isPinned,
@@ -526,8 +755,25 @@ function mapPresentationInstruction(
   );
   const footprintDashed = source.footprint.style !== 'solid';
   const coneVisible = source.cone.visible && source.cone.volume === 1;
-  const coneColor = source.identity.beam?.threeColor ?? source.identity.satellite.threeColor;
-  const satelliteColor = source.identity.satellite.threeColor;
+  const homepageColor = homepageVisualIdentity
+    ? homepageSatelliteColorForBeam(source.satelliteId, source.beamId, {
+      identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(source.satelliteId) ?? null,
+      // The candidate primary is already the stable identity carrier for the
+      // next link. Keep its primary shade through the eventual serving commit;
+      // role/solid-link truth remains unchanged.
+      isServing: source.isServing || source.isCandidate,
+      eeNormalized: homepageBeamEeByKey?.get(
+        homepageBeamEeKey(source.satelliteId, source.beamId),
+      ),
+    })
+    : null;
+  const coneColor = homepageColor?.color
+    ?? source.identity.beam?.threeColor
+    ?? source.identity.satellite.threeColor;
+  const satelliteColor = homepageColor?.baseColor ?? source.identity.satellite.threeColor;
+  const footprintColor = source.role === 'observed' && !source.isPinned
+    ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
+    : coneColor;
   const linkVisible = source.link.style !== 'none';
   const solidData = source.link.isSolidData;
   const linkDashed = linkVisible && !solidData;
@@ -549,6 +795,7 @@ function mapPresentationInstruction(
     railJoinKey: source.railJoinKey,
     pairKey: expectedPairKey,
     key: candidateLinkKey(source.key.satelliteId, source.key.beamId),
+    sourceFrameId,
     satelliteId: source.satelliteId,
     beamId: source.beamId,
     cellId,
@@ -578,7 +825,7 @@ function mapPresentationInstruction(
       points: footprintPoints,
       rings: buildFootprintRings(footprintPoints, baseCenter, roleStyle, footprintDashed),
       outlineCount: roleStyle.footprintOutlineCount,
-      color: coneColor,
+      color: footprintColor,
     }),
     link: Object.freeze({
       style: source.link.style,
@@ -621,10 +868,21 @@ export function resolveMultiCandidateBeamScene(
   const seenPairs = new Set<string>();
   const mapped: MultiCandidateBeamSceneRenderInstruction[] = [];
   const unmappedPairs: MultiCandidateBeamSceneUnmappedPair[] = [];
+  const servingInstruction = input.presentation.serving;
+  const servingCellId = servingInstruction === null
+    ? null
+    : cellIdFromLinkBudgetBeamId(servingInstruction.beamId);
   for (const source of input.presentation.instructions) {
     const pairKey = candidateLinkKeyString(source.key);
     if (seenPairs.has(pairKey)) fail(`duplicate displayed pair ${pairKey}`);
     seenPairs.add(pairKey);
+    const anchorCellId = input.anchorIntraCandidatesToServingCell === true
+      && source.isCandidate
+      && servingInstruction !== null
+      && source.satelliteId === servingInstruction.satelliteId
+      && servingCellId !== null
+      ? servingCellId
+      : null;
     const instruction = mapPresentationInstruction(
       source,
       input.placementByCellId,
@@ -633,6 +891,10 @@ export function resolveMultiCandidateBeamScene(
       primaryUeWorld,
       widthScale,
       reducedMotion,
+      input.homepageVisualIdentity === true,
+      input.homepageBeamEeByKey,
+      input.homepageIdentityPaletteIndexBySatelliteId,
+      anchorCellId,
     );
     if ('reason' in instruction) unmappedPairs.push(instruction);
     else mapped.push(instruction);
@@ -668,8 +930,12 @@ export function resolveMultiCandidateBeamScene(
     maxSatelliteGroups: input.presentation.budget.maxSatelliteGroups,
     maxConeVolumes: input.presentation.budget.maxConeVolumes,
   });
+  const centralInstructions = input.homepageVisualIdentity === true
+    ? selectHomepageCandidateSceneInstructions(instructions)
+    : selectCentralMultiCandidateSceneInstructions(instructions);
   return Object.freeze({
     instructions,
+    centralRenderedPairCount: centralInstructions.length,
     coneVolumeCount,
     solidDataLinkCount: solidDataLinkCount as 0 | 1,
     unmappedPairs: unmapped,
@@ -718,10 +984,18 @@ function MultiCandidateConeMesh({
             pairKey: instruction.pairKey,
             joinKey: instruction.joinKey,
             sceneJoinKey: instruction.sceneJoinKey,
+            railJoinKey: instruction.railJoinKey,
             satelliteId: instruction.satelliteId,
             beamId: instruction.beamId,
             cellId: instruction.cellId,
             role: instruction.role,
+            isServing: instruction.isServing,
+            isCandidate: instruction.isCandidate,
+            isPinned: instruction.isPinned,
+            isProvisionalLeader: instruction.role === 'provisional-leader',
+            isSelectedTarget: instruction.role === 'selected-target',
+            isSolidData: instruction.link.isSolidData,
+            isMeasurementOnly: instruction.link.isMeasurementOnly,
             coneStyle: instruction.cone.style,
             coneVolume: instruction.cone.volume,
             color: instruction.cone.color,
@@ -755,8 +1029,17 @@ function MultiCandidateConeMesh({
           renderOrder={11}
           userData={{
             pairKey: instruction.pairKey,
+            joinKey: instruction.joinKey,
+            sceneJoinKey: instruction.sceneJoinKey,
+            railJoinKey: instruction.railJoinKey,
             role: instruction.role,
+            isServing: instruction.isServing,
+            isCandidate: instruction.isCandidate,
+            isPinned: instruction.isPinned,
+            isProvisionalLeader: instruction.role === 'provisional-leader',
+            isSelectedTarget: instruction.role === 'selected-target',
             wireframeRib: true,
+            isSolidData: instruction.link.isSolidData,
             isMeasurementOnly: instruction.link.isMeasurementOnly,
           }}
         />
@@ -768,10 +1051,13 @@ function MultiCandidateConeMesh({
 function MultiCandidateFootprint({
   instruction,
   displayScale,
+  renderFill,
 }: {
   readonly instruction: MultiCandidateBeamSceneRenderInstruction;
   /** Small presentation-only nesting when several pairs share one Cell. */
   readonly displayScale: number;
+  /** Measurement-only candidates keep only their dashed/dotted outline. */
+  readonly renderFill: boolean;
 }): JSX.Element {
   return (
     <group
@@ -780,33 +1066,43 @@ function MultiCandidateFootprint({
         pairKey: instruction.pairKey,
         joinKey: instruction.joinKey,
         sceneJoinKey: instruction.sceneJoinKey,
+        railJoinKey: instruction.railJoinKey,
         satelliteId: instruction.satelliteId,
         beamId: instruction.beamId,
         cellId: instruction.cellId,
         role: instruction.role,
+        isServing: instruction.isServing,
+        isCandidate: instruction.isCandidate,
+        isPinned: instruction.isPinned,
+        isProvisionalLeader: instruction.role === 'provisional-leader',
+        isSelectedTarget: instruction.role === 'selected-target',
+        isSolidData: instruction.link.isSolidData,
+        isMeasurementOnly: instruction.link.isMeasurementOnly,
         footprintStyle: instruction.footprint.style,
         footprintOutlineCount: instruction.footprint.outlineCount,
         color: instruction.footprint.color,
       }}
     >
-      <mesh
-        name={`multi-candidate-footprint-fill-${instruction.satelliteId}-b${instruction.beamId}`}
-        position={[instruction.baseCenter[0], GROUND_FOOTPRINT_Y - 0.01, instruction.baseCenter[2]]}
-        rotation={[-Math.PI / 2, 0, Math.PI / 6]}
-        renderOrder={12}
-      >
-        <circleGeometry args={[instruction.cone.baseRadiusWorld * displayScale, 6]} />
-        <meshBasicMaterial
-          color={instruction.footprint.color}
-          transparent
-          opacity={instruction.isServing
-            ? 0.08
-            : instruction.role === 'observed' ? 0.055 : 0.07}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
+      {renderFill && (
+        <mesh
+          name={`multi-candidate-footprint-fill-${instruction.satelliteId}-b${instruction.beamId}`}
+          position={[instruction.baseCenter[0], GROUND_FOOTPRINT_Y - 0.01, instruction.baseCenter[2]]}
+          rotation={[-Math.PI / 2, 0, Math.PI / 6]}
+          renderOrder={12}
+        >
+          <circleGeometry args={[instruction.cone.baseRadiusWorld * displayScale, 6]} />
+          <meshBasicMaterial
+            color={instruction.footprint.color}
+            transparent
+            opacity={instruction.isServing
+              ? 0.08
+              : instruction.role === 'observed' ? 0.055 : 0.07}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
       {instruction.footprint.rings.map((ring, index) => (
         <Line
           key={`${instruction.sceneJoinKey}/footprint/${index}`}
@@ -826,10 +1122,18 @@ function MultiCandidateFootprint({
             pairKey: instruction.pairKey,
             joinKey: instruction.joinKey,
             sceneJoinKey: instruction.sceneJoinKey,
+            railJoinKey: instruction.railJoinKey,
             satelliteId: instruction.satelliteId,
             beamId: instruction.beamId,
             cellId: instruction.cellId,
             role: instruction.role,
+            isServing: instruction.isServing,
+            isCandidate: instruction.isCandidate,
+            isPinned: instruction.isPinned,
+            isProvisionalLeader: instruction.role === 'provisional-leader',
+            isSelectedTarget: instruction.role === 'selected-target',
+            isSolidData: instruction.link.isSolidData,
+            isMeasurementOnly: instruction.link.isMeasurementOnly,
             footprintStyle: instruction.footprint.style,
             ringIndex: index,
             color: instruction.footprint.color,
@@ -842,10 +1146,13 @@ function MultiCandidateFootprint({
 
 function MultiCandidateEndpoint({
   instruction,
+  visibleOverride,
 }: {
   readonly instruction: MultiCandidateBeamSceneRenderInstruction;
+  /** Display-only override used to hide unselected candidate endpoint rings. */
+  readonly visibleOverride?: boolean;
 }): JSX.Element | null {
-  if (!instruction.endpoint.visible) return null;
+  if (!instruction.endpoint.visible || visibleOverride === false) return null;
   return (
     <mesh
       name={`multi-candidate-endpoint-${instruction.satelliteId}-b${instruction.beamId}`}
@@ -856,9 +1163,17 @@ function MultiCandidateEndpoint({
         pairKey: instruction.pairKey,
         joinKey: instruction.joinKey,
         sceneJoinKey: instruction.sceneJoinKey,
+        railJoinKey: instruction.railJoinKey,
         satelliteId: instruction.satelliteId,
         beamId: instruction.beamId,
         role: instruction.role,
+        isServing: instruction.isServing,
+        isCandidate: instruction.isCandidate,
+        isPinned: instruction.isPinned,
+        isProvisionalLeader: instruction.role === 'provisional-leader',
+        isSelectedTarget: instruction.role === 'selected-target',
+        isSolidData: instruction.link.isSolidData,
+        isMeasurementOnly: instruction.link.isMeasurementOnly,
         hollow: instruction.endpoint.hollow,
         color: instruction.endpoint.color,
       }}
@@ -879,6 +1194,14 @@ function MultiCandidateEndpoint({
 function MultiCandidatePair({
   instruction,
   renderServingConeAndFootprint,
+  renderCandidateCarrierGeometry,
+  renderCandidateFootprints,
+  limitCandidateCarrierToLeader,
+  candidateCarrierLeaderPairKey,
+  limitCandidateLinksToLeader,
+  candidateDisplayLinkPairKey,
+  renderServingDataLink,
+  renderPairLabels,
   candidateLane,
   satelliteBiasLane,
   showSatelliteInLabel,
@@ -886,13 +1209,36 @@ function MultiCandidatePair({
 }: {
   readonly instruction: MultiCandidateBeamSceneRenderInstruction;
   readonly renderServingConeAndFootprint: boolean;
+  readonly renderCandidateCarrierGeometry: boolean;
+  readonly renderCandidateFootprints: boolean;
+  readonly limitCandidateCarrierToLeader: boolean;
+  readonly candidateCarrierLeaderPairKey: string | null;
+  readonly limitCandidateLinksToLeader: boolean;
+  readonly candidateDisplayLinkPairKey: string | null;
+  readonly renderServingDataLink: boolean;
+  readonly renderPairLabels: boolean;
   readonly candidateLane: number;
   readonly satelliteBiasLane: number;
   readonly showSatelliteInLabel: boolean;
   readonly onCandidateSelect?: (key: CandidateLinkKey) => void;
 }): JSX.Element {
-  const renderCarrierGeometry = !instruction.isServing || renderServingConeAndFootprint;
-  const renderIdentityLabel = shouldRenderMultiCandidateIdentityLabel(
+  const renderCarrierGeometry = shouldRenderMultiCandidateCarrierGeometry(
+    instruction,
+    instruction.isServing ? renderServingConeAndFootprint : renderCandidateCarrierGeometry,
+    limitCandidateCarrierToLeader,
+    candidateCarrierLeaderPairKey,
+  );
+  const renderFootprint = shouldRenderMultiCandidateCarrierGeometry(
+    instruction,
+    instruction.isServing ? renderServingConeAndFootprint : renderCandidateFootprints,
+    limitCandidateCarrierToLeader,
+    candidateCarrierLeaderPairKey,
+  );
+  const renderFootprintFill = shouldRenderMultiCandidateFootprintFill(
+    instruction,
+    renderCarrierGeometry,
+  );
+  const renderIdentityLabel = renderPairLabels && shouldRenderMultiCandidateIdentityLabel(
     instruction,
     renderServingConeAndFootprint,
   );
@@ -926,22 +1272,38 @@ function MultiCandidatePair({
         isServing: instruction.isServing,
         isCandidate: instruction.isCandidate,
         isPinned: instruction.isPinned,
+        isProvisionalLeader: instruction.role === 'provisional-leader',
+        isSelectedTarget: instruction.role === 'selected-target',
         satelliteColor: instruction.satelliteColor,
         beamColor: instruction.beamColor,
         coneStyle: instruction.cone.style,
         footprintStyle: instruction.footprint.style,
         linkStyle: instruction.link.style,
         coneVolume: instruction.cone.volume,
+        limitCandidateCarrierToLeader,
+        candidateCarrierLeaderPairKey,
+        limitCandidateLinksToLeader,
+        candidateDisplayLinkPairKey,
         isSolidData: instruction.link.isSolidData,
+        isMeasurementOnly: instruction.link.isMeasurementOnly,
         reducedMotion: instruction.reducedMotion,
       }}
       onClick={handleClick}
     >
       {renderCarrierGeometry && instruction.cone.visible && <MultiCandidateConeMesh instruction={instruction} />}
-      {renderCarrierGeometry && instruction.footprint.visible && (
-        <MultiCandidateFootprint instruction={instruction} displayScale={footprintDisplayScale} />
+      {renderFootprint && instruction.footprint.visible && (
+        <MultiCandidateFootprint
+          instruction={instruction}
+          displayScale={footprintDisplayScale}
+          renderFill={renderFootprintFill}
+        />
       )}
-      {instruction.link.visible && (
+      {shouldRenderMultiCandidateDataLink(
+        instruction,
+        renderServingDataLink,
+        limitCandidateLinksToLeader,
+        candidateDisplayLinkPairKey,
+      ) && (
         <Line
           points={instruction.link.points}
           color={instruction.link.color}
@@ -962,13 +1324,24 @@ function MultiCandidatePair({
             role: instruction.role,
             isServing: instruction.isServing,
             isCandidate: instruction.isCandidate,
+            isPinned: instruction.isPinned,
+            isProvisionalLeader: instruction.role === 'provisional-leader',
+            isSelectedTarget: instruction.role === 'selected-target',
             isSolidData: instruction.link.isSolidData,
+            isMeasurementOnly: instruction.link.isMeasurementOnly,
             linkStyle: instruction.link.style,
             color: instruction.link.color,
           }}
         />
       )}
-      <MultiCandidateEndpoint instruction={instruction} />
+      <MultiCandidateEndpoint
+        instruction={instruction}
+        visibleOverride={instruction.isCandidate
+          ? instruction.isPinned
+            || instruction.role === 'provisional-leader'
+            || instruction.role === 'selected-target'
+          : undefined}
+      />
       {renderIdentityLabel && instruction.label !== null && (
         <Html
           position={visibleLabelPosition}
@@ -983,6 +1356,7 @@ function MultiCandidatePair({
             className="multi-candidate-label"
             data-testid="multi-candidate-label"
             data-satellite-id={instruction.satelliteId}
+            data-satellite-color={instruction.satelliteColor}
             data-beam-id={instruction.beamId}
             data-cell-id={instruction.cellId}
             data-scene-join-key={instruction.sceneJoinKey}
@@ -995,6 +1369,8 @@ function MultiCandidatePair({
             data-is-serving={instruction.isServing ? '1' : '0'}
             data-is-candidate={instruction.isCandidate ? '1' : '0'}
             data-is-pinned={instruction.isPinned ? '1' : '0'}
+            data-is-provisional-leader={instruction.role === 'provisional-leader' ? '1' : '0'}
+            data-is-selected-target={instruction.role === 'selected-target' ? '1' : '0'}
             style={{
               pointerEvents: 'none',
               userSelect: 'none',
@@ -1010,7 +1386,7 @@ function MultiCandidatePair({
                 : '0 2px 6px rgba(0, 0, 0, 0.6)',
               color: '#f8fafc',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-              fontSize: '14px',
+              fontSize: '16px',
               fontWeight: 600,
               lineHeight: 1.2,
               textAlign: 'center',
@@ -1031,8 +1407,8 @@ export function shouldRenderMultiCandidateIdentityLabel(
   renderServingConeAndFootprint: boolean,
 ): boolean {
   if (instruction.isServing) return renderServingConeAndFootprint;
-  if (instruction.role === 'observed') return instruction.isPinned;
-  return true;
+  if (instruction.isPinned) return true;
+  return instruction.role === 'provisional-leader' || instruction.role === 'selected-target';
 }
 
 export function groupMultiCandidateSatelliteIdentities(
@@ -1044,29 +1420,478 @@ export function groupMultiCandidateSatelliteIdentities(
     group.push(instruction);
     bySatellite.set(instruction.satelliteId, group);
   }
-  return Object.freeze([...bySatellite.entries()].map(([satelliteId, group]) => Object.freeze({
-    satelliteId,
-    identityInstruction: group[0]!,
-    pairKeys: Object.freeze(group.map(instruction => instruction.pairKey)),
-    sceneJoinKeys: Object.freeze(group.map(instruction => instruction.sceneJoinKey)),
-    railJoinKeys: Object.freeze(group.map(instruction => instruction.railJoinKey)),
-    beamIds: Object.freeze(group.map(instruction => instruction.beamId)),
-  })));
+  const orderedGroups = [...bySatellite.entries()].sort(([leftId, left], [rightId, right]) => {
+    const leftServing = left.some(instruction => instruction.isServing);
+    const rightServing = right.some(instruction => instruction.isServing);
+    if (leftServing !== rightServing) return leftServing ? -1 : 1;
+    return leftId.localeCompare(rightId);
+  });
+  return Object.freeze(orderedGroups.map(([satelliteId, group]) => {
+    const candidateInstructions = group.filter(instruction => instruction.isCandidate);
+    const eligibleCandidateInstructions = candidateInstructions.filter(
+      instruction => instruction.role !== 'observed',
+    );
+    const hasProvisionalLeader = candidateInstructions.some(
+      instruction => instruction.role === 'provisional-leader',
+    );
+    const hasSelectedTarget = candidateInstructions.some(
+      instruction => instruction.role === 'selected-target',
+    );
+    const beamCellPairs = Object.freeze(
+      [...new Map(group.map(instruction => [
+        `${instruction.beamId}/${instruction.cellId}`,
+        Object.freeze({ beamId: instruction.beamId, cellId: instruction.cellId }),
+      ])).values()]
+        .sort((left, right) => left.beamId - right.beamId || left.cellId - right.cellId),
+    );
+    return Object.freeze({
+      satelliteId,
+      identityInstruction: group[0]!,
+      isServingSatellite: group.some(instruction => instruction.isServing),
+      hasCandidatePairs: candidateInstructions.length > 0,
+      hasEligibleCandidatePairs: eligibleCandidateInstructions.length > 0,
+      hasObservedCandidatePairs: candidateInstructions.some(instruction => instruction.role === 'observed'),
+      hasProvisionalLeader,
+      hasSelectedTarget,
+      isPinnedSatellite: group.some(instruction => instruction.isPinned),
+      candidatePairCount: candidateInstructions.length,
+      eligibleCandidatePairCount: eligibleCandidateInstructions.length,
+      pairKeys: Object.freeze(group.map(instruction => instruction.pairKey)),
+      sceneJoinKeys: Object.freeze(group.map(instruction => instruction.sceneJoinKey)),
+      railJoinKeys: Object.freeze(group.map(instruction => instruction.railJoinKey)),
+      servingBeamIds: Object.freeze(group
+        .filter(instruction => instruction.isServing)
+        .map(instruction => instruction.beamId)),
+      candidateBeamIds: Object.freeze(group
+        .filter(instruction => instruction.isCandidate)
+        .map(instruction => instruction.beamId)),
+      beamIds: Object.freeze(group.map(instruction => instruction.beamId)),
+      beamCellPairs,
+    });
+  }));
+}
+
+function centralCandidateRolePriority(role: CandidatePresentationRole): number {
+  switch (role) {
+    case 'selected-target': return 0;
+    case 'provisional-leader': return 1;
+    case 'qualified': return 2;
+    case 'hard-eligible': return 3;
+    case 'observed': return 4;
+    case 'serving':
+    case 'committed-serving': return -1;
+  }
+}
+
+/**
+ * Select the one candidate whose existing presentation role may own carrier
+ * geometry in leader-only mode. This deliberately consumes role metadata from
+ * the accepted scene instructions; it does not inspect metrics, ranks, or
+ * recompute a handover decision.
+ */
+export function resolveCandidateCarrierLeaderPairKey(
+  instructions: readonly MultiCandidateBeamSceneRenderInstruction[],
+): string | null {
+  const instructionOrder = new Map(
+    instructions.map((instruction, index) => [instruction, index] as const),
+  );
+  const leader = [...instructions]
+    .filter(instruction => instruction.isCandidate
+      && (
+        instruction.role === 'selected-target'
+        || instruction.role === 'provisional-leader'
+      ))
+    .sort((left, right) => (
+      centralCandidateRolePriority(left.role) - centralCandidateRolePriority(right.role)
+      || (instructionOrder.get(left) ?? 0) - (instructionOrder.get(right) ?? 0)
+      || left.satelliteId.localeCompare(right.satelliteId)
+      || left.beamId - right.beamId
+    ))[0];
+  return leader?.pairKey ?? null;
+}
+
+/**
+ * Select the one candidate measurement link allowed on the centre stage. A
+ * selected/provisional leader wins when present; before that role exists, the
+ * first stable qualified/hard-eligible instruction is only a visual
+ * representative. This function never changes the accepted decision or rail.
+ */
+export function resolveCandidateDisplayLinkPairKey(
+  instructions: readonly MultiCandidateBeamSceneRenderInstruction[],
+): string | null {
+  const leaderPairKey = resolveCandidateCarrierLeaderPairKey(instructions);
+  if (leaderPairKey !== null) return leaderPairKey;
+  return [...instructions]
+    .filter(instruction => instruction.isCandidate
+      && (instruction.role === 'qualified' || instruction.role === 'hard-eligible'))
+    .sort((left, right) => (
+      centralCandidateRolePriority(left.role) - centralCandidateRolePriority(right.role)
+      || left.satelliteId.localeCompare(right.satelliteId)
+      || left.beamId - right.beamId
+    ))[0]?.pairKey ?? null;
+}
+
+export function shouldRenderMultiCandidateDataLink(
+  instruction: MultiCandidateBeamSceneRenderInstruction,
+  renderServingDataLink: boolean,
+  limitCandidateLinksToLeader: boolean,
+  candidateDisplayLinkPairKey: string | null,
+): boolean {
+  if (!instruction.link.visible) return false;
+  if (!instruction.isCandidate) return renderServingDataLink;
+  return !limitCandidateLinksToLeader || instruction.pairKey === candidateDisplayLinkPairKey;
+}
+
+/**
+ * Render contract for candidate carrier geometry and footprint painting.
+ * Serving instructions intentionally bypass the leader key so the established
+ * serving carrier is unchanged; candidate links themselves remain governed by
+ * their presentation plan and are not hidden by this helper.
+ */
+export function shouldRenderMultiCandidateCarrierGeometry(
+  instruction: MultiCandidateBeamSceneRenderInstruction,
+  requested: boolean,
+  limitToLeader: boolean,
+  leaderPairKey: string | null,
+): boolean {
+  if (!requested) return false;
+  if (instruction.isServing) return true;
+  if (!instruction.isCandidate) return false;
+  return !limitToLeader || instruction.pairKey === leaderPairKey;
+}
+
+/**
+ * Filled footprint polygons belong to the carrier geometry.  A candidate
+ * footprint can still be requested as a dashed/dotted measurement marker,
+ * but it must not gain a solid fill merely because that marker is visible.
+ */
+export function shouldRenderMultiCandidateFootprintFill(
+  instruction: MultiCandidateBeamSceneRenderInstruction,
+  renderCarrierGeometry: boolean,
+): boolean {
+  return renderCarrierGeometry && (instruction.isServing || instruction.isCandidate);
+}
+
+/**
+ * Collapse the complete scene instruction list into the small set that is
+ * actually painted in the centre stage.  All instructions remain available to
+ * the rail, join metadata, and resolver tests; this is only a display-density
+ * gate.  A serving link is always retained, and each alternate satellite gets
+ * one stable representative pair (selected/leader first, then role and beam).
+ */
+export function selectCentralMultiCandidateSceneInstructions(
+  instructions: readonly MultiCandidateBeamSceneRenderInstruction[],
+): readonly MultiCandidateBeamSceneRenderInstruction[] {
+  const serving = instructions.filter(instruction => instruction.isServing);
+  const servingSatelliteIds = new Set(serving.map(instruction => instruction.satelliteId));
+  const bySatellite = new Map<string, MultiCandidateBeamSceneRenderInstruction[]>();
+  for (const instruction of instructions) {
+    if (!instruction.isCandidate) continue;
+    const group = bySatellite.get(instruction.satelliteId) ?? [];
+    group.push(instruction);
+    bySatellite.set(instruction.satelliteId, group);
+  }
+  const representativeItems = [...bySatellite.entries()]
+    .map(([satelliteId, group]) => {
+      const representative = [...group].sort((left, right) => (
+        centralCandidateRolePriority(left.role) - centralCandidateRolePriority(right.role)
+        || Number(right.isPinned) - Number(left.isPinned)
+        || instructions.indexOf(left) - instructions.indexOf(right)
+        || left.beamId - right.beamId
+        || left.cellId - right.cellId
+      )).slice(0, MAX_CENTRAL_CANDIDATE_PAIRS_PER_SATELLITE)[0];
+      return representative === undefined
+        ? undefined
+        : {
+          satelliteId,
+          representative,
+          firstInstructionIndex: instructions.indexOf(group[0]!),
+      };
+    })
+    .filter((item): item is {
+      readonly satelliteId: string;
+      readonly representative: MultiCandidateBeamSceneRenderInstruction;
+      readonly firstInstructionIndex: number;
+    } => item !== undefined)
+    .sort((left, right) => (
+      centralCandidateRolePriority(left.representative.role)
+      - centralCandidateRolePriority(right.representative.role)
+      || Number(right.representative.isPinned) - Number(left.representative.isPinned)
+      || left.firstInstructionIndex - right.firstInstructionIndex
+      || left.satelliteId.localeCompare(right.satelliteId)
+    ));
+  // A same-satellite beam candidate belongs to the serving spacecraft's
+  // identity (and is useful for intra-satellite handover), but it must not
+  // consume one of the *alternate satellite* shortlist slots. Otherwise a
+  // seven-beam serving fan can hide the second spacecraft the user is meant
+  // to compare. Keep one representative same-satellite candidate, then cap
+  // only distinct alternate spacecrafts at the central display boundary.
+  const sameServingRepresentatives = representativeItems
+    .filter(item => servingSatelliteIds.has(item.satelliteId))
+    .map(item => item.representative);
+  const alternateRepresentatives = representativeItems
+    .filter(item => !servingSatelliteIds.has(item.satelliteId))
+    .slice(0, MAX_CENTRAL_CANDIDATE_SATELLITES)
+    .map(item => item.representative);
+  return Object.freeze([
+    ...serving,
+    ...sameServingRepresentatives,
+    ...alternateRepresentatives,
+  ]);
+}
+
+/**
+ * Homepage comparison projection: keep the serving instruction and one
+ * stable measurement representative for every satellite that is present in
+ * the accepted candidate plan.  Unlike the legacy density selector this does
+ * not cap alternate satellites.  The right rail is the complete qualified
+ * candidate roster, so the centre must expose the same satellite identities
+ * (one dashed measurement line each); only carrier geometry is still limited
+ * separately to the selected/provisional leader.
+ *
+ * This is a projection-only choice. It does not add candidates, rank them, or
+ * alter the accepted decision. Other routes continue to use the bounded
+ * `selectCentralMultiCandidateSceneInstructions` selector.
+ */
+export function selectHomepageCandidateSceneInstructions(
+  instructions: readonly MultiCandidateBeamSceneRenderInstruction[],
+): readonly MultiCandidateBeamSceneRenderInstruction[] {
+  const serving = instructions.filter(instruction => instruction.isServing);
+  const servingSatelliteIds = new Set(serving.map(instruction => instruction.satelliteId));
+  const representativeBySatellite = new Map<string, MultiCandidateBeamSceneRenderInstruction>();
+  const firstInstructionIndexBySatellite = new Map<string, number>();
+
+  for (const [index, instruction] of instructions.entries()) {
+    if (!instruction.isCandidate) continue;
+    const current = representativeBySatellite.get(instruction.satelliteId);
+    if (current === undefined) {
+      representativeBySatellite.set(instruction.satelliteId, instruction);
+      firstInstructionIndexBySatellite.set(instruction.satelliteId, index);
+      continue;
+    }
+    const currentIndex = firstInstructionIndexBySatellite.get(instruction.satelliteId) ?? index;
+    const preferred = [...[current, instruction]].sort((left, right) => (
+      centralCandidateRolePriority(left.role) - centralCandidateRolePriority(right.role)
+      || Number(right.isPinned) - Number(left.isPinned)
+      || (firstInstructionIndexBySatellite.get(left.satelliteId) ?? currentIndex)
+        - (firstInstructionIndexBySatellite.get(right.satelliteId) ?? index)
+      || left.beamId - right.beamId
+      || left.cellId - right.cellId
+    ))[0]!;
+    representativeBySatellite.set(instruction.satelliteId, preferred);
+  }
+
+  const representatives = [...representativeBySatellite.entries()]
+    .map(([satelliteId, representative]) => ({
+      satelliteId,
+      representative,
+      firstInstructionIndex: firstInstructionIndexBySatellite.get(satelliteId) ?? Number.MAX_SAFE_INTEGER,
+    }))
+    .sort((left, right) => (
+      centralCandidateRolePriority(left.representative.role)
+      - centralCandidateRolePriority(right.representative.role)
+      || Number(right.representative.isPinned) - Number(left.representative.isPinned)
+      || left.firstInstructionIndex - right.firstInstructionIndex
+      || left.satelliteId.localeCompare(right.satelliteId)
+    ))
+    .map(item => item.representative);
+
+  const sameServingRepresentatives = representatives.filter(instruction => (
+    servingSatelliteIds.has(instruction.satelliteId)
+  ));
+  const alternateRepresentatives = representatives.filter(instruction => (
+    !servingSatelliteIds.has(instruction.satelliteId)
+  ));
+  return Object.freeze([
+    ...serving,
+    ...sameServingRepresentatives,
+    ...alternateRepresentatives,
+  ]);
+}
+
+function satelliteIdentityRoleTag(group: MultiCandidateSatelliteIdentityGroup): string {
+  if (group.isServingSatellite && group.hasSelectedTarget) return '服務／勝出';
+  if (group.isServingSatellite && group.hasProvisionalLeader) return '服務／暫列';
+  if (group.isServingSatellite) return '服務';
+  if (group.hasSelectedTarget) return '勝出';
+  if (group.hasProvisionalLeader) return '暫列';
+  if (group.hasEligibleCandidatePairs) return '候選';
+  if (group.hasObservedCandidatePairs) return '觀測';
+  return '背景';
+}
+
+function formatBeamIdSummary(beamIds: readonly number[]): string {
+  const sorted = [...new Set(beamIds)].sort((left, right) => left - right);
+  if (sorted.length === 0) return '無波束';
+  const ranges: string[] = [];
+  let start = sorted[0]!;
+  let end = start;
+  for (const beamId of sorted.slice(1)) {
+    if (beamId === end + 1) {
+      end = beamId;
+      continue;
+    }
+    ranges.push(start === end ? `B${start}` : `B${start}–B${end}`);
+    start = beamId;
+    end = beamId;
+  }
+  ranges.push(start === end ? `B${start}` : `B${start}–B${end}`);
+  return ranges.join('／');
+}
+
+/**
+ * Keep the physical/display join visible without making the right rail the
+ * only place where a cell identity can be verified.  The badge is deliberately
+ * capped because comparison mode can contain the complete seven-beam roster;
+ * the rail still carries every pair and its full source-frame key.
+ */
+export function formatBeamCellPairSummary(
+  pairs: readonly MultiCandidateBeamCellPair[],
+  maxPairs = 4,
+): string {
+  if (!Number.isInteger(maxPairs) || maxPairs < 1) {
+    throw new TypeError('maxPairs must be a positive integer');
+  }
+  const unique = [...new Map(pairs.map(pair => [
+    `${pair.beamId}/${pair.cellId}`,
+    pair,
+  ])).values()]
+    .sort((left, right) => left.beamId - right.beamId || left.cellId - right.cellId);
+  if (unique.length === 0) return '無波束';
+  const visible = unique.slice(0, maxPairs)
+    .map(pair => `B${pair.beamId}/C${pair.cellId + 1}`);
+  const hiddenCount = unique.length - visible.length;
+  return hiddenCount > 0
+    ? `${visible.join(' · ')} · +${hiddenCount}`
+    : visible.join(' · ');
+}
+
+function formatSatelliteBeamSummary(
+  group: MultiCandidateSatelliteIdentityGroup,
+  roleTag: string,
+): string {
+  const servingBeamSet = new Set(group.servingBeamIds);
+  const servingPairs = group.beamCellPairs.filter(pair => servingBeamSet.has(pair.beamId));
+  const candidatePairs = group.beamCellPairs.filter(pair => !servingBeamSet.has(pair.beamId));
+  // Keep the badge itself a single, glanceable row.  The complete B/C mapping
+  // remains available through data-beam-cell-pairs and the rail; rendering all
+  // seven pairs in the world-space badge makes the CSS shrink-to-fit wrapper
+  // cover the scene. One pair plus a bounded count is enough to join the
+  // satellite to a visible ground cell; the rail carries every measured pair.
+  const pairSummary = (pairs: readonly MultiCandidateBeamCellPair[]) =>
+    formatBeamCellPairSummary(pairs, 1);
+  if (group.isServingSatellite && group.candidateBeamIds.length > 0) {
+    const roleSummary = `服務 ${pairSummary(servingPairs)} · 候選 ${pairSummary(candidatePairs)}`;
+    return `${roleTag === '服務' ? '' : `${roleTag} · `}${roleSummary}`;
+  }
+  if (group.isServingSatellite) {
+    return `${roleTag === '服務' ? '' : `${roleTag} · `}服務 ${pairSummary(servingPairs)}`;
+  }
+  return `${roleTag} · ${pairSummary(group.beamCellPairs)}`;
 }
 
 function MultiCandidateSatelliteIdentityMarker({
   group,
+  satelliteLane,
+  satelliteLaneCount,
+  candidateOrdinal,
+  renderLabel,
+  satelliteNameById,
 }: {
   readonly group: MultiCandidateSatelliteIdentityGroup;
+  readonly satelliteLane: number;
+  readonly satelliteLaneCount: number;
+  /** 1-based central shortlist position; absent for the serving satellite. */
+  readonly candidateOrdinal: number | null;
+  readonly renderLabel: boolean;
+  readonly satelliteNameById?: ReadonlyMap<string, string> | null;
 }): JSX.Element {
   const instruction = group.identityInstruction;
-  const joinMetadata = {
+  const camera = useThree(state => state.camera);
+  const viewportWidth = useThree(state => state.size.width);
+  const markerRole = group.hasSelectedTarget
+    ? 'selected-target'
+    : group.hasProvisionalLeader
+      ? 'provisional-leader'
+      : group.isServingSatellite
+        ? 'serving'
+        : group.hasEligibleCandidatePairs
+          ? 'candidate'
+          : group.hasCandidatePairs
+            ? 'observed'
+            : 'context';
+  const candidateHaloIsStrong = group.hasEligibleCandidatePairs || group.isPinnedSatellite;
+  const candidateHaloInnerRadius = candidateHaloIsStrong
+    ? SATELLITE_CANDIDATE_HALO_INNER_RADIUS_WORLD
+    : SATELLITE_OBSERVED_HALO_INNER_RADIUS_WORLD;
+  const candidateHaloOuterRadius = candidateHaloIsStrong
+    ? SATELLITE_CANDIDATE_HALO_OUTER_RADIUS_WORLD
+    : SATELLITE_OBSERVED_HALO_OUTER_RADIUS_WORLD;
+  const candidateHaloOpacity = candidateHaloIsStrong ? 0.64 : 0.30;
+  const satelliteLabelPosition = resolveSatelliteIdentityLabelPosition(
+    satelliteLane,
+    satelliteLaneCount,
+  );
+  const satelliteLabelTranslateX = useMemo(() => {
+    const projected = new THREE.Vector3(...instruction.apex).project(camera);
+    return resolveSatelliteIdentityLabelHorizontalCorrection(projected.x, viewportWidth);
+  }, [camera, instruction.apex, viewportWidth]);
+  // Use a small CSS-pixel ladder in addition to the world-space band.  This
+  // remains stable at every camera distance and avoids overlap when several
+  // candidate spacecraft project into the same part of the sky.
+  // The small ladder separates close projected spacecraft while keeping each
+  // badge visually attached to its GLB. It is still a label-only offset; the
+  // GLB, beam, footprint, and camera remain untouched.
+  const satelliteLabelTranslateY = (satelliteLane % 3) * SATELLITE_LABEL_SCREEN_LANE_GAP_PX
+    + SATELLITE_LABEL_SCREEN_BASE_OFFSET_PX;
+  const roleTag = satelliteIdentityRoleTag(group);
+  const joinMetadata = Object.freeze({
     satelliteId: group.satelliteId,
     pairKeys: group.pairKeys,
     sceneJoinKeys: group.sceneJoinKeys,
     railJoinKeys: group.railJoinKeys,
     beamIds: group.beamIds,
-  };
+    beamCellPairs: group.beamCellPairs,
+    satelliteColor: instruction.satelliteColor,
+    markerRole,
+    role: markerRole,
+    isServing: group.isServingSatellite,
+    isCandidate: group.hasCandidatePairs,
+    isProvisionalLeader: group.hasProvisionalLeader,
+    isSelectedTarget: group.hasSelectedTarget,
+    isLeader: group.hasProvisionalLeader,
+    isSelected: group.hasSelectedTarget,
+    roleTag,
+    isServingSatellite: group.isServingSatellite,
+    hasCandidatePairs: group.hasCandidatePairs,
+    hasEligibleCandidatePairs: group.hasEligibleCandidatePairs,
+    hasObservedCandidatePairs: group.hasObservedCandidatePairs,
+    hasProvisionalLeader: group.hasProvisionalLeader,
+    hasSelectedTarget: group.hasSelectedTarget,
+    isPinnedSatellite: group.isPinnedSatellite,
+    candidatePairCount: group.candidatePairCount,
+    eligibleCandidatePairCount: group.eligibleCandidatePairCount,
+    centralShortlistOrdinal: candidateOrdinal,
+  });
+  const satelliteLabel = resolveHomepageSatelliteDisplayName(
+    instruction.satelliteId,
+    satelliteNameById,
+  );
+  const beamSummary = formatSatelliteBeamSummary(group, roleTag);
+  const visibleSatelliteLabel = `${satelliteLabel} · ${beamSummary}`;
+  // The full B/C mapping remains in data attributes and the right rail.  The
+  // centre stage only needs a glanceable role + spacecraft identity; repeating
+  // every measured beam in a floating badge is what previously covered the
+  // scene and made candidates appear to flicker as their roster changed.
+  const compactSatelliteLabel = `${group.isServingSatellite
+    ? group.hasCandidatePairs ? '服務／候選' : '服務'
+    : group.hasSelectedTarget
+      ? '接手候選'
+      : group.hasProvisionalLeader
+        ? '候選暫列'
+        : candidateOrdinal === null
+          ? '候選'
+          : `候選 ${candidateOrdinal}`} · ${satelliteLabel}`;
   return (
     <Billboard
       position={instruction.apex}
@@ -1077,44 +1902,125 @@ function MultiCandidateSatelliteIdentityMarker({
       name={`multi-candidate-satellite-identity-${instruction.satelliteId}`}
       userData={joinMetadata}
     >
-      <mesh renderOrder={28} userData={joinMetadata}>
-        <ringGeometry args={[12, 17, 40]} />
-        <meshBasicMaterial
-          color={instruction.satelliteColor}
-          transparent
-          opacity={0.9}
-          side={THREE.DoubleSide}
-          depthTest={false}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-      <Html
-        position={[0, 26, 0]}
-        center
-        zIndexRange={[90, 30]}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        <div
-          data-testid="multi-candidate-satellite-label"
-          data-satellite-id={instruction.satelliteId}
-          style={{
-            padding: '3px 8px',
-            border: `1px solid ${instruction.satelliteColor}`,
-            borderRadius: '999px',
-            background: 'rgba(2, 6, 23, 0.9)',
-            color: '#f8fafc',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-            fontSize: '15px',
-            fontWeight: 760,
-            lineHeight: 1.2,
-            whiteSpace: 'nowrap',
-            textShadow: '0 1px 2px rgba(0, 0, 0, 0.95)',
+      {group.isServingSatellite && (
+        <mesh
+          name={`multi-candidate-serving-halo-${instruction.satelliteId}`}
+          renderOrder={28}
+          userData={{ ...joinMetadata, haloRole: 'serving' }}
+        >
+          <ringGeometry args={[
+            SATELLITE_SERVING_HALO_INNER_RADIUS_WORLD,
+            SATELLITE_SERVING_HALO_OUTER_RADIUS_WORLD,
+            SATELLITE_IDENTITY_HALO_SEGMENTS,
+          ]} />
+          <meshBasicMaterial
+            color={instruction.satelliteColor}
+            transparent
+            opacity={0.98}
+            side={THREE.DoubleSide}
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
+      {group.hasCandidatePairs && (
+        <mesh
+          name={`multi-candidate-candidate-halo-${instruction.satelliteId}`}
+          renderOrder={16}
+          userData={{
+            ...joinMetadata,
+            haloRole: candidateHaloIsStrong ? 'candidate' : 'observed',
           }}
         >
-          {formatSatelliteLabel(instruction.satelliteId)}
-        </div>
-      </Html>
+          <ringGeometry args={[
+            candidateHaloInnerRadius,
+            candidateHaloOuterRadius,
+            SATELLITE_IDENTITY_HALO_SEGMENTS,
+          ]} />
+          <meshBasicMaterial
+            color={instruction.satelliteColor}
+            transparent
+            opacity={candidateHaloOpacity}
+            side={THREE.DoubleSide}
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
+      {renderLabel && (
+        <Html
+          position={satelliteLabelPosition}
+          center
+          zIndexRange={[90, 30]}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          <div
+            className="multi-candidate-satellite-marker"
+            data-testid="multi-candidate-satellite-label"
+            data-satellite-id={instruction.satelliteId}
+            data-satellite-color={instruction.satelliteColor}
+            data-scene-join-key={instruction.sceneJoinKey}
+            data-rail-join-key={instruction.railJoinKey}
+            data-pair-key={instruction.pairKey}
+            data-scene-join-keys={JSON.stringify(group.sceneJoinKeys)}
+            data-rail-join-keys={JSON.stringify(group.railJoinKeys)}
+            data-pair-keys={JSON.stringify(group.pairKeys)}
+            data-beam-ids={JSON.stringify(group.beamIds)}
+            data-beam-cell-pairs={JSON.stringify(group.beamCellPairs)}
+            data-marker-role={markerRole}
+            data-role={markerRole}
+            data-role-tag={roleTag}
+            data-beam-summary={beamSummary}
+            data-label={visibleSatelliteLabel}
+            data-compact-label={compactSatelliteLabel}
+            data-is-serving={group.isServingSatellite ? '1' : '0'}
+            data-is-candidate={group.hasCandidatePairs ? '1' : '0'}
+            data-is-leader={group.hasProvisionalLeader ? '1' : '0'}
+            data-is-provisional-leader={group.hasProvisionalLeader ? '1' : '0'}
+            data-is-selected-target={group.hasSelectedTarget ? '1' : '0'}
+            data-is-pinned={group.isPinnedSatellite ? '1' : '0'}
+            data-is-serving-satellite={group.isServingSatellite ? '1' : '0'}
+            data-has-candidate-pairs={group.hasCandidatePairs ? '1' : '0'}
+            data-has-eligible-candidate-pairs={group.hasEligibleCandidatePairs ? '1' : '0'}
+            data-has-observed-candidate-pairs={group.hasObservedCandidatePairs ? '1' : '0'}
+            data-has-provisional-leader={group.hasProvisionalLeader ? '1' : '0'}
+            data-has-selected-target={group.hasSelectedTarget ? '1' : '0'}
+            data-is-pinned-satellite={group.isPinnedSatellite ? '1' : '0'}
+            data-candidate-pair-count={group.candidatePairCount}
+            data-eligible-candidate-pair-count={group.eligibleCandidatePairCount}
+            data-central-shortlist-ordinal={candidateOrdinal === null ? 'serving' : String(candidateOrdinal)}
+            data-label-lane={satelliteLane}
+            aria-label={visibleSatelliteLabel}
+            style={{
+              padding: '4px 9px',
+              border: `2px solid ${instruction.satelliteColor}`,
+              borderRadius: '999px',
+              background: 'rgba(2, 6, 23, 0.96)',
+              color: '#ffffff',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+              fontSize: '15px',
+              fontWeight: 800,
+              lineHeight: 1.25,
+              // R3F Html uses an absolutely positioned shrink-to-fit wrapper.
+              // nowrap + max-content prevents it from collapsing to a vertical
+              // min-content column. The compact text and 300px cap leave the
+              // ground scene visible on the narrow centre stage; the rail and
+              // data attributes retain the full mapping.
+              width: 'max-content',
+              maxWidth: 'min(300px, calc(100vw - 24px))',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              textAlign: 'center',
+              textShadow: '0 1px 3px rgba(0, 0, 0, 1)',
+              transform: `translate(${satelliteLabelTranslateX}px, ${satelliteLabelTranslateY}px)`,
+            }}
+          >
+            {compactSatelliteLabel}
+          </div>
+        </Html>
+      )}
     </Billboard>
   );
 }
@@ -1133,12 +2039,43 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
     props.primaryUeWorld,
     props.widthScale,
     props.reducedMotion,
+    props.homepageVisualIdentity,
+    props.homepageBeamEeByKey,
+    props.homepageIdentityPaletteIndexBySatelliteId,
+    props.satelliteNameById,
+    props.anchorIntraCandidatesToServingCell,
   ]);
   const renderServingConeAndFootprint = props.renderServingConeAndFootprint !== false;
-  const mountedConeVolumeCount = resolved.instructions.reduce(
+  const renderCandidateCarrierGeometry = props.renderCandidateCarrierGeometry === true;
+  const renderCandidateFootprints = props.renderCandidateFootprints
+    ?? renderCandidateCarrierGeometry;
+  const limitCandidateCarrierToLeader = props.limitCandidateCarrierToLeader === true;
+  const limitCandidateLinksToLeader = props.limitCandidateLinksToLeader === true;
+  const renderServingDataLink = props.renderServingDataLink !== false;
+  const renderSatelliteIdentityMarkers = props.renderSatelliteIdentityMarkers !== false;
+  const renderSatelliteIdentityLabels = props.renderSatelliteIdentityLabels !== false;
+  const renderPairLabels = props.renderPairLabels === true;
+  const centralInstructions = useMemo(
+    () => props.homepageVisualIdentity === true
+      ? selectHomepageCandidateSceneInstructions(resolved.instructions)
+      : selectCentralMultiCandidateSceneInstructions(resolved.instructions),
+    [props.homepageVisualIdentity, resolved.instructions],
+  );
+  const candidateCarrierLeaderPairKey = limitCandidateCarrierToLeader
+    ? resolveCandidateCarrierLeaderPairKey(centralInstructions)
+    : null;
+  const candidateDisplayLinkPairKey = limitCandidateLinksToLeader
+    ? resolveCandidateDisplayLinkPairKey(centralInstructions)
+    : null;
+  const mountedConeVolumeCount = centralInstructions.reduce(
     (count, instruction) => count + (
       instruction.cone.visible
-      && (renderServingConeAndFootprint || !instruction.isServing)
+      && shouldRenderMultiCandidateCarrierGeometry(
+        instruction,
+        instruction.isServing ? renderServingConeAndFootprint : renderCandidateCarrierGeometry,
+        limitCandidateCarrierToLeader,
+        candidateCarrierLeaderPairKey,
+      )
         ? 1
         : 0
     ),
@@ -1152,6 +2089,8 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
       = String(resolved.telemetry.instructionCount);
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedPairCount]
       = String(resolved.telemetry.renderedPairCount);
+    dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.centralRenderedPairCount]
+      = String(centralInstructions.length);
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteCount]
       = String(resolved.telemetry.renderedSatelliteCount);
     dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteIdentityColors]
@@ -1187,6 +2126,7 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
     return () => {
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.instructionCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedPairCount];
+      delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.centralRenderedPairCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteCount];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.satelliteIdentityColors];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.coneVolumeCount];
@@ -1198,18 +2138,35 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.renderedSceneJoinKeys];
       delete dataset[MULTI_CANDIDATE_SCENE_TELEMETRY_KEYS.eventCueCount];
     };
-  }, [gl, mountedConeVolumeCount, props.renderReceipt, resolved]);
+  }, [centralInstructions, gl, mountedConeVolumeCount, props.renderReceipt, resolved]);
 
   if (props.visible === false) return null;
-  const satelliteIdentityGroups = groupMultiCandidateSatelliteIdentities(resolved.instructions);
+  const satelliteIdentityGroups = groupMultiCandidateSatelliteIdentities(centralInstructions);
   const satelliteBiasLaneById = new Map(satelliteIdentityGroups.map((group, index) => [
     group.satelliteId,
     index,
   ]));
+  // Keep the visible C1/C2 labels deterministic and identical to the central
+  // selector (and therefore to the rail's comparison-board order). A
+  // same-satellite replacement beam belongs to the serving marker and does not
+  // consume an alternate-satellite slot.
+  const servingSatelliteIds = new Set(
+    centralInstructions
+      .filter(instruction => instruction.isServing)
+      .map(instruction => instruction.satelliteId),
+  );
+  const candidateOrdinalBySatelliteId = new Map<string, number>();
+  let candidateOrdinal = 0;
+  for (const instruction of centralInstructions) {
+    if (!instruction.isCandidate || servingSatelliteIds.has(instruction.satelliteId)) continue;
+    if (candidateOrdinalBySatelliteId.has(instruction.satelliteId)) continue;
+    candidateOrdinal += 1;
+    candidateOrdinalBySatelliteId.set(instruction.satelliteId, candidateOrdinal);
+  }
   const nextLaneByCellId = new Map<number, number>();
   const candidateLaneByPair = new Map<string, number>();
   const firstCandidatePairBySatelliteId = new Map<string, string>();
-  for (const instruction of resolved.instructions) {
+  for (const instruction of centralInstructions) {
     if (!instruction.isCandidate) continue;
     if (!firstCandidatePairBySatelliteId.has(instruction.satelliteId)) {
       firstCandidatePairBySatelliteId.set(instruction.satelliteId, instruction.pairKey);
@@ -1224,11 +2181,14 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
       userData={{
         instructionCount: resolved.telemetry.instructionCount,
         renderedPairCount: resolved.telemetry.renderedPairCount,
+        centralRenderedPairCount: resolved.centralRenderedPairCount,
         renderedSatelliteCount: resolved.telemetry.renderedSatelliteCount,
         coneCount: mountedConeVolumeCount,
         coneVolumeCount: mountedConeVolumeCount,
         maxConeVolumes: resolved.telemetry.maxConeVolumes,
         maxSatelliteGroups: resolved.telemetry.maxSatelliteGroups,
+        limitCandidateCarrierToLeader,
+        candidateCarrierLeaderPairKey,
         solidDataLinkCount: resolved.telemetry.solidDataLinkCount,
         unmappedPairCount: resolved.telemetry.unmappedPairs.length,
         unmappedPairs: resolved.telemetry.unmappedPairs,
@@ -1238,17 +2198,32 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
         reducedMotion: props.reducedMotion === true,
       }}
     >
-      {satelliteIdentityGroups.map(group => (
+      {renderSatelliteIdentityMarkers && satelliteIdentityGroups.map(group => (
         <MultiCandidateSatelliteIdentityMarker
           group={group}
+          satelliteLane={satelliteBiasLaneById.get(group.satelliteId) ?? 0}
+          satelliteLaneCount={satelliteIdentityGroups.length}
+          candidateOrdinal={servingSatelliteIds.has(group.satelliteId)
+            ? null
+            : candidateOrdinalBySatelliteId.get(group.satelliteId) ?? null}
+          renderLabel={renderSatelliteIdentityLabels}
+          satelliteNameById={props.satelliteNameById}
           key={`satellite-identity/${group.satelliteId}`}
         />
       ))}
-      {resolved.instructions.map(instruction => (
+      {centralInstructions.map(instruction => (
         <MultiCandidatePair
           instruction={instruction}
           key={instruction.sceneJoinKey}
           renderServingConeAndFootprint={renderServingConeAndFootprint}
+          renderCandidateCarrierGeometry={renderCandidateCarrierGeometry}
+          renderCandidateFootprints={renderCandidateFootprints}
+          limitCandidateCarrierToLeader={limitCandidateCarrierToLeader}
+          candidateCarrierLeaderPairKey={candidateCarrierLeaderPairKey}
+          limitCandidateLinksToLeader={limitCandidateLinksToLeader}
+          candidateDisplayLinkPairKey={candidateDisplayLinkPairKey}
+          renderServingDataLink={renderServingDataLink}
+          renderPairLabels={renderPairLabels}
           candidateLane={candidateLaneByPair.get(instruction.pairKey) ?? 0}
           satelliteBiasLane={satelliteBiasLaneById.get(instruction.satelliteId) ?? 0}
           showSatelliteInLabel={instruction.isServing

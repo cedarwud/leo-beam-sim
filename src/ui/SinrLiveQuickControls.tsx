@@ -30,6 +30,8 @@ interface SinrLiveQuickControlsProps {
   // effective scene rate + whether the auto-slow is currently applied, plus a
   // dismiss to resume normal speed for the in-progress handover.
   readonly effectiveSpeed: number;
+  /** User-selected transport rate; shown when HO Slow intentionally caps it. */
+  readonly requestedSpeed?: number;
   readonly autoSlowActive: boolean;
   readonly autoSlowApplied: boolean;
   readonly onToggleBeamCallouts: () => void;
@@ -44,6 +46,9 @@ interface SinrLiveQuickControlsProps {
   readonly nextIntraCount?: number;
   readonly nextInterCount?: number;
   readonly nextIntraMode?: 'indexed' | 'real-trigger' | 'moving-beam-demo';
+  readonly handoverIndexBuilding?: boolean;
+  /** Keep the first-paint control row quiet; titles still explain disabled jumps. */
+  readonly showHandoverIndexStatus?: boolean;
   readonly manualHandoverKind?: 'intra' | 'inter' | null;
   readonly onNextIntra?: () => void;
   readonly onNextInter?: () => void;
@@ -56,6 +61,7 @@ export function SinrLiveQuickControls({
   cinematicMode,
   autoSlowEnabled,
   effectiveSpeed,
+  requestedSpeed = effectiveSpeed,
   autoSlowActive,
   autoSlowApplied,
   onToggleBeamCallouts,
@@ -70,6 +76,8 @@ export function SinrLiveQuickControls({
   nextIntraCount,
   nextInterCount,
   nextIntraMode = 'indexed',
+  handoverIndexBuilding = false,
+  showHandoverIndexStatus = false,
   manualHandoverKind = null,
   onNextIntra,
   onNextInter,
@@ -164,15 +172,17 @@ export function SinrLiveQuickControls({
             data-testid="director-intra-focus"
             disabled={!nextIntraEnabled}
             onClick={onNextIntra}
-            title={nextIntraMode === 'moving-beam-demo'
-              ? 'Keep the timeline moving and show a same-satellite beam-switch demonstration'
-              : nextIntraMode === 'real-trigger' && nextIntraCount === undefined
-              ? 'Trigger a real same-satellite intra handover'
-              : nextIntraMode === 'real-trigger'
-                ? 'Trigger the next real same-satellite intra handover'
+            title={nextIntraMode === 'real-trigger'
+              ? nextIntraCount === undefined
+                ? 'Trigger a real same-satellite intra handover'
+                : 'Trigger the next real same-satellite intra handover'
+              : handoverIndexBuilding
+              ? nextIntraEnabled
+                ? 'Queue the next indexed intra handover; the current-parameter index is rebuilding'
+                : 'Updating the handover event index for the current parameters'
               : 'Jump to the next indexed intra handover'}
           >
-            Show Intra{typeof nextIntraCount === 'number' ? ` · ${nextIntraCount}` : ''}
+            Next Intra{nextIntraMode === 'real-trigger' ? ' · trigger' : ''}{typeof nextIntraCount === 'number' ? ` · ${nextIntraCount}` : ''}
           </button>
           <button
             type="button"
@@ -180,30 +190,44 @@ export function SinrLiveQuickControls({
             data-testid="director-inter-focus"
             disabled={!nextInterEnabled}
             onClick={onNextInter}
-            title={nextInterCount === undefined
+            title={handoverIndexBuilding
+              ? nextInterEnabled
+                ? 'Queue the next indexed inter handover; the current-parameter index is rebuilding'
+                : 'Updating the handover event index for the current parameters'
+              : nextInterCount === undefined
               ? 'Seek to the next indexed inter handover and play the moving satellite pair'
               : 'Jump to the next indexed inter handover'}
           >
-            Show Inter{typeof nextInterCount === 'number' ? ` · ${nextInterCount}` : ''}
+            Next Inter{typeof nextInterCount === 'number' ? ` · ${nextInterCount}` : ''}
           </button>
+          {handoverIndexBuilding && showHandoverIndexStatus && (
+            <span
+              className="leo-sinr-quick-controls__handover-status"
+              data-testid="handover-index-building"
+              role="status"
+              title="The live scene and timeline can start while the quick-jump index is built in the background"
+            >
+              Building quick-jump index…
+            </span>
+          )}
         </span>
       )}
 
       {/* HO-Slow feedback: the checkbox alone never showed whether the slow was
-          firing. This readout shows the live effective scene rate (drops 5x -> 1x
-          while a handover is mid-trigger) and goes alert-coloured + offers a Resume
-          when the auto-slow is actually applied. Display-only — it reflects
-          playback.effectiveSpeed, it does not set it. */}
+          firing. This readout shows the actual scene rate and makes the deliberate
+          cap explicit when a faster transport preset is selected. */}
       <span
         className="leo-ho-slow-status"
         data-testid="ho-slow-status"
         data-auto-slow-applied={autoSlowApplied ? '1' : '0'}
         data-auto-slow-active={autoSlowActive ? '1' : '0'}
         title={autoSlowApplied
-          ? 'A handover is in progress — the scene is auto-slowed. Resume to skip the slow-mo.'
+          ? 'The complete candidate-to-handover story is slow by design. Resume skips the cap for this episode.'
           : 'Live scene playback rate (auto-slows during a handover while HO Slow is on).'}
       >
-        Scene {effectiveSpeed.toFixed(1)}×{autoSlowApplied ? ' · HO Slow' : ''}
+        Scene {effectiveSpeed.toFixed(1)}×{autoSlowApplied
+          ? ` · HO Slow${requestedSpeed !== effectiveSpeed ? ` · ${requestedSpeed.toFixed(1)}× selected` : ''}`
+          : ''}
       </span>
       {manualHandoverKind !== null && (
         <span

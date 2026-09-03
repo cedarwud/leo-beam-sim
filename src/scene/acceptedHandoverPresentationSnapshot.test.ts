@@ -13,10 +13,14 @@ import {
   type HandoverDecisionFrame,
 } from '../engine/handover/candidateDecisionContract';
 import {
+  acceptedHandoverSnapshotTracksDecisionFrame,
   buildAcceptedHandoverPresentationSession,
   createHandoverPresentationPolicyConfigHash,
 } from './acceptedHandoverPresentationSnapshot';
-import { buildCandidateSceneRenderReceipt } from './candidateSceneRenderReceipt';
+import {
+  buildCandidateSceneRenderReceipt,
+  isCandidateSceneRenderReceiptReady,
+} from './candidateSceneRenderReceipt';
 import type { MultiCandidateBeamSceneRenderPlan } from '../viz/MultiCandidateBeamScene';
 
 function metric(sourceFrameId: string, value: number, unit: string) {
@@ -67,6 +71,18 @@ function opportunity(sourceFrameId: string, satelliteId: string, beamId: number)
       gate('remaining-service-time'),
       gate('ee-advantage', 'unavailable'),
     ],
+  });
+}
+
+function opportunityWithEe(
+  sourceFrameId: string,
+  satelliteId: string,
+  beamId: number,
+  eeBitsPerJoule: number,
+) {
+  return freezeCandidateOpportunity({
+    ...opportunity(sourceFrameId, satelliteId, beamId),
+    instantaneousEe: metric(sourceFrameId, eeBitsPerJoule, 'bit/J'),
   });
 }
 
@@ -143,6 +159,212 @@ test('builds one deterministic frozen snapshot with exactly one shared plan', ()
   assert.ok(first.snapshot.plan.displayedLinks.every(link => (
     link.joinKey === link.sceneJoinKey && link.joinKey === link.railJoinKey
   )));
+});
+
+test('keeps the shared snapshot visible across the throttled live publication interval', () => {
+  const first = buildAcceptedHandoverPresentationSession({
+    decision: decisionFixture(),
+    policyConfigHash,
+    pinnedKey: null,
+  });
+
+  assert.equal(
+    acceptedHandoverSnapshotTracksDecisionFrame(first.snapshot, decisionFixture('walker-frame-2', true, 2_000)),
+    true,
+    'same episode/epoch/service within one second remains joined',
+  );
+  assert.equal(
+    acceptedHandoverSnapshotTracksDecisionFrame(first.snapshot, decisionFixture('walker-frame-3', true, 2_501)),
+    false,
+    'an old publication eventually fails closed',
+  );
+
+  const changedService = createHandoverDecisionFrame({
+    ...decisionFixture('walker-frame-4', true, 1_200),
+    serving: candidateLinkKey('sat-b', 1),
+    provisionalLeader: null,
+  });
+  assert.equal(
+    acceptedHandoverSnapshotTracksDecisionFrame(first.snapshot, changedService),
+    false,
+    'a serving-link change cannot keep the previous comparison overlay alive',
+  );
+
+  const commitTarget = candidateLinkKey('sat-b', 1);
+  const commitDecision = createHandoverDecisionFrame({
+    ...decisionFixture('walker-frame-commit', true, 1_200),
+    phase: 'switching',
+    serving: commitTarget,
+    provisionalLeader: null,
+    selectedTarget: null,
+    selectedKind: null,
+    recentCommit: createHandoverCommitReceipt({
+      episodeId: 'episode-accepted-snapshot',
+      sourceFrameId: 'walker-frame-commit',
+      simTimeMs: 1_200,
+      from: candidateLinkKey('sat-a', 1),
+      to: commitTarget,
+      kind: 'inter-satellite',
+      mode: 'sinr-offset',
+      reason: 'commit-boundary join fixture',
+      oldLinkEnded: true,
+      newLinkStarted: true,
+    }),
+  });
+  assert.equal(
+    acceptedHandoverSnapshotTracksDecisionFrame(first.snapshot, commitDecision),
+    true,
+    'the old snapshot remains joined through its exact authoritative commit boundary',
+  );
+});
+
+test('latches exact transition identities and endpoint EE through switching, commit, and guard', () => {
+  const cases = [
+    {
+      label: 'intra',
+      source: candidateLinkKey('sat-a', 1),
+      target: candidateLinkKey('sat-a', 4),
+      kind: 'intra-satellite',
+    },
+    {
+      label: 'inter',
+      source: candidateLinkKey('sat-a', 1),
+      target: candidateLinkKey('sat-b', 2),
+      kind: 'inter-satellite',
+    },
+  ] as const;
+
+  for (const item of cases) {
+    const episodeId = `episode-${item.label}-retention`;
+    const epochToken = `walker:epoch-${item.label}-retention`;
+    const switchingFrameId = `${item.label}-switching`;
+    const commitFrameId = `${item.label}-commit`;
+    const guardFrameId = `${item.label}-guard`;
+    const switchingDecision = createHandoverDecisionFrame({
+      episodeId,
+      sourceFrameId: switchingFrameId,
+      epochToken,
+      simTimeMs: 1_000,
+      phase: 'switching',
+      serving: item.source,
+      opportunities: [
+        opportunityWithEe(switchingFrameId, item.source.satelliteId, item.source.beamId, 200),
+        opportunityWithEe(switchingFrameId, item.target.satelliteId, item.target.beamId, 300),
+      ],
+      states: [
+        state(item.source.satelliteId, item.source.beamId, 2),
+        state(item.target.satelliteId, item.target.beamId, 1),
+      ],
+      provisionalLeader: item.target,
+      selectedTarget: item.target,
+      selectedKind: item.kind,
+      selectionHoldSec: 1,
+      selectionHoldRequiredSec: 1.5,
+      mode: 'ee-optimization',
+      recentCommit: null,
+    });
+    const switching = buildAcceptedHandoverPresentationSession({
+      decision: switchingDecision,
+      policyConfigHash: createHandoverPresentationPolicyConfigHash(`${item.label}-retention`),
+      pinnedKey: null,
+      instantaneousEeActive: true,
+      displayAllHardEligibleCandidates: true,
+      configuredBeamCount: 7,
+    });
+
+    assert.ok(switching.snapshot.handoverEvidence);
+    assert.deepEqual(switching.snapshot.handoverEvidence.source, item.source);
+    assert.deepEqual(switching.snapshot.handoverEvidence.target, item.target);
+    assert.equal(switching.snapshot.handoverEvidence.kind, item.kind);
+    assert.equal(switching.snapshot.handoverEvidence.sourceEe?.value, 200);
+    assert.equal(switching.snapshot.handoverEvidence.targetEe?.value, 300);
+    assert.equal(switching.snapshot.handoverEvidence.sourceEe?.sourceFrameId, switchingFrameId);
+    assert.equal(switching.snapshot.handoverEvidence.targetEe?.sourceFrameId, switchingFrameId);
+    assert.ok(Object.isFrozen(switching.snapshot.handoverEvidence));
+
+    const receipt = createHandoverCommitReceipt({
+      episodeId,
+      sourceFrameId: commitFrameId,
+      simTimeMs: 1_200,
+      from: item.source,
+      to: item.target,
+      kind: item.kind,
+      mode: 'ee-optimization',
+      reason: `${item.label} accepted transition fixture`,
+      oldLinkEnded: true,
+      newLinkStarted: true,
+    });
+    const committedDecision = createHandoverDecisionFrame({
+      ...switchingDecision,
+      sourceFrameId: commitFrameId,
+      simTimeMs: 1_200,
+      phase: 'switching',
+      serving: item.target,
+      // The commit frame deliberately carries changed target EE. It must not
+      // replace the selected boundary evidence already accepted above.
+      opportunities: [opportunityWithEe(commitFrameId, item.target.satelliteId, item.target.beamId, 305)],
+      states: [state(item.target.satelliteId, item.target.beamId, 1)],
+      provisionalLeader: null,
+      selectedTarget: null,
+      selectedKind: null,
+      recentCommit: receipt,
+    });
+    const committed = buildAcceptedHandoverPresentationSession({
+      decision: committedDecision,
+      policyConfigHash: createHandoverPresentationPolicyConfigHash(`${item.label}-retention`),
+      pinnedKey: null,
+      previousSnapshot: switching.snapshot,
+      instantaneousEeActive: true,
+      displayAllHardEligibleCandidates: true,
+      configuredBeamCount: 7,
+    });
+
+    assert.ok(committed.snapshot.commit);
+    assert.deepEqual(committed.snapshot.commit.from, item.source);
+    assert.deepEqual(committed.snapshot.commit.to, item.target);
+    assert.ok(committed.snapshot.handoverEvidence);
+    assert.deepEqual(committed.snapshot.handoverEvidence.source, item.source);
+    assert.deepEqual(committed.snapshot.handoverEvidence.target, item.target);
+    assert.equal(committed.snapshot.handoverEvidence.kind, item.kind);
+    assert.equal(committed.snapshot.handoverEvidence.sourceEe?.value, 200);
+    assert.equal(committed.snapshot.handoverEvidence.targetEe?.value, 300);
+    assert.equal(committed.snapshot.handoverEvidence.sourceEe?.sourceFrameId, switchingFrameId);
+    assert.equal(committed.snapshot.handoverEvidence.targetEe?.sourceFrameId, switchingFrameId);
+    assert.equal(committed.snapshot.handoverEvidence, switching.snapshot.handoverEvidence);
+
+    const guardDecision = createHandoverDecisionFrame({
+      ...committedDecision,
+      sourceFrameId: guardFrameId,
+      simTimeMs: 1_300,
+      phase: 'guard',
+      // A newer guard sample must not rewrite the selected-boundary EE evidence.
+      opportunities: [opportunityWithEe(guardFrameId, item.target.satelliteId, item.target.beamId, 999)],
+      states: [state(item.target.satelliteId, item.target.beamId, 1)],
+      recentCommit: null,
+    });
+    const guard = buildAcceptedHandoverPresentationSession({
+      decision: guardDecision,
+      policyConfigHash: createHandoverPresentationPolicyConfigHash(`${item.label}-retention`),
+      pinnedKey: null,
+      previousSnapshot: committed.snapshot,
+      instantaneousEeActive: true,
+      displayAllHardEligibleCandidates: true,
+      configuredBeamCount: 7,
+    });
+
+    assert.equal(guard.snapshot.commit, committed.snapshot.commit);
+    assert.equal(guard.snapshot.handoverEvidence, committed.snapshot.handoverEvidence);
+    assert.deepEqual(guard.snapshot.handoverEvidence?.source, item.source);
+    assert.deepEqual(guard.snapshot.handoverEvidence?.target, item.target);
+    assert.equal(guard.snapshot.handoverEvidence?.sourceEe?.value, 200);
+    assert.equal(guard.snapshot.handoverEvidence?.targetEe?.value, 300);
+    if (item.kind === 'intra-satellite') {
+      assert.equal(item.source.satelliteId, item.target.satelliteId);
+      assert.notEqual(item.source.beamId, item.target.beamId);
+    } else {
+      assert.notEqual(item.source.satelliteId, item.target.satelliteId);
+    }
+  }
 });
 
 test('pinning changes publication identity without changing the scientific frame', () => {
@@ -308,6 +530,23 @@ test('acknowledges actual scene joins against the accepted snapshot identity', (
   assert.equal(receipt.solidDataLinkCount, 1);
   assert.equal(receipt.eventCueCount, 1);
   assert.ok(Object.isFrozen(receipt));
+});
+
+test('withholds the scene receipt while the accepted solid-link count is unmapped', () => {
+  assert.equal(
+    isCandidateSceneRenderReceiptReady(
+      { activeDataLinkCount: 1 },
+      { solidDataLinkCount: 0 },
+    ),
+    false,
+  );
+  assert.equal(
+    isCandidateSceneRenderReceiptReady(
+      { activeDataLinkCount: 1 },
+      { solidDataLinkCount: 1 },
+    ),
+    true,
+  );
 });
 
 test('rejects a scene receipt from a different accepted source frame', () => {

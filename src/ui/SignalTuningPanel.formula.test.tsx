@@ -35,9 +35,13 @@ function renderPanel(initialActiveTab: TuningTabKey = 'signal-power'): string {
 const markup = renderPanel();
 const topFormula = markup.match(/data-testid="sinr-formula-header"[\s\S]*?<\/section>/)?.[0] ?? '';
 
+assert.match(markup, /data-testid="sinr-formula-page"[\s\S]*data-formula-contract="simplified-ee-c1-c9"[\s\S]*data-formula-contract-version="single-sinr-previous-step-power-v2"/);
 assert.match(topFormula, /γ<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\)/);
-assert.match(topFormula, /<i>p<\/i><sub>u,s,v<\/sub>\(t, θ<sub>u,s,v<\/sub>\)/);
-assert.match(topFormula, /H<sub>u,s,v<\/sub>\(t\)[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>\)/);
+// FormulaSymbols intentionally wrap the link term in a colour span; keep the
+// assertion about the rendered symbols while allowing that presentation span
+// between the indexed p term and its argument list.
+assert.match(topFormula, /<i>p<\/i><sub>u,s,v<\/sub>[\s\S]*?\(t, θ<sub>u,s,v<\/sub>[\s\S]*?\)/);
+assert.match(topFormula, /H<sub>u,s,v<\/sub>\(t\)[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>[\s\S]*?\)/);
 assert.match(topFormula, /I<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\)/);
 assert.match(topFormula, /σ²/);
 assert.doesNotMatch(topFormula, /p<sup>r<\/sup>|γ<sup>[er]<\/sup>|h<sub>|G<sup>[RLS]<\/sup>|I<sup>[ab]<\/sup>/);
@@ -60,7 +64,7 @@ assert.doesNotMatch(signalPower, /data-testid="signal-power-output-formula"|P<su
 
 const channel = renderPanel('channel');
 assert.match(channel, /data-testid="loss-formula-controls"[\s\S]*H<sub>u,s,v<\/sub>\(t\)[\s\S]*(?:<i>)?G(?:<\/i>)?<sup>R<\/sup><sub>u,s,v<\/sub>\(t\)/);
-assert.match(channel, /data-testid="loss-formula-controls"[\s\S]*L<sub>fs<\/sub>[\s\S]*L<sub>g<\/sub>[\s\S]*L<sub>sc<\/sub>[\s\S]*L<sub>sf<\/sub>/);
+assert.match(channel, /data-testid="loss-formula-controls"[\s\S]*L<sub>f<\/sub>[\s\S]*L<sub>g<\/sub>[\s\S]*L<sub>c<\/sub>[\s\S]*L<sub>s<\/sub>/);
 // The public H expansion stops at the four paper propagation terms plus G^R:
 // scan loss and the NLoS clutter term stay in the implementation layer.
 assert.doesNotMatch(channel, /data-testid="loss-formula-controls"[\s\S]*?L<sub>st(?:,max)?<\/sub>/);
@@ -73,18 +77,19 @@ for (const id of [
   'path-loss-term-scintillation',
   'path-loss-term-shadow-fading',
 ] as const) {
-  assert.match(channel, new RegExp(`data-testid="${id}"[\\s\\S]*data-control-symbol="true"[\\s\\S]*L<sub>(?:fs|g|sc|sf)<\\/sub>`));
+  assert.match(channel, new RegExp(`data-testid="${id}"[\\s\\S]*data-control-symbol="true"[\\s\\S]*L<sub>(?:f|g|c|s)<\\/sub>`));
 }
 // Scan-loss shaping is not a public formula symbol, so it is not a control.
 assert.doesNotMatch(channel, /data-testid="max-steering-angle-control"|data-testid="max-scan-loss-control"/);
 assert.doesNotMatch(channel, /data-testid="receiver-gain-controls"|G<sup>LS<\/sup>/);
 
 const beam = renderPanel('beam');
-assert.match(beam, /data-testid="beam-gain-controls"[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>\)[\s\S]*G<sub>0<\/sub>\s*F\(/);
-assert.match(beam, /data-testid="beam-gain-controls"[\s\S]*G<sup>T<\/sup>\(0\)\s*=\s*G<sub>0<\/sub>[\s\S]*F\(0/);
+assert.match(beam, /data-testid="beam-gain-controls"[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>, θ<sub>3dB<\/sub>\)[\s\S]*G<sub>0<\/sub>\s*F\(/);
+assert.match(beam, /data-testid="beam-gain-controls"[\s\S]*G<sup>T<\/sup>\(0, θ<sub>3dB<\/sub>\)\s*=\s*G<sub>0<\/sub>[\s\S]*F\(0/);
 // HOBS Eq.(3) verbatim: the 2.07123 angle argument, J1 over TWICE mu, and no
 // renormalizing constant (the pattern is already unity at boresight).
-assert.match(beam, /data-testid="beam-gain-controls"[\s\S]*μ\(θ<sub>u,s,v<\/sub>\)\s*=\s*2\.07123/);
+assert.match(beam, /data-testid="beam-gain-controls"[\s\S]*μ\(θ<sub>u,s,v<\/sub>, θ<sub>3dB<\/sub>\)\s*=\s*2\.07123/);
+assert.match(beam, /data-testid="beam-gain-controls"[\s\S]*sin\(θ<sub>3dB<\/sub>\/2\)/);
 assert.match(beam, /J<sub>1<\/sub>\(μ\)[\s\S]*2μ[\s\S]*36J<sub>3<\/sub>\(μ\)[\s\S]*μ<sup>3<\/sup>/);
 assert.doesNotMatch(beam, /1\.75|κ/);
 // One paper pattern only: no J1-only / flat alternatives and no model selector.

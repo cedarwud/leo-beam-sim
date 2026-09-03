@@ -31,8 +31,14 @@ function formatLiveWalkerBeamLabel(satId: string, beamId: number | null): string
   return `${satId} B${beamId}`;
 }
 
-function formatCellTruthBeamLabel(satId: string, cellId: number): string {
-  return `${satId} C${cellId}`;
+function formatCellTruthBeamLabel(
+  satId: string,
+  cellId: number,
+  beamId: number | null,
+): string {
+  return beamId === null
+    ? `${satId} C${cellId}`
+    : `${satId} C${cellId} B${beamId}`;
 }
 
 function liveWalkerRailTitle(kind: HandoverRailEvent['kind'], sourceOwner: LiveWalkerHandoverEventIndex['sourceOwner']): string {
@@ -56,10 +62,10 @@ export function liveWalkerHandoverEventIndexToRailEvents(
       kind: event.kind,
       title: liveWalkerRailTitle(event.kind, index.sourceOwner),
       fromLabel: index.sourceOwner === 'sinr-live-cell-truth' && event.fromCellId !== undefined
-        ? formatCellTruthBeamLabel(event.fromSatId, event.fromCellId)
+        ? formatCellTruthBeamLabel(event.fromSatId, event.fromCellId, event.fromBeamId)
         : formatLiveWalkerBeamLabel(event.fromSatId, event.fromBeamId),
       toLabel: index.sourceOwner === 'sinr-live-cell-truth' && event.toCellId !== undefined
-        ? formatCellTruthBeamLabel(event.toSatId, event.toCellId)
+        ? formatCellTruthBeamLabel(event.toSatId, event.toCellId, event.toBeamId)
         : formatLiveWalkerBeamLabel(event.toSatId, event.toBeamId),
       fromSatId: event.fromSatId,
       toSatId: event.toSatId,

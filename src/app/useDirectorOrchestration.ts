@@ -35,7 +35,18 @@ import {
 export interface LiveTimelineSeekRequest {
   targetSec: number;
   requestKey: string;
+  /** Only the homepage Director asks the live source to rebuild history. */
+  sourceHistoryReplay?: boolean;
 }
+
+/**
+ * Maximum time an armed live focus may keep the acceptance controls locked
+ * while waiting for the asynchronous simulation seek callback.  A seek can be
+ * superseded or fail to report its landing; the source event remains in the
+ * rail, but the presentation-only arm must fail closed instead of locking the
+ * controls forever.
+ */
+export const LIVE_DIRECTOR_SEEK_ARM_TIMEOUT_MS = 8_000;
 
 export interface UseDirectorOrchestrationParams {
   readonly camera: CameraControls;
@@ -130,6 +141,14 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     // this exact key consumed — never on the throttled published simTimeSec.
     readonly requestKey: string;
   } | null>(null);
+  const pendingLiveFocusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPendingLiveFocusTimeout = useCallback(() => {
+    const timeout = pendingLiveFocusTimeoutRef.current;
+    if (timeout === null) return;
+    clearTimeout(timeout);
+    pendingLiveFocusTimeoutRef.current = null;
+  }, []);
 
   // ITEM #C: cancel any armed-but-unfired live Director focus. Nulls the deferred
   // focus AND the not-yet-run fade-peak seek closure, and clears the event marker.
@@ -139,9 +158,10 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
   const cancelPendingLiveFocus = useCallback(() => {
     pendingLiveFocusRef.current = null;
     pendingCinematicSeekRef.current = null;
+    clearPendingLiveFocusTimeout();
     setLiveDirectorFocusEventSec(null);
     setLiveDirectorFocusEventId(null);
-  }, []);
+  }, [clearPendingLiveFocusTimeout]);
 
   const requestDirectorFocus = useCallback((kind: 'intra' | 'inter') => {
     if (directorCinematicEnabled && replayController) {
@@ -209,10 +229,25 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
             seekTargetSec: focusTarget.seekTargetSec,
             requestKey: seekRequestKey,
           };
+          clearPendingLiveFocusTimeout();
+          pendingLiveFocusTimeoutRef.current = setTimeout(() => {
+            const pending = pendingLiveFocusRef.current;
+            if (pending?.requestKey !== seekRequestKey) return;
+            // The source event remains authoritative in the rail; only release
+            // this presentation arm when the async landing callback is absent.
+            pendingLiveFocusRef.current = null;
+            setLiveDirectorFocusEventSec(null);
+            setLiveDirectorFocusEventId(null);
+            pendingLiveFocusTimeoutRef.current = null;
+          }, LIVE_DIRECTOR_SEEK_ARM_TIMEOUT_MS);
           // Seek the live timeline exactly as a handover-rail marker click does:
           // the source-time lead-in is consumed as the absolute sim offset by
           // useSimulation.seekToTimelineFrame.
-          setLiveTimelineSeekRequest({ targetSec: focusTarget.seekTargetSec, requestKey: seekRequestKey });
+          setLiveTimelineSeekRequest({
+            targetSec: focusTarget.seekTargetSec,
+            requestKey: seekRequestKey,
+            sourceHistoryReplay: true,
+          });
           setLiveObservedHandoverRailEvents([]);
           setModqnReplayVisualElapsedSec(clampTimelineTime(
             focusTarget.seekTargetSec - liveTimelineWindowStartSec,
@@ -227,15 +262,19 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
         }
         return;
       }
-      // No resolvable indexed event (button should be disabled) → fall through to
-      // the legacy now-focus so the control is never inert when pressed.
+      // No resolvable indexed event: fail closed.  A Director acceptance action
+      // must never create a camera-only focus without a source event/time.  The
+      // explicit `Trigger Intra` control is the separate, seek-free engine jog;
+      // it does not come through this source-backed focus path.
+      return;
     }
-    // Legacy live now-focus fallback (no indexed event / lane not director-enabled).
-    if (kind === 'intra') camera.requestIntraFocus();
-    else camera.requestInterFocus();
+    // Non-artifact, non-live lanes have no source-backed Director event surface.
+    // Keep the callback inert rather than presenting a source-less camera shot.
+    return;
   }, [
     artifactHandoverRailEvents,
     camera,
+    clearPendingLiveFocusTimeout,
     directorCinematicEnabled,
     directorFocusEnabled,
     liveDirectorFocusClaimKind,
@@ -292,12 +331,24 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
   const handleLiveSeekLanded = useCallback((landedSeekRequestKey: string) => {
     const pending = pendingLiveFocusRef.current;
     if (pending === null || pending.requestKey !== landedSeekRequestKey) return;
-    // Engage only from idle; a re-arm mid-focus is replaced by the next arm, not queued.
-    if (camera.directorPhase !== 'idle') return;
+    clearPendingLiveFocusTimeout();
+    // Engage only from idle; a re-arm mid-focus is replaced by the next arm, not
+    // queued.  Drop the stale arm/marker here; the old early return left both
+    // set and permanently disabled Next Intra/Inter.
+    if (camera.directorPhase !== 'idle') {
+      pendingLiveFocusRef.current = null;
+      setLiveDirectorFocusEventSec(null);
+      setLiveDirectorFocusEventId(null);
+      return;
+    }
     pendingLiveFocusRef.current = null;
     if (pending.kind === 'intra') camera.requestIntraFocus(pending.framing);
     else camera.requestInterFocus(pending.framing);
-  }, [camera]);
+  }, [camera, clearPendingLiveFocusTimeout]);
+
+  useEffect(() => {
+    return () => clearPendingLiveFocusTimeout();
+  }, [clearPendingLiveFocusTimeout]);
 
   useEffect(() => {
     if (camera.directorPhase === 'idle' && activeCinematicWindow !== null) {

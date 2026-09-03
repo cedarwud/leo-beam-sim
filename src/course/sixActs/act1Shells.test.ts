@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  SIX_ACTS_ACT1_ARCHIVE_DATE,
+  SIX_ACTS_ACT1_ARCHIVE_DATES,
   SIX_ACTS_POLAR_INCLINATION_DEG,
   SIX_ACTS_SHELL_BANDS,
   censusSixActsShells,
@@ -24,7 +24,7 @@ function archiveInclinations(constellation: 'starlink' | 'oneweb'): readonly num
     REPO_ROOT,
     'public/tle-archive',
     constellation,
-    `${constellation}_${SIX_ACTS_ACT1_ARCHIVE_DATE}.tle`,
+    `${constellation}_${SIX_ACTS_ACT1_ARCHIVE_DATES[constellation]}.tle`,
   );
   const lines = readFileSync(path, 'utf8').split('\n').map(line => line.trimEnd()).filter(line => line !== '');
   const inclinations: number[] = [];
@@ -47,11 +47,11 @@ test('the bands partition without gaps a real orbit can fall into', () => {
 test('the measured Starlink shells match the published archive', () => {
   const census = censusSixActsShells(archiveInclinations('starlink'));
 
-  assert.strictEqual(census.total, 10_755);
-  assert.strictEqual(census.byShell['main-53'], 5_051);
-  assert.strictEqual(census.byShell['mid-43'], 3_625);
+  assert.strictEqual(census.total, 10_739);
+  assert.strictEqual(census.byShell['main-53'], 5_039);
+  assert.strictEqual(census.byShell['mid-43'], 3_622);
   assert.strictEqual(census.byShell['high-70'], 710);
-  assert.strictEqual(census.byShell.polar, 1_369);
+  assert.strictEqual(census.byShell.polar, 1_368);
   assert.ok(Math.abs(census.minInclinationDeg - 42.96) < 0.01);
   assert.ok(Math.abs(census.maxInclinationDeg - 97.63) < 0.01);
 });
@@ -69,7 +69,7 @@ test('43 deg is not a rounding artefact: it is the second largest group', () => 
 test('the polar share is the number the honesty pairing needs', () => {
   const census = censusSixActsShells(archiveInclinations('starlink'));
 
-  assert.strictEqual(census.polarCount, 1_369);
+  assert.strictEqual(census.polarCount, 1_368);
   assert.ok(Math.abs(census.polarFraction - 0.127) < 0.001);
 });
 
@@ -91,7 +91,7 @@ test('the honesty caption follows the data, not a fixed sentence', () => {
     'OneWeb',
   );
 
-  assert.match(starlink, /1369|1,369/);
+  assert.match(starlink, /1368|1,368/);
   assert.match(starlink, /只對 53° 主力殼/);
   assert.match(oneweb, /完全不成立/);
   assert.notStrictEqual(starlink, oneweb);

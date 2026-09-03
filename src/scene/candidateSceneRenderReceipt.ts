@@ -22,6 +22,20 @@ function fail(message: string): never {
 }
 
 /**
+ * Return whether a render plan is safe to acknowledge for the accepted
+ * publication.  Geometry can be transiently unmapped while a new scene frame
+ * is being assembled; that must withhold the receipt, not throw from the
+ * React/WebGL render path.  The strict builder below remains the diagnostic
+ * assertion used once the plan is admitted.
+ */
+export function isCandidateSceneRenderReceiptReady(
+  snapshot: Pick<AcceptedHandoverPresentationSnapshot, 'activeDataLinkCount'>,
+  renderPlan: Pick<MultiCandidateBeamSceneRenderPlan, 'solidDataLinkCount'>,
+): boolean {
+  return renderPlan.solidDataLinkCount === snapshot.activeDataLinkCount;
+}
+
+/**
  * Acknowledge the actual WebGL mapping for one already accepted publication.
  * This adapter records renderer facts only; it cannot add candidates, change a
  * role, or repair a missing geometry mapping.

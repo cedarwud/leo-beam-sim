@@ -28,6 +28,7 @@ import type {
   BeamshiftCanonicalEeInputErrorCode,
   BeamshiftCanonicalUeStatus,
 } from '../teaching/beamshiftCanonicalEe';
+import type { HomepageBeamMetricsProjection } from '../homepage/controller/contracts';
 
 export type { BeamTarget, VisualBeamTarget } from './beamTargetTypes';
 
@@ -120,6 +121,8 @@ export interface ReplayConfig {
   windowLengthSec?: number;
   seekTargetSec?: number;
   seekRequestKey?: string;
+  /** Homepage Director only: rebuild the same source history before landing. */
+  sourceHistoryReplay?: boolean;
 }
 
 export interface RuntimeEffectsEnabled {
@@ -280,6 +283,12 @@ export interface IntraHandoverPresentation {
   readonly candidateSinrDb: number;
   /** Candidate minus serving, in dB. */
   readonly deltaSinrDb: number;
+  /** Same-frame angle-aware EE for the source link, when published. */
+  readonly servingEnergyEfficiencyBitsPerJoule?: number | null;
+  /** Same-frame angle-aware EE for the selected alternate link, when published. */
+  readonly candidateEnergyEfficiencyBitsPerJoule?: number | null;
+  /** Explains whether this display pair is backed by the active EE authority. */
+  readonly eeDecisionBasis?: 'instantaneous-ee-max' | 'sinr-compatibility-fallback' | 'unavailable';
   readonly elevationDeg: number | null;
   readonly rangeKm: number | null;
 }
@@ -379,6 +388,8 @@ export interface SimState {
   ch5DemoPaperEnergyEfficiency?: PaperEnergyEfficiency | null;
   /** Live ADR-003 projection; absent on producer-backed replay lanes. */
   canonicalEe?: CanonicalEeSnapshot | null;
+  /** Homepage-only per-beam live metric projection; absent on every other route. */
+  homepageBeamMetrics?: HomepageBeamMetricsProjection | null;
   /** Active C1-C9 selected-link frame shared by the legacy UI surfaces. */
   angleAwareFormulaFrame?: AngleAwareFormulaFrame | null;
   /**

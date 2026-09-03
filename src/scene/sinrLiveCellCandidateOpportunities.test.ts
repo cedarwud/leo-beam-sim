@@ -5,6 +5,7 @@ import { buildCellLayout } from '../engine/cells/cellLayout';
 import { candidateLinkKeyString } from '../engine/handover/candidateDecisionContract';
 import { loadProfile } from '../profiles/index';
 import {
+  SINR_LIVE_CANDIDATE_PROBE_PROVENANCE,
   SinrLiveCellModel,
   cellLinkBudgetBeamId,
   type CellModelSat,
@@ -56,14 +57,22 @@ test('Walker S1 publishes a complete same-UE candidate-pair set without activati
 
   const set = frame.primaryCandidateOpportunities;
   assert.ok(set);
+  const probeEvidence = frame.primaryCandidateProbeEvidence;
   assert.equal(set.primaryUeId, 'ue-primary');
   assert.equal(set.sourceFrameId, `walker:${EPOCH_MS}:${EPOCH_MS + 42_000}`);
+  assert.equal(frame.sourceFrameId, set.sourceFrameId);
+  assert.ok(probeEvidence);
+  assert.equal(probeEvidence.length, set.opportunities.length);
+  assert.ok(Object.isFrozen(probeEvidence));
   assert.ok(set.opportunities.length >= 6, 'several satellite-beam pairs must survive measurement');
   assert.equal(set.counts.observed, set.opportunities.length);
   assert.ok(set.counts.scheduledAndIlluminated >= 3);
 
   const keys = set.opportunities.map(opportunity => candidateLinkKeyString(opportunity.key));
   assert.equal(new Set(keys).size, keys.length, 'pair identity must stay unique');
+  const probeKeys = probeEvidence.map(probe => candidateLinkKeyString(probe.key));
+  assert.deepEqual(new Set(probeKeys), new Set(keys));
+  assert.equal(new Set(probeKeys).size, probeKeys.length, 'candidate probe pair identity must stay unique');
   assert.ok(new Set(set.opportunities.map(opportunity => opportunity.key.satelliteId)).size >= 2);
   for (const opportunity of set.opportunities) {
     assert.equal(opportunity.primaryUeId, 'ue-primary');
@@ -74,10 +83,34 @@ test('Walker S1 publishes a complete same-UE candidate-pair set without activati
     assert.equal(opportunity.forecastEe, null);
     assert.equal(opportunity.predictedThroughput.value, null);
     assert.equal(opportunity.remainingServiceTime.value, null);
+    assert.equal(opportunity.sinrMeasurementContext?.purpose, 'sinr-offset-admission');
+    assert.equal(opportunity.sinrMeasurementContext?.powerModel, 'profile-rated-rf');
     assert.equal(
       opportunity.gates.find(gate => gate.code === 'ee-advantage')?.result,
       'unavailable',
     );
+  }
+
+  for (const probe of probeEvidence) {
+    assert.equal(probe.primaryUeId, 'ue-primary');
+    assert.equal(probe.sourceFrameId, frame.sourceFrameId);
+    assert.equal(probe.simTimeSec, 42.0004);
+    assert.equal(probe.provenance, SINR_LIVE_CANDIDATE_PROBE_PROVENANCE);
+    assert.equal(probe.eeBasis, 'candidate-probe');
+    assert.equal(probe.status, 'available');
+    assert.ok(probe.sample);
+    assert.equal(probe.sample?.ueId, 'ue-primary');
+    assert.equal(probe.sample?.satId, probe.key.satelliteId);
+    assert.equal(probe.sample?.beamId, probe.key.beamId);
+    assert.equal(probe.sample?.angleAware?.timeSec, probe.simTimeSec);
+    assert.ok(Number.isFinite(probe.sample?.sinrDb));
+    assert.ok(Number.isFinite(probe.sample?.angleAware?.powerW));
+    assert.ok(Number.isFinite(probe.sample?.angleAware?.throughputBps));
+    assert.ok(Number.isFinite(probe.sample?.angleAware?.energyEfficiencyBitsPerJoule));
+    assert.ok(Object.isFrozen(probe));
+    assert.ok(Object.isFrozen(probe.key));
+    assert.ok(Object.isFrozen(probe.sample));
+    assert.ok(Object.isFrozen(probe.sample?.angleAware));
   }
 
   const primary = frame.ues.find(ue => ue.ueId === 'ue-primary');
@@ -85,4 +118,11 @@ test('Walker S1 publishes a complete same-UE candidate-pair set without activati
   assert.ok(primary.cellId !== null);
   const servingKey = `${primary.servingSatId}|${cellLinkBudgetBeamId(primary.cellId)}`;
   assert.ok(keys.includes(servingKey), 'the legacy serving pair must be present in the additive set');
+
+  const firstProbe = probeEvidence[0]!;
+  assert.throws(
+    () => ((firstProbe.key as unknown as { satelliteId: string }).satelliteId = 'mutated'),
+    TypeError,
+  );
+  assert.equal(firstProbe.key.satelliteId, probeEvidence[0]!.key.satelliteId);
 });

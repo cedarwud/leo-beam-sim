@@ -40,7 +40,10 @@ const MODQN_NETWORK_PARAM_MIN_MAX: Record<keyof ModqnNetworkParams, readonly [nu
   episodes: [1, 10_000],
 };
 
-export type HandoverPolicyTuningState = Omit<Profile['handover'], 'modqnWeights' | 'modqnNetworkParams'> & {
+export type HandoverPolicyTuningState = Omit<
+  Profile['handover'],
+  'modqnWeights' | 'modqnNetworkParams' | 'minimumDistinctCandidateSatellites'
+> & {
   modqnWeights: ModqnObjectiveWeights;
   modqnNetworkParams: ModqnNetworkParams;
 };

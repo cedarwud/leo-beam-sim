@@ -7,6 +7,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { SimulationAnalysisFrame } from '../../simulator/types';
 import type { VisualLabGuidedReplayProgress } from '../../visualLab/guidedReplay';
 import type { VisualLabStorySceneDirection } from '../../visualLab/story';
+import type { ScenePlan } from '../../visualLab/session/scenePlanCompiler';
 import { satelliteModelForConstellation } from '../../viz/satelliteModelCatalog';
 import { substrateOpacityForDensity } from './visualLabScenePresentation';
 import { resolveSinrLiveConeRoleStyle, type SinrLiveConeRole } from '../../constants/sinrLiveConeStyle';
@@ -70,9 +71,8 @@ export interface VisualLabCausalCameraCue {
 }
 
 export interface VisualLabSceneProps {
-  readonly view: VisualLabView;
-  readonly density: VisualLabDensity;
-  readonly focus: VisualLabFocus;
+  /** One immutable accepted-frame/presentation projection from VisualLabSession. */
+  readonly scenePlan: ScenePlan | null;
   /** Draft-only display ratio for the beam-width slider; accepted metrics stay unchanged until rebuild. */
   readonly beamWidthDraftScale?: number;
   readonly theme?: 'dark' | 'light';
@@ -98,14 +98,8 @@ export interface VisualLabSceneProps {
   readonly storyDirectorEnabled?: boolean;
   /** Kept for the sky/service display models; Earth view uses the accepted frame. */
   readonly constellation?: VisualLabConstellation;
-  /** Complete accepted archived-TLE/SGP4 frame for the global view. */
-  readonly globalFrame?: SimulationAnalysisFrame | null;
-  /** Preferred closed global render DTO from VisualLabSession. */
-  readonly globalSceneFrame?: VisualLabGlobalSceneFrame | null;
   /** Validated precomputed global constellation used before the full run is ready. */
   readonly globalArtifact?: VisualLabGlobalConstellationArtifact | null;
-  /** Closed NTPU render DTO from the same accepted canonical frame. */
-  readonly localScene?: VisualLabLocalScenePlan | null;
   /** One accepted-frame beam projection shared with the result rail. */
   readonly beamFrame: VisualLabBeamDisplayFrame;
   /** Requested/published run identity; distinct from the current timeline anchor. */
@@ -114,6 +108,17 @@ export interface VisualLabSceneProps {
   readonly globalError?: string | null;
   /** Keeps export from treating a loading/error fallback as a publication asset. */
   readonly onAssetStatusChange?: (asset: VisualLabSceneAssetKey, status: VisualLabSceneAssetStatus) => void;
+}
+
+/** Internal renderer props after the public scene plan has been resolved. */
+interface SceneRenderProps extends Omit<VisualLabSceneProps, 'scenePlan'> {
+  readonly view: VisualLabView;
+  readonly density: VisualLabDensity;
+  readonly focus: VisualLabFocus;
+  /** Legacy raw frame is intentionally not supplied by ScenePlanRenderer. */
+  readonly globalFrame?: SimulationAnalysisFrame | null;
+  readonly globalSceneFrame?: VisualLabGlobalSceneFrame | null;
+  readonly localScene?: VisualLabLocalScenePlan | null;
 }
 
 type P = [number, number, number];
@@ -1044,7 +1049,7 @@ function StoryCameraDirector({
   return null;
 }
 
-function Scene({ view, beamFrame, density, focus, beamWidthDraftScale = 1, selectedUe, onUeMove, storyBeamFocus, storyDirection, guidedCandidateEngaged, guidedReplayProgress, storyReturnProgress, causalCameraCue, storyDirectorEnabled = true, constellation, globalFrame, globalSceneFrame, globalArtifact, localScene, globalSourceIdentity, globalStatus, globalError, theme = 'dark', locale = 'zh-Hant', satelliteDisplayMode = DEFAULT_VISUAL_LAB_SATELLITE_DISPLAY_MODE, ueDisplayMode = DEFAULT_VISUAL_LAB_UE_DISPLAY_MODE, showLabels = true, onAssetStatusChange }: VisualLabSceneProps) {
+function Scene({ view, beamFrame, density, focus, beamWidthDraftScale = 1, selectedUe, onUeMove, storyBeamFocus, storyDirection, guidedCandidateEngaged, guidedReplayProgress, storyReturnProgress, causalCameraCue, storyDirectorEnabled = true, constellation, globalFrame, globalSceneFrame, globalArtifact, localScene, globalSourceIdentity, globalStatus, globalError, theme = 'dark', locale = 'zh-Hant', satelliteDisplayMode = DEFAULT_VISUAL_LAB_SATELLITE_DISPLAY_MODE, ueDisplayMode = DEFAULT_VISUAL_LAB_UE_DISPLAY_MODE, showLabels = true, onAssetStatusChange }: SceneRenderProps) {
   const satelliteVariant = constellation ?? 'starlink';
   const light = theme === 'light';
   const copy = SCENE_COPY[locale];
@@ -1055,6 +1060,60 @@ function Scene({ view, beamFrame, density, focus, beamWidthDraftScale = 1, selec
   const directorActive = ((storyDirection !== null && storyDirection !== undefined)
     || (causalCameraCue !== null && causalCameraCue !== undefined)) && storyDirectorEnabled;
   return <><color attach="background" args={[background]} /><fog attach="fog" args={[background, 14, 32]} />{light ? null : <SpaceStars />}<ambientLight intensity={light ? .9 : .68} /><hemisphereLight args={[light ? '#fffaf0' : '#c8f3ff', light ? '#9f968a' : '#081820', light ? 1.05 : .72]} /><directionalLight position={[4, 8, 3]} intensity={light ? 2.5 : 2.1} color="#e5f8ff" /><pointLight position={[-4, 3, -4]} intensity={.8} distance={20} color={C.blue} /><OrbitControls ref={controlsRef} key={view} makeDefault enabled={!directorActive} enableDamping dampingFactor={.08} minDistance={5.2} maxDistance={20} minPolarAngle={orbitLimits.minPolarAngle} maxPolarAngle={orbitLimits.maxPolarAngle} target={[cameraPose.target.x, cameraPose.target.y, cameraPose.target.z]} /><StoryCameraDirector view={view} plan={localScene} direction={storyDirection} causalCue={causalCameraCue} returnProgress={storyReturnProgress} enabled={storyDirectorEnabled} controlsRef={controlsRef} />{view === 'earth' ? <Earth globalFrame={globalFrame} globalSceneFrame={globalSceneFrame} globalArtifact={globalArtifact} globalSourceIdentity={globalSourceIdentity} globalStatus={globalStatus} globalError={globalError} theme={theme} locale={locale} /> : null}{view === 'sky' ? <Sky plan={localScene ?? null} density={density} focus={focus} constellation={satelliteVariant} status={globalStatus} error={globalError} light={light} copy={copy} showLabels={showLabels} satelliteDisplayMode={satelliteDisplayMode} onAssetStatusChange={onAssetStatusChange} /> : null}{view === 'service' ? <Service plan={localScene ?? null} beamFrame={beamFrame} density={density} focus={focus} selected={selectedUe} onUeMove={onUeMove} storyBeamFocus={storyBeamFocus} storyDirection={storyDirection} guidedReplayProgress={guidedReplayProgress} constellation={satelliteVariant} status={globalStatus} error={globalError} light={light} copy={copy} showLabels={showLabels} satelliteDisplayMode={satelliteDisplayMode} ueDisplayMode={ueDisplayMode} beamWidthDraftScale={beamWidthDraftScale} onAssetStatusChange={onAssetStatusChange} /> : null}</>;
+}
+
+function ScenePlanUnavailable({ locale, reason }: { readonly locale: 'zh-Hant' | 'en'; readonly reason: string }): ReactElement {
+  return <EmptyLocalState status="error" error={reason} copy={SCENE_COPY[locale]} />;
+}
+
+function assertNeverSceneView(value: never): never {
+  throw new Error(`Unsupported visual-lab scene view: ${String(value)}`);
+}
+
+/**
+ * The only scene compositor entry point.  It resolves every view, density,
+ * focus, global projection, and local projection from one immutable plan
+ * before the single Canvas renderer is entered.  Legacy raw-frame props are
+ * intentionally discarded here so callers cannot pair projections from
+ * different accepted snapshots.
+ */
+function ScenePlanRenderer(props: VisualLabSceneProps): ReactElement {
+  const { scenePlan, globalArtifact, constellation: requestedConstellation, ...renderProps } = props;
+  const locale = props.locale ?? 'zh-Hant';
+  if (scenePlan === null) {
+    return <ScenePlanUnavailable locale={locale} reason="no accepted scene plan is available" />;
+  }
+  if (scenePlan.availability === 'unavailable') {
+    return <ScenePlanUnavailable locale={locale} reason={scenePlan.reason ?? 'the selected scene projection is unavailable'} />;
+  }
+
+  const constellation = scenePlan.identity?.constellation ?? requestedConstellation ?? 'starlink';
+  const shared = {
+    ...renderProps,
+    constellation,
+    globalArtifact,
+    globalFrame: undefined,
+    globalSceneFrame: scenePlan.global,
+    localScene: scenePlan.local,
+    view: scenePlan.view,
+    density: scenePlan.density,
+    focus: scenePlan.focus === 'none' ? 'geometry' : scenePlan.focus,
+  } satisfies SceneRenderProps;
+
+  switch (scenePlan.view) {
+    case 'earth':
+      if (scenePlan.global === null) {
+        return <ScenePlanUnavailable locale={locale} reason={scenePlan.reason ?? 'global scene projection is unavailable'} />;
+      }
+      return <Scene {...shared} />;
+    case 'sky':
+    case 'service':
+      if (scenePlan.local === null) {
+        return <ScenePlanUnavailable locale={locale} reason={scenePlan.reason ?? 'local scene projection is unavailable'} />;
+      }
+      return <Scene {...shared} />;
+  }
+  return assertNeverSceneView(scenePlan.view);
 }
 
 function useVisualLabWebGlAvailability(): boolean | null {
@@ -1080,21 +1139,26 @@ function useVisualLabWebGlAvailability(): boolean | null {
 /** One Canvas over closed global/local plans from the accepted VisualLabSession snapshot. */
 export function VisualLabScene(props: VisualLabSceneProps) {
   const copy = SCENE_COPY[props.locale ?? 'zh-Hant'];
+  const scenePlan = props.scenePlan;
+  const globalSceneFrame = scenePlan?.global ?? null;
+  const localScene = scenePlan?.local ?? null;
   const webglAvailable = useVisualLabWebGlAvailability();
   return <div
     className="vlab-scene"
     role="img"
     aria-label={copy.sceneAria}
-    data-global-frame-id={props.globalSceneFrame?.frameId ?? props.globalFrame?.frameId ?? undefined}
-    data-global-tle-frame-id={props.globalSceneFrame?.tleFrameId ?? props.globalFrame?.tleFrameId ?? undefined}
-    data-global-constellation={props.globalSceneFrame?.constellation ?? props.globalFrame?.provenance.constellation ?? undefined}
-    data-global-current-instant-utc={props.globalSceneFrame?.instantUtc ?? props.globalFrame?.instantUtc ?? undefined}
-    data-global-requested-instant-utc={props.globalSceneFrame?.requestedInstantUtc ?? props.globalSourceIdentity?.requestedInstantUtc ?? props.globalFrame?.tleState.requestedInstantUtc ?? undefined}
-    data-global-accepted-instant-utc={props.globalSceneFrame?.acceptedInstantUtc ?? props.globalSourceIdentity?.acceptedInstantUtc ?? props.globalFrame?.tleState.requestedInstantUtc ?? undefined}
+    data-scene-plan-availability={scenePlan?.availability ?? 'unavailable'}
+    data-scene-plan-reason={scenePlan?.reason ?? (scenePlan === null ? 'no accepted scene plan is available' : undefined)}
+    data-global-frame-id={globalSceneFrame?.frameId ?? undefined}
+    data-global-tle-frame-id={globalSceneFrame?.tleFrameId ?? undefined}
+    data-global-constellation={globalSceneFrame?.constellation ?? scenePlan?.identity?.constellation ?? undefined}
+    data-global-current-instant-utc={globalSceneFrame?.instantUtc ?? undefined}
+    data-global-requested-instant-utc={globalSceneFrame?.requestedInstantUtc ?? undefined}
+    data-global-accepted-instant-utc={globalSceneFrame?.acceptedInstantUtc ?? undefined}
     data-global-artifact-constellation={props.globalArtifact?.constellation ?? undefined}
     data-global-artifact-satellite-count={props.globalArtifact?.satelliteCount ?? undefined}
     data-global-artifact-visible-count={props.globalArtifact?.ntpuVisibleSatelliteCount ?? undefined}
-    data-local-frame-id={props.localScene?.frameId ?? undefined}
+    data-local-frame-id={localScene?.frameId ?? undefined}
     data-beam-frame-id={props.beamFrame.sourceFrameId ?? undefined}
     data-beam-global-layout-count={props.beamFrame.globalLayoutCount}
     data-beam-global-count={props.beamFrame.globalBeamCount}
@@ -1106,12 +1170,12 @@ export function VisualLabScene(props: VisualLabSceneProps) {
     data-beam-candidate-layout-count={props.beamFrame.candidate.configuredLayoutCount}
     data-beam-candidate-active-count={props.beamFrame.candidate.activeTargetCount}
     data-beam-illumination-mode={props.beamFrame.illuminationMode}
-    data-local-tle-frame-id={props.localScene?.tleFrameId ?? undefined}
-    data-local-beam-width-scale={props.localScene?.render.beam.coneWidthScale ?? undefined}
-    data-local-off-axis-angle-rad={props.localScene?.render.beam.offAxisAngleRad ?? undefined}
-    data-local-beam-intensity={props.localScene?.render.beam.intensity ?? undefined}
-    data-local-interference-intensity={props.localScene?.render.interference.intensity ?? undefined}
-    data-local-reuse-groups={props.localScene?.render.reuse.groups ?? undefined}
+    data-local-tle-frame-id={localScene?.tleFrameId ?? undefined}
+    data-local-beam-width-scale={localScene?.render.beam.coneWidthScale ?? undefined}
+    data-local-off-axis-angle-rad={localScene?.render.beam.offAxisAngleRad ?? undefined}
+    data-local-beam-intensity={localScene?.render.beam.intensity ?? undefined}
+    data-local-interference-intensity={localScene?.render.interference.intensity ?? undefined}
+    data-local-reuse-groups={localScene?.render.reuse.groups ?? undefined}
     data-local-beam-layout-count={props.beamFrame.serving.configuredLayoutCount}
     data-local-active-beam-count={props.beamFrame.serving.activeTargetCount}
     data-local-candidate-beam-layout-count={props.beamFrame.candidate.configuredLayoutCount}
@@ -1120,9 +1184,9 @@ export function VisualLabScene(props: VisualLabSceneProps) {
     data-local-beam-width-draft-scale={props.beamWidthDraftScale ?? 1}
     data-local-satellite-display-mode={props.satelliteDisplayMode ?? DEFAULT_VISUAL_LAB_SATELLITE_DISPLAY_MODE}
     data-local-ue-display-mode={props.ueDisplayMode ?? DEFAULT_VISUAL_LAB_UE_DISPLAY_MODE}
-    data-local-system-power-w={props.localScene?.render.energy.systemPowerW ?? undefined}
-    data-local-total-rate-bps={props.localScene?.render.energy.totalRateBps ?? undefined}
-    data-local-instantaneous-ee-bits-per-j={props.localScene?.render.energy.instantaneousEeBitsPerJ ?? undefined}
+    data-local-system-power-w={localScene?.render.energy.systemPowerW ?? undefined}
+    data-local-total-rate-bps={localScene?.render.energy.totalRateBps ?? undefined}
+    data-local-instantaneous-ee-bits-per-j={localScene?.render.energy.instantaneousEeBitsPerJ ?? undefined}
     data-story-ue-index={props.storyBeamFocus?.userIndex ?? undefined}
     data-story-from-beam-id={props.storyBeamFocus?.fromBeamId ?? undefined}
     data-story-to-beam-id={props.storyBeamFocus?.toBeamId ?? undefined}
@@ -1133,8 +1197,8 @@ export function VisualLabScene(props: VisualLabSceneProps) {
     data-story-return-progress={props.storyReturnProgress ?? undefined}
     data-guided-stage={props.guidedReplayProgress?.stage ?? undefined}
     data-guided-phase-fraction={props.guidedReplayProgress?.phaseFraction ?? undefined}
-    data-handover-state={props.localScene?.handover.state ?? undefined}
-    data-handover-event={props.localScene?.handover.event ?? undefined}
+    data-handover-state={localScene?.handover.state ?? undefined}
+    data-handover-event={localScene?.handover.event ?? undefined}
     data-causal-camera-cue={props.causalCameraCue === null || props.causalCameraCue === undefined ? undefined : `${props.causalCameraCue.storyId}:${props.causalCameraCue.phase}`}
     data-story-director-enabled={props.storyDirection === null || props.storyDirection === undefined ? undefined : String(props.storyDirectorEnabled !== false)}
     data-camera-director-enabled={props.storyDirection === null || props.storyDirection === undefined
@@ -1143,7 +1207,7 @@ export function VisualLabScene(props: VisualLabSceneProps) {
     data-webgl-available={webglAvailable === null ? 'checking' : String(webglAvailable)}
     data-scientific-mock="false"
   >{webglAvailable === true
-    ? <Canvas className="vlab-canvas" camera={{ position: [0, 7.35, 11.65], fov: 46, near: .01, far: 45 }} dpr={[1, 1.7]} gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}><Scene {...props} /></Canvas>
+    ? <Canvas className="vlab-canvas" camera={{ position: [0, 7.35, 11.65], fov: 46, near: .01, far: 45 }} dpr={[1, 1.7]} gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}><ScenePlanRenderer {...props} /></Canvas>
     : <div className={`vlab-webgl-fallback${webglAvailable === false ? ' is-error' : ''}`} role={webglAvailable === false ? 'alert' : 'status'}>
       <span>{webglAvailable === false ? copy.webglUnavailable : copy.preparing3d}</span>
     </div>}

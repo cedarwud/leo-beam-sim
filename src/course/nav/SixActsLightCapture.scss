@@ -1,0 +1,694 @@
+/*
+ * Screenshot-only presentation layer for the released four-act route set.
+ * Every rule is anchored to a route root carrying data-theme=light-capture;
+ * the normal dark teaching surfaces do not opt into this file.
+ */
+
+:root:has([data-theme="light-capture"]) {
+  color-scheme: light;
+}
+
+html:has([data-theme="light-capture"]) body,
+html:has([data-theme="light-capture"]) #root {
+  background: #ffffff !important;
+}
+
+.six-acts[data-theme="light-capture"],
+.tle-journey[data-theme="light-capture"],
+.global-constellation-story[data-theme="light-capture"],
+.golden-flow[data-theme="light-capture"] {
+  --capture-ink: #142b33;
+  --capture-muted: #4b6269;
+  --capture-teal: #08766d;
+  --capture-gold: #8b5a00;
+  --capture-blue: #176782;
+  --capture-red: #ad264d;
+  --capture-border: #a9bfba;
+  --capture-panel: #f5f9f7;
+  color: var(--capture-ink) !important;
+  color-scheme: light;
+  background: #ffffff !important;
+}
+
+.six-acts[data-theme="light-capture"] *,
+.six-acts[data-theme="light-capture"] *::before,
+.six-acts[data-theme="light-capture"] *::after,
+.tle-journey[data-theme="light-capture"] *,
+.tle-journey[data-theme="light-capture"] *::before,
+.tle-journey[data-theme="light-capture"] *::after,
+.global-constellation-story[data-theme="light-capture"] *,
+.global-constellation-story[data-theme="light-capture"] *::before,
+.global-constellation-story[data-theme="light-capture"] *::after,
+.golden-flow[data-theme="light-capture"] *,
+.golden-flow[data-theme="light-capture"] *::before,
+.golden-flow[data-theme="light-capture"] *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  background-image: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+.six-acts[data-theme="light-capture"] * {
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts-nav,
+.tle-journey[data-theme="light-capture"] .six-acts-nav,
+.global-constellation-story[data-theme="light-capture"] .six-acts-nav,
+.golden-flow[data-theme="light-capture"] .six-acts-nav {
+  background: #ffffff !important;
+  border-color: var(--capture-border) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts-nav a,
+.tle-journey[data-theme="light-capture"] .six-acts-nav a,
+.global-constellation-story[data-theme="light-capture"] .six-acts-nav a,
+.golden-flow[data-theme="light-capture"] .six-acts-nav a {
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts-nav a.is-current,
+.tle-journey[data-theme="light-capture"] .six-acts-nav a.is-current,
+.global-constellation-story[data-theme="light-capture"] .six-acts-nav a.is-current,
+.golden-flow[data-theme="light-capture"] .six-acts-nav a.is-current {
+  border-color: var(--capture-teal) !important;
+  background: #e5f2ef !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts-nav a em,
+.tle-journey[data-theme="light-capture"] .six-acts-nav a em,
+.global-constellation-story[data-theme="light-capture"] .six-acts-nav a em,
+.golden-flow[data-theme="light-capture"] .six-acts-nav a em {
+  color: var(--capture-teal) !important;
+  background: #e5f2ef !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts-nav a.is-current em,
+.tle-journey[data-theme="light-capture"] .six-acts-nav a.is-current em,
+.global-constellation-story[data-theme="light-capture"] .six-acts-nav a.is-current em,
+.golden-flow[data-theme="light-capture"] .six-acts-nav a.is-current em {
+  color: #ffffff !important;
+  background: var(--capture-teal) !important;
+}
+
+/* Index --------------------------------------------------------------- */
+
+.six-acts[data-theme="light-capture"] {
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(1.25rem, 2.5vw, 2.5rem);
+}
+
+.six-acts[data-theme="light-capture"] > * {
+  width: 100%;
+  max-width: none;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__kicker,
+.six-acts[data-theme="light-capture"] .six-acts__order,
+.six-acts[data-theme="light-capture"] .six-acts__bridge span {
+  color: var(--capture-teal) !important;
+}
+
+.six-acts[data-theme="light-capture"] h1,
+.six-acts[data-theme="light-capture"] .six-acts__card h2 {
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__lede,
+.six-acts[data-theme="light-capture"] .six-acts__question,
+.six-acts[data-theme="light-capture"] .six-acts__handson,
+.six-acts[data-theme="light-capture"] .six-acts__bridge,
+.six-acts[data-theme="light-capture"] .six-acts__footer {
+  color: var(--capture-muted) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__card {
+  border-color: var(--capture-border) !important;
+  background: var(--capture-panel) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__order {
+  background: #e5f2ef !important;
+}
+
+/* The index is a capture surface: four questions should be readable at a
+   glance, while the linked experiment pages retain the full explanations and
+   controls. */
+.six-acts[data-theme="light-capture"] .six-acts__header--overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(27rem, .75fr);
+  gap: clamp(2rem, 5vw, 6rem);
+  align-items: end;
+  margin-top: 2.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__header--overview .six-acts__kicker {
+  margin-bottom: .55rem;
+  font-size: .85rem !important;
+  letter-spacing: .16em;
+  color: var(--capture-teal) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__header--overview h1 {
+  margin-bottom: .7rem;
+  font-size: clamp(2.5rem, 3.2vw, 3.65rem) !important;
+  line-height: 1.12;
+  letter-spacing: -.025em;
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__header--overview .six-acts__lede {
+  max-width: 78rem;
+  margin: 0;
+  font-size: clamp(1.05rem, 1.25vw, 1.3rem) !important;
+  line-height: 1.55;
+  color: var(--capture-muted) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__summary {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  padding: 0 0 .25rem 1.5rem;
+  border-left: 3px solid var(--capture-teal) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__summary-label {
+  margin-bottom: .7rem;
+  font-size: .85rem !important;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--capture-teal) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__summary-flow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .55rem;
+  margin: 0 0 .55rem;
+  font-size: clamp(1.35rem, 1.55vw, 1.8rem) !important;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__summary-flow b {
+  font-size: .9em !important;
+  font-weight: 500;
+  color: var(--capture-teal) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__summary-note {
+  margin: 0;
+  font-size: clamp(.95rem, 1.05vw, 1.1rem) !important;
+  line-height: 1.45;
+  color: var(--capture-muted) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+  margin-top: 0;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__list > li {
+  min-width: 0;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__card {
+  min-height: 12.75rem;
+  grid-template-columns: 3.75rem minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+  padding: 1.7rem 1.8rem;
+  border-width: 1px 1px 1px 4px;
+  border-radius: 10px;
+  background: #f5f9f7 !important;
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__card > div {
+  min-width: 0;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__card h2 {
+  display: flex;
+  align-items: baseline;
+  gap: .65rem;
+  flex-wrap: wrap;
+  margin: 0 0 .85rem;
+  font-size: clamp(1.55rem, 1.9vw, 2.2rem) !important;
+  line-height: 1.25;
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__card h2 em {
+  font-style: normal;
+  font-size: 1rem !important;
+  font-weight: 600;
+  color: var(--capture-muted) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__order {
+  width: 3.75rem;
+  height: 3.75rem;
+  font-size: 1.75rem !important;
+  line-height: 1;
+  color: var(--capture-teal) !important;
+  background: #e5f2ef !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__question {
+  max-width: 54rem;
+  margin: 0;
+  font-size: clamp(1.1rem, 1.25vw, 1.35rem) !important;
+  line-height: 1.52;
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .six-acts__card:hover {
+  border-color: var(--capture-border) !important;
+  border-left-color: var(--capture-teal) !important;
+  background: #f5f9f7 !important;
+}
+
+@media (max-width: 900px) {
+  .six-acts[data-theme="light-capture"] .six-acts__header--overview {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .six-acts[data-theme="light-capture"] .six-acts__summary {
+    padding: 1.25rem 0 0;
+    border-top: 3px solid var(--capture-teal) !important;
+    border-left: 0 !important;
+  }
+
+  .six-acts[data-theme="light-capture"] .six-acts__list {
+    grid-template-columns: 1fr;
+  }
+
+  .six-acts[data-theme="light-capture"] .six-acts__header--overview h1 {
+    font-size: clamp(2.2rem, 7vw, 3.2rem) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .six-acts[data-theme="light-capture"] .six-acts__card {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    gap: 1rem;
+    min-height: 0;
+    padding: 1.25rem;
+  }
+
+  .six-acts[data-theme="light-capture"] .six-acts__order {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.4rem !important;
+  }
+}
+
+/* Global constellation ------------------------------------------------ */
+
+.global-constellation-story[data-theme="light-capture"] {
+  --gc-bg: #ffffff;
+  --gc-ink: var(--capture-ink);
+  --gc-muted: var(--capture-muted);
+  --gc-starlink: #007b70;
+  --gc-oneweb: #9a5b00;
+  --gc-ntpu: var(--capture-red);
+  background: #ffffff !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-stage {
+  background: #ffffff !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-chrome.is-enter,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-chrome.is-hold {
+  opacity: 1 !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-title,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-title > strong,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-beat-counter strong,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-caption,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-question,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-finale-copy {
+  color: var(--capture-ink) !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-title__eyebrow,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-beat-counter span,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-edge-number.is-starlink,
+.global-constellation-story[data-theme="light-capture"] .global-height-label--starlink span {
+  color: var(--gc-starlink) !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-edge-number.is-oneweb,
+.global-constellation-story[data-theme="light-capture"] .global-height-label--oneweb span,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-truth-cue span:last-child {
+  color: var(--gc-oneweb) !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-truth-cue,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-stage__legend,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-selector,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-selector small,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-edge-number__label,
+.global-constellation-story[data-theme="light-capture"] .global-elevation-label,
+.global-constellation-story[data-theme="light-capture"] .global-height-label span,
+.global-constellation-story[data-theme="light-capture"] .global-ntpu-label {
+  color: var(--capture-ink) !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-edge-number small {
+  color: var(--capture-muted) !important;
+  opacity: 1 !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-selector {
+  border-color: var(--capture-gold) !important;
+  background: #ffffff !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-selector button,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-finale-control button {
+  color: var(--capture-ink) !important;
+  border-color: var(--capture-border) !important;
+  background: #ffffff !important;
+}
+
+.global-constellation-story[data-theme="light-capture"] .global-constellation-selector button.is-selected,
+.global-constellation-story[data-theme="light-capture"] .global-constellation-finale-control--replay button {
+  color: #ffffff !important;
+  border-color: var(--capture-teal) !important;
+  background: var(--capture-teal) !important;
+}
+
+/* TLE journey --------------------------------------------------------- */
+
+.tle-journey[data-theme="light-capture"] {
+  color: var(--capture-ink) !important;
+  background: #ffffff !important;
+}
+
+.tle-journey[data-theme="light-capture"] [class*="tle-journey__"]:not(.tle-journey__nav-escape) {
+  background-color: #ffffff !important;
+  border-color: var(--capture-border) !important;
+}
+
+.tle-journey[data-theme="light-capture"] .tle-journey__theater,
+.tle-journey[data-theme="light-capture"] .tle-journey__beat-container,
+.tle-journey[data-theme="light-capture"] .tle-journey__beat,
+.tle-journey[data-theme="light-capture"] .tle-journey__background,
+.tle-journey[data-theme="light-capture"] .tle-journey__canvas-wrap,
+.tle-journey[data-theme="light-capture"] .tle-journey__handover-glb-stage {
+  background: #ffffff !important;
+}
+
+.tle-journey[data-theme="light-capture"] .tle-journey__key-value,
+.tle-journey[data-theme="light-capture"] .tle-journey__kicker,
+.tle-journey[data-theme="light-capture"] .tle-journey__hud-link.is-visible,
+.tle-journey[data-theme="light-capture"] .pass-peak-instant,
+.tle-journey[data-theme="light-capture"] .is-peak {
+  color: var(--capture-gold) !important;
+}
+
+.tle-journey[data-theme="light-capture"] .tle-journey__subtitle-bar .subtitle-text p {
+  color: var(--capture-ink) !important;
+  opacity: 1 !important;
+}
+
+.tle-journey[data-theme="light-capture"] .tle-journey__tag.is-meta {
+  color: var(--capture-muted) !important;
+  background: #eef4f3 !important;
+}
+
+.tle-journey[data-theme="light-capture"] .tle-journey__btn,
+.tle-journey[data-theme="light-capture"] .tle-journey__pill,
+.tle-journey[data-theme="light-capture"] .tle-journey__engine-controls button,
+.tle-journey[data-theme="light-capture"] .tle-journey__pass-final-actions button,
+.tle-journey[data-theme="light-capture"] .tle-journey__pass-final-actions a,
+.tle-journey[data-theme="light-capture"] .tle-journey__handover-final-actions button,
+.tle-journey[data-theme="light-capture"] .tle-journey__handover-final-actions a {
+  color: var(--capture-ink) !important;
+  border-color: var(--capture-border) !important;
+  background: #ffffff !important;
+}
+
+.tle-journey[data-theme="light-capture"] .tle-journey__btn.is-play,
+.tle-journey[data-theme="light-capture"] .tle-journey__pill.is-active,
+.tle-journey[data-theme="light-capture"] .tle-journey__handover-final-actions a {
+  color: #ffffff !important;
+  border-color: var(--capture-teal) !important;
+  background: var(--capture-teal) !important;
+}
+
+.tle-journey[data-theme="light-capture"] .progress-fill,
+.tle-journey[data-theme="light-capture"] .handover-progress-track span,
+.tle-journey[data-theme="light-capture"] .scanner-focus-beacon {
+  background: var(--capture-teal) !important;
+  box-shadow: none !important;
+}
+
+.tle-journey[data-theme="light-capture"] .pass-svg,
+.tle-journey[data-theme="light-capture"] .radar-svg,
+.tle-journey[data-theme="light-capture"] .tle-journey__handover-scene svg {
+  background: #ffffff !important;
+}
+
+.tle-journey[data-theme="light-capture"] .pass-svg text,
+.tle-journey[data-theme="light-capture"] .radar-svg text,
+.tle-journey[data-theme="light-capture"] .tle-journey__handover-scene svg text {
+  fill: var(--capture-ink) !important;
+}
+
+.tle-journey[data-theme="light-capture"] .pass-svg .curve-line,
+.tle-journey[data-theme="light-capture"] .pass-svg .pass-curve,
+.tle-journey[data-theme="light-capture"] .radar-svg .radar-axis {
+  stroke: var(--capture-teal) !important;
+}
+
+.tle-journey[data-theme="light-capture"] .pass-svg .threshold-line,
+.tle-journey[data-theme="light-capture"] .radar-svg .radar-zenith {
+  stroke: var(--capture-gold) !important;
+}
+
+.tle-journey[data-theme="light-capture"] .tle-journey__console-dots .dot-red { background: #b74452 !important; }
+.tle-journey[data-theme="light-capture"] .tle-journey__console-dots .dot-yellow { background: #9a6a00 !important; }
+.tle-journey[data-theme="light-capture"] .tle-journey__console-dots .dot-green { background: var(--capture-teal) !important; }
+
+/* Act 3 / Act 4 golden-flow stage ------------------------------------ */
+
+.golden-flow[data-theme="light-capture"] {
+  --gold: var(--capture-gold);
+  --gold-bright: var(--capture-gold);
+  --cyan: var(--capture-blue);
+  --aqua: var(--capture-teal);
+  --ink: var(--capture-ink);
+  --muted: var(--capture-muted);
+  background: #ffffff !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-stage,
+.golden-flow[data-theme="light-capture"] .golden-flow-legacy-shell,
+.golden-flow[data-theme="light-capture"] .golden-flow-legacy-workspace,
+.golden-flow[data-theme="light-capture"] .golden-flow-canvas {
+  background: #ffffff !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-stage::before,
+.golden-flow[data-theme="light-capture"] .golden-flow-stage::after {
+  display: none !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-scene-cue strong,
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock,
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock__copy,
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock__readout,
+.golden-flow[data-theme="light-capture"] .golden-flow-primary-cue,
+.golden-flow[data-theme="light-capture"] .golden-flow-primary-cue h2,
+.golden-flow[data-theme="light-capture"] .golden-flow-primary-cue p {
+  color: var(--capture-ink) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock,
+.golden-flow[data-theme="light-capture"] .golden-flow-primary-cue,
+.golden-flow[data-theme="light-capture"] .golden-flow-axis-guide,
+.golden-flow[data-theme="light-capture"] .golden-flow-angle-key,
+.golden-flow[data-theme="light-capture"] .golden-flow-angle-power-ee,
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-decision,
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-transfer-banner,
+.golden-flow[data-theme="light-capture"] .golden-flow-trace,
+.golden-flow[data-theme="light-capture"] .golden-flow-continuity-card {
+  border-color: var(--capture-border) !important;
+  background: #ffffff !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock {
+  border-left-color: var(--capture-teal) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock__copy h2,
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock__copy p,
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock__readout,
+.golden-flow[data-theme="light-capture"] .golden-flow-event-dock__readout :where(*) {
+  color: var(--capture-ink) !important;
+  opacity: 1 !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-angle-teaching-rail,
+.golden-flow[data-theme="light-capture"] .golden-flow-legacy-scene-key {
+  background: #ffffff !important;
+  border-color: var(--capture-border) !important;
+  color: var(--capture-ink) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-angle-teaching-rail :where(*),
+.golden-flow[data-theme="light-capture"] .golden-flow-legacy-scene-key :where(*) {
+  color: var(--capture-ink) !important;
+  opacity: 1 !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-angle-teaching-rail figure {
+  background: var(--capture-panel) !important;
+  border-color: var(--capture-border) !important;
+  opacity: 1 !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-legacy-scene-key i.is-source {
+  background: var(--capture-gold) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-legacy-scene-key i.is-target {
+  background: var(--capture-teal) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-primary-cue > span,
+.golden-flow[data-theme="light-capture"] .golden-flow-trace__heading span,
+.golden-flow[data-theme="light-capture"] .golden-flow-receipt header span,
+.golden-flow[data-theme="light-capture"] .golden-flow-finale span,
+.golden-flow[data-theme="light-capture"] .golden-flow-axis-guide__header span {
+  color: var(--capture-teal) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-angle-key,
+.golden-flow[data-theme="light-capture"] .golden-flow-angle-power-ee__formula,
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-decision__links .is-source,
+.golden-flow[data-theme="light-capture"] .golden-flow-candidate-comparison article.is-selected {
+  border-left-color: var(--capture-gold) !important;
+  background: var(--capture-panel) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-candidate-comparison article,
+.golden-flow[data-theme="light-capture"] .golden-flow-mobile-identities span {
+  border-color: var(--capture-border) !important;
+  background: var(--capture-panel) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-candidate-comparison article > strong,
+.golden-flow[data-theme="light-capture"] .golden-flow-mobile-identities .is-target strong {
+  color: var(--capture-blue) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-world-label span,
+.golden-flow[data-theme="light-capture"] .golden-flow-candidate-marker {
+  background: #ffffff !important;
+  border-color: var(--capture-teal) !important;
+  color: var(--capture-ink) !important;
+  text-shadow: none !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-decision__links,
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-decision__links :where(*),
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-decision__chain,
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-decision__chain :where(*) {
+  color: var(--capture-ink) !important;
+  opacity: 1 !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-handover-decision__chain > div {
+  background: var(--capture-panel) !important;
+  border-color: var(--capture-border) !important;
+}
+
+.golden-flow[data-theme="light-capture"] .golden-flow-transport-container,
+.golden-flow[data-theme="light-capture"] .golden-flow-transport-reveal-btn,
+.golden-flow[data-theme="light-capture"] .golden-flow-transport-dismiss-btn {
+  background: #ffffff !important;
+}
+
+/* The shared transport is rendered by all four routes. */
+
+.six-acts[data-theme="light-capture"] .teaching-transport,
+.tle-journey[data-theme="light-capture"] .teaching-transport,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport,
+.golden-flow[data-theme="light-capture"] .teaching-transport {
+  --tt-bg: #ffffff;
+  --tt-border: var(--capture-border);
+  --tt-accent: var(--capture-teal);
+  --tt-accent-glow: transparent;
+  --tt-ink: var(--capture-ink);
+  --tt-muted: var(--capture-muted);
+  --tt-btn-hover: #e5f2ef;
+  --tt-active-bg: var(--capture-teal);
+  --tt-active-ink: #ffffff;
+  background: #ffffff !important;
+  border-color: var(--capture-border) !important;
+  color: var(--capture-ink) !important;
+}
+
+.six-acts[data-theme="light-capture"] .teaching-transport__btn,
+.tle-journey[data-theme="light-capture"] .teaching-transport__btn,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport__btn,
+.golden-flow[data-theme="light-capture"] .teaching-transport__btn,
+.six-acts[data-theme="light-capture"] .teaching-transport__speed-trigger,
+.tle-journey[data-theme="light-capture"] .teaching-transport__speed-trigger,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport__speed-trigger,
+.golden-flow[data-theme="light-capture"] .teaching-transport__speed-trigger {
+  color: var(--capture-ink) !important;
+  border-color: var(--capture-border) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.six-acts[data-theme="light-capture"] .teaching-transport__btn--play,
+.tle-journey[data-theme="light-capture"] .teaching-transport__btn--play,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport__btn--play,
+.golden-flow[data-theme="light-capture"] .teaching-transport__btn--play,
+.six-acts[data-theme="light-capture"] .teaching-transport__speed-btn.is-active,
+.tle-journey[data-theme="light-capture"] .teaching-transport__speed-btn.is-active,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport__speed-btn.is-active,
+.golden-flow[data-theme="light-capture"] .teaching-transport__speed-btn.is-active {
+  color: #ffffff !important;
+  border-color: var(--capture-teal) !important;
+  background: var(--capture-teal) !important;
+}
+
+.six-acts[data-theme="light-capture"] .teaching-transport__range,
+.tle-journey[data-theme="light-capture"] .teaching-transport__range,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport__range,
+.golden-flow[data-theme="light-capture"] .teaching-transport__range {
+  background: #d9e6e3 !important;
+  accent-color: var(--capture-teal) !important;
+}
+
+.six-acts[data-theme="light-capture"] .teaching-transport__range::-webkit-slider-thumb,
+.tle-journey[data-theme="light-capture"] .teaching-transport__range::-webkit-slider-thumb,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport__range::-webkit-slider-thumb,
+.golden-flow[data-theme="light-capture"] .teaching-transport__range::-moz-range-thumb,
+.six-acts[data-theme="light-capture"] .teaching-transport__range::-moz-range-thumb,
+.tle-journey[data-theme="light-capture"] .teaching-transport__range::-moz-range-thumb,
+.global-constellation-story[data-theme="light-capture"] .teaching-transport__range::-moz-range-thumb {
+  border-color: var(--capture-teal) !important;
+  box-shadow: none !important;
+}

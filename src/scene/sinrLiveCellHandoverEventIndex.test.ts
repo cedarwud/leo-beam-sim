@@ -8,6 +8,7 @@
  */
 import {
   createSinrLiveCellHandoverEventFromUeTransition,
+  resolveUeServingCellId,
 } from './sinrLiveCellHandoverEventIndex';
 
 let passed = 0;
@@ -32,26 +33,36 @@ function check(label: string, fn: () => void): void {
   pass(label);
 }
 
+check('serving cell identity follows the serving beam, not geographic membership', () => {
+  assertEqual(resolveUeServingCellId({ cellId: 2, servingBeamId: 8 }), 7, 'serving beam cell');
+  assertEqual(resolveUeServingCellId({ cellId: 2, servingBeamId: null }), 2, 'membership fallback');
+  assertEqual(resolveUeServingCellId({ cellId: null, servingBeamId: null }), null, 'unserved');
+});
+
 const previous = {
   ueId: 'live-ue-7',
   cellId: 4,
+  geographicCellId: 4,
   servingSatId: 'SAT-A',
-  beamIdentity: 'SAT-A#cell4',
+  servingBeamId: 5,
+  beamIdentity: 'SAT-A#beam5',
   frequencyIndex: 1,
   sinrDb: -3.4,
   offAxisDeg: 1.1,
 };
 const current = {
   ueId: 'live-ue-7',
-  cellId: 9,
+  cellId: 4,
+  geographicCellId: 4,
   servingSatId: 'SAT-A',
-  beamIdentity: 'SAT-A#cell9',
+  servingBeamId: 421,
+  beamIdentity: 'SAT-A#beam421',
   frequencyIndex: 3,
   sinrDb: 0.6,
   offAxisDeg: 1.8,
 };
 
-check('intra event preserves same sat, old/new cells, SINR delta, source time, and off-axis', () => {
+check('intra event preserves same sat/cell, distinct beam ids, SINR delta, source time, and off-axis', () => {
   const event = assertNotNull(createSinrLiveCellHandoverEventFromUeTransition({
     previous,
     current,
@@ -64,11 +75,11 @@ check('intra event preserves same sat, old/new cells, SINR delta, source time, a
   assertEqual(event.fromSatId, 'SAT-A', 'from sat');
   assertEqual(event.toSatId, 'SAT-A', 'to sat');
   assertEqual(event.fromCellId, 4, 'from cell');
-  assertEqual(event.toCellId, 9, 'to cell');
-  // S4-2 pun retirement: cell-truth rows have NO steered beam id; the typed
-  // from/toCellId above is the handover identity.
-  assertEqual(event.fromBeamId, null, 'from beam id is null (pun retired)');
-  assertEqual(event.toBeamId, null, 'to beam id is null (pun retired)');
+  assertEqual(event.toCellId, 4, 'to cell');
+  assertEqual(event.fromBeamId, 5, 'from beam id');
+  assertEqual(event.toBeamId, 421, 'to beam id');
+  assertEqual(event.fromBeamIdentity, 'SAT-A#beam5', 'from beam identity');
+  assertEqual(event.toBeamIdentity, 'SAT-A#beam421', 'to beam identity');
   assertEqual(event.ueId, 'live-ue-7', 'ue id');
   assertEqual(event.fromOffAxisDeg, 1.1, 'from off-axis');
   assertEqual(event.toOffAxisDeg, 1.8, 'to off-axis');
@@ -77,6 +88,21 @@ check('intra event preserves same sat, old/new cells, SINR delta, source time, a
   assertEqual(event.deltaDb, 4, 'delta');
   assertEqual(event.sourceTimeSec, 42.123457, 'rounded source time');
   assertEqual(event.clickTargetSec, event.sourceTimeSec, 'click target is source time');
+});
+
+check('intra event keeps the geographic cell when the pre-commit serving beam still names another cell', () => {
+  const event = assertNotNull(createSinrLiveCellHandoverEventFromUeTransition({
+    previous: { ...previous, cellId: 0, geographicCellId: 4 },
+    current: { ...current, cellId: 6, geographicCellId: 4 },
+    handoverKind: 'intra',
+    sourceTimeSec: 43,
+    offsetDb: 2,
+    sequence: 5,
+  }), 'same geographic-cell event');
+  assertEqual(event.fromCellId, 4, 'from geographic cell');
+  assertEqual(event.toCellId, 4, 'to geographic cell');
+  assertEqual(event.fromBeamId, 5, 'from serving beam');
+  assertEqual(event.toBeamId, 421, 'to serving beam');
 });
 
 check('inter event requires a satellite change and can keep the same cell', () => {
@@ -110,6 +136,22 @@ check('transition helper fails closed on mismatched kind, unknown kind, mismatch
     offsetDb: 2,
     sequence: 0,
   }), 'intra with sat change');
+  assertNull(createSinrLiveCellHandoverEventFromUeTransition({
+    previous,
+    current: { ...previous },
+    handoverKind: 'intra',
+    sourceTimeSec: 1,
+    offsetDb: 2,
+    sequence: 0,
+  }), 'intra without beam change');
+  assertNull(createSinrLiveCellHandoverEventFromUeTransition({
+    previous,
+    current: { ...current, cellId: 9, geographicCellId: 9 },
+    handoverKind: 'intra',
+    sourceTimeSec: 1,
+    offsetDb: 2,
+    sequence: 0,
+  }), 'intra with geographic cell change');
   assertNull(createSinrLiveCellHandoverEventFromUeTransition({
     previous,
     current: previous,

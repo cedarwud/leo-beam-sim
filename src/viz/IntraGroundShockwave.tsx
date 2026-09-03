@@ -5,6 +5,7 @@ import {
   INTRA_HANDOVER_SOURCE_COLOR,
   INTRA_HANDOVER_TARGET_COLOR,
 } from '../constants/beamRoleTokens';
+import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
 import type { RuntimeConfig, VizFrame, VizIntraHandoverEvent } from '../scene/types';
 
 /**
@@ -28,6 +29,8 @@ import type { RuntimeConfig, VizFrame, VizIntraHandoverEvent } from '../scene/ty
  *   - data-intra-shockwave-target-opacity   current target ring opacity (3dp)
  *   - data-intra-shockwave-source-scale     current source ring radius/disc
  *   - data-intra-shockwave-target-scale     current target ring radius/disc
+ *   - data-intra-shockwave-source-color     source beam identity shade
+ *   - data-intra-shockwave-target-color     target beam identity shade
  */
 
 const BEAM_GROUND_Y = 5;
@@ -213,6 +216,8 @@ function IntraGroundShockwaveMesh({
   // left over from a prior latch teardown.
   useEffect(() => {
     const ds = gl.domElement.dataset;
+    ds.intraShockwaveSourceColor = sourceColor;
+    ds.intraShockwaveTargetColor = targetColor;
     if (reducedMotion) {
       ds.intraShockwaveActive = '1';
       ds.intraShockwaveSourceOpacity = REDUCED_MOTION_SOURCE_OPACITY.toFixed(3);
@@ -236,7 +241,14 @@ function IntraGroundShockwaveMesh({
     ds.intraShockwaveTargetOpacity = targetOpacity.toFixed(3);
     ds.intraShockwaveSourceScale = sourceScale.toFixed(3);
     ds.intraShockwaveTargetScale = targetScale.toFixed(3);
-  }, [gl, reducedMotion, event.wallClockStartMs, event.wallClockExpiresMs]);
+  }, [
+    event.wallClockExpiresMs,
+    event.wallClockStartMs,
+    gl,
+    reducedMotion,
+    sourceColor,
+    targetColor,
+  ]);
 
   useEffect(() => () => {
     const ds = gl.domElement.dataset;
@@ -245,6 +257,8 @@ function IntraGroundShockwaveMesh({
     ds.intraShockwaveTargetOpacity = '';
     ds.intraShockwaveSourceScale = '';
     ds.intraShockwaveTargetScale = '';
+    ds.intraShockwaveSourceColor = '';
+    ds.intraShockwaveTargetColor = '';
     sourceMat.dispose();
     targetMat.dispose();
     sourceGeo.dispose();
@@ -264,24 +278,53 @@ interface Props {
   runtime: RuntimeConfig;
   /** Satellite identity hue; ring motion still distinguishes source and target. */
   identityColorBySatelliteId?: ReadonlyMap<string, string>;
+  /** Same-satellite beam shade keyed as `${satelliteId}/${beamId}`. */
+  identityColorBySatelliteBeamId?: ReadonlyMap<string, string>;
+}
+
+export function resolveIntraGroundShockwaveColors(input: {
+  readonly event: Pick<VizIntraHandoverEvent, 'satId' | 'fromBeamId' | 'toBeamId'>;
+  readonly identityColorBySatelliteId?: ReadonlyMap<string, string>;
+  readonly identityColorBySatelliteBeamId?: ReadonlyMap<string, string>;
+}): { readonly sourceColor: string; readonly targetColor: string } {
+  const identityAuthorityActive = input.identityColorBySatelliteBeamId !== undefined
+    || input.identityColorBySatelliteId !== undefined;
+  const satelliteColor = input.identityColorBySatelliteId?.get(input.event.satId);
+  return Object.freeze({
+    sourceColor: input.identityColorBySatelliteBeamId?.get(
+      `${input.event.satId}/${input.event.fromBeamId}`,
+    ) ?? satelliteColor ?? (identityAuthorityActive
+      ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
+      : INTRA_HANDOVER_SOURCE_COLOR),
+    targetColor: input.identityColorBySatelliteBeamId?.get(
+      `${input.event.satId}/${input.event.toBeamId}`,
+    ) ?? satelliteColor ?? (identityAuthorityActive
+      ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
+      : INTRA_HANDOVER_TARGET_COLOR),
+  });
 }
 
 export function IntraGroundShockwave({
   vizFrame,
   runtime,
   identityColorBySatelliteId,
+  identityColorBySatelliteBeamId,
 }: Props) {
   const event = vizFrame.intraHandoverEvent;
   if (!event) return null;
-  const identityColor = identityColorBySatelliteId?.get(event.satId);
+  const colors = resolveIntraGroundShockwaveColors({
+    event,
+    identityColorBySatelliteId,
+    identityColorBySatelliteBeamId,
+  });
   return (
     <IntraGroundShockwaveMesh
       key={event.triggeredAtSec}
       event={event}
       footprintRadius={vizFrame.footprintRadiusWorld}
       reducedMotion={runtime.reducedMotion}
-      sourceColor={identityColor ?? INTRA_HANDOVER_SOURCE_COLOR}
-      targetColor={identityColor ?? INTRA_HANDOVER_TARGET_COLOR}
+      sourceColor={colors.sourceColor}
+      targetColor={colors.targetColor}
     />
   );
 }

@@ -3,9 +3,11 @@ import type { ReactElement } from 'react';
 import {
   SIX_ACTS_INDEX_HREF,
   SIX_ACTS_ROUTES,
+  SIX_ACTS_VISIBLE_ROUTES,
   nextSixActsRoute,
   previousSixActsRoute,
 } from './sixActsRoutes';
+import { sixActsHref } from './lightCapture';
 import './SixActsNav.scss';
 
 /**
@@ -16,26 +18,46 @@ import './SixActsNav.scss';
  * every act is always one click away, and so is the homepage.
  */
 
-export function SixActsNav({ currentHref }: { readonly currentHref: string }): ReactElement {
+export function SixActsNav({
+  currentHref,
+  variant = 'strip',
+}: {
+  readonly currentHref: string;
+  readonly variant?: 'strip' | 'stage';
+}): ReactElement {
   const previous = previousSixActsRoute(currentHref);
   const next = nextSixActsRoute(currentHref);
 
   return (
-    <nav className="six-acts-nav" aria-label="六幕教學動線">
-      <a className="six-acts-nav__home" href="/" title="回首頁模擬器">
-        <span aria-hidden="true">←</span> 首頁
-      </a>
-      <a className="six-acts-nav__index" href={SIX_ACTS_INDEX_HREF}>動線</a>
+    <nav
+      className={`six-acts-nav ${variant === 'stage' ? 'is-stage' : 'is-strip'}`}
+      aria-label={variant === 'stage' ? '切換教學實驗' : '教學實驗動線'}
+      data-testid={variant === 'stage' ? 'six-acts-stage-nav' : undefined}
+      data-stage-occluder={variant === 'stage' ? 'true' : undefined}
+    >
+      {variant === 'strip' ? <>
+        <a className="six-acts-nav__home" href="/" title="回首頁模擬器">
+          <span aria-hidden="true">←</span> 首頁
+        </a>
+        <a className="six-acts-nav__index" href={sixActsHref(SIX_ACTS_INDEX_HREF)}>動線</a>
+      </> : null}
+
+      {variant === 'stage' ? (
+        <a className="six-acts-nav__stage-home" href="/" aria-label="回首頁" title="回首頁模擬器">
+          <span aria-hidden="true">⌂</span>
+        </a>
+      ) : null}
 
       <ol className="six-acts-nav__acts">
-        {SIX_ACTS_ROUTES.map(entry => {
+        {SIX_ACTS_VISIBLE_ROUTES.map(entry => {
           const current = entry.href === currentHref;
           return (
             <li key={entry.id}>
               <a
-                href={entry.href}
+                href={sixActsHref(entry.href)}
                 className={current ? 'is-current' : ''}
                 aria-current={current ? 'page' : undefined}
+                aria-label={`第 ${entry.actLabel} 幕：${entry.titleZhHant}`}
                 title={entry.questionZhHant}
               >
                 <em>{entry.actLabel}</em>
@@ -46,14 +68,14 @@ export function SixActsNav({ currentHref }: { readonly currentHref: string }): R
         })}
       </ol>
 
-      <div className="six-acts-nav__step">
+      {variant === 'strip' ? <div className="six-acts-nav__step">
         {previous === null
           ? null
-          : <a href={previous.href} title={previous.titleZhHant}>← 上一幕</a>}
+          : <a href={sixActsHref(previous.href)} title={previous.titleZhHant}>← 上一幕</a>}
         {next === null
           ? null
-          : <a href={next.href} className="is-next" title={next.titleZhHant}>下一幕 →</a>}
-      </div>
+          : <a href={sixActsHref(next.href)} className="is-next" title={next.titleZhHant}>下一幕 →</a>}
+      </div> : null}
     </nav>
   );
 }
@@ -72,7 +94,7 @@ export function SixActsBridge({ currentHref }: { readonly currentHref: string })
   return (
     <aside className="six-acts-bridge">
       <p className="six-acts-bridge__line">{entry.bridgeZhHant}</p>
-      <a href={next.href}>
+      <a href={sixActsHref(next.href)}>
         接下去：{next.actLabel} · {next.titleZhHant} <span aria-hidden="true">→</span>
       </a>
     </aside>

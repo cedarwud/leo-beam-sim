@@ -3,7 +3,7 @@ import type { SimState } from '../../scene/types';
 import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import { txBi } from './labels';
-import { SystemAngleState } from './FormulaSymbols';
+import { LinkEnergyEfficiency, SystemAngleState, Theta3db } from './FormulaSymbols';
 
 export type WalkerSceneMetricsProps = Pick<SimState, 'canonicalEe' | 'livePaperEnergyEfficiency'>;
 
@@ -132,13 +132,13 @@ export function WalkerSceneMetrics({
       >
         <Metric
           testId="walker-scene-ee"
-          label={<>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>}
+          label={<LinkEnergyEfficiency />}
           value={`${formatValue(canonicalEe?.eeEvalMbitPerJ, 'Mbit/J', 3)} · ${formatValue(canonicalEe?.eeInstMbitPerJ, 'Mbit/J', 3)}`}
           accent={UI_TOKENS.color.semantic.warning.accent}
         />
         <Metric
           testId="walker-scene-system-power"
-          label={<>P<sup>N</sup>(t, <SystemAngleState />)</>}
+          label={<>P<sup>N</sup>(t, <SystemAngleState />, <Theta3db />)</>}
           value={formatValue(canonicalEe?.systemPowerW, 'W', 3)}
           accent={UI_TOKENS.color.semantic.good}
         />
@@ -168,7 +168,7 @@ export function WalkerSceneMetrics({
         />
         <Metric
           testId="walker-scene-beam-power"
-          label={say('walker.scene.metrics.beamPower', '平均波束 raw power', 'Mean beam raw power')}
+          label={say('walker.scene.metrics.beamPower', '波束 RF 功率', 'Beam RF power')}
           value={formatValue(livePaperEnergyEfficiency?.powerSummaryW.mean, 'W', 3)}
           accent={UI_TOKENS.color.semantic.beam}
         />

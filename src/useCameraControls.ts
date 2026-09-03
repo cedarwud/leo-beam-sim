@@ -41,7 +41,19 @@ export interface CameraControls {
   readonly exitDirectorFocus: () => void;
 }
 
-export function useCameraControls(): CameraControls {
+export interface UseCameraControlsOptions {
+  /**
+   * Optional route-owned presentation budget for a Director focus.  The
+   * default remains the historical short camera shot; the homepage passes a
+   * longer budget because its source-backed focus deliberately seeks to a
+   * pre-handover lead-in and must stay alive through candidate/TTT/switching.
+   * This is display pacing only and never changes simulation time or policy.
+   */
+  readonly focusAutoExitMs?: number;
+}
+
+export function useCameraControls(options: UseCameraControlsOptions = {}): CameraControls {
+  const { focusAutoExitMs } = options;
   const [userCinematicMode, setUserCinematicMode] = useState<UserCinematicMode>('off');
   const [cameraCommand, setCameraCommand] = useState<RuntimeConfig['cameraCommand']>();
   const [directorPhase, setDirectorPhase] = useState<DirectorFocusPhase>('idle');
@@ -112,11 +124,14 @@ export function useCameraControls(): CameraControls {
   // a re-target (acquiring again) drops us out of `focused`, clearing this timer.
   useEffect(() => {
     if (directorPhase !== 'focused') return undefined;
+    const configuredAutoExitMs = Number.isFinite(focusAutoExitMs) && (focusAutoExitMs ?? 0) > 0
+      ? focusAutoExitMs!
+      : resolveDirectorFocusAutoExitMs(directorKindRef.current);
     const timeoutId = setTimeout(() => {
       exitDirectorFocus();
-    }, resolveDirectorFocusAutoExitMs(directorKindRef.current));
+    }, configuredAutoExitMs);
     return () => clearTimeout(timeoutId);
-  }, [directorPhase, exitDirectorFocus]);
+  }, [directorPhase, exitDirectorFocus, focusAutoExitMs]);
 
   const cinematicMode: CinematicMode = directorPhase !== 'idle' ? 'director' : userCinematicMode;
   // Slow-mo stays locked for the entire director cycle, INCLUDING the `restoring`

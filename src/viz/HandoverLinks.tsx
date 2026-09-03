@@ -1,6 +1,7 @@
 import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { tokenForEventRole } from '../constants/beamRoleTokens';
+import { colorForServingBeam } from '../constants/servingColour';
 import type { BeamTarget } from '../scene/beamTargetTypes';
 import type { EventRole, VisibleSat } from '../scene/types';
 import { formatBeamIdentityByIndex } from '../utils/formatSatelliteLabel';
@@ -48,6 +49,20 @@ function primaryBeamLabel(satId: string, beams: BeamTarget[] | undefined): strin
   return beam ? formatBeamIdentityByIndex({ satId, beamId: beam.beamId, frequencyIndex: beam.frequencyIndex }) : null;
 }
 
+function identityColorForLink(
+  satId: string,
+  beams: BeamTarget[] | undefined,
+  fallback: string,
+): string {
+  const beam = beams?.find(entry => entry.isServing)
+    ?? beams?.find(entry => entry.isPrimary)
+    ?? beams?.find(entry => entry.isScheduledActive)
+    ?? beams?.[0];
+  return beam === undefined
+    ? fallback
+    : colorForServingBeam(satId, beam.beamId).markerColor;
+}
+
 function resolveAnchor(
   primaryUeAnchor: readonly [number, number, number] | undefined,
 ): readonly [number, number, number] {
@@ -76,7 +91,17 @@ export function HandoverLinks({
           if (!role) return null;
 
           const style = tokenForEventRole(role);
-          const beamLabel = primaryBeamLabel(satellite.id, satBeams.get(satellite.id));
+          const satelliteBeams = satBeams.get(satellite.id);
+          const beamLabel = primaryBeamLabel(satellite.id, satelliteBeams);
+          // Keep the established link geometry, dash pattern, and role
+          // opacity.  Only the paint source changes: a link inherits the
+          // spacecraft/beam identity hue rather than saying "candidate" by
+          // virtue of its event role.
+          const identityColor = identityColorForLink(
+            satellite.id,
+            satelliteBeams,
+            satellite.satelliteTintColor ?? '#aaccff',
+          );
           const label = [style.operatorLabel, beamLabel].filter(Boolean).join(' · ');
           const midpoint = new THREE.Vector3(...anchor).lerp(satellite.world, 0.42);
 
@@ -87,7 +112,7 @@ export function HandoverLinks({
                   anchorPoints,
                   [satellite.world.x, satellite.world.y, satellite.world.z],
                 ]}
-                color={style.color}
+                color={identityColor}
                 lineWidth={style.linkLineWidth}
                 transparent
                 opacity={style.lineOpacity}
@@ -99,7 +124,7 @@ export function HandoverLinks({
               <Text
                 position={[midpoint.x, midpoint.y + 8, midpoint.z]}
                 fontSize={style.markerFontSize}
-                color={style.color}
+                color={identityColor}
                 anchorX="center"
                 anchorY="middle"
                 outlineWidth={1.5}

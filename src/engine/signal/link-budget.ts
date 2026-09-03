@@ -33,6 +33,7 @@ import {
   resolveAngleAwarePowerState,
   computeAngleAwareEnergyEfficiency,
   computeAngleAwareThroughputBps,
+  resolveAngleAwareConversionEfficiency,
   dbToLinear,
   linearToDb,
   wattsToDbm,
@@ -71,6 +72,20 @@ export interface AngleAwareLinkBudgetConfig {
   fixedPowerW: number;
   /** Optional U_(s,v)(t) values for C5. Defaults to one. */
   beamLoadByKey?: ReadonlyMap<string, number>;
+  /** p_max used by the active beam-efficiency curve. */
+  beamPowerCapW?: number;
+  /** Output back-off used by the active beam-efficiency curve. */
+  backoffDb?: number;
+  /** xi_max for the active beam-efficiency curve. */
+  maxEfficiency?: number;
+  /**
+   * Accepted-frame RF maxima for active physical (s,v) beams.  When present,
+   * these values are used only for co-channel interference and beam-level
+   * power accounting; the wanted numerator remains the selected link's
+   * p_(u,s,v).  This is the cross-UE projection needed to keep one physical
+   * beam consistent with the training closure.
+   */
+  beamPowerByKey?: ReadonlyMap<string, number>;
 }
 
 function computeSteeringLossDb(
@@ -297,20 +312,52 @@ export function computeLinkBudget(
   // B1 -> F1, B2 -> F2, ..., wrapping after the configured reuse count.
   const reuseGroups = beamConfig.frequencyReuse;
 
+  const beamPowerByKey = new Map<string, number>();
+  if (angleAware !== undefined) {
+    for (const [key, value] of angleAware.beamPowerByKey ?? []) {
+      if (!activeBeamKeys.has(key)) continue;
+      if (!Number.isFinite(value) || value < 0) {
+        throw new Error(`beamPowerByKey[${key}] must be finite and non-negative`);
+      }
+      beamPowerByKey.set(key, value);
+    }
+    for (const entry of entries) {
+      const key = angleAwareBeamKey(entry.sample.satId, entry.sample.beamId);
+      if (!activeBeamKeys.has(key) || entry.angleAwareDraft === undefined) continue;
+      if (!beamPowerByKey.has(key)) {
+        beamPowerByKey.set(key, entry.angleAwareDraft.powerW);
+      }
+    }
+    for (const entry of entries) {
+      const draft = entry.angleAwareDraft;
+      if (draft === undefined) continue;
+      const key = angleAwareBeamKey(entry.sample.satId, entry.sample.beamId);
+      const beamPowerW = beamPowerByKey.get(key) ?? draft.powerW;
+      const beamLoad = angleAware.beamLoadByKey?.get(key) ?? 1;
+      if (!Number.isFinite(beamLoad) || beamLoad <= 0) {
+        throw new Error(`beamLoadByKey[${key}] must be finite and positive`);
+      }
+      // I_(u,s,v) uses the same physical-beam maximum as P^p, divided by
+      // U_(s,v).  The current entry's own wanted signal is still p_(u,s,v).
+      entry.interferenceMw = (
+        beamPowerW
+        / beamLoad
+        * draft.channelGainLinear
+        * draft.transmitGainLinear
+        * 1e3
+      );
+    }
+  }
   const angleAwareSystemPowerW = angleAware === undefined
     ? null
-    : angleAware.fixedPowerW + entries.reduce((sum, entry) => {
-      const key = angleAwareBeamKey(entry.sample.satId, entry.sample.beamId);
-      if (!activeBeamKeys.has(key) || entry.angleAwareDraft === undefined) return sum;
-      const efficiency = Number.isFinite(angleAware.conversionEfficiency)
-        && angleAware.conversionEfficiency > 0
-        ? angleAware.conversionEfficiency
-        : 1;
-      const configuredLoad = angleAware.beamLoadByKey?.get(key);
-      const beamLoad = Number.isFinite(configuredLoad) && (configuredLoad ?? 0) > 0
-        ? Math.max(1, Math.floor(configuredLoad ?? 1))
-        : 1;
-      return sum + (entry.angleAwareDraft.powerW / efficiency) * beamLoad;
+    : angleAware.fixedPowerW + Array.from(beamPowerByKey.values()).reduce((sum, beamPowerW) => {
+      const efficiency = resolveAngleAwareConversionEfficiency(
+        beamPowerW,
+        angleAware.maxEfficiency ?? angleAware.conversionEfficiency,
+        angleAware.beamPowerCapW,
+        angleAware.backoffDb,
+      );
+      return sum + beamPowerW / efficiency;
     }, 0);
 
   return entries.map((entry, idx) => {
@@ -359,11 +406,16 @@ export function computeLinkBudget(
         beamLoad,
         gammaLinear,
       );
-      const conversionEfficiency = Number.isFinite(angleAware.conversionEfficiency)
-        && angleAware.conversionEfficiency > 0
-        ? angleAware.conversionEfficiency
-        : 1;
-      const powerConsumptionW = draft.powerW / conversionEfficiency;
+      const beamPowerW = beamPowerByKey.get(
+        angleAwareBeamKey(entry.sample.satId, entry.sample.beamId),
+      ) ?? draft.powerW;
+      const conversionEfficiency = resolveAngleAwareConversionEfficiency(
+        beamPowerW,
+        angleAware.maxEfficiency ?? angleAware.conversionEfficiency,
+        angleAware.beamPowerCapW,
+        angleAware.backoffDb,
+      );
+      const powerConsumptionW = beamPowerW / conversionEfficiency;
       const systemPowerW = Math.max(angleAwareSystemPowerW ?? powerConsumptionW, 0);
       nextSample.angleAware = {
         timeSec: draft.state.timeSec,
@@ -390,6 +442,8 @@ export function computeLinkBudget(
         throughputBps,
         conversionEfficiency,
         powerConsumptionW,
+        beamPowerW,
+        beamSupplyPowerW: powerConsumptionW,
         fixedPowerW: angleAware.fixedPowerW,
         systemPowerW,
         energyEfficiencyBitsPerJoule: computeAngleAwareEnergyEfficiency(

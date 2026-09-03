@@ -87,6 +87,13 @@ export interface HomepageTleSceneFrame {
 export interface HomepageTleSceneAdapterOptions {
   /** Number of above-horizon non-selected/non-candidate satellites to retain. */
   readonly contextLimit?: number;
+  /**
+   * Additional source identities that must remain in the bounded display
+   * projection even when they are below the horizon or outside contextLimit.
+   * This is display retention only; it never changes the selected/candidate
+   * producer roles or any canonical decision.
+   */
+  readonly retainSatelliteIds?: readonly string[];
 }
 
 interface ProjectedLook {
@@ -107,7 +114,15 @@ const homepageSceneProjectionCache = new Map<string, HomepageTleSceneFrame>();
 const homepageSceneFrameObjectIds = new WeakMap<object, number>();
 let nextHomepageSceneFrameObjectId = 1;
 
-function homepageSceneProjectionKey(frame: SimulationAnalysisFrame, contextLimit: number): string {
+function normalizedRetainSatelliteIds(value: readonly string[] | undefined): readonly string[] {
+  return Object.freeze([...new Set((value ?? []).filter(id => typeof id === 'string' && id.length > 0))].sort());
+}
+
+function homepageSceneProjectionKey(
+  frame: SimulationAnalysisFrame,
+  contextLimit: number,
+  retainSatelliteIds: readonly string[],
+): string {
   // frameId is a scientific identity, not a JavaScript object identity. Test
   // fixtures and pending wrappers may intentionally reuse it while changing
   // the candidate payload, so the cache must never cross-contaminate those
@@ -118,14 +133,15 @@ function homepageSceneProjectionKey(frame: SimulationAnalysisFrame, contextLimit
     nextHomepageSceneFrameObjectId += 1;
     homepageSceneFrameObjectIds.set(frame, objectId);
   }
-  return `${objectId}|context=${contextLimit}`;
+  return `${objectId}|context=${contextLimit}|retain=${retainSatelliteIds.join(',')}`;
 }
 
 function cachedSceneProjection(
   frame: SimulationAnalysisFrame,
   contextLimit: number,
+  retainSatelliteIds: readonly string[],
 ): HomepageTleSceneFrame | null {
-  const key = homepageSceneProjectionKey(frame, contextLimit);
+  const key = homepageSceneProjectionKey(frame, contextLimit, retainSatelliteIds);
   const cached = homepageSceneProjectionCache.get(key);
   if (cached !== undefined) {
     homepageSceneProjectionCache.delete(key);
@@ -138,9 +154,10 @@ function cachedSceneProjection(
 function rememberSceneProjection(
   frame: SimulationAnalysisFrame,
   contextLimit: number,
+  retainSatelliteIds: readonly string[],
   projected: HomepageTleSceneFrame,
 ): HomepageTleSceneFrame {
-  const key = homepageSceneProjectionKey(frame, contextLimit);
+  const key = homepageSceneProjectionKey(frame, contextLimit, retainSatelliteIds);
   homepageSceneProjectionCache.delete(key);
   homepageSceneProjectionCache.set(key, projected);
   while (homepageSceneProjectionCache.size > HOMEPAGE_SCENE_PROJECTION_CACHE_LIMIT) {
@@ -235,7 +252,9 @@ export function adaptSimulationAnalysisFrameToHomepageTleScene(
   options: HomepageTleSceneAdapterOptions = {},
 ): HomepageTleSceneFrame {
   const limit = contextLimit(options.contextLimit);
-  const cached = cachedSceneProjection(frame, limit);
+  const retainSatelliteIds = normalizedRetainSatelliteIds(options.retainSatelliteIds);
+  const retained = new Set(retainSatelliteIds);
+  const cached = cachedSceneProjection(frame, limit, retainSatelliteIds);
   if (cached !== null) return cached;
   const tleState = frame.tleState;
   const selectedId = tleState.selectedSatelliteId;
@@ -260,12 +279,16 @@ export function adaptSimulationAnalysisFrameToHomepageTleScene(
   }
 
   const contextSatellites = [...projectedById.values()]
-    .filter(satellite => satellite.role === 'context' && satellite.look.visible)
+    .filter(satellite => (
+      satellite.role === 'context'
+      && (satellite.look.visible || retained.has(satellite.satelliteId))
+    ))
     .sort((left, right) => (
-      right.look.elevationDeg - left.look.elevationDeg
+      Number(retained.has(right.satelliteId)) - Number(retained.has(left.satelliteId))
+      || right.look.elevationDeg - left.look.elevationDeg
       || left.satelliteId.localeCompare(right.satelliteId)
     ))
-    .slice(0, limit);
+    .filter((satellite, index) => retained.has(satellite.satelliteId) || index < limit);
   const selectedTrajectory = tleState.trajectory.map(point => {
     const projected = projectHomepageTleLook(point.positionTemeKm, point.instantUtc);
     return freeze({
@@ -302,7 +325,7 @@ export function adaptSimulationAnalysisFrameToHomepageTleScene(
     selectedRangeKm: selected.look.rangeKm,
     candidateElevationDeg: candidate?.look.elevationDeg ?? null,
   });
-  return rememberSceneProjection(frame, limit, deepFreeze({
+  return rememberSceneProjection(frame, limit, retainSatelliteIds, deepFreeze({
     frameId: frame.frameId,
     tleFrameId: frame.tleFrameId,
     instantUtc: frame.instantUtc,

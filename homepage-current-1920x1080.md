@@ -1,0 +1,74 @@
+- generic [ref=e3] [box=0,0,1920,1080]:
+  - button "開啟畫面顯示控制" [ref=e5] [cursor=pointer] [box=1840,12,68,34]:
+    - generic [ref=e6] [box=1851,20,13,18]: ☷
+    - generic [ref=e7] [box=1871,20,26,18]: 介面
+  - generic [ref=e9] [box=12,12,1896,52]:
+    - link "◎ 教學實驗" [ref=e10] [cursor=pointer] [box=12,12,96,34]:
+      - /url: /course/six-acts
+    - group "Quick display controls" [ref=e12] [box=120,12,1542,44]:
+      - generic "Show or hide beam information blocks in the scene" [ref=e13] [cursor=pointer] [box=133,23,106,22]:
+        - checkbox "Show beam information blocks" [checked] [ref=e14] [box=133,28,13,13]
+        - text: Beam Info
+      - generic "Also draw the dim non-serving (co-channel) beam cones behind the serving ones" [ref=e15] [cursor=pointer] [box=255,23,130,22]:
+        - checkbox "Show non-serving beam cones" [ref=e16] [box=255,28,13,13]
+        - text: Other beams
+      - generic "Highlight serving beam path with cinematic spotlight (scene dim + fog)" [ref=e17] [cursor=pointer] [box=401,23,98,22]:
+        - 'checkbox "Spotlight mode: highlight serving beam path" [ref=e18] [box=401,28,13,13]'
+        - text: Spotlight
+      - generic "Auto-slow simulation rate during handover events" [ref=e19] [cursor=pointer] [box=515,23,92,22]:
+        - checkbox "Auto slow on handover" [checked] [ref=e20] [box=515,28,13,13]
+        - text: HO Slow
+      - generic "Handover quick navigation" [ref=e21] [box=1363,19,193,30]:
+        - button "Show Intra" [ref=e22] [cursor=pointer] [box=1363,19,93,30]
+        - button "Show Inter" [ref=e23] [cursor=pointer] [box=1462,19,94,30]
+      - generic "Live scene playback rate (auto-slows during a handover while HO Slow is on)." [ref=e24] [box=1572,25,77,18]: Scene 5.0×
+    - group "Language / 語言切換" [ref=e26] [box=1674,12,122,52]:
+      - button "zh" [pressed] [ref=e27] [cursor=pointer] [box=1678,16,56,44]
+      - button "en" [ref=e28] [cursor=pointer] [box=1736,16,56,44]
+  - generic [ref=e29] [box=12,76,1896,992]:
+    - complementary "Signal tuning panel slot" [ref=e30] [box=12,76,520,992]:
+      - button "Collapse left sidebar to the left" [expanded] [ref=e31] [cursor=pointer] [box=458,82,34,36]:
+        - generic [ref=e32] [box=471,88,8,24]: ‹
+        - generic [box=475,100,1,1]: Collapse left sidebar
+      - region "SINR-live tuning controls" [ref=e34] [box=12,76,505,948]:
+        - complementary "訊號與能源參數面板" [ref=e38] [box=31,89,452,906]:
+          - generic [ref=e39] [box=46,104,422,876]:
+            - tablist "左側面板主分頁" [ref=e40] [box=46,104,422,158]
+            - tabpanel "SINR 訊號與干擾雜訊比" [ref=e52] [box=46,276,422,704]
+    - main [ref=e121] [box=544,76,892,992]:
+      - generic [ref=e123] [box=544,76,892,992]:
+        - generic [box=999,549,0,0]:
+          - generic [box=943,519,112,60]:
+            - generic [box=943,519,112,60]
+      - region "Playback timeline controls" [ref=e126] [box=556,933,868,121]:
+        - group "Timeline transport controls" [ref=e127] [box=571,947,196,35]:
+          - button "Jump to start" [ref=e128] [cursor=pointer] [box=571,947,32,35]
+          - button "Step backward 10 seconds" [ref=e131] [cursor=pointer] [box=608,947,35,35]
+          - button "Pause timeline" [ref=e133] [cursor=pointer] [box=648,947,42,35]
+          - button "Step forward 10 seconds" [ref=e135] [cursor=pointer] [box=695,947,35,35]
+          - button "Jump to end" [ref=e137] [cursor=pointer] [box=735,947,32,35]
+        - generic [ref=e140] [box=836,947,295,35]:
+          - generic [ref=e141] [box=847,957,16,15]: T+
+          - generic [ref=e142] [box=868,957,34,14]: 0:35
+          - generic [ref=e143] [box=906,957,8,15]: /
+          - generic [ref=e144] [box=919,957,59,14]: 2:00:00
+          - generic [ref=e145] [box=983,954,137,20]: Live timeline 2 h
+        - group "Playback speed presets" [ref=e146] [box=1200,946,209,36]:
+          - button "Set playback speed to 1x" [ref=e147] [cursor=pointer] [box=1204,950,34,28]: 1x
+          - button "Set playback speed to 2x" [ref=e148] [cursor=pointer] [box=1243,950,34,28]: 2x
+          - button "Set playback speed to 5x" [pressed] [ref=e149] [cursor=pointer] [box=1282,950,34,28]: 5x
+          - button "Set playback speed to 10x" [ref=e150] [cursor=pointer] [box=1321,950,39,28]: 10x
+          - button "Set playback speed to 20x" [ref=e151] [cursor=pointer] [box=1366,950,39,28]: 20x
+        - generic [ref=e152] [box=571,992,838,48]:
+          - slider "Timeline scrubber (10-second steps)" [ref=e156] [cursor=pointer] [box=576,996,828,28]: "40"
+          - generic [ref=e157] [box=576,1025,828,15]:
+            - generic [ref=e158] [box=576,1028,29,12]: 0:00
+            - generic [ref=e159] [box=765,1028,36,12]: 30:00
+            - generic [ref=e160] [box=965,1028,51,12]: 1:00:00
+            - generic [ref=e161] [box=1172,1028,51,12]: 1:30:00
+            - generic [ref=e162] [box=1353,1028,51,12]: 2:00:00
+    - complementary "Calculated values panel" [ref=e163] [box=1448,76,460,992]:
+      - region "Simulation status sidebar" [ref=e164] [box=1448,76,460,992]:
+        - tabpanel "Live status" [ref=e165] [box=1448,76,460,992]:
+          - region "Live status for current scene" [ref=e166] [box=1448,76,460,992]:
+            - generic [ref=e167] [box=1448,76,460,861]

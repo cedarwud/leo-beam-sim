@@ -57,8 +57,12 @@ import {
 import { assertSupportedBeamLayoutCount } from '../../core/beam/completeHexPresets';
 import { normalizePerSatelliteBeamLayoutCount } from '../../simulator/beamLayoutOverrides';
 import { assertSimulatorBeamIlluminationMode } from '../../simulator/beamIlluminationScenario';
+import {
+  LATEST_TLE_REFERENCE_INSTANT_UTC,
+  LATEST_TLE_REFERENCE_TAIPEI_LOCAL,
+} from '../../tle/latestTleDefaults';
 
-const HOMEPAGE_CANONICAL_TAIPEI_LOCAL = '2026-08-12T20:00';
+const HOMEPAGE_CANONICAL_TAIPEI_LOCAL = LATEST_TLE_REFERENCE_TAIPEI_LOCAL;
 export const HOMEPAGE_DEFAULT_CONSTELLATION: SimulatorConstellation = 'starlink';
 
 // React StrictMode mounts the homepage effect twice in development.  Keep
@@ -427,6 +431,8 @@ export interface HomepageFirstFrameBuildResult {
 }
 
 export interface HomepageCanonicalAnalysisOptions {
+  /** Prevent archived-TLE loading when the homepage is owned by Walker. */
+  readonly enabled?: boolean;
   readonly initialFrameOptions?: SimulationAnalysisFrameBuildOptions;
 }
 
@@ -546,19 +552,20 @@ function homepageExperimentAnalysisRunId(
 
 /**
  * Publish a verified first frame for the initial load, then atomically replace
- * it with the complete archived-TLE run.  A later explicit Apply retains the
- * previous accepted publication while the next source/date request is built;
- * only a complete replacement run may supersede it.
+ * it with the complete archived-TLE run. A later explicit Apply clears the
+ * accepted scene/result/evaluation/timeline boundary immediately; only the
+ * next complete run may repopulate that public boundary.
  */
 export function useHomepageCanonicalAnalysis(
   options: HomepageCanonicalAnalysisOptions = {},
 ): HomepageCanonicalAnalysisState {
+  const enabled = options.enabled ?? true;
   const initialFrameOptionsRef = useRef<Readonly<SimulationAnalysisFrameBuildOptions> | null>(null);
   if (initialFrameOptionsRef.current === null) {
     initialFrameOptionsRef.current = normalizeHomepageFrameOptions(options.initialFrameOptions);
   }
   const [requestedConstellation, setRequestedConstellation] = useState<SimulatorConstellation>(HOMEPAGE_DEFAULT_CONSTELLATION);
-  const [taipeiDateTime, setTaipeiDateTime] = useState(HOMEPAGE_CANONICAL_TAIPEI_LOCAL);
+  const [taipeiDateTime, setTaipeiDateTime] = useState<string>(HOMEPAGE_CANONICAL_TAIPEI_LOCAL);
   const [appliedOrbitRequest, setAppliedOrbitRequest] = useState<AppliedHomepageOrbitRequest>({
     constellation: HOMEPAGE_DEFAULT_CONSTELLATION,
     taipeiDateTime: HOMEPAGE_CANONICAL_TAIPEI_LOCAL,
@@ -631,6 +638,12 @@ export function useHomepageCanonicalAnalysis(
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      requestId.current += 1;
+      activeAbortController.current?.abort();
+      activeAbortController.current = null;
+      return;
+    }
     const currentRequest = requestId.current + 1;
     requestId.current = currentRequest;
     const controller = new AbortController();
@@ -657,6 +670,7 @@ export function useHomepageCanonicalAnalysis(
     };
     let cancelled = false;
     const retainPreviousAccepted = publishedRun !== null && lastAcceptedFrame.current !== null;
+    const allowFirstFramePublication = appliedOrbitRequest.revision === 0;
     let completedFirstFrameSource: HomepageFirstFrameSource | null = null;
     const isCurrent = () => !cancelled && !controller.signal.aborted && currentRequest === requestId.current;
     setStatus('loading');
@@ -694,7 +708,7 @@ export function useHomepageCanonicalAnalysis(
         const canUseDefaultFullRunArtifact = !fullRunArtifactOptOut
           && appliedOrbitRequest.constellation === HOMEPAGE_DEFAULT_CONSTELLATION
           && appliedOrbitRequest.taipeiDateTime === HOMEPAGE_CANONICAL_TAIPEI_LOCAL
-          && requestedInstantUtc === '2026-08-12T12:00:00.000Z'
+          && requestedInstantUtc === LATEST_TLE_REFERENCE_INSTANT_UTC
           && JSON.stringify(parametersRef.current) === JSON.stringify(DEFAULT_SIMULATOR_PARAMETERS)
           && (frameOptionsRef.current.userPositionOverridesKm?.length ?? 0) === 0
           && frameOptionsRef.current.representativeUserIndex === undefined
@@ -728,11 +742,10 @@ export function useHomepageCanonicalAnalysis(
         ): Promise<boolean> => {
           if (!isCurrent()) return false;
           completedFirstFrameSource = source;
-          // The first-frame artifact is the initial-load fast path, not a
-          // partial replacement transaction.  When an accepted run is already
-          // visible, keep it intact until the new complete run passes every
-          // source, geometry and analysis gate below.
-          if (!retainPreviousAccepted) {
+          // A first frame may paint only on the initial-load fast path. An
+          // explicit Apply is an empty-until-complete replacement transaction,
+          // so its verified first frame stays private to the builder.
+          if (allowFirstFramePublication && !retainPreviousAccepted) {
             lastAcceptedFrame.current = firstFrame;
             setFirstFrameSource(source);
             publishHomepageFirstFrameDiagnostic(source);
@@ -749,17 +762,19 @@ export function useHomepageCanonicalAnalysis(
             fraction: 0,
             progress: 0,
           });
-          // React state alone does not guarantee a browser paint before the
-          // CPU-heavy full-catalog run begins. Yield a paint frame, then one
-          // task, so the verified first frame becomes visible immediately;
-          // the locked timeline can continue filling in the background.
-          await yieldForHomepageFirstFramePaint();
+          if (allowFirstFramePublication) {
+            // React state alone does not guarantee a browser paint before the
+            // CPU-heavy full-catalog run begins. Yield a paint frame, then one
+            // task, so the verified initial frame becomes visible immediately;
+            // the locked timeline can continue filling in the background.
+            await yieldForHomepageFirstFramePaint();
+          }
           return isCurrent();
         };
 
         const canUseDefaultFirstFrameArtifact = appliedOrbitRequest.constellation === HOMEPAGE_DEFAULT_CONSTELLATION
           && appliedOrbitRequest.taipeiDateTime === HOMEPAGE_CANONICAL_TAIPEI_LOCAL
-          && requestedInstantUtc === '2026-08-12T12:00:00.000Z'
+          && requestedInstantUtc === LATEST_TLE_REFERENCE_INSTANT_UTC
           && JSON.stringify(parametersRef.current) === JSON.stringify(DEFAULT_SIMULATOR_PARAMETERS)
           && (frameOptionsRef.current.userPositionOverridesKm?.length ?? 0) === 0
           && frameOptionsRef.current.representativeUserIndex === undefined
@@ -1059,7 +1074,7 @@ export function useHomepageCanonicalAnalysis(
       workerTransportRef.current?.dispose();
       if (activeAbortController.current === controller) activeAbortController.current = null;
     };
-  }, [appliedOrbitRequest]);
+  }, [appliedOrbitRequest, enabled]);
 
   const publishedFrame = useMemo(() => {
     if (publishedRun === null || status !== 'ready') return null;
@@ -1302,9 +1317,17 @@ export function useHomepageCanonicalAnalysis(
     analysisWorkerTransport.current?.dispose();
     analysisWorkerTransport.current = null;
     activeAbortController.current?.abort();
-    // Source/time publication is atomic: the previous accepted geometry,
-    // results and evaluation remain visible while the draft request builds.
-    // The completed request replaces them together in the effect above.
+    // ADR-005/SDD replacement boundary: Apply immediately empties the accepted
+    // scene, result, evaluation and timeline. No first-frame or stale-request
+    // publication may refill them; the effect publishes only a complete run.
+    publishedRunRef.current = null;
+    setPublishedRun(null);
+    lastAcceptedFrame.current = null;
+    experimentPublicationCache.current.clear();
+    setFirstFrameSource(null);
+    publishHomepageFirstFrameDiagnostic(null);
+    publishEvaluation(evaluationSession.current!.reset());
+    setTimelineSelection({ currentTimeSec: 0, anchorIndex: 0 });
     setRunProgress(null);
     setTimeFallbackSearch(null);
     setCatalog(null);

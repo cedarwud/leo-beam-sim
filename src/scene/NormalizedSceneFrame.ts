@@ -408,7 +408,7 @@ export interface NormalizedEventRoleMaps {
 
 export interface NormalizedSceneFrame {
   /** Source discriminator — drives legend / banner / metric label. */
-  readonly sceneSource: 'live-sim' | 'artifact-replay';
+  readonly sceneSource: 'live-sim' | 'archived-tle' | 'artifact-replay';
   /** Timeline frame index (replay) or live frame counter. */
   readonly frameIndex: number;
   /** Frame timestamp in seconds. */
@@ -440,11 +440,11 @@ export interface NormalizedSceneFrame {
   readonly channelMetricKind: VisualShowcaseChannelMetricKind;
 
   /** Producer provenance block (replay). For live, a minimal stub. */
-  readonly provenance: VisualShowcaseProvenance | LiveProvenanceStub;
+  readonly provenance: VisualShowcaseProvenance | LiveProvenanceStub | ArchivedTleProvenanceStub;
   /** Producer claim boundary (replay). For live, a minimal stub. */
-  readonly claimBoundary: VisualShowcaseClaimBoundary | LiveClaimBoundaryStub;
+  readonly claimBoundary: VisualShowcaseClaimBoundary | LiveClaimBoundaryStub | ArchivedTleClaimBoundaryStub;
   /** Producer evidence status (replay). For live, a minimal stub. */
-  readonly evidenceStatus: VisualShowcaseEvidenceStatus | LiveEvidenceStatusStub;
+  readonly evidenceStatus: VisualShowcaseEvidenceStatus | LiveEvidenceStatusStub | ArchivedTleEvidenceStatusStub;
 
   /**
    * Producer truth-ownership table (replay only; live: null). Renderer surfaces
@@ -476,5 +476,28 @@ export interface LiveClaimBoundaryStub {
 export interface LiveEvidenceStatusStub {
   readonly kind: 'live-stub';
   readonly status: 'live';
+  readonly notes: readonly string[];
+}
+
+/** Explicit projection metadata for an accepted immutable archived-TLE frame. */
+export interface ArchivedTleProvenanceStub {
+  readonly kind: 'archived-tle';
+  readonly sourceKind: 'ARCHIVED_TLE';
+  readonly propagationModel: 'SGP4';
+  readonly archiveId: string;
+  readonly frameId: string;
+  readonly note: string;
+}
+
+export interface ArchivedTleClaimBoundaryStub {
+  readonly kind: 'archived-tle';
+  readonly storyKind: 'canonical-tle-sinr-ee';
+  readonly allowedClaims: readonly string[];
+  readonly forbiddenClaims: readonly string[];
+}
+
+export interface ArchivedTleEvidenceStatusStub {
+  readonly kind: 'archived-tle';
+  readonly status: 'accepted-immutable-frame';
   readonly notes: readonly string[];
 }

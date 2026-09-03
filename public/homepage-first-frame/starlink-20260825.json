@@ -1,0 +1,445 @@
+{
+  "schema": "homepage-first-frame-artifact-v3",
+  "key": {
+    "schema": "homepage-first-frame-v5",
+    "constellation": "starlink",
+    "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+    "appliedInstantUtc": "2026-08-25T12:00:00.000Z",
+    "archiveId": "starlink-20250727-20260824-3d746ccc21a6",
+    "archiveContentSha256": "3d746ccc21a631098204485bf30c6d9498b8b1a67b2f717e86a404f2c83c3d6e",
+    "snapshotPath": "/tle-archive/starlink/starlink_20260824.tle",
+    "snapshotSha256": "e7e916df23f0e58398e94f03aeb9869a6d89900b882349e541cdb3349df21e00",
+    "formulaVersion": "canonical-ee:family-b-thesis-3.13-3.17-v1:v1",
+    "linkShapeVersion": "canonical-link-result:before-satellite-cap-power-v1",
+    "parametersVersion": "parameters-v1:978f0528",
+    "frameOptionsVersion": "frame-options-v1:55906b14"
+  },
+  "tleState": {
+    "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+    "selectedSatelliteId": "62311",
+    "selectedSnapshot": {
+      "satelliteId": "62311",
+      "satelliteName": "STARLINK-32700",
+      "epochUtc": "2026-08-24T02:31:40.624Z",
+      "line1": "1 62311U 24239L   26236.10533130  .00023880  00000+0  71521-3 0  9997",
+      "line2": "2 62311  53.1573 121.5507 0001038  92.5468 267.5654 15.34419904 95218",
+      "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+      "sourceKind": "ARCHIVED_TLE",
+      "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+      "ageMs": 120499376,
+      "maxPropagationAgeMs": 604800000,
+      "provenance": {
+        "satelliteId": "62311",
+        "satelliteName": "STARLINK-32700",
+        "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+        "sourceKind": "ARCHIVED_TLE",
+        "epochUtc": "2026-08-24T02:31:40.624Z",
+        "line1": "1 62311U 24239L   26236.10533130  .00023880  00000+0  71521-3 0  9997",
+        "line2": "2 62311  53.1573 121.5507 0001038  92.5468 267.5654 15.34419904 95218",
+        "archiveId": "starlink-20250727-20260824-3d746ccc21a6"
+      }
+    },
+    "propagationFrame": {
+      "frameId": "tle-sgp4-fab4c68e",
+      "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+      "resolvedEpochsUtc": {
+        "62311": "2026-08-24T02:31:40.624Z",
+        "64749": "2026-08-24T14:00:03.000Z"
+      },
+      "sourceKind": "ARCHIVED_TLE",
+      "propagationModel": "SGP4",
+      "satellites": [
+        {
+          "satelliteId": "62311",
+          "satelliteName": "STARLINK-32700",
+          "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+          "tleEpochUtc": "2026-08-24T02:31:40.624Z",
+          "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+          "sourceKind": "ARCHIVED_TLE",
+          "propagationModel": "SGP4",
+          "positionTemeKm": {
+            "x": 543.0471389025263,
+            "y": -6196.001094723912,
+            "z": 2839.8020094824815
+          },
+          "velocityTemeKmPerSec": {
+            "x": 5.223934487895295,
+            "y": -1.945152974286523,
+            "z": -5.222827557234884
+          },
+          "positionEciKm": {
+            "x": 543.0471389025263,
+            "y": -6196.001094723912,
+            "z": 2839.8020094824815
+          },
+          "velocityEciKmPerSec": {
+            "x": 5.223934487895295,
+            "y": -1.945152974286523,
+            "z": -5.222827557234884
+          },
+          "position": {
+            "x": 543.0471389025263,
+            "y": -6196.001094723912,
+            "z": 2839.8020094824815
+          },
+          "velocity": {
+            "x": 5.223934487895295,
+            "y": -1.945152974286523,
+            "z": -5.222827557234884
+          },
+          "provenance": {
+            "satelliteId": "62311",
+            "satelliteName": "STARLINK-32700",
+            "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+            "sourceKind": "ARCHIVED_TLE",
+            "epochUtc": "2026-08-24T02:31:40.624Z",
+            "line1": "1 62311U 24239L   26236.10533130  .00023880  00000+0  71521-3 0  9997",
+            "line2": "2 62311  53.1573 121.5507 0001038  92.5468 267.5654 15.34419904 95218",
+            "archiveId": "starlink-20250727-20260824-3d746ccc21a6"
+          }
+        },
+        {
+          "satelliteId": "64749",
+          "satelliteName": "STARLINK-34595",
+          "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+          "tleEpochUtc": "2026-08-24T14:00:03.000Z",
+          "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+          "sourceKind": "ARCHIVED_TLE",
+          "propagationModel": "SGP4",
+          "positionTemeKm": {
+            "x": 533.2030060948365,
+            "y": -6099.725203723142,
+            "z": 3048.0748360007547
+          },
+          "velocityTemeKmPerSec": {
+            "x": 5.315633458916306,
+            "y": -2.0799994685544414,
+            "z": -5.0741086226928624
+          },
+          "positionEciKm": {
+            "x": 533.2030060948365,
+            "y": -6099.725203723142,
+            "z": 3048.0748360007547
+          },
+          "velocityEciKmPerSec": {
+            "x": 5.315633458916306,
+            "y": -2.0799994685544414,
+            "z": -5.0741086226928624
+          },
+          "position": {
+            "x": 533.2030060948365,
+            "y": -6099.725203723142,
+            "z": 3048.0748360007547
+          },
+          "velocity": {
+            "x": 5.315633458916306,
+            "y": -2.0799994685544414,
+            "z": -5.0741086226928624
+          },
+          "provenance": {
+            "satelliteId": "64749",
+            "satelliteName": "STARLINK-34595",
+            "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+            "sourceKind": "ARCHIVED_TLE",
+            "epochUtc": "2026-08-24T14:00:03.000Z",
+            "line1": "1 64749U 25144AB  26236.58336806  .00052670  00000+0  16029-2 0  9993",
+            "line2": "2 64749  53.1604 121.1902 0000801  96.9285  25.7082 15.33522208  5825",
+            "archiveId": "starlink-20250727-20260824-3d746ccc21a6"
+          }
+        }
+      ],
+      "provenance": {
+        "archiveId": "starlink-20250727-20260824-3d746ccc21a6",
+        "sourceKind": "ARCHIVED_TLE",
+        "propagationModel": "SGP4",
+        "snapshots": [
+          {
+            "satelliteId": "62311",
+            "satelliteName": "STARLINK-32700",
+            "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+            "sourceKind": "ARCHIVED_TLE",
+            "epochUtc": "2026-08-24T02:31:40.624Z",
+            "line1": "1 62311U 24239L   26236.10533130  .00023880  00000+0  71521-3 0  9997",
+            "line2": "2 62311  53.1573 121.5507 0001038  92.5468 267.5654 15.34419904 95218",
+            "archiveId": "starlink-20250727-20260824-3d746ccc21a6"
+          },
+          {
+            "satelliteId": "64749",
+            "satelliteName": "STARLINK-34595",
+            "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+            "sourceKind": "ARCHIVED_TLE",
+            "epochUtc": "2026-08-24T14:00:03.000Z",
+            "line1": "1 64749U 25144AB  26236.58336806  .00052670  00000+0  16029-2 0  9993",
+            "line2": "2 64749  53.1604 121.1902 0000801  96.9285  25.7082 15.33522208  5825",
+            "archiveId": "starlink-20250727-20260824-3d746ccc21a6"
+          }
+        ]
+      }
+    },
+    "selectedSatellite": {
+      "satelliteId": "62311",
+      "satelliteName": "STARLINK-32700",
+      "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+      "tleEpochUtc": "2026-08-24T02:31:40.624Z",
+      "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+      "sourceKind": "ARCHIVED_TLE",
+      "propagationModel": "SGP4",
+      "positionTemeKm": {
+        "x": 543.0471389025263,
+        "y": -6196.001094723912,
+        "z": 2839.8020094824815
+      },
+      "velocityTemeKmPerSec": {
+        "x": 5.223934487895295,
+        "y": -1.945152974286523,
+        "z": -5.222827557234884
+      },
+      "positionEciKm": {
+        "x": 543.0471389025263,
+        "y": -6196.001094723912,
+        "z": 2839.8020094824815
+      },
+      "velocityEciKmPerSec": {
+        "x": 5.223934487895295,
+        "y": -1.945152974286523,
+        "z": -5.222827557234884
+      },
+      "position": {
+        "x": 543.0471389025263,
+        "y": -6196.001094723912,
+        "z": 2839.8020094824815
+      },
+      "velocity": {
+        "x": 5.223934487895295,
+        "y": -1.945152974286523,
+        "z": -5.222827557234884
+      },
+      "provenance": {
+        "satelliteId": "62311",
+        "satelliteName": "STARLINK-32700",
+        "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+        "sourceKind": "ARCHIVED_TLE",
+        "epochUtc": "2026-08-24T02:31:40.624Z",
+        "line1": "1 62311U 24239L   26236.10533130  .00023880  00000+0  71521-3 0  9997",
+        "line2": "2 62311  53.1573 121.5507 0001038  92.5468 267.5654 15.34419904 95218",
+        "archiveId": "starlink-20250727-20260824-3d746ccc21a6"
+      }
+    },
+    "candidateSatellite": {
+      "satelliteId": "64749",
+      "satelliteName": "STARLINK-34595",
+      "requestedInstantUtc": "2026-08-25T12:00:00.000Z",
+      "tleEpochUtc": "2026-08-24T14:00:03.000Z",
+      "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+      "sourceKind": "ARCHIVED_TLE",
+      "propagationModel": "SGP4",
+      "positionTemeKm": {
+        "x": 533.2030060948365,
+        "y": -6099.725203723142,
+        "z": 3048.0748360007547
+      },
+      "velocityTemeKmPerSec": {
+        "x": 5.315633458916306,
+        "y": -2.0799994685544414,
+        "z": -5.0741086226928624
+      },
+      "positionEciKm": {
+        "x": 533.2030060948365,
+        "y": -6099.725203723142,
+        "z": 3048.0748360007547
+      },
+      "velocityEciKmPerSec": {
+        "x": 5.315633458916306,
+        "y": -2.0799994685544414,
+        "z": -5.0741086226928624
+      },
+      "position": {
+        "x": 533.2030060948365,
+        "y": -6099.725203723142,
+        "z": 3048.0748360007547
+      },
+      "velocity": {
+        "x": 5.315633458916306,
+        "y": -2.0799994685544414,
+        "z": -5.0741086226928624
+      },
+      "provenance": {
+        "satelliteId": "64749",
+        "satelliteName": "STARLINK-34595",
+        "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+        "sourceKind": "ARCHIVED_TLE",
+        "epochUtc": "2026-08-24T14:00:03.000Z",
+        "line1": "1 64749U 25144AB  26236.58336806  .00052670  00000+0  16029-2 0  9993",
+        "line2": "2 64749  53.1604 121.1902 0000801  96.9285  25.7082 15.33522208  5825",
+        "archiveId": "starlink-20250727-20260824-3d746ccc21a6"
+      }
+    },
+    "groundPositionTemeKm": {
+      "x": 518.2095661139901,
+      "y": -5763.420392067407,
+      "z": 2673.4889513294847
+    },
+    "trajectory": [
+      {
+        "instantUtc": "2026-08-25T11:30:00.000Z",
+        "positionTemeKm": {
+          "x": -4467.737114935166,
+          "y": 4209.7370652850395,
+          "z": 3010.8858398074844
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T11:35:00.000Z",
+        "positionTemeKm": {
+          "x": -4711.065546017312,
+          "y": 2375.629844920218,
+          "z": 4344.930932159817
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T11:40:00.000Z",
+        "positionTemeKm": {
+          "x": -4430.78686559948,
+          "y": 277.4671417955016,
+          "z": 5194.720455385131
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T11:45:00.000Z",
+        "positionTemeKm": {
+          "x": -3658.2855550069817,
+          "y": -1851.5335698795031,
+          "z": 5465.812289756666
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T11:50:00.000Z",
+        "positionTemeKm": {
+          "x": -2479.4567263654108,
+          "y": -3774.881434622919,
+          "z": 5128.112215862183
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T11:55:00.000Z",
+        "positionTemeKm": {
+          "x": -1025.1742605747709,
+          "y": -5278.833389662936,
+          "z": 4219.096371280936
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T12:00:00.000Z",
+        "positionTemeKm": {
+          "x": 543.0471389025263,
+          "y": -6196.001094723912,
+          "z": 2839.8020094824815
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T12:05:00.000Z",
+        "positionTemeKm": {
+          "x": 2050.8745737468034,
+          "y": -6424.16501748768,
+          "z": 1143.8412036798695
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T12:10:00.000Z",
+        "positionTemeKm": {
+          "x": 3330.678884917926,
+          "y": -5938.031820187206,
+          "z": -679.6735034435458
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T12:15:00.000Z",
+        "positionTemeKm": {
+          "x": 4240.491925088435,
+          "y": -4792.204756537281,
+          "z": -2427.51212424037
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T12:20:00.000Z",
+        "positionTemeKm": {
+          "x": 4679.965813215239,
+          "y": -3114.771571586346,
+          "z": -3905.3895934213474
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T12:25:00.000Z",
+        "positionTemeKm": {
+          "x": 4601.302701470532,
+          "y": -1092.4216217508738,
+          "z": -4949.714079062552
+        }
+      },
+      {
+        "instantUtc": "2026-08-25T12:30:00.000Z",
+        "positionTemeKm": {
+          "x": 4014.0243296706085,
+          "y": 1050.731939355159,
+          "z": -5445.404749013589
+        }
+      }
+    ],
+    "archiveDate": "20260824",
+    "archiveSnapshot": {
+      "metadata": {
+        "archiveDate": "20260824",
+        "path": "/tle-archive/starlink/starlink_20260824.tle",
+        "byteLength": 1804152,
+        "recordCount": 10739,
+        "identityCount": 10739,
+        "minEpochUtc": "2026-07-30T14:04:58.000Z",
+        "maxEpochUtc": "2026-08-24T20:45:18.285Z",
+        "sha256": "e7e916df23f0e58398e94f03aeb9869a6d89900b882349e541cdb3349df21e00"
+      },
+      "entries": [
+        {
+          "satelliteId": "62311",
+          "satelliteName": "STARLINK-32700",
+          "epochUtc": "2026-08-24T02:31:40.624Z",
+          "line1": "1 62311U 24239L   26236.10533130  .00023880  00000+0  71521-3 0  9997",
+          "line2": "2 62311  53.1573 121.5507 0001038  92.5468 267.5654 15.34419904 95218",
+          "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+          "sourceKind": "ARCHIVED_TLE"
+        },
+        {
+          "satelliteId": "64749",
+          "satelliteName": "STARLINK-34595",
+          "epochUtc": "2026-08-24T14:00:03.000Z",
+          "line1": "1 64749U 25144AB  26236.58336806  .00052670  00000+0  16029-2 0  9993",
+          "line2": "2 64749  53.1604 121.1902 0000801  96.9285  25.7082 15.33522208  5825",
+          "sourcePath": "/tle-archive/starlink/starlink_20260824.tle",
+          "sourceKind": "ARCHIVED_TLE"
+        }
+      ],
+      "byteLength": 1804152,
+      "sha256": "e7e916df23f0e58398e94f03aeb9869a6d89900b882349e541cdb3349df21e00"
+    },
+    "catalog": {
+      "schemaVersion": "tle-web-archive-v1",
+      "archiveId": "starlink-20250727-20260824-3d746ccc21a6",
+      "archiveContentSha256": "3d746ccc21a631098204485bf30c6d9498b8b1a67b2f717e86a404f2c83c3d6e",
+      "constellation": "starlink",
+      "sourceKind": "ARCHIVED_TLE",
+      "propagationModel": "SGP4",
+      "firstArchiveDate": "20250727",
+      "lastArchiveDate": "20260824",
+      "snapshotCount": 376,
+      "sourceSnapshotCount": 377,
+      "excludedSnapshots": [
+        {
+          "fileName": "starlink_20260528.tle",
+          "sha256": "20596c4397ee1b9ae0d97ce3003299d47b60fbaa254527d5907bbf8ade3c4c1c",
+          "reason": "invalid 70-column TLE line 1 at source line 15197"
+        }
+      ],
+      "maxPropagationAgeMs": 604800000,
+      "snapshots": []
+    }
+  }
+}

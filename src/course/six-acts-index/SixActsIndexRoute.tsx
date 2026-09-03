@@ -1,57 +1,64 @@
 import type { ReactElement } from 'react';
 
-import { SIX_ACTS_ROUTES } from '../nav/sixActsRoutes';
+import { SIX_ACTS_VISIBLE_ROUTES } from '../nav/sixActsRoutes';
 import { SixActsNav } from '../nav/SixActsNav';
+import { isSixActsLightCaptureMode, sixActsHref } from '../nav/lightCapture';
 import './SixActsIndexRoute.scss';
 
+const INDEX_QUESTIONS: Readonly<Record<string, string>> = Object.freeze({
+  act1: '星座規模與 NTPU 當下可見數量如何由資料與幾何計算？',
+  act2: '衛星位置如何由星曆資料推算，並形成通聯預測？',
+  act3: '離軸角與仰角有何差異？波束指向如何影響離軸角與天線增益？',
+  act4: 'Starlink 服務衛星離開可見範圍時，系統如何選定換手目標？',
+});
+
 /**
- * The six-acts running order.
+ * The currently released teaching-experiment running order.
  *
  * The proposal's line is one story told by zooming in: constellation → one
- * satellite's orbital record → one link's geometry → one system's handover →
- * one experiment → one record. Each act ends on a question the NEXT one
+ * satellite's orbital record → one link's geometry → one system's handover.
+ * Each experiment ends on a question the NEXT one
  * answers, so this page shows the bridges, not just the links.
  */
 
 export function SixActsIndexRoute(): ReactElement {
+  const lightCapture = isSixActsLightCaptureMode();
   return (
-    <main className="six-acts" lang="zh-Hant">
+    <main className="six-acts" lang="zh-Hant" data-theme={lightCapture ? 'light-capture' : undefined}>
       <SixActsNav currentHref="/course/six-acts" />
-      <header className="six-acts__header">
-        <p className="six-acts__kicker">LEO 六幕教學動線</p>
-        <h1>從一顆地球，到一份實驗紀錄</h1>
-        <p className="six-acts__lede">
-          整條動線只講一個故事：<strong>衛星飛得太快，網路必須一直做決定；每個決定都有能量代價。</strong>
-          鏡頭一路拉近——星座 → 一顆衛星的軌道資料 → 一條鏈路的幾何 → 一個系統的換手 → 一個實驗 → 一份紀錄。
-        </p>
+      <header className="six-acts__header six-acts__header--overview">
+        <div className="six-acts__header-copy">
+          <p className="six-acts__kicker">低軌衛星通信模擬</p>
+          <h1>從全球星座到衛星服務換手</h1>
+          <p className="six-acts__lede">
+            以同一組衛星與地面站資料，依序分析可見性、星曆推算、鏈路幾何與服務決策。
+          </p>
+        </div>
+        <aside className="six-acts__summary" aria-label="分析層次">
+          <p className="six-acts__summary-label">分析層次</p>
+          <p className="six-acts__summary-flow">
+            <span>資料</span><b aria-hidden="true">→</b><span>位置</span><b aria-hidden="true">→</b><span>幾何</span><b aria-hidden="true">→</b><span>服務</span>
+          </p>
+          <p className="six-acts__summary-note">四幕共用同一資料快照與時間狀態。</p>
+        </aside>
       </header>
 
       <ol className="six-acts__list">
-        {SIX_ACTS_ROUTES.map(act => (
+        {SIX_ACTS_VISIBLE_ROUTES.map(act => (
           <li key={act.id}>
-            <a className="six-acts__card" href={act.href}>
+            <a className="six-acts__card" href={sixActsHref(act.href, lightCapture)}>
               <span className="six-acts__order">{act.actLabel}</span>
               <div>
                 <h2>{act.titleZhHant}<em>{act.minutesZhHant} min</em></h2>
-                <p className="six-acts__question">{act.questionZhHant}</p>
-                <p className="six-acts__handson">{act.handsOnZhHant}</p>
+                <p className="six-acts__question">
+                  {INDEX_QUESTIONS[act.id] ?? act.questionZhHant}
+                </p>
               </div>
             </a>
-            {act.bridgeZhHant === null
-              ? null
-              : <p className="six-acts__bridge"><span>橋接</span>{act.bridgeZhHant}</p>}
           </li>
         ))}
       </ol>
 
-      <footer className="six-acts__footer">
-        <p>
-          資料一律來自封存 TLE 與 SGP4，數值口徑分四種徽章：
-          <b>CANONICAL</b>（符號權威）、<b>DEMO</b>（課堂調校值）、
-          <b>COURSE-ASSUMPTION</b>（敘事需要、引擎不產出）、<b>實作層</b>（工程量、非公開公式項）。
-          畫面上出現哪一種，就標哪一種。
-        </p>
-      </footer>
     </main>
   );
 }

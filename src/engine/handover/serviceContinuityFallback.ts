@@ -35,6 +35,8 @@ export interface ServiceContinuityFallbackInput {
   readonly serving: CandidateLinkKey;
   /** The complete, same-frame candidate measurement set. */
   readonly opportunitySet: CandidateOpportunitySet;
+  /** Optional teaching/readability floor shared with the normal selector. */
+  readonly minimumDistinctCandidateSatellites?: number;
   /** Caller-owned episode and clock identity; never inferred here. */
   readonly clock: ServiceContinuityFallbackClock;
 }
@@ -144,6 +146,11 @@ function validateInput(input: ServiceContinuityFallbackInput): void {
   }
   validateCandidateLinkKey(input.serving);
   validateOpportunitySet(input.opportunitySet);
+  const minimumDistinctCandidateSatellites = input.minimumDistinctCandidateSatellites ?? 0;
+  if (!Number.isSafeInteger(minimumDistinctCandidateSatellites)
+    || minimumDistinctCandidateSatellites < 0) {
+    throw new TypeError('minimumDistinctCandidateSatellites must be a non-negative safe integer');
+  }
   nonEmpty(input.clock.episodeId, 'service-continuity fallback episodeId');
   nonEmpty(input.clock.sourceFrameId, 'service-continuity fallback sourceFrameId');
   nonNegative(input.clock.simTimeMs, 'service-continuity fallback simTimeMs');
@@ -166,9 +173,14 @@ export function selectServiceContinuityFallback(
     sameCandidateLinkKey(opportunity.key, input.serving));
   if (servingExists) return null;
 
-  const target = input.opportunitySet.opportunities
-    .filter(isSinrCompatibilityFallbackCandidate)
-    .sort(compareFallbackCandidates)[0] ?? null;
+  const safeCandidates = input.opportunitySet.opportunities
+    .filter(isSinrCompatibilityFallbackCandidate);
+  const minimumDistinctCandidateSatellites = input.minimumDistinctCandidateSatellites ?? 0;
+  if (minimumDistinctCandidateSatellites > 0) {
+    const distinctSatelliteIds = new Set(safeCandidates.map(candidate => candidate.key.satelliteId));
+    if (distinctSatelliteIds.size < minimumDistinctCandidateSatellites) return null;
+  }
+  const target = safeCandidates.sort(compareFallbackCandidates)[0] ?? null;
   if (target === null || target.sinr.value === null || !Number.isFinite(target.sinr.value)) {
     return null;
   }

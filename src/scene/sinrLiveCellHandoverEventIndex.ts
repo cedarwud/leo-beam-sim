@@ -13,10 +13,15 @@ import {
   WALKER_CONSTELLATION_PHASE_MODEL_VERSION,
 } from '../engine/orbit';
 import {
+  buildSinrLiveCellLayout,
   createSinrLiveCellModel,
   attachSinrLiveCellFrame,
+  resolveSinrLiveSceneCellCount,
 } from './sinrLiveCellRuntime';
-import type { UeCellServingRecord } from './sinrLiveCellModel';
+import {
+  cellIdFromLinkBudgetBeamId,
+  type UeCellServingRecord,
+} from './sinrLiveCellModel';
 import {
   createBeamLayoutsByShellId,
   createRuntimeFrameStepState,
@@ -33,6 +38,8 @@ import {
   type LiveWalkerHandoverEvent,
   type LiveWalkerHandoverEventIndex,
   type LiveWalkerHandoverEventKind,
+  type LiveWalkerHandoverEventIndexGeneration,
+  type LiveWalkerHandoverEventIndexUeScope,
 } from './liveWalkerHandoverEventIndex';
 
 export interface BuildSinrLiveCellHandoverEventIndexInput {
@@ -46,18 +53,72 @@ export interface BuildSinrLiveCellHandoverEventIndexInput {
   readonly ueDistributionRadiusKm?: number;
   readonly ueMobilityMode?: UeMobilityMode;
   readonly ueMobilityParams?: UeMobilityParams;
+  /**
+   * Which UE population the offline teaching index records. The live scene
+   * may still render its full population; `primary-ue-only` is an explicit
+   * navigation scope, not a second decision source or a fake event list.
+   */
+  readonly eventUeScope?: LiveWalkerHandoverEventIndexUeScope;
+  /** The same inspected-cell viewpoint used by the live SINR cell model. */
+  readonly focusCellId?: number | null;
   readonly beamCountBySatellite?: Readonly<Record<string, number>>;
   /** Must match the live scene's role-specific display/scheduler budgets. */
   readonly servingBeamCount?: number;
   readonly candidateBeamCount?: number;
   /** Must match the live scene; omitted keeps the model's historical default. */
   readonly beamHoppingEnabled?: boolean;
+  /** Must match the live scene's steering mode; omitted keeps the historical default. */
+  readonly beamPointingMode?: 'earth-fixed-cell' | 'sampled-steering';
+  /** Must match the live homepage authority gate; omitted keeps the historical default. */
+  readonly multiCandidateDecisionEnabled?: boolean;
+  /** Must match the live primary UE source geometry; omitted keeps the zero-jog default. */
+  readonly primaryJogEastKm?: number;
+  readonly primaryJogNorthKm?: number;
+}
+
+/**
+ * The only early-readiness window the homepage teaching timeline may consume.
+ * This is a source-time prefix of the same 7200-second scan, not a shorter
+ * replacement horizon.
+ */
+export const SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC = 60 as const;
+
+/**
+ * Explicitly non-complete receipt for the homepage's source-backed teaching
+ * prefix. It deliberately does not satisfy `LiveWalkerHandoverEventIndex`:
+ * callers must handle `complete: false` and `horizonKind: ...-prefix` instead of
+ * accidentally treating a partial event list as the 7200-second index.
+ */
+export interface SinrLiveCellHandoverEventIndexPreview {
+  readonly sourceOwner: 'sinr-live-cell-truth';
+  readonly horizonKind: 'live-walker-window-prefix';
+  readonly claimKind: 'live-truth';
+  readonly readiness: 'preview';
+  readonly complete: false;
+  readonly sourceWindow: {
+    readonly startSec: 0;
+    readonly endSec: typeof SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC;
+  };
+  readonly coveredThroughSec: typeof SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC;
+  readonly sourceDurationSec: typeof LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC;
+  readonly ueScope: LiveWalkerHandoverEventIndexUeScope;
+  readonly primaryUeId: string;
+  readonly aggregateUeCount: number;
+  readonly aggregateClaim: 'not-100-ue-aggregate-prefix' | 'cell-truth-event-index-prefix';
+  readonly generation: LiveWalkerHandoverEventIndexGeneration;
+  readonly offsetDb: number;
+  readonly sourceGapReasons: readonly string[];
+  readonly events: readonly LiveWalkerHandoverEvent[];
 }
 
 interface UeServingSnapshot {
   readonly ueId: string;
   readonly cellId: number;
+  /** Geographic membership remains separate from the serving beam identity. */
+  readonly geographicCellId?: number | null;
   readonly servingSatId: string;
+  /** Homepage same-cell intra switches need the real beam key, not only cellId. */
+  readonly servingBeamId?: number | null;
   readonly beamIdentity: string;
   readonly frequencyIndex: number | null;
   readonly sinrDb: number | null;
@@ -74,11 +135,28 @@ function finiteCountOrFallback(value: number | undefined, fallback: number): num
     : fallback;
 }
 
+function resolveEventUeScope(
+  value: LiveWalkerHandoverEventIndexUeScope | undefined,
+): LiveWalkerHandoverEventIndexUeScope {
+  return value === 'primary-ue-only' ? 'primary-ue-only' : 'cell-truth-ue-events';
+}
+
 function roundTimeSec(value: number): number {
   return Number(value.toFixed(6));
 }
 
-function formatScalar(value: string | number | undefined): string {
+/**
+ * Resolve the logical cell represented by a UE's current serving identity.
+ * Geographic membership and serving beam/cell are intentionally separate in
+ * the SINR cell model; an intra-satellite switch can keep the former unchanged.
+ */
+export function resolveUeServingCellId(record: Pick<UeCellServingRecord, 'cellId' | 'servingBeamId'>): number | null {
+  return typeof record.servingBeamId === 'number' && Number.isFinite(record.servingBeamId)
+    ? cellIdFromLinkBudgetBeamId(record.servingBeamId)
+    : record.cellId;
+}
+
+function formatScalar(value: string | number | null | undefined): string {
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'unset';
   return value ?? 'unset';
 }
@@ -115,14 +193,20 @@ function buildCellTruthTopologyKey(input: {
   readonly ueDistributionScope: UeDistributionScope;
   readonly ueDistributionRadiusKm: number | undefined;
   readonly ueMobilityMode: UeMobilityMode;
+  readonly eventUeScope: LiveWalkerHandoverEventIndexUeScope;
+  readonly focusCellId: number | null | undefined;
   readonly beamCountBySatellite?: Readonly<Record<string, number>>;
   readonly servingBeamCount?: number;
   readonly candidateBeamCount?: number;
   readonly beamHoppingEnabled?: boolean;
+  readonly beamPointingMode?: 'earth-fixed-cell' | 'sampled-steering';
+  readonly multiCandidateDecisionEnabled?: boolean;
+  readonly primaryJogEastKm?: number;
+  readonly primaryJogNorthKm?: number;
 }): string {
   const { profile } = input;
   return [
-    'ueScope=cell-truth-ue-events',
+    `ueScope=${input.eventUeScope}`,
     `primaryUeId=${LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID}`,
     `ueCount=${input.ueCount}`,
     `orbitObserver=${profile.orbit.observerLatDeg},${profile.orbit.observerLonDeg}`,
@@ -133,10 +217,15 @@ function buildCellTruthTopologyKey(input: {
     `ueDistributionScope=${input.ueDistributionScope}`,
     `ueDistributionRadiusKm=${formatScalar(input.ueDistributionRadiusKm)}`,
     `ueMobilityMode=${input.ueMobilityMode}`,
+    `focusCellId=${formatScalar(input.focusCellId)}`,
     `beamCountBySatellite=${formatBeamCountBySatellite(input.beamCountBySatellite)}`,
     `servingBeamCount=${formatScalar(input.servingBeamCount)}`,
     `candidateBeamCount=${formatScalar(input.candidateBeamCount)}`,
     `beamHoppingEnabled=${input.beamHoppingEnabled ?? 'unset'}`,
+    `beamPointingMode=${input.beamPointingMode ?? 'unset'}`,
+    `multiCandidateDecisionEnabled=${input.multiCandidateDecisionEnabled ?? 'unset'}`,
+    `primaryJogEastKm=${formatScalar(input.primaryJogEastKm)}`,
+    `primaryJogNorthKm=${formatScalar(input.primaryJogNorthKm)}`,
   ].join('|');
 }
 
@@ -150,6 +239,7 @@ function createEmptySinrLiveCellIndex(
   const uePrimaryAnchorMode = input.uePrimaryAnchorMode ?? 'observer';
   const ueDistributionScope = input.ueDistributionScope ?? 'beam-footprint';
   const ueMobilityMode = input.ueMobilityMode ?? 'static';
+  const eventUeScope = resolveEventUeScope(input.eventUeScope);
 
   return {
     sourceOwner: 'sinr-live-cell-truth',
@@ -161,10 +251,12 @@ function createEmptySinrLiveCellIndex(
     // conflate them by flipping this to 'profile-derived-forecast'.
     claimKind: 'live-truth',
     durationSec: LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC,
-    ueScope: 'cell-truth-ue-events',
+    ueScope: eventUeScope,
     primaryUeId: LIVE_WALKER_HANDOVER_EVENT_INDEX_PRIMARY_UE_ID,
     aggregateUeCount: ueCount,
-    aggregateClaim: 'cell-truth-event-index',
+    aggregateClaim: eventUeScope === 'primary-ue-only'
+      ? 'not-100-ue-aggregate'
+      : 'cell-truth-event-index',
     generation: {
       profileId: input.profile.id,
       epochUtcMs: input.epochUtcMs,
@@ -178,10 +270,16 @@ function createEmptySinrLiveCellIndex(
         ueDistributionScope,
         ueDistributionRadiusKm: input.ueDistributionRadiusKm,
         ueMobilityMode,
+        eventUeScope,
+        focusCellId: input.focusCellId,
         beamCountBySatellite: input.beamCountBySatellite,
         servingBeamCount: input.servingBeamCount,
         candidateBeamCount: input.candidateBeamCount,
         beamHoppingEnabled: input.beamHoppingEnabled,
+        beamPointingMode: input.beamPointingMode,
+        multiCandidateDecisionEnabled: input.multiCandidateDecisionEnabled,
+        primaryJogEastKm: input.primaryJogEastKm,
+        primaryJogNorthKm: input.primaryJogNorthKm,
       }),
       runtimeFramePath: 'stepRuntimeFrame+sinrLiveCells',
     },
@@ -197,9 +295,28 @@ function eventId(sequence: number, sourceTimeSec: number, kind: LiveWalkerHandov
   return `sinr-cell-${ueToken}-${String(sequence).padStart(4, '0')}-${timeToken}-${kind}`;
 }
 
+function compareCellTruthEvents(left: LiveWalkerHandoverEvent, right: LiveWalkerHandoverEvent): number {
+  return left.sourceTimeSec - right.sourceTimeSec
+    || left.kind.localeCompare(right.kind)
+    || (left.ueId ?? '').localeCompare(right.ueId ?? '')
+    || left.id.localeCompare(right.id);
+}
+
+function cadenceLandsOnPreviewWindow(simStepSec: number): boolean {
+  const sampleCount = SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC / simStepSec;
+  return Number.isFinite(sampleCount)
+    && Math.abs(sampleCount - Math.round(sampleCount)) <= 1e-9;
+}
+
 function toSnapshot(record: UeCellServingRecord): UeServingSnapshot | null {
+  // `cellId` is geographic membership.  During homepage multi-candidate
+  // decisions the primary UE can keep that membership while the authority
+  // selects another beam/cell on the same satellite (a real intra event).  The
+  // serving identity therefore comes from the beam surrogate; using membership
+  // here silently erased every same-satellite cell switch from the event index.
+  const servingCellId = resolveUeServingCellId(record);
   if (
-    record.cellId === null
+    servingCellId === null
     || record.servingSatId === null
     || record.beamIdentity === null
   ) {
@@ -207,8 +324,10 @@ function toSnapshot(record: UeCellServingRecord): UeServingSnapshot | null {
   }
   return {
     ueId: record.ueId,
-    cellId: record.cellId,
+    cellId: servingCellId,
+    geographicCellId: record.cellId,
     servingSatId: record.servingSatId,
+    servingBeamId: record.servingBeamId,
     beamIdentity: record.beamIdentity,
     frequencyIndex: record.frequencyIndex,
     sinrDb: record.sinrDb,
@@ -234,7 +353,21 @@ export function createSinrLiveCellHandoverEventFromUeTransition(input: {
 
   if (kind === 'intra') {
     if (input.previous.servingSatId !== input.current.servingSatId) return null;
-    if (input.previous.cellId === input.current.cellId) return null;
+    // Intra-cell is a same-geographic-cell beam switch. The old cell-truth
+    // adapter rejected equal cell ids, which erased the canonical homepage
+    // one-cell case because the source and target beams intentionally share
+    // one geographic cell. Keep the membership check explicit, then require a
+    // distinct beam identity so an unchanged serving assignment is not an HO.
+    const previousGeographicCellId = input.previous.geographicCellId ?? input.previous.cellId;
+    const currentGeographicCellId = input.current.geographicCellId ?? input.current.cellId;
+    if (previousGeographicCellId !== currentGeographicCellId) return null;
+    const sameBeam = input.previous.servingBeamId !== undefined
+      && input.current.servingBeamId !== undefined
+      && input.previous.servingBeamId !== null
+      && input.current.servingBeamId !== null
+      ? input.previous.servingBeamId === input.current.servingBeamId
+      : input.previous.beamIdentity === input.current.beamIdentity;
+    if (sameBeam) return null;
   }
   if (kind === 'inter' && input.previous.servingSatId === input.current.servingSatId) return null;
   if (input.previous.ueId !== input.current.ueId) return null;
@@ -244,20 +377,26 @@ export function createSinrLiveCellHandoverEventFromUeTransition(input: {
   const toSinrDb = Number.isFinite(input.current.sinrDb ?? NaN) ? input.current.sinrDb : null;
   if (toSinrDb === null) return null;
   const deltaDb = fromSinrDb === null ? null : Number((toSinrDb - fromSinrDb).toFixed(6));
+  const fromCellId = input.previous.geographicCellId ?? input.previous.cellId;
+  const toCellId = input.current.geographicCellId ?? input.current.cellId;
 
   return {
     id: eventId(input.sequence, sourceTimeSec, kind, input.current.ueId),
     sourceTimeSec,
     kind,
     fromSatId: input.previous.servingSatId,
-    // S4-2 pun retirement: cell-truth rows have NO steered beam — the
-    // earth-fixed cell ids below are the handover identity.
-    fromBeamId: null,
+    // Cell-truth rows retain the geographic cell identity and, when the
+    // homepage model provides it, the distinct serving beam id as well. Legacy
+    // hand-authored rows can still omit the optional beam id.
+    fromBeamId: input.previous.servingBeamId ?? null,
     toSatId: input.current.servingSatId,
-    toBeamId: null,
+    toBeamId: input.current.servingBeamId ?? null,
     ueId: input.current.ueId,
-    fromCellId: input.previous.cellId,
-    toCellId: input.current.cellId,
+    // Event cell ids are the geographic scene cells. The serving beam id is
+    // allowed to lag membership for one pre-commit frame; using that logical
+    // beam cell here would render a same-cell intra as two different cells.
+    fromCellId,
+    toCellId,
     fromBeamIdentity: input.previous.beamIdentity,
     toBeamIdentity: input.current.beamIdentity,
     fromFrequencyIndex: input.previous.frequencyIndex,
@@ -298,6 +437,11 @@ export interface SinrLiveCellHandoverEventIndexBuilder {
   isDone(): boolean;
   /** Advance up to `maxSteps` coarse sim steps; returns `isDone()`. */
   runSlice(maxSteps: number): boolean;
+  /**
+   * Return the verified 0-60-second prefix once that exact cadence boundary is
+   * complete. This is a read-only receipt; it never advances the scan.
+   */
+  preview(): SinrLiveCellHandoverEventIndexPreview | null;
   /** The final index. Throws if called before the scan is done (no partial truth). */
   finalize(): LiveWalkerHandoverEventIndex;
 }
@@ -310,6 +454,7 @@ function terminalSinrLiveCellHandoverEventIndexBuilder(
     stepsCompleted: () => 0,
     isDone: () => true,
     runSlice: () => true,
+    preview: () => null,
     finalize: () => index,
   };
 }
@@ -321,6 +466,14 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     input.simStepSec,
     LIVE_WALKER_HANDOVER_EVENT_INDEX_DEFAULT_STEP_SEC,
   );
+  const eventUeScope = resolveEventUeScope(input.eventUeScope);
+  // Event scope is an output/filtering choice, not a physics shortcut. The
+  // live SINR scene computes the primary link in the same full UE population
+  // regardless of which rows the Director keeps. Reducing this to one UE made
+  // the interference field and serving transitions differ from the rendered
+  // scene, which erased the natural same-satellite intra event while leaving
+  // inter events visible. Keep the full population for both scopes, then filter
+  // only the emitted event rows below.
   const ueCount = finiteCountOrFallback(input.ueCount, 100);
   const baseIndex = createEmptySinrLiveCellIndex(input, simStepSec, ueCount, []);
   const observer = createObserverContext(input.profile.orbit.observerLatDeg, input.profile.orbit.observerLonDeg);
@@ -344,6 +497,8 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     input.servingBeamCount,
     input.candidateBeamCount,
     input.beamHoppingEnabled,
+    input.beamPointingMode ?? 'earth-fixed-cell',
+    input.multiCandidateDecisionEnabled ?? false,
   );
   if (sinrLiveCellModel === null) {
     return terminalSinrLiveCellHandoverEventIndexBuilder({
@@ -351,6 +506,7 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
       sourceGapReasons: ['sinrLiveCells model is unavailable for the live SINR cell-truth trajectory'],
     });
   }
+  sinrLiveCellModel.setFocusCell(input.focusCellId ?? null);
 
   const hoManager = new HandoverManager(input.profile.handover, {
     enforceSharedHandoverInterval: true,
@@ -361,6 +517,18 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
   );
   const state = createRuntimeFrameStepState(0);
   const beamLayoutsByShellId = createBeamLayoutsByShellId(input.profile);
+  // Keep the offline index's UE substrate identical to the live scene.  The
+  // homepage's seven-cell asymmetric mode is defined by these fixed centres;
+  // omitting them makes the index scan a different (random) UE placement and
+  // can erase the same-satellite intra transitions that the canvas renders.
+  const sceneCellLayout = buildSinrLiveCellLayout(
+    input.profile,
+    resolveSinrLiveSceneCellCount(input.servingBeamCount),
+  );
+  const sceneCellCentersKm = sceneCellLayout.centers.map(center => ({
+    eastKm: center.localXKm,
+    northKm: center.localYKm,
+  }));
   const replay = {
     epochUtcMs: input.epochUtcMs,
     startOffsetSec: 0,
@@ -397,9 +565,15 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     state,
     ueCount,
     ueDistributionMode,
+    primaryJogEastKm: input.primaryJogEastKm,
+    primaryJogNorthKm: input.primaryJogNorthKm,
+    focusCellId: input.focusCellId ?? null,
+    focusUeId: sinrLiveCellModel.getPinnedPrimaryUeId(),
     uePrimaryAnchorMode,
     ueDistributionScope,
     ueDistributionRadiusKm: input.ueDistributionRadiusKm,
+    ueDistributionCellCentersKm: sceneCellCentersKm,
+    ueDistributionCellRadiusKm: sceneCellLayout.cellRadiusKm,
     ueMobilityMode,
     ueMobilityParams,
     mobilityStates,
@@ -423,7 +597,12 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
           offsetDb: input.profile.handover.offsetDb,
           sequence: events.length,
         });
-        if (event) events.push(event);
+        if (
+          event
+          && (eventUeScope !== 'primary-ue-only' || event.ueId === baseIndex.primaryUeId)
+        ) {
+          events.push(event);
+        }
       }
       if (current === null) previousByUeId.delete(record.ueId);
       else previousByUeId.set(record.ueId, current);
@@ -434,6 +613,7 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
   const totalSteps = Math.ceil(
     LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC / simStepSec,
   );
+  const previewCadenceCompatible = cadenceLandsOnPreviewWindow(simStepSec);
   let stepsDone = 0;
   let done = state.simTimeSec >= LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC;
 
@@ -458,6 +638,41 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     return done;
   };
 
+  const preview = (): SinrLiveCellHandoverEventIndexPreview | null => {
+    if (
+      !previewCadenceCompatible
+      || state.simTimeSec + 1e-9 < SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC
+    ) {
+      return null;
+    }
+    return {
+      sourceOwner: 'sinr-live-cell-truth',
+      horizonKind: 'live-walker-window-prefix',
+      claimKind: 'live-truth',
+      readiness: 'preview',
+      complete: false,
+      sourceWindow: {
+        startSec: 0,
+        endSec: SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC,
+      },
+      coveredThroughSec: SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC,
+      sourceDurationSec: LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC,
+      ueScope: baseIndex.ueScope,
+      primaryUeId: baseIndex.primaryUeId,
+      aggregateUeCount: baseIndex.aggregateUeCount,
+      aggregateClaim: baseIndex.aggregateClaim === 'not-100-ue-aggregate'
+        ? 'not-100-ue-aggregate-prefix'
+        : 'cell-truth-event-index-prefix',
+      generation: Object.freeze({ ...baseIndex.generation }),
+      offsetDb: baseIndex.offsetDb,
+      sourceGapReasons: Object.freeze([...baseIndex.sourceGapReasons]),
+      events: Object.freeze(events
+        .filter(event => event.sourceTimeSec <= SINR_LIVE_CELL_HANDOVER_EVENT_INDEX_PREVIEW_DURATION_SEC)
+        .map(event => Object.freeze({ ...event }))
+        .sort(compareCellTruthEvents)),
+    };
+  };
+
   const finalize = (): LiveWalkerHandoverEventIndex => {
     if (!done) {
       throw new Error('SINR cell-truth handover index finalized before the scan completed');
@@ -473,12 +688,7 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     return {
       ...baseIndex,
       sourceGapReasons,
-      events: events.sort((a, b) => (
-        a.sourceTimeSec - b.sourceTimeSec
-        || a.kind.localeCompare(b.kind)
-        || (a.ueId ?? '').localeCompare(b.ueId ?? '')
-        || a.id.localeCompare(b.id)
-      )),
+      events: events.sort(compareCellTruthEvents),
     };
   };
 
@@ -487,6 +697,7 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     stepsCompleted: () => stepsDone,
     isDone: () => done,
     runSlice,
+    preview,
     finalize,
   };
 }

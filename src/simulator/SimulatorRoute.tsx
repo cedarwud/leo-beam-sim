@@ -277,7 +277,7 @@ export interface SimulatorRouteProps {
 
 /** Archived-TLE / canonical-EE route. The controller can mount this component under any URL. */
 export function SimulatorRoute({
-  initialConstellation = 'oneweb',
+  initialConstellation = 'starlink',
   initialTaipeiDateTime = DEFAULT_TAIPEI_LOCAL,
 }: SimulatorRouteProps) {
   const [requestedConstellation, setRequestedConstellation] = useState<SimulatorConstellation>(initialConstellation);

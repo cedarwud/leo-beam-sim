@@ -33,6 +33,8 @@ import {
   resolveSinrLiveSceneCellCount,
 } from './sinrLiveCellRuntime';
 import { planSeekSettle, SEEK_SETTLE_MAX_STEP_SEC } from './seekSettle';
+import { isMultiCandidateWarmStartFrame } from './multiCandidateWarmStart';
+import { resolveInitialReplayWarmupSec } from './replayStartPolicy';
 import { reScalarize } from '../modqn/replay-bundle/rescalarize';
 import { computeHeuristicNotPaperScore } from '../engine/handover/decision-override';
 import {
@@ -112,19 +114,36 @@ export {
 } from './runtimeFrameStep';
 
 /**
- * G2-WARMSTART: the CAP on how much sim-time the warm-up run-through may advance the
- * model through at the first sinr-live cold-start. A freshly attached
+ * G2-WARMSTART: the CAP on how much sim-time an explicitly enabled diagnostic
+ * warm-up run-through may advance the model through at a sinr-live cold-start. A freshly attached
  * `HandoverManager` cannot hand over until its `pingPongGuardSec` (30s) + TTT (3.5s)
- * elapse, so a cold start shows ZERO handovers (and zero G2c pulse cones) for the
- * first ~42s of the candidate-rich demo (`demoStartOffsetSec` 450; probe
- * `scripts/_probe-warmstart.ts`). The run-through STOPS at the first frame that
+ * elapse, so a cold start shows ZERO handovers (and zero G2c pulse cones) until the
+ * guard clears.
+ *
+ * For the legacy non-multi lane, the run-through STOPS at the first frame that
  * carries a live pulse (break-on-pulse), so it normally ends at the first post-guard
- * handover burst (~42s), NOT this cap — the cap only bounds a quiet window
- * (handovers are bursty, so a fixed endpoint can land in a >4s inter-burst gap and
- * open with no pulse cones). The warm-up runs the REAL model forward (fabricates
- * nothing — Rule#6); it is sinr-live-lane only and runs once (the demo open).
+ * handover burst (~42s at start offset 450, ~44s at start offset 0), NOT this cap.
+ *
+ * For `multiCandidateDecisionEnabled`, cold-start run-through instead stops at the
+ * first REAL HandoverDecisionFrame that is still pre-selection (selectedTarget null,
+ * provisionalLeader null), is evaluating/qualifying, and has hardEligibility eligible
+ * pairs from at least TWO distinct ALTERNATE satellite IDs excluding the serving
+ * satellite. This opens at the comparison lead-in instead of its final TTT boundary.
+ *
+ * The warm-up runs the REAL model forward (fabricates nothing — Rule#6); it is
+ * sinr-live-lane only and runs once when explicitly enabled. The homepage keeps
+ * this switch off and therefore publishes the exact replay-origin frame.
  */
 const SINR_LIVE_WARMUP_CAP_SEC = 130;
+/**
+ * The homepage must open on the actual replay origin.  The former first-open
+ * warm-start advanced the published frame to the first candidate window (often
+ * 1:40–2:10), which made the timeline lie about where playback began and hid the
+ * scene establishment that users need to inspect.  Keep the bounded warm-start
+ * recipe available for an explicitly approved diagnostic surface, but park it
+ * off for the live homepage until that surface opts in deliberately.
+ */
+const SINR_LIVE_INITIAL_WARMUP_ENABLED = false;
 /**
  * Coarse sim-time step for the warm-up run-through. Matches the offline event index's
  * 2s scan (the HO guard/TTT are sim-time integrated, so a 2s grain accumulates them
@@ -137,6 +156,13 @@ const SINR_LIVE_WARMUP_STEP_SEC = 2;
  * sub-nanosecond residual step behind.
  */
 const RUN_THROUGH_EPSILON_SEC = 1e-9;
+/**
+ * The homepage Director index uses the same two-second source cadence.  A
+ * Director seek replays this real model at that cadence from source time zero
+ * so its landed decision history is the one the source index selected; ordinary
+ * timeline seeks keep the bounded settle/rebase path below.
+ */
+const SOURCE_HISTORY_REPLAY_STEP_SEC = 2;
 
 function normalizeSeekOffset(targetSec: number, maxTimeSec: number, loop: boolean): number {
   if (maxTimeSec <= 0 || !Number.isFinite(targetSec)) return 0;
@@ -330,6 +356,8 @@ export function useSimulation(
       shell.inclinationDeg,
       shell.planes,
       shell.satsPerPlane,
+      shell.raanOffsetDeg ?? 0,
+      shell.phaseOffsetDeg ?? 0,
       shell.serviceAreaPassTargetsSec?.join(',') ?? 'none',
       shell.phasePerturbation === false ? 'fixed' : 'jitter',
     ].join(':')).join('|'),
@@ -415,6 +443,21 @@ export function useSimulation(
   // the UI. Those subsequent cold-starts open cold and re-warm naturally as the sim
   // plays forward.
   const hasWarmedOnceRef = useRef(false);
+  // React effects that own the structural replay reset and the handover-policy
+  // reset both run on the initial mount (and development StrictMode may replay
+  // them). Without an idempotence key, the first call warms to the real
+  // multi-candidate comparison, then an identical second call cold-resets back
+  // to t=0 and erases that work. A genuinely different profile/time/policy key
+  // still performs the requested reset; loop time-shifts bypass this guard.
+  const replayStartColdResetKey = [
+    profile.id,
+    maxTimeSec,
+    replay.epochUtcMs,
+    replay.loop ? 'loop' : 'once',
+    replay.startOffsetSec,
+    handoverResetKey ?? 'default-handover-policy',
+  ].join('|');
+  const lastReplayStartColdResetKeyRef = useRef<string | null>(null);
   const [, setVersion] = useState(0);
 
   const installDecisionOverride = useCallback(() => {
@@ -509,16 +552,20 @@ export function useSimulation(
         ? planSeekSettle(profile.handover, landingOffset)
         : { settleSec: 0, stepSec: SEEK_SETTLE_MAX_STEP_SEC, reseatOffsetSec: landingOffset };
       const targetOffset = settle.reseatOffsetSec;
-      if (params.intent === 'cold-start') {
+      const sourceHistoryReplay = params.intent === 'seek'
+        && replay.sourceHistoryReplay === true
+        && multiCandidateDecisionEnabled;
+      const reseatOffset = sourceHistoryReplay ? 0 : targetOffset;
+      if (params.intent === 'cold-start' || sourceHistoryReplay) {
         resetAllHoManagers({ preserveCellTruth: params.preserveCellTruth });
       } else {
         transitionHoManagers({
           kind: 'rebase',
-          deltaMs: (targetOffset - runtimeStateRef.current.simTimeSec) * 1000,
+          deltaMs: (reseatOffset - runtimeStateRef.current.simTimeSec) * 1000,
         });
       }
       resetMobilityStates();
-      runtimeStateRef.current = createRuntimeFrameStepState(targetOffset);
+      runtimeStateRef.current = createRuntimeFrameStepState(reseatOffset);
       installDecisionOverride();
       const { frame } = stepRuntimeFrame({
         profile,
@@ -559,11 +606,11 @@ export function useSimulation(
       // step; managers already transitioned above). no-op off lane.
       attachSinrLiveCellFrame(frame, sinrLiveCellModel, 0);
 
-      // G2-WARMSTART: on the FIRST sinr-live cold-start (the demo open), advance the
-      // freshly cold-attached managers + cell model PAST the ~42s ping-pong-guard
-      // warm-up so the demo opens WITH a live handover pulse already on screen — a
-      // cold start otherwise shows a static scene with zero handovers (and zero G2c
-      // pulse cones) until the guard elapses. Run-through: step the REAL model forward
+      // G2-WARMSTART: when explicitly enabled on the FIRST sinr-live cold-start,
+      // advance the freshly cold-attached managers + cell model PAST the ~42s
+      // ping-pong-guard warm-up so a diagnostic surface opens WITH a live handover
+      // pulse already on screen. The homepage leaves this opt-in disabled and
+      // publishes the exact replay-origin frame. Run-through: step the REAL model forward
       // in coarse 2s increments (matching the offline event-index scan grain — a
       // physically-valid post-guard seed, NOT a byte-exact reproduction of the live
       // ~16ms-grain play), DISCARDING intermediate frames, and STOP the moment the
@@ -576,7 +623,12 @@ export function useSimulation(
       // first warm (hasWarmedOnceRef) so later cold-starts do not re-freeze the UI;
       // seek / wrap / signal-reset pass no warm-up (cold/rebase semantics unchanged).
       let publishFrame = frame;
-      const warmupCapSec = (sinrLiveCellModel && !hasWarmedOnceRef.current) ? (params.warmupSec ?? 0) : 0;
+      const warmupCapSec = resolveInitialReplayWarmupSec({
+        cellTruthAvailable: sinrLiveCellModel !== null,
+        enabled: SINR_LIVE_INITIAL_WARMUP_ENABLED,
+        alreadyWarmed: hasWarmedOnceRef.current,
+        requestedWarmupSec: params.warmupSec,
+      });
       // ONE run-through loop serves both reseat kinds, so this stays a single recipe:
       //   - G2-WARMSTART (cold-start): run PAST the target, up to the cap, and stop
       //     early at the first live pulse so the demo opens on a handover.
@@ -587,12 +639,20 @@ export function useSimulation(
       // no settle), and both advance the REAL model — neither fabricates a handover.
       const runThroughSec = warmupCapSec > 0 ? warmupCapSec : settle.settleSec;
       const runThroughStepSec = warmupCapSec > 0 ? SINR_LIVE_WARMUP_STEP_SEC : settle.stepSec;
-      const stopOnFirstPulse = warmupCapSec > 0;
-      if (runThroughSec > 0) {
+      const sourceHistoryRunThroughSec = sourceHistoryReplay ? landingOffset : runThroughSec;
+      const sourceHistoryRunThroughStepSec = sourceHistoryReplay
+        ? SOURCE_HISTORY_REPLAY_STEP_SEC
+        : runThroughStepSec;
+      const stopOnFirstPulse = warmupCapSec > 0 && !multiCandidateDecisionEnabled;
+      const stopOnMultiCandidateWarmStart = warmupCapSec > 0 && multiCandidateDecisionEnabled;
+      if (sourceHistoryRunThroughSec > 0) {
         if (warmupCapSec > 0) hasWarmedOnceRef.current = true;
         let warmedSec = 0;
-        while (runThroughSec - warmedSec > RUN_THROUGH_EPSILON_SEC) {
-          const stepSec = Math.min(runThroughStepSec, runThroughSec - warmedSec);
+        while (sourceHistoryRunThroughSec - warmedSec > RUN_THROUGH_EPSILON_SEC) {
+          const stepSec = Math.min(
+            sourceHistoryRunThroughStepSec,
+            sourceHistoryRunThroughSec - warmedSec,
+          );
           const warm = stepRuntimeFrame({
             profile,
             replay,
@@ -639,11 +699,14 @@ export function useSimulation(
           attachSinrLiveCellFrame(warm.frame, sinrLiveCellModel, warm.frame.simTimeSec - warm.previousSimTimeSec);
           publishFrame = warm.frame;
           warmedSec += stepSec;
-          // Warm-up only: stop as soon as the PUBLISHED frame carries a live pulse so
-          // the demo opens on a handover (the guard + the cold-attach 'attach'
-          // classification keep recentHandoverEvents empty until the first real
-          // post-guard HO). A seek settle never breaks early — it must land on T.
+          // Warm-up only:
+          //  - Legacy non-multi lane: stop as soon as the PUBLISHED frame carries a live pulse (recentHandoverEvents > 0)
+          //    so the demo opens on a handover.
+          //  - Multi-candidate lane: stop at the first real evaluating/qualifying pre-selection frame with eligible pairs from at
+          //    least two distinct alternate satellites (preserving the multi-candidate comparison stage).
+          // A seek settle never breaks early — it must land on T.
           if (stopOnFirstPulse && (warm.frame.sinrLiveCells?.recentHandoverEvents.length ?? 0) > 0) break;
+          if (stopOnMultiCandidateWarmStart && isMultiCandidateWarmStartFrame(warm.frame)) break;
         }
       }
       frameRef.current = publishFrame;
@@ -656,6 +719,7 @@ export function useSimulation(
       hoManager,
       installDecisionOverride,
       maxTimeSec,
+      multiCandidateDecisionEnabled,
       observer,
       profile,
       replay,
@@ -686,15 +750,21 @@ export function useSimulation(
   // re-loop) it is a 'wrap' time-shift (rebase). seekToTimelineFrame(T) is a timeline
   // 'seek' time-shift to T (rebase).
   const resetToReplayStartFrame = useCallback((options?: { timeShift?: boolean }) => {
+    if (!options?.timeShift) {
+      if (lastReplayStartColdResetKeyRef.current === replayStartColdResetKey) return;
+      lastReplayStartColdResetKeyRef.current = replayStartColdResetKey;
+    }
     buildRuntimeStateAt({
       toSec: replay.startOffsetSec,
       intent: options?.timeShift ? 'wrap' : 'cold-start',
-      // G2-WARMSTART: a cold-start opens the demo warm (the recipe latches it to the
-      // FIRST sinr-live cold-start + lane-gates it); a wrap (window re-loop) is a
-      // rebase that already keeps serving, so it passes no warm-up cap.
-      warmupSec: options?.timeShift ? 0 : SINR_LIVE_WARMUP_CAP_SEC,
+      // G2-WARMSTART: only an explicitly enabled cold-start uses the diagnostic cap;
+      // the homepage and every wrap (window re-loop) publish/rebase without a hidden
+      // time jump.
+      warmupSec: options?.timeShift || !SINR_LIVE_INITIAL_WARMUP_ENABLED
+        ? 0
+        : SINR_LIVE_WARMUP_CAP_SEC,
     });
-  }, [buildRuntimeStateAt, replay.startOffsetSec]);
+  }, [buildRuntimeStateAt, replay.startOffsetSec, replayStartColdResetKey]);
 
   const seekToTimelineFrame = useCallback((targetSec: number) => {
     buildRuntimeStateAt({ toSec: targetSec, intent: 'seek' });

@@ -28,8 +28,8 @@ assert.match(markup, /data-testid="power-canonical-page"/);
 assert.doesNotMatch(visibleText, /[A-Za-z]+_[A-Za-z]/, 'rendered power copy must not expose raw underscore notation');
 assert.match(markup, /data-testid="power-canonical-formula-row-system"[\s\S]*P<sup>N<\/sup>\(t,[\s\S]*θ[\s\S]*\)/);
 assert.match(markup, /P<sup>N<\/sup>\(t,[\s\S]*θ[\s\S]*\)/);
-assert.match(markup, /P<sup>p<\/sup><sub>u,s,v<\/sub>/);
-assert.match(markup, /data-testid="power-canonical-formula-row-segment-start"[\s\S]*2 W/);
+assert.match(markup, /P<sup>p<\/sup><sub>s,v<\/sub>/);
+assert.match(markup, /data-testid="power-canonical-formula-row-segment-start"[\s\S]*p<sup>0<\/sup>[\s\S]*0\.825 W/);
 assert.match(markup, /data-testid="power-canonical-formula-row-recurrence"[\s\S]*t−1[\s\S]*G<sup>T<\/sup>/);
 assert.doesNotMatch(markup, /<strong>Θ<\/strong>|Θ<sub>|; <strong>/);
 assert.doesNotMatch(markup, /ŝ|v̂/);
@@ -46,9 +46,11 @@ assert.doesNotMatch(markup, /data-testid="power-tab-tx-power-control"/);
 assert.doesNotMatch(markup, /Per-beam transmit power/);
 assert.doesNotMatch(markup, /P_t/);
 
-// Power is derived from the angle-aware recurrence; it exposes no editable
-// power-cap or amplifier controls on the presentation surface.
-assert.doesNotMatch(markup, /data-testid="power-tab-(?:beam-cap|satellite-cap|eta-max|backoff|rfc|bb)-control"/);
+// Power owns the two formal RF-feasibility inputs; p, P^p, ξ, and P^N remain
+// derived from the accepted frame.
+assert.match(markup, /data-testid="power-tab-beam-cap-control"[^>]*data-control-active="true"/);
+assert.match(markup, /data-testid="power-tab-satellite-cap-control"[^>]*data-control-active="true"/);
+assert.match(markup, /data-source-provenance="TLE-CANONICAL-EE-SIMULATOR-SDD/);
 // Final computed values are owned by the right sidebar.
 assert.doesNotMatch(markup, /data-testid="power-canonical-readout"/);
 for (const testId of [

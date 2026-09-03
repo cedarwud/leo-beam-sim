@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { SinrLiveDisplayDrawer } from './SinrLiveDisplayDrawer';
 import { TeachingPanelDock } from './TeachingPanelDock';
 
 const markup = renderToStaticMarkup(
@@ -34,8 +35,24 @@ for (const testId of [
   assert.match(markup, new RegExp(`data-testid="${testId}"`));
 }
 assert.match(markup, /sat-serving/);
-for (const token of ['θ', 'Gᵀ(θ)', 'γ', 'R', 'η']) {
+for (const token of ['θ', 'γ', 'R', 'η']) {
   assert.match(markup, new RegExp(token.replace(/[()]/g, '\\$&')));
 }
+assert.match(markup, /G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>, θ<sub>3dB<\/sub>\)/);
 
-console.log('TeachingPanelDock exposes one engineering/teaching switch and the four teaching sections.');
+const restoredHomepageMarkup = renderToStaticMarkup(
+  <SinrLiveDisplayDrawer
+    parameterSection={<div data-testid="original-engineering-controls">engineering content</div>}
+    teachingMode="teaching"
+    campusVisible
+    onCampusVisibleChange={() => undefined}
+    showTeachingAuxiliaryUi={false}
+  />,
+);
+assert.match(restoredHomepageMarkup, /data-testid="original-engineering-controls"/);
+assert.match(restoredHomepageMarkup, /data-testid="engineering-panel-dock"/);
+assert.doesNotMatch(restoredHomepageMarkup, /data-testid="teaching-surface-control"/);
+assert.doesNotMatch(restoredHomepageMarkup, /data-testid="teaching-panel-dock"/);
+assert.doesNotMatch(restoredHomepageMarkup, /left-sidebar-tab-teaching/);
+
+console.log('Teaching dock remains reusable while the homepage can restore its engineering-only rail.');

@@ -32,7 +32,12 @@
  * producer-recorded handover replay (that fidelity lives on the artifact lane).
  */
 import { resolveCinematicReplayWindow } from './cinematicReplayWindow';
-import type { HandoverRailEvent, HandoverRailEventKind } from '../ui/HandoverEventRail';
+import {
+  HANDOVER_RAIL_FOCUS_SOURCE_LEAD_SEC,
+  HANDOVER_RAIL_FOCUS_SOURCE_TRAIL_SEC,
+  type HandoverRailEvent,
+  type HandoverRailEventKind,
+} from '../ui/HandoverEventRail';
 
 export type LiveWalkerDirectorFocusClaimKind = 'live-truth' | 'profile-derived-forecast' | 'overlay-demo';
 
@@ -61,7 +66,13 @@ export function resolveLiveWalkerFocusWindow(
   durationSec: number,
   claimKind: LiveWalkerDirectorFocusClaimKind,
 ): LiveWalkerDirectorFocusTarget | null {
-  const window = resolveCinematicReplayWindow(events, kind, nowSec, durationSec);
+  // The live Walker index exposes a source window of [event - 10s, event + 20s]
+  // for candidate qualification and TTT. Keep the artifact resolver defaults
+  // unchanged; only the live wrapper opts into this existing source window.
+  const window = resolveCinematicReplayWindow(events, kind, nowSec, durationSec, {
+    leadInSec: HANDOVER_RAIL_FOCUS_SOURCE_LEAD_SEC,
+    leadOutSec: HANDOVER_RAIL_FOCUS_SOURCE_TRAIL_SEC,
+  });
   if (window === null) return null;
   return {
     eventId: window.eventId,

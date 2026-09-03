@@ -8,11 +8,13 @@ import {
 import { SINR_LIVE_CELL_COUNT } from '../../scene/sinrLiveCellRuntime';
 import { useLocale } from '../../i18n';
 import { SIMULATOR_CONSTELLATIONS, SIMULATOR_TIME_ZONE, type SimulatorConstellation } from '../../simulator/types';
+import {
+  DEFAULT_WALKER_SCENARIO_DATE,
+  DEFAULT_WALKER_SCENARIO_TIME,
+} from '../../app/walkerScenarioTime';
 import { txBi } from './labels';
 import { captionTextStyle, groupTitleStyle, pagePanelStyle, srOnlyStyle } from './styles';
 
-const INITIAL_SCENARIO_DATE = '2026-08-12';
-const INITIAL_SCENARIO_TIME = '20:00';
 const SCENARIO_HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
 const SCENARIO_MINUTES = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
 const BEAM_LAYOUT_OPTIONS = SUPPORTED_BEAM_LAYOUT_COUNTS;
@@ -27,8 +29,15 @@ export type BeamLayoutCount = SupportedBeamLayoutCount;
 export interface ScenarioDataTabProps {
   readonly constellation?: SimulatorConstellation;
   readonly onConstellationChange?: (next: SimulatorConstellation) => void;
+  /** Walker epoch controls. The live homepage supplies both as controlled state. */
+  readonly scenarioDate?: string;
+  readonly scenarioTime?: string;
+  readonly onScenarioDateChange?: (next: string) => void;
+  readonly onScenarioTimeChange?: (next: string) => void;
   /** Optional controlled scene value. Without it the isolated tab keeps its local preview state. */
   readonly beamLayoutCount?: BeamLayoutCount;
+  /** Restricts the visible scene choices when the owning adapter supports a fixed schema. */
+  readonly beamLayoutOptions?: readonly BeamLayoutCount[];
   readonly onBeamLayoutCountChange?: (next: BeamLayoutCount) => void;
   /** Optional controlled serving-satellite override for the canonical frame surface. */
   readonly servingBeamLayoutCount?: BeamLayoutCount;
@@ -76,7 +85,12 @@ const timeOptionStyle = {
 export function ScenarioDataTab({
   constellation: controlledConstellation,
   onConstellationChange,
+  scenarioDate: controlledScenarioDate,
+  scenarioTime: controlledScenarioTime,
+  onScenarioDateChange,
+  onScenarioTimeChange,
   beamLayoutCount: controlledBeamLayoutCount,
+  beamLayoutOptions: controlledBeamLayoutOptions,
   onBeamLayoutCountChange,
   servingBeamLayoutCount: controlledServingBeamLayoutCount,
   onServingBeamLayoutCountChange,
@@ -92,8 +106,8 @@ export function ScenarioDataTab({
   const isEnglish = locale === 'en';
   const say = (key: string, zh: string, en: string) => txBi(t, isEnglish, key, zh, en);
   const [localConstellation, setLocalConstellation] = useState<SimulatorConstellation>('starlink');
-  const [scenarioDate, setScenarioDate] = useState(INITIAL_SCENARIO_DATE);
-  const [scenarioTime, setScenarioTime] = useState(INITIAL_SCENARIO_TIME);
+  const [localScenarioDate, setLocalScenarioDate] = useState(DEFAULT_WALKER_SCENARIO_DATE);
+  const [localScenarioTime, setLocalScenarioTime] = useState(DEFAULT_WALKER_SCENARIO_TIME);
   const [localBeamLayoutCount, setLocalBeamLayoutCount] = useState<BeamLayoutCount>(DEFAULT_BEAM_LAYOUT_COUNT);
   const [localServingBeamLayoutCount, setLocalServingBeamLayoutCount] = useState<BeamLayoutCount>(DEFAULT_BEAM_LAYOUT_COUNT);
   const [localCandidateBeamLayoutCount, setLocalCandidateBeamLayoutCount] = useState<BeamLayoutCount>(DEFAULT_BEAM_LAYOUT_COUNT);
@@ -102,8 +116,13 @@ export function ScenarioDataTab({
   const candidateBeamLayoutCount = controlledCandidateBeamLayoutCount
     ?? controlledServingBeamLayoutCount
     ?? localCandidateBeamLayoutCount;
+  const beamLayoutOptions = controlledBeamLayoutOptions ?? BEAM_LAYOUT_OPTIONS;
   const constellation = controlledConstellation ?? localConstellation;
+  const scenarioDate = controlledScenarioDate ?? localScenarioDate;
+  const scenarioTime = controlledScenarioTime ?? localScenarioTime;
   const setConstellation = onConstellationChange ?? setLocalConstellation;
+  const setScenarioDate = onScenarioDateChange ?? setLocalScenarioDate;
+  const setScenarioTime = onScenarioTimeChange ?? setLocalScenarioTime;
   const setBeamLayoutCount = onBeamLayoutCountChange ?? setLocalBeamLayoutCount;
   const setServingBeamLayoutCount = onServingBeamLayoutCountChange ?? setLocalServingBeamLayoutCount;
   const setCandidateBeamLayoutCount = onCandidateBeamLayoutCountChange ?? setLocalCandidateBeamLayoutCount;
@@ -136,6 +155,7 @@ export function ScenarioDataTab({
       id="tuning-page-panel-scenario-data"
       data-testid="scenario-data-page"
       data-scenario-connection={connection}
+      data-scenario-epoch-owner={connection === 'live-scene' ? 'walker-runtime' : 'local-preview'}
       role="tabpanel"
       aria-label={say('tab.scenario.label', '場景資料', 'Scenario data')}
       style={{ ...pagePanelStyle, gap: 14 }}
@@ -145,14 +165,22 @@ export function ScenarioDataTab({
           {say('scenarioData.title', '場景資料', 'Scenario data')}
         </div>
         <div style={captionTextStyle}>
-          {say(
-            'scenarioData.description',
-            '設定星座配置與展示日期時間；時間採 24 小時制，最小單位為分鐘。',
-            'Set the constellation configuration and display date/time. Time uses a 24-hour clock with minute precision.',
-          )}
+          {connection === 'canonical-analysis'
+            ? say(
+              'scenarioData.canonicalDescription',
+              '軌道資料由上方正式來源設定控制；此處只設定 accepted frame 的場景配置。',
+              'Orbit data is controlled by the source settings above; this section configures only the accepted frame scenario.',
+            )
+            : say(
+              'scenarioData.description',
+              '設定 Walker 星座與模擬基準日期時間；時間採 24 小時制，最小單位為分鐘。變更後會以新的時刻重新計算軌道與鏈路。',
+              'Set the Walker constellation and simulation epoch. Time uses 24-hour, minute precision; changing it recomputes the orbit and links.',
+            )}
         </div>
       </div>
 
+      {connection !== 'canonical-analysis' && (
+      <>
       <fieldset
         data-testid="scenario-data-constellation-control"
         style={{
@@ -216,7 +244,7 @@ export function ScenarioDataTab({
         }}
       >
         <div style={groupTitleStyle}>
-          {say('scenarioData.time.title', '展示日期與時間', 'Display date and time')}
+          {say('scenarioData.time.title', 'Walker 模擬基準時刻', 'Walker simulation epoch')}
         </div>
         <label htmlFor="scenario-data-date" style={captionTextStyle}>
           {say('scenarioData.date', '日期', 'Date')}
@@ -271,6 +299,8 @@ export function ScenarioDataTab({
           {say('scenarioData.timezone', '時區', 'Time zone')}: {SIMULATOR_TIME_ZONE}
         </div>
       </div>
+      </>
+      )}
 
       <fieldset
         data-testid="scenario-data-beam-configuration-control"
@@ -293,7 +323,7 @@ export function ScenarioDataTab({
               {say('scenarioData.beamLayout', '每顆衛星波束配置', 'Beams per satellite')}
             </div>
             <div role="radiogroup" aria-label={say('scenarioData.beamLayout', '每顆衛星波束配置', 'Beams per satellite')} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-              {BEAM_LAYOUT_OPTIONS.map(option => {
+              {beamLayoutOptions.map(option => {
                 const selected = option === beamLayoutCount;
                 return (
                   <label
@@ -348,7 +378,7 @@ export function ScenarioDataTab({
                 {configuration.title}
               </div>
               <div role="radiogroup" aria-label={`${configuration.title} ${say('scenarioData.beamLayout', '波束配置', 'beam configuration')}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                {BEAM_LAYOUT_OPTIONS.map(option => {
+                {beamLayoutOptions.map(option => {
                   const selected = option === configuration.value;
                   return (
                     <label

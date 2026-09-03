@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   colorForServingBeam,
   colorForServingSatellite,
+  emphasizeIntraHandoverColor,
   servingIdentityPaletteHueAt,
   servingIdentityPaletteIndex,
 } from './servingColour';
@@ -48,7 +49,7 @@ test('Walker satellite identities use a stable, interleaved, non-red palette', (
 
 test('same-satellite beam shades stay readable and keep one hue family', () => {
   const satelliteId = 'starlink-P0-S1';
-  const hues = [0, 1, 2, 3, 4].map(beamId => colorForServingBeam(satelliteId, beamId).markerColor);
+  const hues = [0, 1, 2, 3, 4, 5, 6].map(beamId => colorForServingBeam(satelliteId, beamId).markerColor);
   const distinct = new Set(hues);
 
   assert.equal(distinct.size, hues.length, 'the first five beam identities need visible shade steps');
@@ -74,6 +75,31 @@ test('same-satellite beam shades stay readable and keep one hue family', () => {
   );
 });
 
+test('seven configured beams do not collapse an intra switch into one colour', () => {
+  const satelliteId = 'shell-pro-53-P8-S5';
+  const from = colorForServingBeam(satelliteId, 2).markerColor;
+  const to = colorForServingBeam(satelliteId, 7).markerColor;
+  assert.notEqual(from, to, 'beam 2 → beam 7 must remain visibly distinct');
+  const brightness = (color: string) => color.slice(1).match(/../g)!
+    .map(value => Number.parseInt(value, 16))
+    .reduce((sum, channel) => sum + channel, 0);
+  assert.ok(
+    Math.abs(brightness(from) - brightness(to)) >= 60,
+    `beam 2 → beam 7 needs a clear tonal change: ${from} → ${to}`,
+  );
+});
+
+test('blue and purple beam shades stay above the dark-scene floor', () => {
+  for (const satelliteId of ['shell-pro-42-P20-S3', 'shell-pro-53-P13-S6']) {
+    const colors = [0, 1, 2, 3, 4].map(beamId => colorForServingBeam(satelliteId, beamId).markerColor);
+    assert.equal(new Set(colors).size, colors.length, `${satelliteId} shades must remain distinct`);
+    for (const color of colors) {
+      const channels = color.slice(1).match(/../g)!.map(value => Number.parseInt(value, 16));
+      assert.ok(Math.max(...channels) >= 190, `${satelliteId} ${color} is too dark for the live globe`);
+    }
+  }
+});
+
 test('representative handover pairs change identity family instead of role colour', () => {
   const pairs = [
     ['shell-pro-53-P13-S7', 'shell-candidate-70-P25-S1'],
@@ -92,5 +118,31 @@ test('representative handover pairs change identity family instead of role colou
       colorForServingSatellite(to).markerColor,
       `${from} → ${to} must not collapse to one satellite colour`,
     );
+  }
+});
+
+test('intra transition treatment preserves hue while making source and target distinct', () => {
+  const base = colorForServingBeam('starlink-P0-S1', 3).markerColor;
+  const source = emphasizeIntraHandoverColor(base, 'source');
+  const target = emphasizeIntraHandoverColor(base, 'target');
+  assert.notEqual(source, target, 'intra source and target must not collapse to one colour');
+  assert.ok(circularHueDistance(hueFromHex(source), hueFromHex(base)) <= 3);
+  assert.ok(circularHueDistance(hueFromHex(target), hueFromHex(base)) <= 3);
+  const brightness = (color: string) => color.slice(1).match(/../g)!
+    .map(value => Number.parseInt(value, 16))
+    .reduce((sum, channel) => sum + channel, 0);
+  assert.ok(
+    brightness(target) - brightness(source) >= 80,
+    `intra source/target separation is too small: ${source} -> ${target}`,
+  );
+});
+
+test('intra transition treatment does not turn a blue identity into a near-black shade', () => {
+  const base = colorForServingBeam('shell-pro-42-P20-S3', 0).markerColor;
+  const source = emphasizeIntraHandoverColor(base, 'source');
+  const target = emphasizeIntraHandoverColor(base, 'target');
+  for (const color of [source, target]) {
+    const channels = color.slice(1).match(/../g)!.map(value => Number.parseInt(value, 16));
+    assert.ok(Math.max(...channels) >= 160, `${color} is too dark for the transition carrier`);
   }
 });

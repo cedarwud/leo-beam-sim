@@ -7,6 +7,17 @@ const TICK_RATIOS = [0, 0.25, 0.5, 0.75, 1] as const;
 export type TimelineSpeedPreset = (typeof SPEED_PRESETS)[number];
 type TimelineTransportIcon = 'jump-start' | 'step-backward' | 'play' | 'pause' | 'step-forward' | 'jump-end';
 
+export type TimelineEventMarkerKind = 'intra' | 'inter';
+
+export interface TimelineEventMarker {
+  readonly id: string;
+  readonly kind: TimelineEventMarkerKind;
+  readonly sourceTimeSec: number;
+  readonly clickTargetSec: number;
+  readonly ariaLabel: string;
+  readonly title: string;
+}
+
 export interface TimelineBarProps {
   readonly currentTimeSec: number;
   readonly durationSec: number;
@@ -26,6 +37,20 @@ export interface TimelineBarProps {
   readonly horizonLabel: string;
   readonly horizonSec?: number;
   readonly claimKind: string;
+  /** Optional display-only markers positioned on the source-time scrubber. */
+  readonly eventMarkers?: readonly TimelineEventMarker[];
+  /** Optional marker selection hook; receives the marker's exact click target. */
+  readonly onSelect?: (targetTimeSec: number) => void;
+}
+
+const EVENT_MARKER_LANE_OFFSETS = [0, 1, -1] as const;
+const EVENT_MARKER_MIN_SEPARATION_PERCENT = 1;
+
+interface PositionedTimelineEventMarker {
+  readonly marker: TimelineEventMarker;
+  readonly positionPercent: number;
+  readonly lane: number;
+  readonly laneOffset: number;
 }
 
 function isFiniteNumber(value: number): boolean {
@@ -35,6 +60,51 @@ function isFiniteNumber(value: number): boolean {
 function clampTime(value: number, durationSec: number): number {
   if (!isFiniteNumber(value)) return 0;
   return Math.min(Math.max(value, 0), durationSec);
+}
+
+/**
+ * Lay out markers without changing their source-time positions. Close markers
+ * receive deterministic vertical lanes so the presentation stays scannable;
+ * their source/click times remain untouched for metadata and selection.
+ */
+function layoutTimelineEventMarkers(
+  markers: readonly TimelineEventMarker[],
+  durationSec: number,
+): readonly PositionedTimelineEventMarker[] {
+  if (durationSec <= 0) return [];
+
+  const sortedMarkers = markers
+    .filter(marker => (
+      isFiniteNumber(marker.sourceTimeSec)
+      && marker.sourceTimeSec >= 0
+      && marker.sourceTimeSec <= durationSec
+      && isFiniteNumber(marker.clickTargetSec)
+    ))
+    .sort((a, b) => (
+      a.sourceTimeSec - b.sourceTimeSec
+      || a.kind.localeCompare(b.kind)
+      || a.id.localeCompare(b.id)
+    ));
+  const lastPositionByLane: number[] = [];
+
+  return sortedMarkers.map(marker => {
+    const positionPercent = (marker.sourceTimeSec / durationSec) * 100;
+    let lane = lastPositionByLane.findIndex(lastPosition => (
+      positionPercent - lastPosition >= EVENT_MARKER_MIN_SEPARATION_PERCENT
+    ));
+    if (lane < 0) {
+      lane = lastPositionByLane.length < EVENT_MARKER_LANE_OFFSETS.length
+        ? lastPositionByLane.length
+        : 0;
+    }
+    lastPositionByLane[lane] = positionPercent;
+    return {
+      marker,
+      positionPercent,
+      lane,
+      laneOffset: EVENT_MARKER_LANE_OFFSETS[lane] ?? 0,
+    };
+  });
 }
 
 export function formatTimelineTime(totalSeconds: number): string {
@@ -75,6 +145,8 @@ export function TimelineBar({
   horizonLabel,
   horizonSec,
   claimKind,
+  eventMarkers = [],
+  onSelect,
 }: TimelineBarProps) {
   const safeDurationSec = Math.max(0, isFiniteNumber(durationSec) ? durationSec : 0);
   const safeStepSec = isFiniteNumber(stepSec) && stepSec > 0 ? stepSec : DEFAULT_STEP_SECONDS;
@@ -91,6 +163,7 @@ export function TimelineBar({
   const rootClassName = className ? `leo-timeline-bar ${className}` : 'leo-timeline-bar';
   const currentTimeLabel = formatTimelineTime(safeCurrentTimeSec);
   const durationLabel = formatTimelineTime(safeDurationSec);
+  const positionedEventMarkers = layoutTimelineEventMarkers(eventMarkers, safeDurationSec);
   const progressStyle = {
     '--leo-timeline-progress': `${progressPercent}%`,
   } as CSSProperties;
@@ -130,6 +203,11 @@ export function TimelineBar({
       event.preventDefault();
       seekTo(safeCurrentTimeSec + safeStepSec);
     }
+  };
+
+  const selectEventMarker = (marker: TimelineEventMarker) => {
+    if (isTimelineDisabled) return;
+    (onSelect ?? onSeek)(marker.clickTargetSec);
   };
 
   return (
@@ -241,9 +319,36 @@ export function TimelineBar({
       </div>
 
       <div className="leo-timeline-bar__scrubber">
-        <div className="leo-timeline-bar__ruler" aria-hidden="true">
-          <span className="leo-timeline-bar__progress-glow" />
-          <span className="leo-timeline-bar__playhead" />
+        <div
+          className="leo-timeline-bar__ruler"
+          aria-hidden={positionedEventMarkers.length === 0 ? 'true' : undefined}
+          aria-label={positionedEventMarkers.length > 0 ? 'Timeline event markers' : undefined}
+          role={positionedEventMarkers.length > 0 ? 'group' : undefined}
+        >
+          <span className="leo-timeline-bar__progress-glow" aria-hidden="true" />
+          <span className="leo-timeline-bar__playhead" aria-hidden="true" />
+          {positionedEventMarkers.map(({ marker, positionPercent, lane, laneOffset }) => (
+            <button
+              key={marker.id}
+              className={`leo-timeline-bar__event-marker leo-timeline-bar__event-marker--${marker.kind}`}
+              type="button"
+              aria-label={marker.ariaLabel}
+              title={marker.title}
+              data-testid={`timeline-event-marker-${marker.id}`}
+              data-marker-id={marker.id}
+              data-kind={marker.kind}
+              data-marker-kind={marker.kind}
+              data-source-time-sec={String(marker.sourceTimeSec)}
+              data-click-target-sec={String(marker.clickTargetSec)}
+              data-marker-lane={String(lane)}
+              disabled={isTimelineDisabled}
+              style={{
+                '--leo-timeline-marker-position': `${positionPercent}%`,
+                '--leo-timeline-marker-lane-offset': String(laneOffset),
+              } as CSSProperties}
+              onClick={() => selectEventMarker(marker)}
+            />
+          ))}
         </div>
         <input
           className="leo-timeline-bar__slider"

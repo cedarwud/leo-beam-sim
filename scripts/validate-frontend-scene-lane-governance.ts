@@ -681,9 +681,9 @@ assertContains(appSource, 'const timelineDurationSec = activeTimelineDescriptor.
 assertContains(timelineAuthoritySource, "sourceOwner: 'archived-tle-run'", 'Homepage timeline declares the archived-TLE run as its source owner');
 assertContains(timelineAuthoritySource, "horizonKind: 'archived-tle-window'", 'Homepage timeline declares the archived-TLE two-hour window');
 assertContains(timelineAuthoritySource, "claimKind: 'tle-derived-run'", 'Homepage timeline labels its TLE-derived SGP4 claim');
-assertContains(appSource, "const activeTimelineDescriptor = sceneLane === 'sinr-live'", 'Homepage SINR lane selects the archived-TLE timeline descriptor');
+assertContains(appSource, 'const activeTimelineDescriptor = isArchivedTleSceneActive', 'Homepage selects the archived-TLE timeline descriptor only when that source is active');
 assertContains(appSource, 'homepageCanonicalAnalysis.selectTimelineTimeSec?.(target);', 'Homepage timeline seek selects a published TLE anchor');
-assertContains(appSource, "stepSec={sceneLane === 'sinr-live'", 'Homepage timeline uses the archived-TLE anchor step');
+assertContains(appSource, 'stepSec={isArchivedTleSceneActive', 'Homepage timeline uses the archived-TLE anchor step only when that source is active');
 assertNotContains(
   appSource,
   "const timelineDurationSec = sceneSource === 'artifact-replay'",
@@ -1052,8 +1052,18 @@ assertContains(
 tangleLockGroup('QUAR-C1-DIRECTOR', () => {
 assertContains(
   appSource,
-  'createSinrLiveCellHandoverEventIndexBuilder({',
-  'App builds the SINR-live handover index incrementally (chunked) from sinrLiveCells cell truth',
+  'createSinrLiveCellHandoverEventIndexWorkerTransport()',
+  'App prefers the Worker-backed SINR-live handover index from sinrLiveCells cell truth',
+);
+assertContains(
+  appSource,
+  'indexWorker.build(buildInput',
+  'App posts the canonical SINR-live event-index input to the Worker',
+);
+assertContains(
+  appSource,
+  'builder = createSinrLiveCellHandoverEventIndexBuilder(buildInput);',
+  'App retains the deterministic chunked SINR-live builder as the Worker fallback',
 );
 });
 assertContains(
@@ -1585,10 +1595,10 @@ assertContains(
   'parameterSection={',
   'App injects the archived-TLE parameter surface into the SINR-live drawer',
 );
-assertNotContains(
+assertContains(
   appSource,
-  'handoverPolicySection={',
-  'App keeps Walker handover-policy controls out of the archived-TLE homepage rail',
+  'teachingPolicySection={isWalkerSceneActive ? (',
+  'App keeps the Walker policy surface on the explicit teaching-policy boundary',
 );
 assertContains(
   sinrLiveDisplayDrawerSource,
@@ -2758,8 +2768,8 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  'liveSimulationEnabled="1"',
-  'Live scene telemetry marks live simulation enabled'
+  "liveSimulationEnabled={simSource === 'live' ? '1' : '0'}",
+  'Scene telemetry distinguishes live Walker simulation from archived-TLE rendering'
 );
 {
   const artifactComposerIndex = mainSceneSource.indexOf('function ArtifactSceneContent');
@@ -2803,10 +2813,11 @@ assertContains(
   "input.sceneLane === 'modqn-replay-proof'",
   'Scene lane render plan models explicit MODQN replay proof lane',
 );
-// Visual-recovery amendment (2026-08-28): a decision frame may add candidate
+// Visual-recovery amendment (2026-08-29): a decision frame may add candidate
 // geometry, but it must not erase the established carrier and event vocabulary.
-// The dedicated multi-candidate renderer remains the sole owner of solid links;
-// the legacy role-coloured HandoverLinks layer stays retired under that authority.
+// The accepted candidate snapshot remains available to the rail while the
+// dedicated central comparison overlay is layered on top; the established
+// carrier therefore remains the active owner.
 assertContains(
   mainSceneSource,
   "{presentationPlan.visible['serving-footprints']\n        && showSinrLiveCellBeams",
@@ -2819,8 +2830,8 @@ assertNotContains(
 );
 assertContains(
   mainSceneSource,
-  "&& !multiCandidateAuthorityActive\n        && !handoverDisplayIsolation.hideTimelineEffects\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\n        && (\n        <HandoverLinks",
-  'MainScene keeps legacy role-coloured handover links retired under multi-candidate authority',
+  "&& showLiveSceneEffects\n        && !handoverDisplayIsolation.hideTimelineEffects\n        && !handoverDisplayIsolation.suppressNaturalHandoverLayers\n        && (\n        <HandoverLinks",
+  'MainScene keeps the established handover links visible while the central comparison overlay is layered',
 );
 for (const [needle, label] of [
   ["{presentationPlan.visible['motion-guides'] && showOrbitTrail && (\n        <OrbitTrail", 'orbit trail'],
@@ -2865,8 +2876,8 @@ assertNotContains(
 );
 assertContains(
   mainSceneSource,
-  '&& (!multiCandidateAuthorityActive || handoverPresentation.active)',
-  'MainScene allows the handover toast under multi-candidate authority only while the accepted handover presentation is active',
+  '&& showHandoverToastOverlay\n        && (',
+  'MainScene keeps the established handover toast visible while the central comparison overlay is layered',
 );
 
 assertContains(
@@ -2886,13 +2897,13 @@ assertContains(
 );
 assertContains(
   mainSceneSource,
-  'multiCandidateAuthorityActive && !multiCandidateServingCarrierRenderable',
-  'MainScene publishes whether the established serving carrier fallback is active',
+  'multiCandidateCentralOverlayActive && !multiCandidateServingCarrierRenderable',
+  'MainScene publishes whether the parked central comparison overlay needs a serving carrier fallback',
 );
 assertContains(
   mainSceneSource,
-  "{!multiCandidateAuthorityActive && presentationPlan.visible['candidate-footprints']",
-  'MainScene suppresses the legacy candidate footprint layer while multi-candidate authority is active',
+  "{presentationPlan.visible['candidate-footprints'] && showSinrLiveCellBeams && sinrLiveCandidateBeamConeItems.length > 0",
+  'MainScene keeps the candidate footprint layer available while the central comparison overlay is layered',
 );
 
 for (const [needle, label] of [

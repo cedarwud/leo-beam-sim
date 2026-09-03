@@ -42,6 +42,7 @@ export interface AngleAwarePowerState {
  * to the public symbols p, H, G^T, I, σ², γ, B^w, U, R, ξ, P^p, P^N and η.
  */
 export interface AngleAwareLinkTerms {
+  readonly contractVersion?: string;
   readonly timeSec: number;
   readonly previousTimeSec: number | null;
   readonly previousThetaRad: number | null;
@@ -54,9 +55,9 @@ export interface AngleAwareLinkTerms {
   readonly thetaRad: number;
   readonly distanceM: number;
   readonly powerW: number;
-  /** G^T(θ) = G_0 · F_m(θ, θ_3dB), including boresight gain. */
+  /** G^T(θ, θ_3dB) = G_0 · F(θ, θ_3dB), including boresight gain. */
   readonly transmitGainLinear: number;
-  /** H = 10^(-(L + L_st)/10) · G^R, excluding the transmit pattern. */
+  /** H(t) = 10^(-L(t)/10) · G^R(t), excluding the transmit pattern. */
   readonly channelGainLinear: number;
   readonly desiredSignalW: number;
   readonly interferenceW: number;
@@ -67,6 +68,10 @@ export interface AngleAwareLinkTerms {
   readonly beamLoad: number;
   readonly throughputBps: number;
   readonly conversionEfficiency: number;
+  /** p_(s,v), the maximum served-link RF power on the physical beam. */
+  readonly beamPowerW?: number;
+  /** P^p_(s,v), the beam RF power after the shared efficiency. */
+  readonly beamSupplyPowerW?: number;
   readonly powerConsumptionW: number;
   readonly fixedPowerW: number;
   readonly systemPowerW: number;

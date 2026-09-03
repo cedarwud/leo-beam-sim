@@ -65,6 +65,8 @@ export interface CandidatePresentationLink {
   readonly sceneJoinKey: string;
   readonly railJoinKey: string;
   readonly key: CandidateLinkKey;
+  /** Source-frame join carried alongside the episode-stable pair key. */
+  readonly sourceFrameId: string;
   readonly satelliteId: string;
   readonly beamId: number;
   /** Built once for both scene and rail; consumers must not reconstruct it. */
@@ -81,6 +83,26 @@ export interface CandidatePresentationLink {
   readonly visual: CandidatePresentationVisualTreatment;
 }
 
+export type CandidatePresentationBeamRosterStatus =
+  | CandidatePresentationRole
+  | 'not-observed'
+  | 'not-displayed';
+
+/**
+ * Complete configured-beam view for one rendered satellite group.
+ *
+ * `link` is present only when this exact beam was measured in the accepted
+ * decision frame. Missing beams remain explicit `not-observed` entries; no
+ * synthetic metric or candidate row is manufactured for them.
+ */
+export interface CandidatePresentationBeamRosterEntry {
+  readonly beamId: number;
+  readonly link: CandidatePresentationLink | null;
+  readonly status: CandidatePresentationBeamRosterStatus;
+  readonly observed: boolean;
+  readonly displayed: boolean;
+}
+
 export interface CandidatePresentationSatelliteGroup {
   /** Stable for the episode and independent of candidate rank. */
   readonly joinKey: string;
@@ -89,6 +111,8 @@ export interface CandidatePresentationSatelliteGroup {
   readonly isServingSatellite: boolean;
   readonly isPinnedSatellite: boolean;
   readonly links: readonly CandidatePresentationLink[];
+  /** Configured beam inventory plus same-frame measured status. */
+  readonly beamRoster: readonly CandidatePresentationBeamRosterEntry[];
   /** Number of scientific candidate pairs for this satellite, excluding serving. */
   readonly scientificCandidatePairCount: number;
   readonly displayedCandidatePairCount: number;
@@ -151,6 +175,20 @@ export interface CandidatePresentationOptions {
    * the active union of both consumers, but it must cover every displayed key.
    */
   readonly identityAllocation?: HandoverVisualIdentityAllocation | null;
+  /**
+   * Homepage comparison mode: include every hard-eligible pair from the
+   * accepted frame instead of applying the compact legacy display cap. The
+   * scientific decision remains the source of truth in either mode.
+   */
+  readonly displayAllHardEligibleCandidates?: boolean;
+  /**
+   * Homepage-only candidate visibility gate. When enabled, a candidate must
+   * have passed both hard gates and the active decision trigger; observed or
+   * merely hard-eligible pairs stay in scientific overflow, not the story.
+   */
+  readonly displayOnlyTriggerSatisfiedCandidates?: boolean;
+  /** Configured beam inventory size for the route profile (default: 7). */
+  readonly configuredBeamCount?: number;
 }
 
 interface CandidateRecord {
@@ -199,6 +237,39 @@ function normalizeBudget(input: CandidateDisplayBudget): CandidateDisplayBudget 
   });
 }
 
+function normalizeConfiguredBeamCount(value: number | undefined): number {
+  const count = value ?? 7;
+  return assertPositiveInteger(count, 'configuredBeamCount');
+}
+
+function expandBudgetForEligibleComparison(
+  decision: HandoverDecisionFrame,
+  budget: CandidateDisplayBudget,
+  displayAllHardEligibleCandidates: boolean,
+  displayOnlyTriggerSatisfiedCandidates: boolean,
+): CandidateDisplayBudget {
+  if (!displayAllHardEligibleCandidates) return budget;
+  const records = candidateRecords(decision, null);
+  const eligibleRecords = records.filter(record => isDisplayEligibleRecord(
+    record,
+    displayOnlyTriggerSatisfiedCandidates,
+  ));
+  const eligibleSatelliteCount = new Set(
+    eligibleRecords.map(record => record.opportunity.key.satelliteId),
+  ).size;
+  const servingCount = decision.serving === null ? 0 : 1;
+  // This is a presentation expansion, not a scientific limit. It prevents
+  // the old compact 3x2 cap from silently hiding a hard-eligible pair that
+  // the accepted snapshot explicitly asked the user to compare. Do not cap
+  // this set here: eligibility belongs to the decision engine, while the
+  // homepage scene separately decides which exact beam geometry is painted.
+  return Object.freeze({
+    maxSatelliteGroups: Math.max(budget.maxSatelliteGroups, eligibleSatelliteCount + servingCount),
+    maxCandidatePairs: Math.max(budget.maxCandidatePairs, eligibleRecords.length),
+    maxConeVolumes: Math.max(budget.maxConeVolumes, eligibleRecords.length + servingCount),
+  });
+}
+
 function sameKey(left: CandidateLinkKey, right: CandidateLinkKey): boolean {
   return sameCandidateLinkKey(left, right);
 }
@@ -229,6 +300,17 @@ function isEligiblePresentationRole(role: CandidatePresentationRole): boolean {
     || role === 'qualified'
     || role === 'provisional-leader'
     || role === 'selected-target';
+}
+
+function isDisplayEligibleRecord(
+  record: CandidateRecord,
+  displayOnlyTriggerSatisfiedCandidates: boolean,
+): boolean {
+  if (displayOnlyTriggerSatisfiedCandidates) {
+    return record.state.hardEligibility === 'eligible'
+      && record.state.triggerStatus === 'satisfied';
+  }
+  return isEligiblePresentationRole(record.role);
 }
 
 function stateFor(
@@ -319,9 +401,12 @@ function styleFor(
       return Object.freeze({
         role,
         footprintStyle: 'dashed',
+        // A qualified candidate remains a measured alternative until commit.
+        // Keep its bounded sparse wireframe and dashed measurement path visible
+        // so the central scene can be read without consulting the rail. The
+        // renderer still enforces measurement-only semantics and the one-solid-
+        // data-link invariant.
         coneStyle: 'wireframe',
-        // Every displayed qualified pair is an explicit measurement guide;
-        // it is never promoted to the single serving data link.
         dataLinkStyle: 'measurement-dashed',
         isMeasurementOnly: true,
         isActiveDataLink: false,
@@ -330,32 +415,32 @@ function styleFor(
       return Object.freeze({
         role,
         footprintStyle: 'dotted',
+        // Hard eligibility is already a meaningful comparison state. Use the
+        // same sparse wireframe/measurement grammar as qualified candidates;
+        // it distinguishes a real alternative from an observed-only record
+        // without implying an active data path.
         coneStyle: 'wireframe',
-        // Hard eligibility is the comparison cue, so keep its guide visible
-        // even before the trigger/TTT gate is satisfied.
         dataLinkStyle: 'measurement-dashed',
         isMeasurementOnly: true,
         isActiveDataLink: false,
       });
-    case 'observed':
-      // Observation is represented by its coloured ground Cell and identity
-      // label. Raising every measured pair into a full-height cone creates
-      // broad crossing walls whenever a satellite is near the horizon. A user
-      // pin remains the explicit inspection override; qualification promotes
-      // the pair to the cone grammar below.
+    case 'observed': {
+      // Observation is footprint/label-only in every phase. A user pin is the
+      // explicit inspection override that may add one sparse wireframe and
+      // its dashed measurement guide without changing serving authority.
       const measurementConeVisible = isPinned;
       return Object.freeze({
         role,
         footprintStyle: 'dotted',
         coneStyle: measurementConeVisible ? 'wireframe' : 'hidden',
-        // The footprint and translucent volume already prove that this pair is
-        // being measured. Drawing a full UE-to-satellite dashed line for every
-        // observed pair turns the viewport into a line cage; reserve that
-        // explicit path for a pinned pair or a later qualified/leader role.
+        // Drawing a full UE-to-satellite dashed line for every observed pair
+        // turns the viewport into a line cage; reserve that explicit path for
+        // a pinned pair or the explicit leader/selected-target roles.
         dataLinkStyle: isPinned ? 'measurement-dashed' : 'none',
         isMeasurementOnly: true,
         isActiveDataLink: false,
       });
+    }
   }
 }
 
@@ -433,6 +518,8 @@ function selectDisplayRecords(
   decision: HandoverDecisionFrame,
   budget: CandidateDisplayBudget,
   pinnedKey: CandidateLinkKey | null,
+  displayAllHardEligibleCandidates = false,
+  displayOnlyTriggerSatisfiedCandidates = false,
 ): DisplaySelection {
   const records = candidateRecords(decision, pinnedKey);
   const bySatellite = groupCandidateRecords(records);
@@ -445,25 +532,47 @@ function selectDisplayRecords(
       // prefers selected/qualified pairs, but this explicit group-level check
       // prevents an observed first record from consuming an alternate slot when
       // another pair in the same source group is eligible.
-      const leftHasEligible = left[1].some(record => isEligiblePresentationRole(record.role));
-      const rightHasEligible = right[1].some(record => isEligiblePresentationRole(record.role));
+      const leftHasEligible = left[1].some(record => isDisplayEligibleRecord(
+        record,
+        displayOnlyTriggerSatisfiedCandidates,
+      ));
+      const rightHasEligible = right[1].some(record => isDisplayEligibleRecord(
+        record,
+        displayOnlyTriggerSatisfiedCandidates,
+      ));
       if (leftHasEligible !== rightHasEligible) return leftHasEligible ? -1 : 1;
       const byRecord = compareRecords(left[1][0]!, right[1][0]!);
       return byRecord !== 0 ? byRecord : compareStableText(left[0], right[0]);
     })
     .map(([satelliteId]) => satelliteId);
-  const alternateGroupCapacity = Math.max(
+  // Full comparison mode expands the compact budget only for satellite
+  // groups that have hard-eligible evidence. Observed-only groups remain in
+  // the scientific/overflow accounting and must not consume a central scene
+  // group slot (or make the rendered group count exceed the expanded budget).
+  const comparisonGroupIds = displayAllHardEligibleCandidates
+    ? orderedGroupIds.filter(satelliteId => (
+      bySatellite.get(satelliteId)?.some(record => isDisplayEligibleRecord(
+        record,
+        displayOnlyTriggerSatisfiedCandidates,
+      )) ?? false
+    ))
+    : orderedGroupIds;
+  const budgetAlternateGroupCapacity = Math.max(
     0,
     budget.maxSatelliteGroups - (servingSatelliteId === null ? 0 : 1),
   );
+  const alternateGroupCapacity = displayAllHardEligibleCandidates
+    ? comparisonGroupIds.length
+    : budgetAlternateGroupCapacity;
   const pinnedSatelliteId = pinnedKey === null ? null : pinnedKey.satelliteId;
   const selectedGroupIds: string[] = [];
   if (pinnedSatelliteId !== null
     && pinnedSatelliteId !== servingSatelliteId
-    && bySatellite.has(pinnedSatelliteId)) {
+    && bySatellite.has(pinnedSatelliteId)
+    && (!displayAllHardEligibleCandidates || comparisonGroupIds.includes(pinnedSatelliteId))) {
     selectedGroupIds.push(pinnedSatelliteId);
   }
-  for (const satelliteId of orderedGroupIds) {
+  for (const satelliteId of comparisonGroupIds) {
     if (selectedGroupIds.includes(satelliteId)) continue;
     if (selectedGroupIds.length >= alternateGroupCapacity) break;
     selectedGroupIds.push(satelliteId);
@@ -487,7 +596,10 @@ function selectDisplayRecords(
     : [servingSatelliteId, ...selectedGroupIds.filter(satelliteId => satelliteId !== servingSatelliteId)];
   const groupRecords = candidateRenderGroupIds.flatMap(satelliteId => {
     const group = bySatellite.get(satelliteId) ?? [];
-    const selected = group.slice(0, MAX_CANDIDATE_BEAMS_PER_SATELLITE);
+    const selected = displayAllHardEligibleCandidates
+      ? group.filter(record => isDisplayEligibleRecord(record, displayOnlyTriggerSatisfiedCandidates)
+        || (pinnedKey !== null && sameKey(record.opportunity.key, pinnedKey)))
+      : group.slice(0, MAX_CANDIDATE_BEAMS_PER_SATELLITE);
     if (pinnedKey !== null && group.some(record => sameKey(record.opportunity.key, pinnedKey))) {
       const pinned = group.find(record => sameKey(record.opportunity.key, pinnedKey));
       if (pinned !== undefined && !selected.some(record => sameKey(record.opportunity.key, pinned.opportunity.key))) {
@@ -497,10 +609,12 @@ function selectDisplayRecords(
     }
     return selected;
   });
-  const candidateCapacity = Math.min(
-    budget.maxCandidatePairs,
-    Math.max(0, budget.maxConeVolumes - (decision.serving === null ? 0 : 1)),
-  );
+  const candidateCapacity = displayAllHardEligibleCandidates
+    ? groupRecords.length
+    : Math.min(
+      budget.maxCandidatePairs,
+      Math.max(0, budget.maxConeVolumes - (decision.serving === null ? 0 : 1)),
+    );
   const boundedRecords = groupRecords.sort(compareRecords);
   // Preserve one eligible pair per eligible satellite whenever the pair cap
   // permits it. This keeps the central scene able to show an actual
@@ -511,7 +625,7 @@ function selectDisplayRecords(
   const reservedEligibleSatelliteIds = new Set<string>();
   if (candidateCapacity > 0) {
     for (const record of boundedRecords) {
-      if (!isEligiblePresentationRole(record.role)) continue;
+      if (!isDisplayEligibleRecord(record, displayOnlyTriggerSatisfiedCandidates)) continue;
       if (reservedEligibleSatelliteIds.has(record.opportunity.key.satelliteId)) continue;
       reservedEligibleSatelliteIds.add(record.opportunity.key.satelliteId);
       reservedEligibleKeys.add(keyFor(record.opportunity.key));
@@ -568,6 +682,7 @@ function buildLink(
     sceneJoinKey: stableJoinKey(decision.episodeId, key),
     railJoinKey: stableJoinKey(decision.episodeId, key),
     key: copyKey(key),
+    sourceFrameId: decision.sourceFrameId,
     satelliteId: key.satelliteId,
     beamId: key.beamId,
     displayKey: formatCandidateDisplayKey({
@@ -650,8 +765,17 @@ export function buildCandidatePresentationPlan(
   options?: CandidatePresentationOptions | CandidateLinkKey | null,
 ): CandidatePresentationPlan {
   validateHandoverDecisionFrame(decision);
-  const normalizedBudget = normalizeBudget(budget);
   const normalizedOptions = optionsValue(options);
+  const compactBudget = normalizeBudget(budget);
+  const displayAllHardEligibleCandidates = normalizedOptions.displayAllHardEligibleCandidates === true;
+  const displayOnlyTriggerSatisfiedCandidates = normalizedOptions.displayOnlyTriggerSatisfiedCandidates === true;
+  const normalizedBudget = expandBudgetForEligibleComparison(
+    decision,
+    compactBudget,
+    displayAllHardEligibleCandidates,
+    displayOnlyTriggerSatisfiedCandidates,
+  );
+  const configuredBeamCount = normalizeConfiguredBeamCount(normalizedOptions.configuredBeamCount);
   const requestedPin = normalizedOptions.pinnedKey === undefined || normalizedOptions.pinnedKey === null
     ? null
     : copyKey(normalizedOptions.pinnedKey);
@@ -664,20 +788,70 @@ export function buildCandidatePresentationPlan(
   const acceptedPin = requestedPin !== null && (opportunityForPin !== null || pinIsServing)
     ? requestedPin
     : null;
-  const baselineSelection = selectDisplayRecords(decision, normalizedBudget, null);
-  const selection = selectDisplayRecords(decision, normalizedBudget, acceptedPin);
+  const baselineSelection = selectDisplayRecords(
+    decision,
+    normalizedBudget,
+    null,
+    displayAllHardEligibleCandidates,
+    displayOnlyTriggerSatisfiedCandidates,
+  );
+  const selection = selectDisplayRecords(
+    decision,
+    normalizedBudget,
+    acceptedPin,
+    displayAllHardEligibleCandidates,
+    displayOnlyTriggerSatisfiedCandidates,
+  );
   const displayedKeys = uniqueKeys([
     ...(decision.serving === null ? [] : [decision.serving]),
     ...selection.records.map(record => record.opportunity.key),
   ]);
-  const allocation = normalizedOptions.identityAllocation === undefined
-    || normalizedOptions.identityAllocation === null
-    ? buildAllocation(decision, normalizedBudget, normalizedOptions, displayedKeys)
-    : assertAllocationCoversDisplayedKeys(
-      decision,
-      normalizedOptions.identityAllocation,
-      displayedKeys,
-    );
+  const rosterSatelliteIds = new Set([
+    ...selection.groupIds,
+    ...(decision.serving === null ? [] : [decision.serving.satelliteId]),
+  ]);
+  const rosterKeysForAllocation = displayAllHardEligibleCandidates
+    ? decision.opportunities
+      .filter(opportunity => rosterSatelliteIds.has(opportunity.key.satelliteId))
+      .map(opportunity => opportunity.key)
+    : [];
+  // A recent commit can leave the old source pair out of the next decision
+  // frame. Keep that source as a presentation-only colour anchor so the
+  // accepted target is selected against the actual predecessor; it is not
+  // added to displayedLinks, counts, or the central shortlist.
+  const transitionAnchorKeys = decision.recentCommit?.from === null
+    || decision.recentCommit?.from === undefined
+    ? []
+    : [decision.recentCommit.from];
+  const allocationKeys = uniqueKeys([
+    ...displayedKeys,
+    ...rosterKeysForAllocation,
+    ...transitionAnchorKeys,
+  ]);
+  const suppliedAllocation = normalizedOptions.identityAllocation ?? null;
+  const allocation = suppliedAllocation === null
+    ? buildAllocation(decision, normalizedBudget, normalizedOptions, allocationKeys)
+    : suppliedAllocation.episodeId !== decision.episodeId
+      ? assertAllocationCoversDisplayedKeys(decision, suppliedAllocation, allocationKeys)
+      : allocationKeys.every(key => (
+        suppliedAllocation.identitiesBySatelliteId[key.satelliteId] !== undefined
+        && resolveHandoverBeamVisualIdentity(
+          suppliedAllocation,
+          key.satelliteId,
+          key.beamId,
+        ) !== null
+      ))
+        ? assertAllocationCoversDisplayedKeys(decision, suppliedAllocation, allocationKeys)
+        : buildAllocation(
+          decision,
+          normalizedBudget,
+          {
+            ...normalizedOptions,
+            previousIdentityAllocation: normalizedOptions.previousIdentityAllocation
+              ?? suppliedAllocation,
+          },
+          allocationKeys,
+        );
   const baselineKeys = new Set(baselineSelection.records.map(record => keyFor(record.opportunity.key)));
   const displayedCandidateKeys = new Set(selection.records.map(record => keyFor(record.opportunity.key)));
   const pinnedWasHiddenBeforePin = acceptedPin !== null
@@ -720,6 +894,53 @@ export function buildCandidatePresentationPlan(
         acceptedPin,
       ));
     }
+    const linkByBeamId = new Map(links.map(link => [link.beamId, link] as const));
+    const recordByBeamId = new Map(scientificRecords.map(record => [
+      record.opportunity.key.beamId,
+      record,
+    ] as const));
+    const beamRoster: CandidatePresentationBeamRosterEntry[] = [];
+    for (let beamId = 1; beamId <= configuredBeamCount; beamId += 1) {
+      const displayedLink = linkByBeamId.get(beamId) ?? null;
+      const record = recordByBeamId.get(beamId) ?? null;
+      if (displayedLink !== null) {
+        beamRoster.push(Object.freeze({
+          beamId,
+          link: displayedLink,
+          status: displayedLink.role,
+          observed: true,
+          displayed: true,
+        }));
+        continue;
+      }
+      if (record !== null && displayAllHardEligibleCandidates) {
+        // Full comparison mode keeps measured but currently non-eligible beams
+        // available to the rail without promoting them into the central scene.
+        const rosterLink = buildLink(
+          decision,
+          allocation,
+          record.opportunity.key,
+          record.opportunity,
+          record.state,
+          acceptedPin,
+        );
+        beamRoster.push(Object.freeze({
+          beamId,
+          link: rosterLink,
+          status: rosterLink.role,
+          observed: true,
+          displayed: false,
+        }));
+        continue;
+      }
+      beamRoster.push(Object.freeze({
+        beamId,
+        link: null,
+        status: record === null ? 'not-observed' : 'not-displayed',
+        observed: record !== null,
+        displayed: false,
+      }));
+    }
     // A candidate group displaced by a pin can still be represented by its
     // explicit +N count; do not manufacture a scene link for hidden rows.
     const displayedCandidatePairCount = selectedRecords.length;
@@ -731,6 +952,7 @@ export function buildCandidatePresentationPlan(
       isServingSatellite,
       isPinnedSatellite: acceptedPin !== null && acceptedPin.satelliteId === satelliteId,
       links: Object.freeze(links),
+      beamRoster: Object.freeze(beamRoster),
       scientificCandidatePairCount: scientificRecords.length,
       displayedCandidatePairCount,
       hiddenCandidatePairCount,

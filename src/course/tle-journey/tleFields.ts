@@ -146,3 +146,58 @@ export function deriveTleFacts(line1: string, line2: string): TleDerivedFacts {
     epochDayOfYear,
   });
 }
+
+export interface TleColumnWalkSubtitle {
+  readonly fieldId: string;
+  readonly labelZhHant: string;
+  readonly lineColumnZhHant: string;
+  readonly rawValue: string;
+  readonly keyPointZhHant: string;
+}
+
+type TleColumnWalkKeyPoint = (
+  facts: TleDerivedFacts,
+  rawValue: string,
+) => string;
+
+/**
+ * The five narrated fields share one source of truth with the scanner.  The
+ * helper keeps the bottom caption tied to selectedFieldId in both autoplay
+ * and paused/manual modes, while retaining the derived values in the copy.
+ */
+const TLE_COLUMN_WALK_KEY_POINTS: Readonly<Record<string, TleColumnWalkKeyPoint>> = Object.freeze({
+  'l1-epoch': (facts, rawValue) =>
+    `它是這組軌道元素的時間基準；${rawValue} 表示 ${facts.epochYear} 年第 ${facts.epochDayOfYear.toFixed(8)} 日。SGP4 以此刻為起點推進到指定時刻，距離 Epoch 越遠，資料適用性與推算誤差越需要另外評估。`,
+  'l1-checksum': (_facts, rawValue) =>
+    `它是第一行前 68 欄的快速完整性檢查：數字相加、負號計 1，再取 mod 10，結果為 ${rawValue}。失敗時系統 fail-closed，不載入這筆資料；通過 checksum 仍須再通過完整 TLE 格式、欄位一致性與軌道傳播檢查。`,
+  'l2-inclination': (facts, rawValue) =>
+    `它定義軌道面相對赤道面的傾斜，本筆為 ${facts.inclinationDeg.toFixed(4)}°（原始欄位 ${rawValue}）；這會限制地面軌跡可達的緯度範圍，並影響後續 SGP4 狀態與地面觀測幾何。`,
+  'l2-meanmotion': (facts, rawValue) =>
+    `它是平均每日公轉圈數；SGP4 以此決定軌道的時間尺度。本筆週期為 1440 ÷ ${rawValue} = ${facts.orbitalPeriodMin.toFixed(1)} 分鐘，後續一圈地固軌跡與地面通過時序都以此為基礎。`,
+  'l2-checksum': (_facts, rawValue) =>
+    `它是第二行前 68 欄的快速完整性檢查：數字相加、負號計 1，再取 mod 10，結果為 ${rawValue}。失敗時系統 fail-closed，不把資料送進 SGP4；通過 checksum 仍須再通過完整 TLE 格式、兩行一致性與軌道傳播檢查。`,
+});
+
+export function getTleColumnWalkSubtitle(
+  fieldId: string,
+  line1: string,
+  line2: string,
+  facts: TleDerivedFacts,
+): TleColumnWalkSubtitle {
+  const field = TLE_FIELDS.find(candidate => candidate.id === fieldId)
+    ?? TLE_FIELDS.find(candidate => candidate.id === 'l2-meanmotion')!;
+  const sourceLine = field.line === 1 ? line1 : line2;
+  const rawValue = sourceLine.slice(field.startColumn - 1, field.endColumn).trim();
+  const keyPoint = TLE_COLUMN_WALK_KEY_POINTS[field.id]?.(facts, rawValue) ?? field.explainZhHant;
+  const columnRange = field.startColumn === field.endColumn
+    ? `${field.startColumn}`
+    : `${field.startColumn}–${field.endColumn}`;
+
+  return Object.freeze({
+    fieldId: field.id,
+    labelZhHant: field.labelZhHant,
+    lineColumnZhHant: `第 ${field.line} 行 · 第 ${columnRange} 欄`,
+    rawValue,
+    keyPointZhHant: keyPoint,
+  });
+}

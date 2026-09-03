@@ -127,16 +127,16 @@ function point(value: VisualLabGlobalPoint): [number, number, number] {
  * Exported so a route that draws its own point cloud (Act 1's shell filter)
  * reuses this sphere instead of modelling a second Earth beside it.
  */
-export function EarthSphere({ palette }: { readonly palette: GlobalScenePalette }): ReactElement {
+export function EarthSphere({ palette, showAtmosphere = true }: { readonly palette: GlobalScenePalette; readonly showAtmosphere?: boolean }): ReactElement {
   return <group name="visual-lab-scientific-globe">
     <mesh>
       <sphereGeometry args={[VISUAL_LAB_EARTH_RADIUS, 48, 32]} />
       <meshStandardMaterial color={palette.earth} roughness={.82} metalness={.06} />
     </mesh>
-    <mesh scale={1.035}>
+    {showAtmosphere ? <mesh scale={1.035}>
       <sphereGeometry args={[VISUAL_LAB_EARTH_RADIUS, 32, 24]} />
       <meshBasicMaterial color={palette.atmosphere} transparent opacity={.09} side={THREE.BackSide} />
-    </mesh>
+    </mesh> : null}
     {/* Orientation only: these low-contrast rings are not a geographic map. */}
     <mesh rotation={[Math.PI / 2, 0, 0]}>
       <torusGeometry args={[VISUAL_LAB_EARTH_RADIUS * 1.002, .008, 5, 96]} />

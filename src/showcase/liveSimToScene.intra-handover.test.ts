@@ -83,6 +83,144 @@ function project(
   return liveSimToScene(frame, geometry);
 }
 
+function archivedTleCellFrame(
+  simTimeSec: number,
+  state: 'pending' | 'committed',
+): SinrLiveCellFrame {
+  const servingSatId = 'tle-serving';
+  const candidateSatId = 'tle-candidate';
+  const sourceSatId = 'tle-source';
+  const cells = Array.from({ length: 7 }, (_, cellId) => ({
+    cellId,
+    servingSatId,
+    beamIdentity: `${servingSatId}#cell${cellId}`,
+    frequencyIndex: cellId % 3,
+    servingSinrDb: -20,
+    candidateCount: state === 'pending' ? 2 : 1,
+  }));
+  const ues = Array.from({ length: 100 }, (_, index) => {
+    const cellId = index % 7;
+    const isPrimary = index === 0;
+    return {
+      ueId: `ue-${index + 1}`,
+      cellId,
+      cellDistanceKm: 0,
+      offAxisDeg: 0,
+      servingSatId,
+      beamIdentity: `${servingSatId}#cell${cellId}`,
+      frequencyIndex: cellId % 3,
+      sinrDb: isPrimary ? -21 : -20,
+      handoverKind: state === 'committed' && isPrimary ? 'inter' as const : 'none' as const,
+      comparisonSatId: isPrimary && state === 'pending' ? candidateSatId : null,
+      comparisonSinrDb: isPrimary && state === 'pending' ? -4 : null,
+      pendingTargetSatId: isPrimary && state === 'pending' ? candidateSatId : null,
+      triggerProgressSec: isPrimary && state === 'pending' ? 15 : 0,
+    };
+  });
+  return {
+    simTimeSec,
+    cells,
+    ues,
+    illuminatedBeams: cells.map(cell => ({
+      satId: servingSatId,
+      cellId: cell.cellId,
+      frequencyIndex: cell.frequencyIndex,
+      serving: true,
+    })),
+    servedCellCount: 7,
+    servedUeCount: 100,
+    servingSatCount: 1,
+    intraHandoverCount: 0,
+    interHandoverCount: state === 'committed' ? 1 : 0,
+    cumulativeIntraHandoverCount: 0,
+    cumulativeInterHandoverCount: state === 'committed' ? 1 : 0,
+    primaryUeId: 'ue-1',
+    recentHandoverEvents: state === 'committed'
+      ? [{
+        ueId: 'ue-1',
+        kind: 'inter',
+        sourceTimeSec: 9,
+        fromSatId: sourceSatId,
+        fromCellId: 1,
+        toSatId: servingSatId,
+        toCellId: 0,
+      }]
+      : [],
+  };
+}
+
+function archivedTleProjection(state: 'pending' | 'committed'): ReturnType<typeof liveSimToScene> {
+  const frame = createEmptyFrame(10);
+  frame.serving = { satId: 'tle-serving', beamId: 0, sinrDb: -12 };
+  frame.perUePositions = Array.from({ length: 100 }, (_, index) => ({
+    id: `ue-${index + 1}`,
+    groundX: 0,
+    groundZ: 0,
+    eastKm: 0,
+    northKm: 0,
+    sinrDb: -12,
+    servingSatId: 'tle-serving',
+    servingBeamId: index % 7,
+    pendingTargetSatId: index === 0 && state === 'pending' ? 'tle-candidate' : null,
+    pendingTargetBeamId: index === 0 && state === 'pending' ? 6 : null,
+    triggerProgressSec: index === 0 && state === 'pending' ? 15 : 0,
+  }));
+  frame.sinrLiveCells = archivedTleCellFrame(10, state);
+  frame.pendingTargetSatId = state === 'pending' ? 'tle-candidate' : null;
+  frame.pendingTargetBeamId = state === 'pending' ? 6 : null;
+  frame.pendingTargetSinrDb = state === 'pending' ? -4 : null;
+  frame.handoverTriggerProgressSec = state === 'pending' ? 15 : 0;
+  if (state === 'committed') {
+    frame.recentHoSourceSatId = 'tle-source';
+    frame.recentHoTargetSatId = 'tle-serving';
+    frame.recentHoSourceBeamId = 1;
+    frame.recentHoTargetBeamId = 0;
+    frame.lastHoEvent = {
+      timeMs: 9_000,
+      action: 'inter-handover',
+      fromSatId: 'tle-source',
+      fromBeamId: 1,
+      fromSinrDb: -18,
+      toSatId: 'tle-serving',
+      toBeamId: 0,
+      toSinrDb: -12,
+      deltaDb: 6,
+    };
+    frame.interHandoverEvent = {
+      fromSatId: 'tle-source',
+      fromBeamId: 1,
+      toSatId: 'tle-serving',
+      toBeamId: 0,
+      triggeredAtSec: 9,
+      expiresAtSec: 13,
+    };
+  }
+  return liveSimToScene(frame, sceneGeometryFromProfile({
+    shell: { altitudeKm: 780 },
+    antenna: { beamwidth3dBRad: 0.08 },
+    handover: { triggerTimeSec: 30 },
+    orbit: { shells: [{ id: 'shell-0', altitudeKm: 780 }] },
+    beams: { frequencyReuse: 3 },
+  }), { source: 'archived-tle' });
+}
+
+const archivedPendingProjection = archivedTleProjection('pending');
+assert.equal(archivedPendingProjection.pendingTarget?.satId, 'tle-candidate');
+assert.equal(archivedPendingProjection.pendingTarget?.beamId, '6');
+assert.equal(archivedPendingProjection.pendingTarget?.channelMetric?.dB, -4);
+assert.equal(archivedPendingProjection.ues[0]?.targetSatelliteId, 'tle-candidate');
+assert.equal(archivedPendingProjection.ues[0]?.targetBeamId, '6');
+assert.equal(archivedPendingProjection.metrics.primary.dB, -12);
+assert.equal(archivedPendingProjection.transitionProgress.inter?.kind, 'pending');
+assert.equal(archivedPendingProjection.transitionProgress.inter?.pendingProgressSec, 15);
+assert.equal(archivedPendingProjection.transitionProgress.inter?.pendingTargetSec, 30);
+
+const archivedCommittedProjection = archivedTleProjection('committed');
+assert.equal(archivedCommittedProjection.recentHo?.sourceSatId, 'tle-source');
+assert.equal(archivedCommittedProjection.transitionProgress.inter?.kind, 'committed');
+assert.equal(archivedCommittedProjection.transitionProgress.inter?.fromSatId, 'tle-source');
+assert.equal(archivedCommittedProjection.transitionProgress.inter?.toSatId, 'tle-serving');
+
 const intraEvent: SinrLiveCellHandoverEvent = {
   ueId: 'live-ue-0',
   kind: 'intra',

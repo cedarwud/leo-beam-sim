@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import {
   selectDirectorHandoverEvents,
+  liveWalkerHandoverEventIndexToRailEvents,
 } from './liveWalkerHandoverRailAdapter';
-import type { LiveWalkerHandoverEvent } from '../scene/liveWalkerHandoverEventIndex';
+import type {
+  LiveWalkerHandoverEvent,
+  LiveWalkerHandoverEventIndex,
+} from '../scene/liveWalkerHandoverEventIndex';
 
 const events = [
   { id: 'secondary', ueId: 'live-ue-15' },
@@ -45,5 +49,36 @@ assert.deepEqual(
   ['primary'],
   'no focus falls back to the index primary (unchanged default)',
 );
+
+const cellTruthIndex = {
+  sourceOwner: 'sinr-live-cell-truth',
+  ueScope: 'primary-ue-only',
+  aggregateClaim: 'not-100-ue-aggregate',
+  primaryUeId: 'live-ue-0',
+  events: [{
+    id: 'same-cell-beam-switch',
+    sourceTimeSec: 12,
+    kind: 'intra',
+    fromSatId: 'SAT-A',
+    fromBeamId: 5,
+    toSatId: 'SAT-A',
+    toBeamId: 421,
+    ueId: 'live-ue-0',
+    fromCellId: 0,
+    toCellId: 0,
+    fromBeamIdentity: 'SAT-A#beam5',
+    toBeamIdentity: 'SAT-A#beam421',
+    fromSinrDb: -3,
+    toSinrDb: 1,
+    deltaDb: 4,
+    sourceStartSec: 2,
+    sourceEndSec: 32,
+    clickTargetSec: 12,
+    count: 1,
+  }],
+} as unknown as LiveWalkerHandoverEventIndex;
+const cellTruthRail = liveWalkerHandoverEventIndexToRailEvents(cellTruthIndex);
+assert.equal(cellTruthRail[0]?.fromLabel, 'SAT-A C0 B5');
+assert.equal(cellTruthRail[0]?.toLabel, 'SAT-A C0 B421');
 
 console.log('liveWalkerHandoverRailAdapter.test.ts: PASS');

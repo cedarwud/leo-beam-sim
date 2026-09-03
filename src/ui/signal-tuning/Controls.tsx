@@ -344,6 +344,7 @@ export function SelectControl({
   return (
     <div
       data-testid={testId}
+      data-control-active="true"
       style={{
         display: 'grid',
         gap: isLegacy ? 8 : 10,

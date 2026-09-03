@@ -1,0 +1,237 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #07141d;
+  color: #e8f4f4;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { width: 100%; min-height: 100%; margin: 0; }
+
+body { overflow: hidden; background: #07141d; }
+
+button { font: inherit; }
+
+.fixture-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.contract-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(34, 92, 115, .42), transparent 34%),
+    radial-gradient(circle at 76% 22%, rgba(95, 82, 154, .17), transparent 28%),
+    linear-gradient(145deg, #07141d 0%, #0b2430 54%, #07141d 100%);
+}
+
+.ancestor-hidden-stage { opacity: 0; }
+
+.scene-constellation,
+.scene-constellation::before,
+.scene-constellation::after { position: absolute; inset: 0; pointer-events: none; }
+
+.scene-constellation::before,
+.scene-constellation::after {
+  content: "";
+  background-image: radial-gradient(circle, rgba(216, 243, 248, .75) 0 1px, transparent 1.5px);
+  background-size: 137px 113px;
+  opacity: .34;
+}
+
+.scene-constellation::after { background-size: 199px 151px; background-position: 73px 31px; opacity: .2; }
+
+.star { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #ffd166; }
+.star--one { left: 23%; top: 28%; }
+.star--two { left: 73%; top: 33%; background: #87e6ec; }
+.star--three { left: 67%; top: 67%; width: 4px; height: 4px; background: #d4a6ff; }
+
+.orbit { position: absolute; left: 50%; top: 46%; border: 1px solid rgba(135, 230, 236, .48); border-radius: 50%; transform: translate(-50%, -50%) rotate(-16deg); }
+.orbit--outer { width: min(55vw, 860px); height: min(27vw, 420px); }
+.orbit--inner { width: min(30vw, 470px); height: min(15vw, 235px); border-color: rgba(255, 209, 102, .54); }
+
+.subject {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: clamp(128px, 12vw, 210px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  color: #07141d;
+  background: #ffd166;
+  border: 4px solid #f7fbff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 10px rgba(255, 209, 102, .12), 0 0 34px rgba(255, 209, 102, .45);
+  z-index: 2;
+}
+
+.subject strong { position: relative; z-index: 3; font-size: clamp(20px, 2vw, 32px); letter-spacing: .08em; }
+.subject-ring { position: absolute; width: 148%; height: 40%; border: 2px solid #07141d; border-radius: 50%; transform: rotate(-18deg); }
+.subject-dot { position: absolute; width: 13%; aspect-ratio: 1; border: 2px solid #07141d; border-radius: 50%; left: 18%; top: 22%; }
+
+.primary-cue {
+  position: absolute;
+  left: 69%;
+  top: 40%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: #e8f4f4;
+  border: 1px solid #87e6ec;
+  border-radius: 999px;
+  background: rgba(7, 20, 29, .78);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  z-index: 3;
+}
+
+.cue-line { width: 28px; height: 2px; background: #87e6ec; }
+
+.beat-control-wrap { position: absolute; left: 5%; top: 8%; z-index: 4; }
+.beat-control {
+  min-height: 44px;
+  padding: 9px 14px;
+  color: #07141d;
+  background: #87e6ec;
+  border: 2px solid #e8f4f4;
+  border-radius: 7px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.beat-control span { margin-left: 8px; font-variant-numeric: tabular-nums; }
+.beat-control:hover { background: #baf6f8; }
+.beat-control:focus-visible { outline: 4px solid #ffd166; outline-offset: 4px; }
+
+.subtitle-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 104px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 14px 6vw;
+  color: #f7fbff;
+  background: rgba(4, 12, 19, .78);
+  border-top: 1px solid rgba(135, 230, 236, .38);
+  font-size: 18px;
+  line-height: 1.25;
+  z-index: 4;
+}
+
+.subtitle-bar [data-subtitle-line] { display: block; }
+
+.telemetry {
+  position: absolute;
+  right: 4%;
+  top: 8%;
+  max-width: min(32vw, 420px);
+  color: rgba(232, 244, 244, .72);
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  z-index: 3;
+}
+
+.bad-overlay {
+  position: absolute;
+  width: 180px;
+  height: 150px;
+  background: rgba(255, 0, 0, .9);
+  border: 2px solid #ff4a4a;
+  z-index: 10;
+  pointer-events: none;
+}
+.bad-overlay--a { left: 42%; top: 37%; }
+.bad-overlay--b { left: 48%; top: 42%; }
+
+.inactive-cue { display: none; }
+
+/* Adversarial case: these nodes intentionally have no contract markers. */
+.unmarked-fullscreen {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 38, 38, .34);
+  z-index: 12;
+}
+
+.unmarked-sidebar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 286px;
+  background: rgba(4, 12, 19, .96);
+  border-right: 3px solid #ff4a4a;
+  z-index: 13;
+}
+
+.unmarked-hidden-cue { display: none; }
+
+.nested-unmarked-fullscreen {
+  position: absolute;
+  inset: 0;
+  background: rgba(150, 38, 255, .32);
+  z-index: 14;
+}
+
+.nested-unmarked-sidebar {
+  position: absolute;
+  left: 18%;
+  top: 0;
+  bottom: 0;
+  width: 240px;
+  background: rgba(28, 8, 48, .92);
+  border-right: 3px solid #d4a6ff;
+  z-index: 15;
+}
+
+.nested-unmarked-hidden-cue { display: none; }
+
+/* Adversarial case: structurally valid decoration registration must not waive
+   the stage-relative geometry envelope. */
+.expanded-allowed-star {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 38, 38, .38);
+  z-index: 20;
+}
+
+/* Adversarial case: structurally valid decoration registration must not waive
+   an uncontrolled paint effect, even when the element box stays tiny. */
+.shadow-allowed-star {
+  position: absolute;
+  left: 58%;
+  top: 57%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd166;
+  box-shadow: 0 0 600px 300px rgba(255, 38, 38, .75);
+  z-index: 20;
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@media (max-width: 600px) {
+  .orbit--outer { width: 92vw; height: 46vw; }
+  .orbit--inner { width: 60vw; height: 30vw; }
+  .beat-control-wrap { left: 5%; top: 5%; }
+  .telemetry { right: 4%; top: 5%; max-width: 42vw; font-size: 10px; }
+  .primary-cue { left: auto; right: 5%; top: 39%; font-size: 13px; }
+  .subtitle-bar { min-height: 96px; padding-inline: 5vw; font-size: 16px; }
+}

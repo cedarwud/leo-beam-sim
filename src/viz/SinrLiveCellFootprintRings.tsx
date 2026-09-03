@@ -12,13 +12,10 @@
  * as a distinct 3-layer hex with its UEs scattered OFF-CENTRE inside it (the off-axis
  * story the flat outline alone did not make legible).
  *
- * COLOUR (owner choice B, 2026-06-22): every layer renders the cell's SEMANTIC role
- * colour — hero serving YELLOW / candidate BLUE / context GREY — resolved by the SAME
- * `resolveSinrLiveConeRenderColor` the cone mount uses, from the hero/override/background
- * inputs passed as props (defaults = `beamDisplaySpec.*`). So the footprint hex MATCHES
- * its cone (no per-sat rainbow), and this file holds ZERO colour literal (the
- * beam-display-spec purity gate's enforce state for it). The resolver item's
- * serving-identity `color` survives as per-cell DATA / userData, not the rendered hue.
+ * COLOUR: the inner layer follows the cone's resolved colour. In the live lane
+ * that is the stable (satellite, beam) identity, so an intra handover keeps one
+ * hue family while changing shade. The outer rim uses the satellite's base hue
+ * to make that family legible without reintroducing role colours.
  *
  * This REPLACES the legacy steered `AmbientFootprintRings` (which sat at the STEERED
  * beam ground positions — a different geometry from the earth-fixed cell centres, so it
@@ -44,14 +41,20 @@ import {
   SINR_LIVE_FOOTPRINT_RING_Y_LIFT,
   type SinrLiveConePalette,
 } from '../constants/sinrLiveConeStyle';
-import { satelliteTint } from '../constants/beamRoleTokens';
+import { colorForServingSatellite } from '../constants/servingColour';
 import {
+  HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,
+  homepageSatelliteColorForBeam,
+} from '../homepage/controller/homepageSatelliteVisualIdentity';
+import {
+  homepageBeamEeKey,
   resolveSinrLiveConeRole,
   resolveSinrLiveConeDisplayStyle,
   type SinrLiveCellBeamConeRenderItem,
   type SinrLiveConeColorAuthority,
   type SinrLiveConeMountLayer,
 } from './SinrLiveCellBeamCones';
+import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 
 export interface SinrLiveCellFootprintRingsProps {
   /** The SERVING cone items (one hex per item). Empty off the cell-truth lanes. */
@@ -61,16 +64,24 @@ export interface SinrLiveCellFootprintRingsProps {
   /** Mirror the cone `coneWidthScale` so the hex tracks the rendered footprint. */
   readonly widthScale?: number;
   /**
-   * SEMANTIC colour inputs — the SAME layer + palette the cone mount is given, so the
-   * footprint hex resolves the IDENTICAL role colour as the cone it sits under (2026-08-06:
-   * previously it took its own `heroColor`/`backgroundColor`/`coneColorOverride` trio, which
-   * could — and after the serving-fan split WOULD — drift from the cone's colour). All
-   * optional: with none passed, every role falls back to its `sinrLiveConeStyle` token.
+   * The SAME layer + palette as the cone mount, so the footprint resolves the
+   * identical opacity/style role. With `colorAuthority="item-identity"` the
+   * cone's stable satellite/beam colour is retained instead of a role swatch.
    */
   readonly layer?: SinrLiveConeMountLayer;
   readonly palette?: SinrLiveConePalette;
   /** Must match the cone mount so the ground Cell and beam keep one identity. */
   readonly colorAuthority?: SinrLiveConeColorAuthority;
+  /** Root-only identity projection; omitted consumers keep the existing palette. */
+  readonly homepageVisualIdentity?: boolean;
+  /**
+   * Optional frame-local EE normalization keyed exactly as `${satId}:${beamId}`.
+   * The homepage integration owner in `MainScene` will provide this map; leaving
+   * it omitted preserves the existing deterministic beam-slot colour fallback.
+   */
+  readonly homepageBeamEeByKey?: ReadonlyMap<string, number | null>;
+  /** Episode-stable palette slots published by the accepted snapshot. */
+  readonly homepageIdentityPaletteIndexBySatelliteId?: ReadonlyMap<string, number | null>;
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
   /** Optional canvas dataset key for the rendered-hex count (validator proof). */
@@ -117,13 +128,10 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
       {items.map(item => {
         const radius = item.baseRadiusWorld * widthScale;
         if (!(radius > 0)) return null;
-        // ab861c4 TWO-TONE: the outer BORDER ring = the per-sat WHITE/pale tint
-        // (`satelliteTint`, palette is white-dominant) so it reads as a crisp white outline;
-        // the inner ROLE ring + the faint fill = the cell's SEMANTIC role colour (hero
-        // serving YELLOW / candidate BLUE / context GREY), resolved EXACTLY as the cone mount
-        // does. So the hex matches its cone in role colour but keeps the white rim distinct.
-        const borderColor = satelliteTint(item.satId);
-        const roleColor = resolveSinrLiveConeDisplayStyle(
+        // Keep a crisp rim in the satellite's base hue; the inner ring/fill may
+        // use a beam-level lightness shade, which is what makes intra switching
+        // visible without assigning a role colour to the cell.
+        const resolvedRoleColor = resolveSinrLiveConeDisplayStyle(
           resolveSinrLiveConeRole({
             layer,
             satId: item.satId,
@@ -136,26 +144,64 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
           item,
           props.colorAuthority,
         ).color;
-        // ab861c4 3-layer hex: a faint additive FILL-glow under a WHITE outer BORDER ring
-        // (proud rim 0.96→1.04r) and a bright role-colour inner ring (tight 0.78→0.84r).
+        const homepageIdentity = props.homepageVisualIdentity === true
+          && props.colorAuthority === 'item-identity';
+        const beamId = item.beamId ?? cellLinkBudgetBeamId(item.cellId);
+        const isPrimaryServing = item.satId === primaryServingSatId
+          && item.cellId === primaryServingCellId;
+        const itemRole = resolveSinrLiveConeRole({
+          layer,
+          satId: item.satId,
+          cellId: item.cellId,
+          itemRole: item.role,
+          heroSatId: primaryServingSatId,
+          heroCellId: primaryServingCellId,
+        });
+        const isPrimaryIdentityBeam = isPrimaryServing
+          || itemRole === 'candidatePrimary'
+          || itemRole === 'handoverSource'
+          || itemRole === 'handoverTarget'
+          || itemRole === 'triggered';
+        const homepageBeamColor = homepageIdentity
+          ? homepageSatelliteColorForBeam(item.satId, beamId, {
+            identityPaletteIndex: props.homepageIdentityPaletteIndexBySatelliteId?.get(item.satId) ?? null,
+            isServing: isPrimaryIdentityBeam,
+            eeNormalized: props.homepageBeamEeByKey?.get(
+              homepageBeamEeKey(item.satId, beamId),
+            ),
+          })
+          : null;
+        const borderColor = homepageBeamColor?.color
+          ?? colorForServingSatellite(item.satId).markerColor;
+        const roleColor = homepageBeamColor?.color ?? resolvedRoleColor;
+        const renderOpacityFactor = homepageIdentity && !isPrimaryIdentityBeam
+          ? HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR
+          : 1;
+        // Three-layer hex: faint identity fill, a crisp satellite-hue rim
+        // (proud 0.96→1.04r), and a bright beam-level inner ring (tight
+        // 0.78→0.84r).
         return (
           <group
-            key={item.renderKey ?? `${item.cellId}-${item.satId}`}
-            name={`sinr-live-cell-footprint-${item.cellId}`}
+            key={item.renderKey ?? `${item.cellId}-${item.satId}-${beamId}`}
+            name={`sinr-live-cell-footprint-${item.cellId}-${beamId}`}
             position={[item.baseCenter.x, item.baseCenter.y + SINR_LIVE_FOOTPRINT_RING_Y_LIFT, item.baseCenter.z]}
             rotation={[-Math.PI / 2, 0, Math.PI / 6]}
-            userData={{ footprintItem: true, cellId: item.cellId, satId: item.satId, color: roleColor, borderColor }}
+            userData={{ footprintItem: true, cellId: item.cellId, satId: item.satId, beamId, color: roleColor, borderColor }}
           >
             <mesh name={`sinr-live-cell-footprint-fill-${item.cellId}`} renderOrder={8} frustumCulled={false}>
               <circleGeometry args={[radius, 6]} />
               <meshBasicMaterial
                 color={roleColor}
                 transparent
-                opacity={SINR_LIVE_FOOTPRINT_FILL_OPACITY}
+                opacity={SINR_LIVE_FOOTPRINT_FILL_OPACITY * renderOpacityFactor}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 toneMapped={false}
-                blending={THREE.AdditiveBlending}
+                // Repeated same-satellite beams must not add RGB until the
+                // family clips toward white. The homepage keeps the existing
+                // fill carrier but composites it normally; other consumers
+                // retain the established additive treatment.
+                blending={homepageIdentity ? THREE.NormalBlending : THREE.AdditiveBlending}
               />
             </mesh>
             <mesh name={`sinr-live-cell-footprint-ring-${item.cellId}`} renderOrder={11} frustumCulled={false}>
@@ -163,7 +209,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
               <meshBasicMaterial
                 color={borderColor}
                 transparent
-                opacity={SINR_LIVE_FOOTPRINT_RING_OPACITY}
+                opacity={SINR_LIVE_FOOTPRINT_RING_OPACITY * renderOpacityFactor}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 toneMapped={false}
@@ -174,7 +220,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
               <meshBasicMaterial
                 color={roleColor}
                 transparent
-                opacity={SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY}
+                opacity={SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY * renderOpacityFactor}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 toneMapped={false}

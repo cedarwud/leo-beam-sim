@@ -22,8 +22,10 @@
      cross-model review, and Opus review are evidence only; none is visual
      acceptance.
 - **Owner target retained:** additive Starlink Walker carrier, one solid data
-  link, unified intra/inter procedure, and the bounded `3x2` candidate-beam
-  presentation plus one serving beam.
+  link, unified intra/inter procedure, and a same-frame candidate comparison
+  that does not silently hide hard-eligible satellites or beams. The former
+  compact `3x2` subset remains available only as an explicit legacy/overflow
+  mode; it is not the homepage comparison contract.
 - **Date:** 2026-08-27 (amended 2026-08-28; implementation-gate repair 2026-08-29)
 - **Route:** `/` only
 - **Runtime source:** Starlink Walker by default, in accordance with ADR-013
@@ -220,11 +222,14 @@ scientific and owner acceptance record supersedes them:
    `HandoverEvaluationPanel`) consume one accepted
    `AcceptedHandoverPresentationSnapshot`. They do not independently consume
    legacy scalar state or recompute candidate metrics.
-4. **Presentation budget and grouping:** display at most **3 satellite groups**,
-   at most **2 candidate beams per group**, and one serving beam: `3x2 + 1 = 7`
-   maximum presentation cone volumes. All scientific candidates, timers, and
-   ranks remain complete; additional candidates are typed `+N` overflow rows
-   and can be pinned without changing the decision set.
+4. **Presentation budget and grouping (superseded by §0.7 for the homepage):**
+   the compact legacy view displayed at most **3 satellite groups**, at most
+   **2 candidate beams per group**, and one serving beam (`3x2 + 1 = 7`). All
+   scientific candidates, timers, and ranks remained complete; additional
+   candidates were typed `+N` overflow rows. The homepage comparison now
+   expands this display-only budget for every hard-eligible pair in the
+   accepted frame, while constrained fixtures may still request the compact
+   view explicitly.
 5. **Interactive cross-highlighting and visual invariants:**
    - **Cross-highlight:** Hovering or pinning a candidate row in the right rail
      highlights the matching beam cone and footprint in the 3D scene, and vice versa.
@@ -312,6 +317,54 @@ scientific and owner acceptance record supersedes them:
    default activation and scientific acceptance remain blocked/pending; owner
    visual acceptance is required. Automation and cross-model/Opus review are
    evidence only and cannot substitute for that human gate.
+
+### 0.7 2026-08-29 candidate-comparison implementation slice
+
+The homepage comparison projection now has an explicit distinction between a
+compact legacy display and the owner-requested same-frame comparison:
+
+1. **All eligible pairs are displayed in comparison mode.** While the decision
+   frame is in the pre-selection comparison phase, the accepted snapshot passes
+   `displayAllHardEligibleCandidates: true`, so every measured pair whose hard
+   service gates are eligible is retained for that comparison. Outside that
+   phase the established compact projection is retained for readability. The
+   previous `3x2 + 1` values remain a bounded legacy/overflow option for
+   fixtures and constrained views; they are not a scientific limit and may not
+   silently hide a hard-eligible satellite during the homepage comparison.
+2. **Seven-beam inventory is explicit but evidence-bound.** The profile's
+   `beams.perSatellite` (seven for the default Walker profile) creates a
+   seven-slot rail roster for each rendered satellite. A slot is `not-observed`
+   when the accepted decision contains no same-frame opportunity; no zero or
+   copied metric is invented. A measured beam that is outside a compact legacy
+   subset is labelled `measured / not in scene`, while comparison mode keeps its
+   actual link object available to the rail.
+3. **Central and rail joins carry the source frame.** Every rendered link now
+   carries `sourceFrameId` in addition to the episode-stable
+   `satelliteId/beamId` join. The scene adapter and rail DOM expose the same
+   source-frame value and reject a mismatched instruction; this prevents a
+   stale candidate row from being presented as the current frame.
+4. **Phase-gated central layer.** The established serving carrier remains
+   mounted. The candidate comparison layer is visible during initial attach,
+   evaluating, qualifying, and selection hold; switching and guard use the
+   established handover choreography and atomic single-solid-link boundary.
+   Candidate GLB markers keep their episode-stable satellite hue; candidate
+   links remain measurement-only and do not become DAPS.
+5. **Policy status is unchanged.** This slice changes presentation coverage,
+   not decision authority. The active homepage policy is still SINR
+   compatibility until the Forecast-EE activation gate passes; the seven-slot
+   roster is a measured presentation of the existing Walker cell-surrogate
+   opportunities, not a claim that an unavailable physical beam was measured.
+
+6. **Candidate-rich Walker admission is explicit.** The default
+   `hobs-2024-candidate-rich` sensitivity profile uses the original five shells
+   plus a 70° inclination coverage-reserve shell (36 planes × 14 satellites),
+   and declares a 40° antenna steering envelope plus a
+   `minimumDistinctCandidateSatellites: 2` selection floor. The reserve shell
+   is a declared teaching-profile geometry choice, not a fabricated link or a
+   paper-default change: it closes the primary service-continuity gap while the
+   decision frame still records the actual elevation, steering, scheduling, and
+   SINR gates. The run waits for two independently measured alternate
+   satellites before ranking a replacement.
 
 ## 1. Outcome
 
@@ -1860,10 +1913,11 @@ target.satelliteId == serving.satelliteId ? 'intra-satellite' : 'inter-satellite
 ```
 
 The panel may group rows under the same satellite, but it must not remove the
-beam identity. A satellite with two useful beams contributes two distinct
-candidate rows and two distinct timers. The display cap is at most 3 satellite
-groups x 2 candidate beams plus 1 serving beam; the scientific set and all
-timers/ranks remain complete beyond that presentation cap.
+beam identity. A satellite with multiple measured beams contributes distinct
+candidate rows and distinct timers. The compact legacy cap is at most 3
+satellite groups x 2 candidate beams plus 1 serving beam; the homepage
+comparison projection supersedes that cap when it presents all hard-eligible
+pairs from the accepted frame.
 
 ## 9. Right-rail information architecture
 
@@ -2155,14 +2209,17 @@ active link ended and the new one began.
 ### 10.3 Scene density budget
 
 The scientific engine evaluates every observed pair and retains every
-hard-eligible/trigger state. The default 3D display is bounded independently:
+hard-eligible/trigger state. The homepage comparison display includes every
+hard-eligible pair in the accepted frame; the compact legacy view is bounded
+independently:
 
 - **scene-global presentation budget:** `maxConeVolumes = 7`; the current
   candidate resolver already asserts its own local plan cap, but `MainScene`
   does not yet sum the established serving cone with every candidate/ambient
   cone layer. The accepted render receipt must enforce the global total;
-- **satellites:** current serving satellite plus at most two alternate
-  satellites, for three simultaneously rendered satellite identities;
+- **compact legacy satellites:** current serving satellite plus at most two
+  alternate satellites, for three simultaneously rendered satellite
+  identities;
 - **serving-satellite beams:** current serving beam plus at most two intra
   alternatives;
 - **each alternate satellite:** at most two candidate beams;
@@ -2170,14 +2227,14 @@ hard-eligible/trigger state. The default 3D display is bounded independently:
 - **intra-focused case:** one serving beam plus at most two same-satellite
   candidate alternatives.
 
-The three-satellite limit matches the current renderer foundation; the
-scene-global seven-volume limit closes the gap beyond the existing
-candidate-component local assertion. It is a presentation-only constraint, not
-a change to the
-canonical scenario's active-beam count. The primary right-rail board displays
-up to six candidate pairs in the bounded subset and exposes all remaining
-typed rows through `其餘 +N`; overflow does not lose identity, objective/stable ranks,
-metrics, TTT, remaining time, or failed-gate state. At 1080 px
+The compact three-satellite and seven-volume limits are presentation-only
+constraints, not changes to the canonical scenario's active-beam count. In the
+homepage comparison mode the plan expands those display-only values to the
+number of same-frame hard-eligible pairs and exposes a seven-slot measured
+beam roster per rendered satellite; missing slots remain explicitly
+`not-observed`. Overflow rows remain available for observed/ineligible records
+and do not lose identity, objective/stable ranks, metrics, TTT, remaining time,
+or failed-gate state. At 1080 px
 height, four rows should remain visible without scrolling; additional rows use
 an internal scroll/expand control. On shorter layouts, show three rows plus
 honest overflow.
@@ -2460,15 +2517,25 @@ without misrepresenting an unfinished EE evaluator as decision authority.
   plan.
 - Add identity hue allocation and same-satellite beam shades.
 - Add role line/fill grammar and one-solid-link enforcement.
-- Restore the established Walker serving/event carrier and add the bounded
-  `3x2 + 1` candidate presentation; do not suppress the carrier because a
-  decision frame exists.
+- Restore the established Walker serving/event carrier and add the phase-gated
+  same-frame hard-eligible candidate presentation; do not suppress the carrier
+  because a decision frame exists.
 - Emit a snapshot-keyed scene render receipt for actual pair mapping, unmapped
   reasons, event-cue count, and global solid-link count; use it to fail unsafe
   additive mapping and to gate optional replacement decorations, never to hide
   the established serving/event carrier.
 - Keep automatic candidate camera refit disabled, retain opaque satellite GLBs,
   and apply the shared collision-resolved `SAT / B / C` label formatter.
+
+**2026-08-29 central-scene comparison slice.** The accepted candidate snapshot
+and evaluation rail remain active. `MainScene` phase-gates the additive
+comparison overlay to initial attach, evaluating, qualifying, and selection
+hold; switching and guard retain the established serving/event carrier. The
+original satellite GLB, serving cones, footprints, orbit guides, handover
+links, pulses, and receipt remain the carrier, while measured candidates are
+added from the same snapshot. This is an explicit reversible presentation gate,
+not a source rollback or a change to candidate decision policy; browser and
+owner visual acceptance remain open.
 
 ### S6 — Browser, performance, and human acceptance
 
@@ -2501,7 +2568,7 @@ Likely seams; final names may vary while preserving ownership:
 | Right rail | `src/ui/signal-tuning/WalkerResultsRail.tsx`, `src/ui/handover-evaluation/HandoverEvaluationPanel.tsx`, `CandidateSetPanel.tsx` | consume the accepted snapshot directly; replace only the Walker upper decision board and retain the lower calculation sections |
 | Scene | `src/scene/MainScene.tsx`, `src/viz/MultiCandidateBeamScene.tsx` | keep `SinrLiveCellBeamCones`, `SinrLiveCellFootprintRings`, callouts, particles, and event cues as the established carrier; render candidate-only overlays from the accepted snapshot |
 | Identity colour and labels | `src/constants/handoverVisualIdentity.ts`, candidate scene/rail components | share satellite hue, beam shade, and one `SAT / B / C` formatter; do not recolour satellite GLBs or encode rank by colour |
-| Render budget | `src/engine/handover/candidatePresentationPlan.ts`, `src/viz/MultiCandidateBeamScene.tsx` | enforce three satellite groups, two candidate beams per group, one serving beam, and seven total presentation cone volumes without truncating scientific timers/ranks |
+| Render budget | `src/engine/handover/candidatePresentationPlan.ts`, `src/viz/MultiCandidateBeamScene.tsx` | homepage comparison expands the display-only budget to all same-frame hard-eligible pairs; compact legacy fixtures may still enforce three groups, two beams per group, and seven total volumes without truncating scientific timers/ranks |
 | Interaction join | `candidateInspectionSelection.ts`, scene/rail components | share hover/pin by snapshot identity and candidate key; interaction changes inspection/presentation only |
 | Browser evidence | `scripts/validate-homepage-authority-browser.ts` and targeted fixtures | assert multi-hard-eligible scene/rail joins, zero semantic skew, one-or-zero solid-link invariant, fixed camera, label obstruction, and readable phase progression on port 3000 |
 
@@ -2662,9 +2729,11 @@ Do not migrate the archived-TLE route as a side effect. Do not globally change
 - Other beams of the serving satellite remain context unless their exact pair
   is the sole serving link.
 - Intra events show the source and target beam IDs explicitly.
-- The owner presentation target remains at most 3 satellite groups x 2
-  candidate beams plus 1 serving beam; overflow is typed and reported as `+N`,
-  while all scientific timers/ranks remain complete.
+- The homepage comparison presents every same-frame hard-eligible satellite
+  and beam; compact legacy mode may remain at most 3 satellite groups x 2
+  candidate beams plus 1 serving beam. Any observed/ineligible overflow is
+  typed and reported as `+N`, while all scientific timers/ranks remain
+  complete.
 - Pinning/hovering triggers bi-directional cross-highlight between rail rows
   and 3D scene cones/footprints, affecting presentation only.
 - The established Walker serving/event carrier remains visible and additive
@@ -2689,10 +2758,14 @@ Do not migrate the archived-TLE route as a side effect. Do not globally change
   truth or bounded-presentation priority; excess pairs remain typed overflow.
 - Accepted snapshots publish at the decision cadence and immediately at commit;
   only continuous geometry interpolates, and the scene/rail skew is zero.
-- The default scene stays within three satellites and seven beam volumes
-  (max 3 satellite groups $\times$ 2 candidate beams each + 1 serving beam).
-- An executable renderer assertion enforces both `maxBeamSatellites = 3` and
-  the presentation cap `maxConeVolumes = 7`.
+- Compact legacy fixtures stay within three satellite groups and seven beam
+  volumes (at most two candidate beams per group plus one serving beam).
+  Homepage comparison mode uses the expanded display-only budget required to
+  show every same-frame hard-eligible pair; it still enforces one solid link
+  and does not expand the scientific decision frame.
+- Executable renderer assertions enforce the compact limits only when a compact
+  budget is requested, and enforce the full-mode budget against the accepted
+  snapshot when comparison mode is active.
 - `prefers-reduced-motion` retains every decision distinction without pulses;
   FPS, HTML overlay count, and draw-call evidence are recorded for both event
   kinds.
@@ -2743,7 +2816,8 @@ Governance is partitioned across four strict levels:
    intra/inter canonical system-EE `relativeDelta` distributions must be
    complete before choosing `epsilon_EE` or `tieToleranceRelative`; owner visual
    acceptance of the Walker
-   carrier, `3x2 + 1` presentation, readability, and one-solid-link behavior is
+   carrier, full hard-eligible comparison (with compact legacy fallback),
+   readability, and one-solid-link behavior is
    required. Automation, screenshots, cross-model review, and Opus review are
    evidence only and cannot substitute for either acceptance authority.
 

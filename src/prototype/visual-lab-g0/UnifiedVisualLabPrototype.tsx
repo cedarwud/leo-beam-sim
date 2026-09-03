@@ -1542,9 +1542,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
                 </div>
               </aside> : null}
               <VisualLabScene
-                view={view}
-                density={density}
-                focus={focus}
+                scenePlan={lab.scenePlan}
                 beamWidthDraftScale={beamWidthDraftScale}
                 constellation={displayAcceptedSource.constellation}
                 theme={lab.presentation.theme}
@@ -1558,9 +1556,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
                 storyReturnProgress={effectiveStoryReturnProgress}
                 causalCameraCue={guidedHandoverActive ? null : causalReplay.cameraCue}
                 storyDirectorEnabled={storyDirectorEnabled}
-                localScene={localScene}
                 beamFrame={beamFrame}
-                globalSceneFrame={globalSceneComplete ? globalSceneFrame : null}
                 globalArtifact={globalArtifact}
                 globalStatus={globalStatus}
                 globalError={lab.phase === 'rejected' ? ui.unavailable : null}

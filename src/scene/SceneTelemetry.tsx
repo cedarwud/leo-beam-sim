@@ -77,6 +77,17 @@ export interface SceneTelemetryProps {
   multiCandidateSceneGlobalSolidDataLinkCount: string | number;
   multiCandidateCarrierFallbackActive: string;
   multiCandidateEventCueCount: string | number;
+  /** Why the additive candidate layer is active or parked for this frame. */
+  multiCandidateSceneRenderStatus: MultiCandidateSceneRenderStatus;
+  /** Live producer identity beside the accepted snapshot for homepage join QA. */
+  liveDecisionEpisodeId?: string;
+  liveDecisionSourceFrameId?: string;
+  liveDecisionSimTimeMs?: string | number;
+  liveDecisionServingKey?: string;
+  liveDecisionCommitTo?: string;
+  /** Accepted snapshot identity beside the live producer identity for join QA. */
+  acceptedSnapshotEpochToken?: string;
+  acceptedSnapshotServingKey?: string;
   /** One display-owner contract for diagnosing beam-layer precedence. */
   handoverPresentationActive: string;
   handoverPresentationSource: string;
@@ -113,6 +124,17 @@ export interface SceneTelemetryProps {
   // Artifact replay boundary control
   shouldClearReplayAttributes?: boolean;
 }
+
+export type MultiCandidateSceneRenderStatus =
+  | 'active'
+  | 'inactive'
+  | 'no-accepted-snapshot'
+  | 'source-frame-mismatch'
+  | 'below-comparison-threshold'
+  | 'switching'
+  | 'phase-not-comparison'
+  | 'missing-scene-plan'
+  | 'unmapped-pairs';
 
 export function SceneTelemetry(props: SceneTelemetryProps) {
   const gl = useThree(state => state.gl);
@@ -169,6 +191,14 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.multiCandidateSceneGlobalSolidDataLinkCount = String(props.multiCandidateSceneGlobalSolidDataLinkCount);
     el.dataset.multiCandidateCarrierFallbackActive = props.multiCandidateCarrierFallbackActive;
     el.dataset.multiCandidateEventCueCount = String(props.multiCandidateEventCueCount);
+    el.dataset.multiCandidateSceneRenderStatus = props.multiCandidateSceneRenderStatus;
+    el.dataset.liveDecisionEpisodeId = props.liveDecisionEpisodeId ?? '';
+    el.dataset.liveDecisionSourceFrameId = props.liveDecisionSourceFrameId ?? '';
+    el.dataset.liveDecisionSimTimeMs = String(props.liveDecisionSimTimeMs ?? '');
+    el.dataset.liveDecisionServingKey = props.liveDecisionServingKey ?? '';
+    el.dataset.liveDecisionCommitTo = props.liveDecisionCommitTo ?? '';
+    el.dataset.acceptedSnapshotEpochToken = props.acceptedSnapshotEpochToken ?? '';
+    el.dataset.acceptedSnapshotServingKey = props.acceptedSnapshotServingKey ?? '';
     el.dataset.handoverPresentationActive = props.handoverPresentationActive;
     el.dataset.handoverPresentationSource = props.handoverPresentationSource;
     el.dataset.handoverPresentationKind = props.handoverPresentationKind;
@@ -249,6 +279,12 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.multiCandidateSceneGlobalSolidDataLinkCount,
     props.multiCandidateCarrierFallbackActive,
     props.multiCandidateEventCueCount,
+    props.multiCandidateSceneRenderStatus,
+    props.liveDecisionEpisodeId,
+    props.liveDecisionSourceFrameId,
+    props.liveDecisionSimTimeMs,
+    props.liveDecisionServingKey,
+    props.liveDecisionCommitTo,
     props.handoverPresentationActive,
     props.handoverPresentationSource,
     props.handoverPresentationKind,

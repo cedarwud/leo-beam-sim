@@ -93,11 +93,17 @@ function setFrom(measurements: readonly CandidateLinkMeasurement[]) {
 function input(
   serving: ReturnType<typeof candidateLinkKey>,
   opportunitySet: ReturnType<typeof setFrom>,
-  overrides: Partial<{ episodeId: string; sourceFrameId: string; simTimeMs: number }> = {},
+  overrides: Partial<{
+    episodeId: string;
+    sourceFrameId: string;
+    simTimeMs: number;
+    minimumDistinctCandidateSatellites: number;
+  }> = {},
 ) {
   return {
     serving,
     opportunitySet,
+    minimumDistinctCandidateSatellites: overrides.minimumDistinctCandidateSatellites,
     clock: {
       episodeId: overrides.episodeId ?? 'continuity-episode/7',
       sourceFrameId: overrides.sourceFrameId ?? SOURCE_FRAME,
@@ -156,6 +162,28 @@ test('returns null when no safe SINR-compatible target exists', () => {
     measurement('SAT-C', 3, 4, { sinrStatus: 'unavailable' }),
   ]);
   assert.equal(selectServiceContinuityFallback(input(candidateLinkKey('SAT-Z', 1), set)), null);
+});
+
+test('does not bypass the configured distinct-satellite floor during continuity protection', () => {
+  const oneSatellite = setFrom([
+    measurement('SAT-A', 1, 20),
+    measurement('SAT-A', 2, 18),
+  ]);
+  assert.equal(
+    selectServiceContinuityFallback(input(candidateLinkKey('SAT-Z', 1), oneSatellite, {
+      minimumDistinctCandidateSatellites: 2,
+    })),
+    null,
+  );
+
+  const twoSatellites = setFrom([
+    measurement('SAT-A', 1, 20),
+    measurement('SAT-B', 2, 18),
+  ]);
+  const receipt = selectServiceContinuityFallback(input(candidateLinkKey('SAT-Z', 1), twoSatellites, {
+    minimumDistinctCandidateSatellites: 2,
+  }));
+  assert.deepEqual(receipt?.to, candidateLinkKey('SAT-A', 1));
 });
 
 test('rejects clock metadata from a different source frame', () => {

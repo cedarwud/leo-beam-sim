@@ -64,6 +64,7 @@ function measurement(
     readonly steeringDeg?: number;
     readonly scheduled?: CandidateGateResult['result'];
     readonly remainingServiceTimeSec?: number | null;
+    readonly instantaneousEeBitPerJ?: number | null;
     readonly primaryUeId?: string;
     readonly sourceFrameId?: string;
   } = {},
@@ -84,6 +85,13 @@ function measurement(
     sinr: available(sinrDb, 'dB'),
     predictedThroughput: available(120_000_000, 'bit/s'),
     remainingServiceTime: remaining,
+    ...(options.instantaneousEeBitPerJ === undefined
+      ? {}
+      : {
+        instantaneousEe: options.instantaneousEeBitPerJ === null
+          ? metric(null, 'bit/J', 'unavailable', null)
+          : available(options.instantaneousEeBitPerJ, 'bit/J'),
+      }),
     scheduledIllumination: scheduled(options.scheduled ?? 'pass'),
   };
 }
@@ -212,6 +220,44 @@ test('keeps unavailable remaining-service evidence unavailable rather than conve
     opportunity?.gates.find(gate => gate.code === 'remaining-service-time')?.result,
     'unavailable',
   );
+});
+
+test('keeps the same candidate identity through a missing EE render metric before a second pair appears', () => {
+  const first = produceCandidateOpportunitySet({
+    primaryUeId: PRIMARY_UE,
+    sourceFrameId: SOURCE_FRAME,
+    thresholds,
+    measurements: [measurement('SAT-A', 1, 12, { instantaneousEeBitPerJ: 120 })],
+  });
+  const transientMetricGap = produceCandidateOpportunitySet({
+    primaryUeId: PRIMARY_UE,
+    sourceFrameId: SOURCE_FRAME,
+    thresholds,
+    // Omit only the render-side EE metric. The observed satellite-beam pair
+    // remains in the opportunity set and reaches the existing policy seam as
+    // explicit unavailable evidence instead of disappearing.
+    measurements: [measurement('SAT-A', 1, 12)],
+  });
+  const recovered = produceCandidateOpportunitySet({
+    primaryUeId: PRIMARY_UE,
+    sourceFrameId: SOURCE_FRAME,
+    thresholds,
+    measurements: [
+      measurement('SAT-A', 1, 12, { instantaneousEeBitPerJ: 120 }),
+      measurement('SAT-B', 1, 14, { instantaneousEeBitPerJ: 130 }),
+    ],
+  });
+
+  assert.deepEqual(
+    [first, transientMetricGap, recovered].map(set => set.opportunities.length),
+    [1, 1, 2],
+  );
+  assert.equal(transientMetricGap.opportunities[0]?.instantaneousEe?.status, 'unavailable');
+  assert.equal(transientMetricGap.opportunities[0]?.instantaneousEe?.sourceFrameId, SOURCE_FRAME);
+  assert.deepEqual(recovered.opportunities.map(item => candidateLinkKeyString(item.key)), [
+    'SAT-A|1',
+    'SAT-B|1',
+  ]);
 });
 
 test('rejects mixed UE, mixed frame, and duplicate-pair measurements', () => {

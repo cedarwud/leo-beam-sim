@@ -52,11 +52,11 @@ test('requiredFlowFailures can require distinct satellite identities, not merely
   }), ['fewer than two simultaneously eligible alternatives']);
 });
 
-test('the active SINR compatibility path exposes evaluation, selection, and both handover kinds', () => {
-  // The deterministic 100-UE teaching window exposes an intra-satellite
-  // commit early (t=4 s after the initial measured frame). A two-second
-  // diagnostic cadence keeps this regression bounded while still exercising
-  // both inter- and intra-satellite commit receipts.
+test('the homepage source trajectory exposes evaluation, selection, and both handover kinds', () => {
+  // The shared homepage primary-UE trajectory exposes a real same-satellite
+  // intra commit before the inter-satellite commit. A two-second diagnostic
+  // cadence keeps this regression bounded while still exercising both
+  // authority commit kinds.
   let normalCommitWithInsufficientCandidates = 0;
   const report = runMultiCandidateWindow({
     durationSec: 600,

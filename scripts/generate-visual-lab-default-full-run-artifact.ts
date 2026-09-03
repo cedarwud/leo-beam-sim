@@ -43,13 +43,18 @@ import {
   VISUAL_LAB_DEFAULT_FULL_RUN_GEOMETRY_ENCODING,
   type VisualLabDefaultFullRunArtifactManifest,
 } from '../src/ui/signal-tuning/defaultVisualLabFullRunArtifact';
+import {
+  LATEST_TLE_ARCHIVE_DATES,
+  LATEST_TLE_REFERENCE_ARTIFACT_DATE,
+  LATEST_TLE_REFERENCE_INSTANT_UTC,
+} from '../src/tle/latestTleDefaults';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const outputRoot = join(repoRoot, 'public/visual-lab-default-full-run/starlink-20260812');
+const outputRoot = join(repoRoot, `public/visual-lab-default-full-run/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}`);
 const manifestPath = join(outputRoot, 'manifest.json');
 const analysisPath = join(outputRoot, 'analysis.json.gz');
 const geometryPath = join(outputRoot, 'geometry.bin');
-const requestedInstantUtc = '2026-08-12T12:00:00.000Z';
+const requestedInstantUtc = LATEST_TLE_REFERENCE_INSTANT_UTC;
 const defaultFrameOptions = Object.freeze({ userPositionOverridesKm: Object.freeze([]) });
 
 function sha256(bytes: Uint8Array): string {
@@ -205,7 +210,7 @@ async function makeArtifact(): Promise<{
 }> {
   const catalog = await loadTleWebArchiveCatalog(SIMULATOR_CATALOG_URLS.starlink, fetchFromPublic);
   const selection = await loadTleSnapshotSelection(catalog, requestedInstantUtc, fetchFromPublic);
-  if (selection.snapshot.metadata.archiveDate !== '20260812') {
+  if (selection.snapshot.metadata.archiveDate !== LATEST_TLE_ARCHIVE_DATES.starlink) {
     throw new Error(`default artifact snapshot date drifted: ${selection.snapshot.metadata.archiveDate}`);
   }
   const geometryRun = await buildTleRunBundle({
@@ -270,12 +275,12 @@ async function makeArtifact(): Promise<{
     },
     files: {
       analysis: {
-        url: '/visual-lab-default-full-run/starlink-20260812/analysis.json.gz',
+        url: `/visual-lab-default-full-run/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}/analysis.json.gz`,
         contentSha256: sha256(analysisBytes),
         byteLength: analysisBytes.byteLength,
       },
       geometry: {
-        url: '/visual-lab-default-full-run/starlink-20260812/geometry.bin',
+        url: `/visual-lab-default-full-run/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}/geometry.bin`,
         contentSha256: sha256(geometryBytes),
         byteLength: geometryBytes.byteLength,
       },

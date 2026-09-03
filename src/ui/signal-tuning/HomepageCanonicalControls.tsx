@@ -1,7 +1,6 @@
 import { UI_TOKENS } from '../../constants/uiTokens';
 import {
   DEFAULT_BEAM_LAYOUT_COUNT,
-  isSupportedBeamLayoutCount,
   type SupportedBeamLayoutCount,
 } from '../../core/beam/completeHexPresets';
 import { useLocale } from '../../i18n';
@@ -12,6 +11,7 @@ import { MainTabList } from './MainTabList';
 import { PowerTab } from './PowerTab';
 import { ScenarioDataTab } from './ScenarioDataTab';
 import { ThroughputTab } from './ThroughputTab';
+import { TleScenarioDisclosure } from './TleScenarioDisclosure';
 import { txBi } from './labels';
 import { panelStyle } from './styles';
 import type { MainTabKey } from './types';
@@ -67,16 +67,16 @@ export function HomepageCanonicalControls({
   readonly activeTab: MainTabKey;
   readonly onActiveTabChange: (next: MainTabKey) => void;
 }) {
-  const globalBeamLayoutCount: SupportedBeamLayoutCount = analysis.frameOptions.beamLayoutCount
-    ?? DEFAULT_BEAM_LAYOUT_COUNT;
+  // The archived scene adapter consumes the fixed seven-cell/seven-beam schema.
+  // Keep the canonical controls honest instead of exposing frame options that
+  // would be accepted by the analysis worker but rejected by the scene.
+  const globalBeamLayoutCount: SupportedBeamLayoutCount = DEFAULT_BEAM_LAYOUT_COUNT;
   const servingSatelliteId = analysis.frame?.selectedSatelliteId ?? null;
   const candidateSatelliteId = analysis.frame?.candidateLink?.satelliteId ?? null;
   const beamLayoutOverrides = analysis.frameOptions.perSatelliteBeamLayoutCount ?? {};
   const resolveRoleBeamLayoutCount = (satelliteId: string | null): SupportedBeamLayoutCount => {
     const override = satelliteId === null ? undefined : beamLayoutOverrides[satelliteId];
-    return override !== undefined && isSupportedBeamLayoutCount(override)
-      ? override
-      : globalBeamLayoutCount;
+    return override === DEFAULT_BEAM_LAYOUT_COUNT ? override : globalBeamLayoutCount;
   };
   const updateBeamLayoutCount = (next: SupportedBeamLayoutCount) => {
     analysis.setFrameOptions({
@@ -107,15 +107,19 @@ export function HomepageCanonicalControls({
         <ModelParameterReset analysis={analysis} />
 
         {activeTab === 'scenario' && (
-          <ScenarioDataTab
-            connection="canonical-analysis"
-            beamLayoutCount={globalBeamLayoutCount}
-            onBeamLayoutCountChange={updateBeamLayoutCount}
-            servingBeamLayoutCount={resolveRoleBeamLayoutCount(servingSatelliteId)}
-            onServingBeamLayoutCountChange={next => updateRoleBeamLayoutCount(servingSatelliteId, next)}
-            candidateBeamLayoutCount={resolveRoleBeamLayoutCount(candidateSatelliteId)}
-            onCandidateBeamLayoutCountChange={next => updateRoleBeamLayoutCount(candidateSatelliteId, next)}
-          />
+          <div style={{ display: 'grid', gap: 12 }}>
+            <TleScenarioDisclosure analysis={analysis} />
+            <ScenarioDataTab
+              connection="canonical-analysis"
+              beamLayoutCount={globalBeamLayoutCount}
+              beamLayoutOptions={[DEFAULT_BEAM_LAYOUT_COUNT]}
+              onBeamLayoutCountChange={updateBeamLayoutCount}
+              servingBeamLayoutCount={resolveRoleBeamLayoutCount(servingSatelliteId)}
+              onServingBeamLayoutCountChange={next => updateRoleBeamLayoutCount(servingSatelliteId, next)}
+              candidateBeamLayoutCount={resolveRoleBeamLayoutCount(candidateSatelliteId)}
+              onCandidateBeamLayoutCountChange={next => updateRoleBeamLayoutCount(candidateSatelliteId, next)}
+            />
+          </div>
         )}
 
         {activeTab === 'sinr' && (

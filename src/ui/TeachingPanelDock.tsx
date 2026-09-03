@@ -69,7 +69,7 @@ function TeachingSnapshot({ snapshot }: { readonly snapshot: TeachingLinkSnapsho
         <dd>{formatValue(snapshot.thetaDeg, 2, '°')}</dd>
       </div>
       <div>
-        <dt>Gᵀ(θ)</dt>
+        <dt>G<sup>T</sup>(θ<sub>u,s,v</sub>, θ<sub>3dB</sub>)</dt>
         <dd>{snapshot.transmitGainLinear === null || !Number.isFinite(snapshot.transmitGainLinear)
           ? '—'
           : snapshot.transmitGainLinear.toExponential(2)}</dd>
@@ -127,13 +127,13 @@ function TeachingContent({
           <span className="leo-teaching-dock__step">02</span>
           <div>
             <h3>CAUSAL CHAIN</h3>
-            <p>θ 改變方向增益，沿同一條鏈影響 γ、R 與 η。</p>
+            <p>θ<sub>u,s,v</sub> 與 θ<sub>3dB</sub> 決定 G<sup>T</sup>，並沿同一條鏈影響 γ、R 與 η。</p>
           </div>
         </div>
         <div className="leo-teaching-dock__chain" aria-label="角度到能源效率的因果鏈">
           <span>θ</span>
           <b>→</b>
-          <span>Gᵀ(θ)</span>
+          <span>G<sup>T</sup>(θ<sub>u,s,v</sub>, θ<sub>3dB</sub>)</span>
           <b>→</b>
           <span>γ</span>
           <b>→</b>

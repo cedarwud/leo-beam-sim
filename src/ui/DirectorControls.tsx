@@ -1,11 +1,7 @@
 import type { DirectorFocusPhase } from '../scene/types';
 
 export interface DirectorControlsProps {
-  /**
-   * The next-intra navigation affordance is actionable on the live lane even when
-   * the static cell-truth index has no natural intra rows: in that case App wires
-   * it to the real primary-UE jog fallback.
-   */
+  /** Source-indexed when available; otherwise the real same-satellite trigger is used. */
   readonly intraEnabled: boolean;
   /** Next inter navigation is offered only when the rail carries a source-backed event. */
   readonly interEnabled: boolean;
@@ -13,6 +9,8 @@ export interface DirectorControlsProps {
   readonly intraTriggerEnabled?: boolean;
   /** `indexed` seeks the next source event; `real-trigger` performs a real same-sat jog. */
   readonly nextIntraMode?: 'indexed' | 'real-trigger';
+  /** True while the source index is being rebuilt after a left-side change. */
+  readonly handoverIndexBuilding?: boolean;
   readonly nextIntraCount?: number;
   readonly nextInterCount?: number;
   readonly phase: DirectorFocusPhase;
@@ -24,10 +22,7 @@ export interface DirectorControlsProps {
    * the trigger seek-free is what makes "click intra → see a pulse" work.
    */
   readonly onIntraTrigger: () => void;
-  /**
-   * Next intra action: seek/focus the next indexed intra event, or use the live
-   * trigger fallback when the current static window contains no intra row.
-   */
+  /** Next intra action: seek/focus an indexed event or trigger the real fallback. */
   readonly onIntraFocus: () => void;
   readonly onInterFocus: () => void;
   readonly onExit: () => void;
@@ -38,6 +33,7 @@ export function DirectorControls({
   interEnabled,
   intraTriggerEnabled = intraEnabled,
   nextIntraMode = 'indexed',
+  handoverIndexBuilding = false,
   nextIntraCount,
   nextInterCount,
   phase,
@@ -48,12 +44,16 @@ export function DirectorControls({
 }: DirectorControlsProps) {
   const active = phase !== 'idle';
   const intraTriggerTitle =
-    'Trigger a real intra-HO — jog the primary UE one beam step so the engine hands it to a sibling beam; the yellow-to-blue flash stays on screen (no camera seek)';
+    'Trigger a real intra-HO — jog the primary UE one beam step so the engine hands it to a sibling beam; the same satellite keeps its hue while the beam shade changes (no camera seek)';
   const intraNextTitle = nextIntraMode === 'real-trigger'
     ? 'No indexed intra row exists in the static window; trigger the next real same-satellite beam switch now'
     : 'Jump to the next indexed intra-HO event, seek to its lead-in, and play it in slow motion';
   const intraNextLabel = nextIntraMode === 'real-trigger' ? 'Next Intra · trigger' : 'Next Intra';
-  const interNextTitle = interEnabled
+  const interNextTitle = handoverIndexBuilding
+    ? interEnabled
+      ? 'Queue the next indexed inter-HO; the current-parameter event index is rebuilding'
+      : 'Updating the handover event index for the current parameters'
+    : interEnabled
     ? 'Jump to the next indexed inter-HO event, seek to its lead-in, and play it in slow motion'
     : 'No inter-satellite handover exists in the current source window';
   const countLabel = (count: number | undefined): string => (
@@ -68,6 +68,7 @@ export function DirectorControls({
       data-director-intra-enabled={intraEnabled ? '1' : '0'}
       data-director-inter-enabled={interEnabled ? '1' : '0'}
       data-director-intra-mode={nextIntraMode}
+      data-director-index-building={handoverIndexBuilding ? '1' : '0'}
     >
       <span className="leo-director-controls__label">Director</span>
       <span className="leo-director-controls__section-label">Jump to next</span>
@@ -77,7 +78,13 @@ export function DirectorControls({
         data-testid="director-intra-focus"
         disabled={!intraEnabled || active}
         onClick={onIntraFocus}
-        title={intraNextTitle}
+        title={nextIntraMode === 'real-trigger'
+          ? intraNextTitle
+          : handoverIndexBuilding
+            ? intraEnabled
+              ? 'Queue the next indexed intra-HO; the current-parameter event index is rebuilding'
+              : 'Updating the handover event index for the current parameters'
+            : intraNextTitle}
       >
         {intraNextLabel}{countLabel(nextIntraCount)}
       </button>
@@ -105,13 +112,15 @@ export function DirectorControls({
         Trigger Intra
       </button>
       <span className="leo-director-controls__hint">
-        {nextIntraMode === 'real-trigger' ? 'static window: real intra trigger · yellow → blue' : 'indexed event: lead-in + slow-mo'}
+        {nextIntraMode === 'real-trigger'
+          ? 'no indexed row: real same-satellite trigger'
+          : handoverIndexBuilding
+            ? 'updating source index'
+            : 'indexed event: lead-in + slow-mo'}
       </span>
       {nextIntraMode === 'real-trigger' && (
-        <span className="leo-director-controls__color-key" aria-label="Intra handover colour cue: yellow to blue">
-          <span><i data-color="from" aria-hidden="true" />old beam</span>
-          <span aria-hidden="true">→</span>
-          <span><i data-color="to" aria-hidden="true" />new beam</span>
+        <span className="leo-director-controls__color-key" aria-label="Intra handover cue: same satellite, different beam shades">
+          same satellite · source beam → target beam
         </span>
       )}
       <button

@@ -64,16 +64,19 @@ export function applyLegacyConstellationPreset(
   constellation: SimulatorConstellation,
 ): Profile {
   if (constellation === 'starlink') return profile;
-  const inclinationOffsets = [-2.4, -1.2, 0, 1.2, 2.4] as const;
   return {
     ...profile,
+    // The profile's authored 450 s opening was selected for the Starlink
+    // shells.  Reusing it after replacing those shells can land OneWeb in a
+    // genuine no-service instant.  Let the deterministic Walker recommendation
+    // search choose an epoch-specific opening for the OneWeb geometry instead.
+    demoStartOffsetSec: undefined,
     orbit: {
       ...profile.orbit,
       shells: profile.orbit.shells.map((shell, index) => ({
         ...shell,
         id: `oneweb-${shell.id}`,
         altitudeKm: 1200,
-        inclinationDeg: 87.9 + (inclinationOffsets[index] ?? 0),
         planes: Math.max(1, Math.round(shell.planes * 0.5)),
         satsPerPlane: Math.max(1, Math.round(shell.satsPerPlane * 0.6)),
       })),

@@ -3,7 +3,7 @@ import { UI_TOKENS } from '../../constants/uiTokens';
 import { useLocale } from '../../i18n';
 import { txBi } from './labels';
 import { MathSymbol } from './MathSymbol';
-import { SystemAngleState } from './FormulaSymbols';
+import { LinkInterference, Theta3db } from './FormulaSymbols';
 import { explanatoryTextStyle, formulaTextStyle, srOnlyStyle } from './styles';
 
 /**
@@ -138,7 +138,7 @@ export function SinrFormulaMap({ receiverGainDbi: _receiverGainDbi }: { receiver
           fontSize: UI_TOKENS.type.size.subheading,
           color: UI_TOKENS.color.text.math,
         }}>
-          <i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(θ<sub>u,s,v</sub>)
+          <i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>, <Theta3db />) · H<sub>u,s,v</sub>(t) · G<sup>T</sup>(θ<sub>u,s,v</sub>, <Theta3db />)
         </div>
       </div>
 
@@ -171,7 +171,7 @@ export function SinrFormulaMap({ receiverGainDbi: _receiverGainDbi }: { receiver
             testId="formula-map-pt"
             side="numerator"
             term="transmit-power"
-            symbol={<><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</>}
+            symbol={<><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>, <Theta3db />)</>}
             title="Transmit power"
             titleText={say('section.formulaMap.pt', '發射功率', 'Transmit power')}
             detail={say('section.formulaMap.pt.detail', '單一使用者與波束的鏈路功率，是分子鏈的起始項。', 'Per-user, per-beam link power is the first factor of the numerator.')}
@@ -183,16 +183,16 @@ export function SinrFormulaMap({ receiverGainDbi: _receiverGainDbi }: { receiver
             symbol={<>H<sub>u,s,v</sub>(t)</>}
             title="Effective channel"
             titleText={say('section.formulaMap.hl', '有效通道', 'Effective channel')}
-            detail={say('section.formulaMap.hl.detail', '非角度相關的通道因素收合在 H_{u,s,v}(t) 中。', 'Non-angle channel factors are collected in H_{u,s,v}(t).')}
+            detail={say('section.formulaMap.hl.detail', '路徑損耗與接收端增益收合在 H_{u,s,v}(t) 中；發射角度型樣由 G^T 另行表示。', 'Path loss and receive-side gain are collected in H_{u,s,v}(t); the transmit angular pattern is represented separately by G^T.')}
           />
           <FormulaMapTile
             testId="formula-map-gt"
             side="numerator"
             term="transmit-gain"
-            symbol={<>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>}
+            symbol={<>G<sup>T</sup>(θ<sub>u,s,v</sub>, <Theta3db />)</>}
             title="Satellite beam gain"
             titleText={say('section.formulaMap.gt', '衛星波束增益', 'Satellite beam gain')}
-            detail={say('section.formulaMap.gt.detail', '角度相關的發射增益構成 G^T(θ_{u,s,v})。', 'The angle-dependent transmit gain is G^T(θ_{u,s,v}).')}
+            detail={say('section.formulaMap.gt.detail', '角度與 θ₃dB 共同決定 G^T(θ_{u,s,v},θ₃dB)。', 'The off-axis angle and θ₃dB determine G^T(θ_{u,s,v},θ₃dB).')}
           />
         </div>
       </div>
@@ -227,7 +227,7 @@ export function SinrFormulaMap({ receiverGainDbi: _receiverGainDbi }: { receiver
             side="denominator"
             term="interference"
             tone="denominator"
-            symbol={<>I<sub>u,s,v</sub>(t, <SystemAngleState />)</>}
+            symbol={<LinkInterference />}
             title="Co-channel interference"
             titleText={say('section.formulaMap.interference', '同頻干擾', 'Co-channel interference')}
             detail={say('section.formulaMap.interference.detail', '同衛星與異衛星的同頻干擾都收合為總干擾 I。', 'Same- and other-satellite co-channel interference are collected in total I.')}

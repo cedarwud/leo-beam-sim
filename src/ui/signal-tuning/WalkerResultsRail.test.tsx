@@ -118,7 +118,7 @@ assert.match(markup, /data-testid="walker-result-power-signal"[\s\S]*data-scope=
 assert.match(markup, /data-testid="walker-result-power-interference"[\s\S]*data-scope="primary-ue"[\s\S]*I<sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*50 mW/);
 assert.doesNotMatch(markup, /walker-result-power-intra-interference|walker-result-power-inter-interference/);
 assert.match(markup, /data-testid="walker-result-power-noise"[\s\S]*data-scope="primary-ue"[\s\S]*σ²[\s\S]*主要 UE[\s\S]*10 mW/);
-assert.match(markup, /data-testid="walker-result-power-consumption"[\s\S]*data-scope="primary-ue"[\s\S]*P<sup>p<\/sup><sub>u,s,v<\/sub>[\s\S]*主要 UE/);
+assert.match(markup, /data-testid="walker-result-power-consumption"[\s\S]*data-scope="beam-aggregate"[\s\S]*P<sup>p<\/sup><sub>s,v<\/sub>[\s\S]*波束聚合/);
 assert.match(markup, /data-testid="walker-result-link-throughput"[\s\S]*data-scope="primary-ue"[\s\S]*R<sub>u,s,v<\/sub>[\s\S]*主要 UE[\s\S]*30 Mbit\/s/);
 assert.match(markup, /data-testid="walker-result-beam-bandwidth"[\s\S]*data-scope="beam-aggregate"[\s\S]*B<sup>w<\/sup>[\s\S]*波束聚合/);
 assert.match(markup, /data-testid="walker-result-beam-load"[\s\S]*data-scope="beam-aggregate"[\s\S]*U<sub>s,v<\/sub>[\s\S]*波束聚合[\s\S]*4/);

@@ -2,9 +2,9 @@ import { UI_TOKENS } from '../../constants/uiTokens';
 import type { AngleAwareFormulaFrame } from '../../engine/signal/types';
 import { useLocale } from '../../i18n';
 import { FormulaHeader, FormulaRow, InlineFormulaFraction } from './FormulaHeader';
-import { SystemAngleState } from './FormulaSymbols';
+import { LinkRate, LinkSinr } from './FormulaSymbols';
 import { txBi } from './labels';
-import { SIMPLIFIED_EE_BEAM_INDEX, SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
+import { SIMPLIFIED_EE_BEAM_INDEX } from './simplifiedEeSymbols';
 import { FormulaSymbolGuide } from './FormulaSymbolGuide';
 import { pagePanelStyle } from './styles';
 
@@ -24,6 +24,9 @@ export function WalkerThroughputTab({
     <section
       id="tuning-page-panel-throughput"
       data-testid="walker-throughput-page"
+      data-readonly="true"
+      data-control-surface="derived-only"
+      data-canonical-state-owner="walker-live-scene-frame"
       role="tabpanel"
       aria-label={say('tab.throughput.label', '吞吐量', 'Throughput')}
       style={pagePanelStyle}
@@ -39,26 +42,27 @@ export function WalkerThroughputTab({
           testId="walker-throughput-formula"
           accent={THROUGHPUT_ACCENT}
           emphasis
+          formulaFontSize={17}
           expression={(
             <span style={{ display: 'grid', gap: 4, justifyItems: 'center' }}>
-              <span>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</span>
+              <span><LinkRate /></span>
               <span>= <InlineFormulaFraction
                 numerator={<>B<sup>w</sup></>}
                 denominator={<>U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t)</>}
                 label="beam bandwidth divided by serving users"
-              /> · log<sub>2</sub>(1 + γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />))</span>
+              /> · log<sub>2</sub>(1 + <LinkSinr />)</span>
             </span>
           )}
           source={isEnglish
-            ? <>B<sup>w</sup> is the beam bandwidth, U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t) is the number of users served by beam (s,v), and γ is the same selected-link SINR.</>
-            : <>B<sup>w</sup> 是波束頻寬，U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t) 是波束 (s,v) 的服務人數，γ 是同一條選定鏈路的 SINR。</>}
+            ? <>B<sup>w</sup> is the beam bandwidth, U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t) is the number of users served by beam (s,v), and γ(t,θ,θ<sub>3dB</sub>) is the same selected-link SINR.</>
+            : <>B<sup>w</sup> 是波束頻寬，U<sub>{SIMPLIFIED_EE_BEAM_INDEX}</sub>(t) 是波束 (s,v) 的服務人數，γ(t,θ,θ<sub>3dB</sub>) 是同一條選定鏈路的 SINR。</>}
         />
         <FormulaSymbolGuide
           title={say('walker.throughput.symbolGuide', '符號說明', 'Symbol guide')}
           rows={[
             {
               testId: 'walker-throughput-symbol-rate',
-              symbol: <>R<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
+              symbol: <LinkRate />,
               explanation: say('walker.throughput.value', '選定 UE-link 的實際速率；右側顯示本幀結果。', 'Actual rate of the selected UE-link; the right rail shows the live result.'),
               accent: THROUGHPUT_ACCENT,
             },
@@ -76,7 +80,7 @@ export function WalkerThroughputTab({
             },
             {
               testId: 'walker-throughput-symbol-sinr',
-              symbol: <>γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>,
+              symbol: <LinkSinr />,
               explanation: say('walker.throughput.gamma', '沿用 SINR 分頁的同一條選定鏈路 SINR，不在此重複展開。', 'The same selected-link SINR from the SINR page; it is not expanded again here.'),
               accent: UI_TOKENS.color.semantic.tuning,
             },

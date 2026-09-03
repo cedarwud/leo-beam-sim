@@ -24,6 +24,11 @@ const archivedWrapper = source.slice(archivedStart, renderStart);
 const sharedRenderer = source.slice(renderStart, source.indexOf('interface MainSceneProps'));
 
 assert.match(liveWrapper, /useSimulation\(/, 'only the live source wrapper owns Walker simulation');
+assert.doesNotMatch(
+  liveWrapper,
+  /\bactive\b/,
+  'the Walker wrapper must not implement a dormant mounted state',
+);
 assert.match(liveWrapper, /<SceneRenderContent[^>]*simSource="live"/s);
 assert.doesNotMatch(
   archivedWrapper,
@@ -33,11 +38,20 @@ assert.doesNotMatch(
 assert.match(archivedWrapper, /adaptSimulationAnalysisFrameToArchivedTleSimFrame/);
 assert.match(archivedWrapper, /<SceneRenderContent/);
 assert.match(archivedWrapper, /simSource="archived-tle"/);
+assert.match(archivedWrapper, /canonicalHandoverEvent=\{frame\.handover\}/);
+assert.match(archivedWrapper, /archivedTleFrameIdentity=\{frame\}/);
 
 assert.match(
   sharedRenderer,
-  /sceneSource=\{simSource === 'archived-tle' \? 'archived-tle' : sceneFrame\.sceneSource\}/,
-  'the shared canvas telemetry must preserve archived-TLE provenance instead of leaking the frame source',
+  /sceneSource=\{sceneFrame\.sceneSource\}/,
+  'the shared canvas telemetry must read the normalized source discriminator',
+);
+assert.match(sharedRenderer, /sceneSource: 'archived-tle' as const/);
+assert.match(sharedRenderer, /status: 'accepted-immutable-frame' as const/);
+assert.match(
+  sharedRenderer,
+  /liveSimToScene\(sim, sceneGeometry, \{\s*source: simSource === 'archived-tle' \? 'archived-tle' : 'walker'/,
+  'the normalized projection seam must receive an explicit producer identity',
 );
 
 for (const originalRenderer of [
@@ -60,6 +74,18 @@ for (const originalRenderer of [
 }
 
 assert.match(source, /<ArchivedTleSceneContent/);
-assert.match(source, /data-scene-source=\{homepageTleSceneActive \? 'archived-tle'/);
+assert.match(source, /data-scene-source=\{homepageTleSceneActive\s*\? 'archived-tle'/);
+assert.match(source, /simulationSource === 'archived-tle'/);
+assert.doesNotMatch(source, /canonicalAnalysisFrame !== undefined/);
+assert.match(
+  source,
+  /\) : homepageTleSceneActive \? \(\s*<ArchivedTleSceneContent[\s\S]*?\) : \(\s*<SceneContent/,
+  'only the explicitly selected scientific producer may be mounted',
+);
+assert.match(
+  sharedRenderer,
+  /enabled: simSource === 'live'/,
+  'archived TLE must fail closed before the legacy cell scheduler',
+);
 
 console.log('archived TLE MainScene source contract tests passed');

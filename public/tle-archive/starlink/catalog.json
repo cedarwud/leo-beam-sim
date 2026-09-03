@@ -1,14 +1,14 @@
 {
   "schemaVersion": "tle-web-archive-v1",
-  "archiveId": "starlink-20250727-20260816-daaf6b5a9d6d",
-  "archiveContentSha256": "daaf6b5a9d6d75663e640392972fa18096b59b2d84221d286fc8145af3ea2cc1",
+  "archiveId": "starlink-20250727-20260824-3d746ccc21a6",
+  "archiveContentSha256": "3d746ccc21a631098204485bf30c6d9498b8b1a67b2f717e86a404f2c83c3d6e",
   "constellation": "starlink",
   "sourceKind": "ARCHIVED_TLE",
   "propagationModel": "SGP4",
   "firstArchiveDate": "20250727",
-  "lastArchiveDate": "20260816",
-  "snapshotCount": 368,
-  "sourceSnapshotCount": 369,
+  "lastArchiveDate": "20260824",
+  "snapshotCount": 376,
+  "sourceSnapshotCount": 377,
   "excludedSnapshots": [
     {
       "fileName": "starlink_20260528.tle",
@@ -3697,6 +3697,86 @@
       "minEpochUtc": "2026-07-30T14:04:58.000Z",
       "maxEpochUtc": "2026-08-16T11:01:10.788Z",
       "sha256": "280b82cbe95eee19bc8055db9a8bb1830e08c19b4c5a0beb520655bf58cc5ba2"
+    },
+    {
+      "archiveDate": "20260817",
+      "path": "/tle-archive/starlink/starlink_20260817.tle",
+      "byteLength": 1806000,
+      "recordCount": 10750,
+      "identityCount": 10750,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-17T09:11:38.961Z",
+      "sha256": "7e059db0267478b55ec1066295c1f516249356f648aef9725d1238bac1918461"
+    },
+    {
+      "archiveDate": "20260818",
+      "path": "/tle-archive/starlink/starlink_20260818.tle",
+      "byteLength": 1806000,
+      "recordCount": 10750,
+      "identityCount": 10750,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-18T10:16:11.027Z",
+      "sha256": "52dd2072219227429e77d9f06e4960cfba7bd3fd78922982a9bccca042d728c5"
+    },
+    {
+      "archiveDate": "20260819",
+      "path": "/tle-archive/starlink/starlink_20260819.tle",
+      "byteLength": 1805664,
+      "recordCount": 10748,
+      "identityCount": 10748,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-19T11:14:20.542Z",
+      "sha256": "1a0a16a689ff877d328477a93282fcdb1a534d77db16825474b5772ed1139a53"
+    },
+    {
+      "archiveDate": "20260820",
+      "path": "/tle-archive/starlink/starlink_20260820.tle",
+      "byteLength": 1805328,
+      "recordCount": 10746,
+      "identityCount": 10746,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-20T10:12:53.206Z",
+      "sha256": "daa31f7bdb5510c69561b54c03d3263eff993e875792e429ee98cf297f98eeb8"
+    },
+    {
+      "archiveDate": "20260821",
+      "path": "/tle-archive/starlink/starlink_20260821.tle",
+      "byteLength": 1804992,
+      "recordCount": 10744,
+      "identityCount": 10744,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-21T08:00:03.000Z",
+      "sha256": "9389abf35b508502b17308d57de52a5c2cecff40947d44c3fa640e9d6e4873b1"
+    },
+    {
+      "archiveDate": "20260822",
+      "path": "/tle-archive/starlink/starlink_20260822.tle",
+      "byteLength": 1804992,
+      "recordCount": 10744,
+      "identityCount": 10744,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-22T08:06:42.330Z",
+      "sha256": "5e4496a5f34256f13c215dec2545003e779737d11710cd7c0bc8fc2fa50951cf"
+    },
+    {
+      "archiveDate": "20260823",
+      "path": "/tle-archive/starlink/starlink_20260823.tle",
+      "byteLength": 1804320,
+      "recordCount": 10740,
+      "identityCount": 10740,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-23T19:10:12.336Z",
+      "sha256": "3b7299a07756ae704bb36fde007777994c3b4d61f38c125df05a44a2ce7f409b"
+    },
+    {
+      "archiveDate": "20260824",
+      "path": "/tle-archive/starlink/starlink_20260824.tle",
+      "byteLength": 1804152,
+      "recordCount": 10739,
+      "identityCount": 10739,
+      "minEpochUtc": "2026-07-30T14:04:58.000Z",
+      "maxEpochUtc": "2026-08-24T20:45:18.285Z",
+      "sha256": "e7e916df23f0e58398e94f03aeb9869a6d89900b882349e541cdb3349df21e00"
     }
   ]
 }

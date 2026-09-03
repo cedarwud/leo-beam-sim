@@ -7,6 +7,7 @@ import {
   type TleWebArchiveCatalog,
 } from '../../simulator/types';
 import type { SimulationAnalysisFrameBuildOptions } from '../../simulator/analysis';
+import { LATEST_TLE_REFERENCE_ARTIFACT_DATE } from '../../tle/latestTleDefaults';
 
 export const HOMEPAGE_FIRST_FRAME_CACHE_SCHEMA = 'homepage-first-frame-v5' as const;
 export const HOMEPAGE_FIRST_FRAME_ARTIFACT_SCHEMA = 'homepage-first-frame-artifact-v3' as const;
@@ -14,7 +15,7 @@ export const HOMEPAGE_FIRST_FRAME_FORMULA_VERSION = `canonical-ee:${SIMULATOR_CO
 export const HOMEPAGE_FIRST_FRAME_LINK_SHAPE_VERSION = 'canonical-link-result:before-satellite-cap-power-v1' as const;
 
 export const HOMEPAGE_FIRST_FRAME_SESSION_STORAGE_KEY = 'leo-beam-sim:homepage:first-frame:v5';
-export const HOMEPAGE_DEFAULT_FIRST_FRAME_ARTIFACT_URL = '/homepage-first-frame/starlink-20260812.json';
+export const HOMEPAGE_DEFAULT_FIRST_FRAME_ARTIFACT_URL = `/homepage-first-frame/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`;
 const MAX_MODULE_CACHE_ENTRIES = 4;
 const LEGACY_HOMEPAGE_FIRST_FRAME_SESSION_STORAGE_KEYS = [
   'leo-beam-sim:homepage:first-frame:v4',

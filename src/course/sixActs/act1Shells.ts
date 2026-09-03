@@ -16,8 +16,10 @@
  * See docs/sdd/SIX-ACTS-P0-VERTICAL-SLICE-SDD.md (Act 1).
  */
 
-/** The archive these bands and the reference distribution were measured on. */
-export const SIX_ACTS_ACT1_ARCHIVE_DATE = '20260812' as const;
+import { LATEST_TLE_ARCHIVE_DATES } from '../../tle/latestTleDefaults';
+
+/** The archives these bands and the reference distribution are measured on. */
+export const SIX_ACTS_ACT1_ARCHIVE_DATES = LATEST_TLE_ARCHIVE_DATES;
 
 /** Inclination above which an orbit reaches the polar regions, in degrees. */
 export const SIX_ACTS_POLAR_INCLINATION_DEG = 80;

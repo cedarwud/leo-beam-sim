@@ -11,7 +11,8 @@
       { "id": "shell-pro-42", "altitudeKm": 550, "inclinationDeg": 42, "planes": 36, "satsPerPlane": 20 },
       { "id": "shell-polar", "altitudeKm": 550, "inclinationDeg": 90, "planes": 36, "satsPerPlane": 20 },
       { "id": "shell-retro-125", "altitudeKm": 550, "inclinationDeg": 125, "planes": 24, "satsPerPlane": 16 },
-      { "id": "shell-retro-145", "altitudeKm": 550, "inclinationDeg": 145, "planes": 24, "satsPerPlane": 16 }
+      { "id": "shell-retro-145", "altitudeKm": 550, "inclinationDeg": 145, "planes": 24, "satsPerPlane": 16 },
+      { "id": "shell-candidate-70", "altitudeKm": 550, "inclinationDeg": 70, "planes": 36, "satsPerPlane": 14 }
     ],
     "observerLatDeg": 40,
     "observerLonDeg": 116
@@ -21,7 +22,7 @@
     "maxGainDbi": 40,
     "beamwidth3dBRad": 0.058,
     "efficiency": 0.6,
-    "maxSteeringAngleDeg": 12,
+    "maxSteeringAngleDeg": 40,
     "scanLossAtMaxSteeringDb": 4
   },
   "ueAntenna": {
@@ -58,6 +59,7 @@
     "policy": "sinr-offset",
     "sinrThresholdDb": -5,
     "offsetDb": 3,
+    "minimumDistinctCandidateSatellites": 2,
     "triggerTimeSec": 3.5,
     "pingPongGuardSec": 30,
     "pendingTargetHoldSec": 1.5,
@@ -83,5 +85,5 @@
     "areaHeightKm": 90,
     "seed": 7
   },
-  "demoStartOffsetSec": 450
+  "demoStartOffsetSec": 0
 }

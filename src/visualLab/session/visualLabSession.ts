@@ -61,6 +61,10 @@ import {
   type ComparisonEvidence,
   type ComparisonView,
 } from '../comparison/visualLabComparison';
+import {
+  compileScenePlan,
+  type ScenePlan,
+} from './scenePlanCompiler';
 
 export type { ComparisonEvidence, ComparisonView } from '../comparison/visualLabComparison';
 
@@ -358,18 +362,6 @@ export interface EnergyStoryView {
     readonly basebandPowerW: readonly number[];
     readonly eventPowerW: readonly number[];
   } | null;
-}
-
-export interface ScenePlan {
-  readonly schemaVersion: 'visual-lab-scene-plan-v1';
-  readonly identity: AcceptedEvidenceIdentity | null;
-  readonly view: VisualLabView;
-  readonly density: VisualLabDensity;
-  readonly focus: VisualLabFocus;
-  readonly global: VisualLabGlobalSceneFrame | null;
-  readonly local: VisualLabLocalScenePlan | null;
-  readonly availability: 'available' | 'unavailable';
-  readonly reason: string | null;
 }
 
 export interface CaptureView extends AvailabilityView {
@@ -1155,19 +1147,16 @@ class VisualLabSessionController {
     const presentation = this.presentation;
     const results = this.buildResults(accepted);
     const energy = this.buildEnergy(analysis, accepted);
-    const scenePlan = accepted === null
-      ? null
-      : deepFreeze({
-        schemaVersion: 'visual-lab-scene-plan-v1' as const,
-        identity: accepted.identity,
-        view: presentation.view,
-        density: presentation.density,
-        focus: presentation.focus,
-        global: accepted.global,
-        local: accepted.local,
-        availability: accepted.global !== null && accepted.local !== null ? 'available' as const : 'unavailable' as const,
-        reason: accepted.global !== null && accepted.local !== null ? null : 'one or more accepted scene projections are unavailable',
-      } satisfies ScenePlan);
+    const scenePlan = compileScenePlan(
+      accepted === null
+        ? null
+        : {
+          identity: accepted.identity,
+          global: accepted.global,
+          local: accepted.local,
+        },
+      presentation,
+    );
     const stateError = analysis?.error === null || analysis?.error === undefined
       ? null
       : errorView(

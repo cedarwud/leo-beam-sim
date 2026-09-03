@@ -9,6 +9,7 @@
  */
 
 import { INTER_HANDOVER_CINEMA_PHASE_END } from './handoverDisplayIsolation';
+import { HANDOVER_CONE_PHASE_END } from '../constants/sinrLiveConeStyle';
 
 export type HandoverPresentationKind = 'intra' | 'inter';
 export type HandoverPresentationSource = 'walker' | 'tle' | 'manual' | 'cinema';
@@ -23,6 +24,8 @@ export type HandoverPresentationPhase =
 export interface HandoverPresentationEndpoint {
   readonly satId: string;
   readonly cellId: number;
+  /** Exact link-budget beam identity; optional for legacy cell-only events. */
+  readonly beamId?: number | null;
   /** True only when both the satellite apex and target cell can be rendered. */
   readonly drawable: boolean;
 }
@@ -106,9 +109,17 @@ export function isDrawableHandoverPresentationEvent(
     || !event.to.drawable
   ) return false;
 
-  return event.kind === 'inter'
-    ? event.from.satId !== event.to.satId
-    : event.from.satId === event.to.satId && event.from.cellId !== event.to.cellId;
+  if (event.kind === 'inter') return event.from.satId !== event.to.satId;
+  if (event.from.satId !== event.to.satId) return false;
+  // Cell-truth intra is allowed to switch two physical beams inside one
+  // geographic cell.  Cell-only legacy events retain the old cell-change
+  // validation; exact beam ids make the same-cell case unambiguous.
+  return event.from.cellId !== event.to.cellId
+    || (
+      event.from.beamId != null
+      && event.to.beamId != null
+      && event.from.beamId !== event.to.beamId
+    );
 }
 
 function clampProgress(value: number): number {
@@ -129,7 +140,7 @@ export function resolveHandoverPresentationPhase(
   const progress = clampProgress(progress01);
   const phases = kind === 'inter'
     ? INTER_HANDOVER_CINEMA_PHASE_END
-    : { serving: 0.2, measuring: 0.4, holding: 0.6, releasing: 0.8 };
+    : HANDOVER_CONE_PHASE_END;
   if (progress < phases.serving) return 'serving';
   if (progress < phases.measuring) return 'measuring';
   if (progress < phases.holding) return 'holding';

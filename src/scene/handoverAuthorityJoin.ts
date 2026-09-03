@@ -1,5 +1,6 @@
 import {
   candidateLinkKeyString,
+  sameCandidateLinkKey,
   type HandoverCommitReceipt,
   type CandidateLinkKey,
   type HandoverDecisionFrame,
@@ -32,7 +33,7 @@ export interface HandoverAuthorityJoin {
   /** Only the immutable decision frame may nominate the active data link. */
   readonly solidDataLinkKey: CandidateLinkKey | null;
   readonly solidDataLinkCount: 0 | 1;
-  /** A source-target transition is legal only during the switching frame. */
+  /** A source-target transition is legal during switching or its commit guard. */
   readonly showTransitionCue: boolean;
 }
 
@@ -74,11 +75,17 @@ export function commitReceiptMatchesHandoverPresentation(
   const receiptKind = receipt.kind === 'inter-satellite'
     ? 'inter'
     : receipt.kind === 'intra-satellite' ? 'intra' : null;
+  const presentationBeamId = (endpoint: HandoverPresentationEvent['from']): number => (
+    endpoint.beamId ?? endpoint.cellId + 1
+  );
+  const receiptCellId = (beamId: number): number => cellIdFromLinkBudgetBeamId(beamId);
   return receiptKind === event.kind
     && receipt.from.satelliteId === event.from.satId
-    && receipt.from.beamId === event.from.cellId + 1
+    && receiptCellId(receipt.from.beamId) === event.from.cellId
+    && receipt.from.beamId === presentationBeamId(event.from)
     && receipt.to.satelliteId === event.to.satId
-    && receipt.to.beamId === event.to.cellId + 1;
+    && receiptCellId(receipt.to.beamId) === event.to.cellId
+    && receipt.to.beamId === presentationBeamId(event.to);
 }
 
 function transitionId(
@@ -102,6 +109,13 @@ function transitionId(
  */
 export function resolveHandoverAuthorityJoin(
   frame: HandoverDecisionFrame | null | undefined,
+  /**
+   * The accepted snapshot retains the last commit through the guard phase.
+   * Supplying that already-authoritative receipt lets the renderer recover the
+   * cue when the UI publication cadence skips the one-frame switching record;
+   * it is accepted only for the matching guard frame and current serving link.
+   */
+  retainedCommit: HandoverCommitReceipt | null | undefined = null,
 ): HandoverAuthorityJoin | null {
   if (frame === null || frame === undefined) return null;
 
@@ -148,6 +162,30 @@ export function resolveHandoverAuthorityJoin(
         to,
       });
     }
+  } else if (
+    frame.phase === 'guard'
+    && retainedCommit !== null
+    && retainedCommit !== undefined
+    && retainedCommit.episodeId === frame.episodeId
+    && retainedCommit.from !== null
+    && frame.serving !== null
+    && sameCandidateLinkKey(retainedCommit.to, frame.serving)
+  ) {
+    const kind = visibleKind(retainedCommit.kind);
+    if (kind !== null) {
+      const from = copyKey(retainedCommit.from);
+      const to = copyKey(retainedCommit.to);
+      transition = Object.freeze({
+        eventId: transitionId(frame, kind, from, to),
+        episodeId: frame.episodeId,
+        sourceFrameId: retainedCommit.sourceFrameId,
+        simTimeMs: retainedCommit.simTimeMs,
+        kind,
+        boundary: 'committed',
+        from,
+        to,
+      });
+    }
   }
 
   return Object.freeze({
@@ -156,7 +194,9 @@ export function resolveHandoverAuthorityJoin(
     transition,
     solidDataLinkKey: serving,
     solidDataLinkCount: serving === null ? 0 : 1,
-    showTransitionCue: frame.phase === 'switching' && transition !== null,
+    showTransitionCue: transition !== null
+      && (frame.phase === 'switching'
+        || (frame.phase === 'guard' && transition.boundary === 'committed')),
   });
 }
 
@@ -186,11 +226,13 @@ export function resolveAuthorityHandoverPresentationEvent(
     from: Object.freeze({
       satId: transition.from.satelliteId,
       cellId: fromCellId,
+      beamId: transition.from.beamId,
       drawable: true,
     }),
     to: Object.freeze({
       satId: transition.to.satelliteId,
       cellId: toCellId,
+      beamId: transition.to.beamId,
       drawable: true,
     }),
     durationMs: geometry.durationMs[transition.kind],

@@ -2,8 +2,36 @@ import type { AngleAwarePowerState } from './types';
 
 const MIN_POSITIVE = 1e-15;
 
-/** Segment-start condition from the active simplified EE contract. */
-export const ANGLE_AWARE_SEGMENT_START_POWER_W = 2;
+/**
+ * Active simplified-EE engineering constants. Keep these in the executable
+ * contract so p^0, xi, and P^p cannot drift apart between UI and runtime.
+ */
+export const ANGLE_AWARE_BEAM_POWER_CAP_W = 1.65;
+export const ANGLE_AWARE_MAX_EFFICIENCY = 0.35;
+export const ANGLE_AWARE_BACKOFF_DB = 5;
+export const ANGLE_AWARE_FIXED_RF_CHAIN_POWER_W = 0.338;
+export const ANGLE_AWARE_FIXED_BASEBAND_POWER_W = 0.2;
+export const ANGLE_AWARE_SEGMENT_START_POWER_W = ANGLE_AWARE_BEAM_POWER_CAP_W / 2;
+export const ANGLE_AWARE_EE_CONTRACT_VERSION = 'single-sinr-previous-step-power-v2';
+
+/** Class-B RF-to-supply efficiency for one physical beam. */
+export function resolveAngleAwareConversionEfficiency(
+  beamPowerW: number,
+  maxEfficiency = ANGLE_AWARE_MAX_EFFICIENCY,
+  beamPowerCapW = ANGLE_AWARE_BEAM_POWER_CAP_W,
+  backoffDb = ANGLE_AWARE_BACKOFF_DB,
+): number {
+  const safePower = Number.isFinite(beamPowerW) && beamPowerW > 0 ? beamPowerW : 0;
+  const safeMax = Number.isFinite(maxEfficiency) && maxEfficiency > 0
+    ? maxEfficiency
+    : ANGLE_AWARE_MAX_EFFICIENCY;
+  const safeCap = Number.isFinite(beamPowerCapW) && beamPowerCapW > 0
+    ? beamPowerCapW
+    : ANGLE_AWARE_BEAM_POWER_CAP_W;
+  const safeBackoff = Number.isFinite(backoffDb) ? backoffDb : ANGLE_AWARE_BACKOFF_DB;
+  const saturationPowerW = safeCap * 10 ** (safeBackoff / 10);
+  return Math.min(safeMax, safeMax * Math.sqrt(safePower / saturationPowerW));
+}
 
 export function dbmToWatts(dbm: number): number {
   return 10 ** ((dbm - 30) / 10);
@@ -53,7 +81,7 @@ export function resolveAngleAwarePowerState(
   const canContinue = previous !== undefined
     && Number.isFinite(previous.timeSec)
     // Repeated evaluations at the same effective simulation time should keep the
-    // same segment and hold state; only genuine backward jumps restart from 2W.
+    // same segment and hold state; only genuine backward jumps restart from p^0.
     && previous.timeSec <= safeTimeSec + sameFrameToleranceSec
     && Number.isFinite(previous.powerW)
     && previous.powerW > 0

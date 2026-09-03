@@ -108,8 +108,14 @@ function check(label: string, fn: () => void): void {
   console.log(`  ok ${label}`);
 }
 
-function beam(satId: string, cellId: number, serving: boolean, frequencyIndex = cellId % 3): IlluminatedCellBeam {
-  return { satId, cellId, frequencyIndex, serving };
+function beam(
+  satId: string,
+  cellId: number,
+  serving: boolean,
+  frequencyIndex = cellId % 3,
+  beamId?: number,
+): IlluminatedCellBeam {
+  return { satId, cellId, frequencyIndex, serving, ...(beamId === undefined ? {} : { beamId }) };
 }
 
 function cellRec(cellId: number, servingSatId: string | null): CellServingRecord {
@@ -200,6 +206,22 @@ check('illuminating-only beam (serving === false) draws NO cone', () => {
   assertEqual(items.length, 1, 'only the serving beam draws');
   assertEqual(items[0].cellId, 0, 'the serving cell-0 beam');
   assert(items.every(i => i.serving), 'all rendered items are serving');
+});
+
+check('same geographic cell keeps normal and variant beam identities distinct', () => {
+  const items = resolveSinrLiveCellBeamConeItems(base({
+    cellFrame: frameOf([
+      beam('sat-A', 0, true, 0, 1),
+      beam('sat-A', 0, true, 0, 421),
+      beam('sat-A', 0, true, 0, 421),
+    ]),
+  }));
+  assertEqual(items.length, 2, 'same-cell intra renders both physical beams');
+  assertEqual(new Set(items.map(item => item.beamId)).size, 2, 'normal and variant beam ids remain distinct');
+  assert(items.some(item => item.beamId === 1), 'normal beam identity is retained');
+  assert(items.some(item => item.beamId === 421), 'variant beam identity is retained');
+  const hues = items.map(item => new THREE.Color(item.color).getHSL({ h: 0, s: 0, l: 0 }).h);
+  assert(Math.abs(hues[0]! - hues[1]!) < 0.03, 'same satellite keeps one hue family across both beams');
 });
 
 check('Tier-2 non-serving resolver: the COMPLEMENT — only non-serving beams, serving:false, separate from the serving-only resolver', () => {
@@ -538,6 +560,33 @@ check('intra-HO (from cell present) draws both cells; an unplaced/unrendered sid
   const partial = resolveSinrLiveHandoverPulseConeItems(pulseInput([pulseEvent({ toCellId: 99, sourceTimeSec: 450 })]));
   assertEqual(partial.length, 1, 'unplaced new cell skipped; old cell still pulses');
   assertEqual(partial[0].cellId, 0, 'the placed old cell-0 drew');
+});
+
+check('homepage protagonist intra pulse keeps both beams on one geographic cell anchor', () => {
+  const anchor = new THREE.Vector3(30, 0, -40);
+  const intra = resolveSinrLiveHandoverPulseConeItems({
+    ...pulseInput([
+      pulseEvent({
+        kind: 'intra',
+        fromSatId: 'sat-A',
+        fromCellId: 0,
+        toSatId: 'sat-A',
+        toCellId: 1,
+        sourceTimeSec: 450,
+      }),
+    ]),
+    protagonistUeId: 'ue-0',
+    protagonistIntraBaseCenterOverride: anchor,
+  });
+  assertEqual(intra.length, 2, 'the source and target beams remain present');
+  assert(
+    new Set(intra.map(item => `${item.baseCenter.x}/${item.baseCenter.y}/${item.baseCenter.z}`)).size === 1,
+    'both intra beams use one geographic cell anchor',
+  );
+  const source = intra.find(item => item.role === 'handoverSource');
+  const target = intra.find(item => item.role === 'handoverTarget');
+  assert(source !== undefined && target !== undefined, 'source and target roles remain identifiable');
+  assert((source?.baseRadiusWorld ?? 0) < (target?.baseRadiusWorld ?? 0), 'nested radii preserve the two-color distinction');
 });
 
 check('multiple concurrent events each pulse independently with DISTINCT stable keys (no array-index churn)', () => {
@@ -1257,6 +1306,44 @@ check('display beam budget: serving fan clamps to 1 and fills the display-only 1
   assert(nineteen.slice(7).every(item => item.cellId >= 7), 'supplemental beams do not replace the seven UE cells');
 });
 
+check('serving fan uses exact beam identity when refilling a same-cell variant at 1/7/19', () => {
+  const displayPlacements = new Map<number, SinrLiveCellPlacement>(
+    Array.from({ length: 19 }, (_, cellId) => [cellId, {
+      cellId,
+      worldX: 20 * (cellId + 1),
+      worldZ: -15 * (cellId + 1),
+      radiusWorld: 10,
+    }]),
+  );
+  const variantOnly = resolveSinrLiveCellBeamConeItems({
+    cellFrame: frameOf([beam('sat-A', 0, true, 0, 421)]),
+    placementByCellId: displayPlacements,
+    satelliteWorldById,
+    focusSatIds: new Set(['sat-A']),
+  });
+
+  for (const maxCones of [1, 7, 19]) {
+    const items = resolveBudgetedSinrLiveBeamConeItems({
+      existingItems: variantOnly,
+      satId: 'sat-A',
+      maxCones,
+      placementByCellId: displayPlacements,
+      satelliteWorldById,
+      frequencyReuse: PULSE_REUSE,
+      role: 'servingFan',
+      renderKeyPrefix: `identity-${maxCones}`,
+      preferredCellId: 0,
+    });
+    assertEqual(items.length, maxCones, `serving budget ${maxCones} is filled without cell dedup`);
+    const identities = items.map(item => `${item.satId}:${item.cellId}:${item.beamId}`);
+    assertEqual(new Set(identities).size, items.length, `serving budget ${maxCones} has unique render identities`);
+    assert(items.some(item => item.cellId === 0 && item.beamId === 421), `budget ${maxCones} keeps the selected same-cell variant`);
+    if (maxCones > 1) {
+      assert(items.some(item => item.cellId === 0 && item.beamId === 1), `budget ${maxCones} refills the normal beam on the same cell`);
+    }
+  }
+});
+
 check('candidate FAN: unchanged no-ops (no pending target / target IS the serving sat / no cell frame)', () => {
   const args = {
     placementByCellId, satelliteWorldById, frequencyReuse: PULSE_REUSE, primaryCellId: 0,
@@ -1387,6 +1474,37 @@ check('cinema inter pair: both cones can be anchored on the protagonist UE', () 
   const to = items.find(item => item.satId === 'sat-B');
   assert(from !== undefined && to !== undefined, 'both anchored pair sides remain identifiable');
   assert(from!.baseRadiusWorld < to!.baseRadiusWorld, 'nested source radius keeps both colours visible');
+});
+
+check('cinema intra pair: source and target share one narrated cell anchor while retaining distinct colours', () => {
+  const candidate: SinrLiveCinemaHandoverCandidate = {
+    eventId: 'cinema-intra-same-cell-anchor',
+    ueId: 'ue-0',
+    kind: 'intra',
+    sourceTimeSec: 450,
+    fromSatId: 'sat-A',
+    fromCellId: 0,
+    toSatId: 'sat-A',
+    toCellId: 1,
+  };
+  const target = new THREE.Vector3(-6, 0, 9);
+  const items = resolveCinemaHandoverPairConeItems({
+    candidate,
+    fromOpacity: 0.8,
+    toOpacity: 0.7,
+    fromColor: FROM_COLOR,
+    toColor: TO_COLOR,
+    placementByCellId,
+    satelliteWorldById,
+    frequencyReuse: PULSE_REUSE,
+    baseCenterOverride: target,
+    fromBaseRadiusScale: 0.86,
+    toBaseRadiusScale: 1,
+  });
+  assertEqual(items.length, 2, 'intra pair keeps both source and target beams');
+  assertEqual(new Set(items.map(item => `${item.baseCenter.x}/${item.baseCenter.y}/${item.baseCenter.z}`)).size, 1, 'both beams terminate on one cell anchor');
+  assertEqual(new Set(items.map(item => item.color)).size, 2, 'colour remains the pair distinction');
+  assert(items.find(item => item.cellId === 0)?.baseRadiusWorld! < items.find(item => item.cellId === 1)?.baseRadiusWorld!, 'nested radii keep same-cell colours visible');
 });
 
 check('cinema inter pair: fail closed when the focused event has no cell geometry', () => {

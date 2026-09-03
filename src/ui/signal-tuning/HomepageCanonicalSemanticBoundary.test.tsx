@@ -109,7 +109,7 @@ assert.match(railMarkup, /data-testid="power-result-system"/);
 assert.match(railMarkup, /data-testid="throughput-result-total-rate"/);
 assert.match(railMarkup, /data-testid="ee-result-evaluation"/);
 assert.match(sinrMarkup, /I<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\)[\s\S]*Total co-channel interference/);
-assert.doesNotMatch(sinrMarkup, /G<sup>LS<\/sup>|L<sub>(?:FS|atm|scan)<\/sub>|θ<sub>3dB<\/sub>|G<sup>R<\/sup>/);
+assert.doesNotMatch(sinrMarkup, /G<sup>LS<\/sup>|L<sub>(?:FS|atm|scan)<\/sub>|G<sup>R<\/sup>/);
 assert.doesNotMatch(sinrMarkup, /H<sub>u,b<\/sub>/);
 assert.match(emptyFrameEeMarkup, /data-testid="ee-result-evaluation"[\s\S]*?<strong[^>]*>—<\/strong>/);
 assert.match(rawErrorMarkup, /Preparing results/);

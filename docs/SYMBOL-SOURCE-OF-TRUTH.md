@@ -39,7 +39,7 @@
 
 | 符號 | 取代者 / 依據 |
 |---|---|
-| `v_{\max}`(每衛星波束上限) | 改為 **`V_b = 7`**(原論文 Table I 的每衛星波束數,屬場景參數) |
+| `v_{\max}`(每衛星波束上限) | ~~改為 `V_b = 7`~~ **✗ 2026-08-22 裁決作廢**:**每衛星波束計數上限整個刪除**,`V_b` 不存在。論文式 (3.3) 改為 `U_{s,v}` 定義、式 (3.4) 改為啟用規則 `z_{s,v}=1 ⟺ U_{s,v}>0`。原論文 `V=7` 是 `|𝒱|` 不是上限。見 `~/papers/modqn-paper-reproduction/docs/RULING-2026-08-22-no-beam-count-cap.md` |
 | `\mathcal{F}`、`F`、`T_k`(射頻槽索引域與槽吞吐量) | 隨舊 `r3` 一併移除 |
 | `\widetilde R_{s,v}`(波束總吞吐量) | 改為 **`U_{s,v}`**(波束服務人數) |
 | `N(t)`(啟用波束數) | 定義依賴已刪的 `F` |
@@ -96,7 +96,9 @@ dwell `N`、`r3` 的校準尺度、D2 門檻與 TTT。
 | `\gamma_{req}` | `\gamma_{\mathrm{req}}` |
 
 外加 `v_max` 殘留於 `src/simulator/analysis.ts`、`src/simulator/beamIlluminationScenario.ts`
-(已改為 `V_b`,取自原論文每衛星波束數)。
+⚠ **2026-08-22 更正:那是刪除,不是改名為 `V_b`。** 前端不得引入任何對應論文的每衛星波束計數上限符號。
+(`MAX_BEAMS_PER_SATELLITE` / `maxBeams` 是**渲染層**限制,與論文符號無關 ——
+`beamScheduleTrace.test.ts:75` 已斷言 trace 不得暴露論文 `v_max`,維持此解耦。)
 
 ## 新 `r3` 的呈現框架(若前端要顯示負載平衡)
 

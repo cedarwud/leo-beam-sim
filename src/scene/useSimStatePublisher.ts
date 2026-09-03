@@ -55,6 +55,17 @@ import {
   type AcceptedHandoverPresentationSession,
   type AcceptedHandoverPresentationSnapshot,
 } from './acceptedHandoverPresentationSnapshot';
+import {
+  buildHomepageAcceptedSnapshotSession,
+} from '../homepage/controller/acceptedSnapshot';
+import {
+  adaptHomepageSourceFrame,
+  isHomepageSourceFrameJoinCurrent,
+} from '../homepage/controller/sourceFrameAdapter';
+import {
+  buildHomepageBeamMetrics,
+} from '../homepage/controller/beamMetrics';
+import type { HomepageBeamMetricsProjection } from '../homepage/controller/contracts';
 
 // P1d: this hook now receives `frame: NormalizedSceneFrame` and forwards it
 // to `usePanelModeInference`. The bulk of the SimState publication still
@@ -65,10 +76,13 @@ import {
 // NormalizedSceneFrame seam once the replay SimState shape stabilises.
 
 // The right rail is a teaching readout, not a frame-by-frame oscilloscope. Keep
-// one shared one-second cadence so SINR / Power / Throughput / EE values remain
-// readable while the scene and model continue at full speed.
+// a slower cadence for the stable field, but publish the decision lifecycle
+// often enough that the short candidate interval cannot disappear at an
+// accelerated playback rate.
 const UI_STABLE_UPDATE_INTERVAL_MS = 1000;
 const UI_HANDOVER_UPDATE_INTERVAL_MS = 1000;
+const UI_DECISION_UPDATE_INTERVAL_MS = 200;
+const UI_DECISION_UPDATE_MIN_INTERVAL_MS = 50;
 // A forward simTimeSec jump larger than any single normal-play per-frame advance
 // (even at the 5x base speed a frame steps well under 1 s) indicates a SEEK reseat,
 // not playback. Paired with the backward check below it identifies a cursor
@@ -453,7 +467,8 @@ export function buildPublishedPerUePositions(
  * ~4/1883 label-vs-cone divergence).
  *
  * The cell model exposes NO per-UE candidate / second-best SINR. The only
- * steered candidate is measured under the 12°/40 dBi steered antenna while the
+ * steered candidate is measured under the candidate-rich profile's 40°/40 dBi
+ * steered antenna while the
  * cell serving SINR is the 50°/33.5 dBi cell antenna at true off-axis (~6-10 dB
  * lower for the SAME sat). A delta across those two physics would routinely
  * cross the ~3 dB hysteresis offset and paint a FALSE "candidate better → HO
@@ -660,6 +675,10 @@ export function buildPublishedIntraHandoverPresentation(
   const finiteServingSinrDb = Number.isFinite(servingSinrDb ?? NaN) ? servingSinrDb : null;
   const finiteCandidateSinrDb = Number.isFinite(candidateSinrDb ?? NaN) ? candidateSinrDb : null;
   const targetCellId = record?.intraCandidateCellId ?? null;
+  const servingEe = record?.servingLinkSample?.angleAware?.energyEfficiencyBitsPerJoule ?? null;
+  const candidateEe = record?.intraCandidateLinkSample?.angleAware?.energyEfficiencyBitsPerJoule ?? null;
+  const hasServingEe = typeof servingEe === 'number' && Number.isFinite(servingEe) && servingEe >= 0;
+  const hasCandidateEe = typeof candidateEe === 'number' && Number.isFinite(candidateEe) && candidateEe >= 0;
   if (
     record === null
     || record.ueId.length === 0
@@ -680,6 +699,11 @@ export function buildPublishedIntraHandoverPresentation(
     servingSinrDb: finiteServingSinrDb,
     candidateSinrDb: finiteCandidateSinrDb,
     deltaSinrDb: finiteCandidateSinrDb - finiteServingSinrDb,
+    servingEnergyEfficiencyBitsPerJoule: hasServingEe ? servingEe : null,
+    candidateEnergyEfficiencyBitsPerJoule: hasCandidateEe ? candidateEe : null,
+    eeDecisionBasis: hasServingEe && hasCandidateEe
+      ? 'instantaneous-ee-max'
+      : 'sinr-compatibility-fallback',
     elevationDeg: geo.elevationDeg,
     rangeKm: geo.rangeKm,
   };
@@ -763,6 +787,9 @@ export function useSimStatePublisher({
   sim,
   frame,
   viz,
+  sourceEpochUtcMs,
+  homepageControllerEnabled = false,
+  playbackSpeed = 1,
   signalResetKey,
   handoverResetKey,
   measurementResetEpoch = 0,
@@ -780,6 +807,13 @@ export function useSimStatePublisher({
   sim: SimFrame;
   frame: NormalizedSceneFrame;
   viz: VizFrame;
+  /** Epoch identity supplied by the existing homepage live runtime. */
+  sourceEpochUtcMs: number;
+  /** Root `/` integration gate; other lanes retain their existing publisher. */
+  homepageControllerEnabled?: boolean;
+  /** Timeline speed is display-only; it lets the decision snapshot cadence
+   * keep a candidate stage visible when playback is accelerated. */
+  playbackSpeed?: number;
   signalResetKey?: string;
   handoverResetKey?: string;
   measurementResetEpoch?: number;
@@ -803,6 +837,8 @@ export function useSimStatePublisher({
 
   const lastUiUpdateAtRef = useRef(0);
   const lastUiStateRef = useRef<SimState | null>(null);
+  const publishedProfileRef = useRef(profile);
+  const profileChangeSourceFrameRef = useRef<SimFrame | null>(null);
   const canonicalEePublisherRef = useRef<CanonicalEePublisherSession | null>(null);
   if (canonicalEePublisherRef.current === null) {
     canonicalEePublisherRef.current = new CanonicalEePublisherSession();
@@ -812,28 +848,122 @@ export function useSimStatePublisher({
   // jump vs the immediately preceding frame — and force that frame past the UI throttle.
   const prevSimTimeSecRef = useRef<number | null>(null);
   const previousAcceptedSnapshotRef = useRef<AcceptedHandoverPresentationSnapshot | null>(null);
+  const previousHomepageBeamMetricsRef = useRef<HomepageBeamMetricsProjection | null>(null);
   const policyConfigHash = useMemo(
     () => createHandoverPresentationPolicyConfigHash(JSON.stringify(profile)),
     [profile],
   );
+  // A topology/profile edit starts a new accepted-presentation epoch. The
+  // publisher may render once with the old SimFrame before useSimulation emits
+  // the recomputed frame, so do not hand a prior-policy snapshot to the strict
+  // homepage adapter during that bridge render. The adapter must continue to
+  // reject mismatched prior snapshots for direct callers; this is the runtime
+  // boundary that deliberately drops the old presentation before delegation.
+  const previousAcceptedSnapshotForCurrentPolicy =
+    previousAcceptedSnapshotRef.current?.policyConfigHash === policyConfigHash
+      ? previousAcceptedSnapshotRef.current
+      : null;
+  const homepageSourceFrame = useMemo(() => {
+    if (!enabled || !homepageControllerEnabled) return null;
+    if (!isHomepageSourceFrameJoinCurrent(sim, sourceEpochUtcMs)) return null;
+    // The live cell model already stepped the canonical decision before this
+    // publisher runs. The adapter carries that source identity forward; it
+    // deliberately does not step another clock or decision engine here.
+    return adaptHomepageSourceFrame({
+      frame: sim,
+      epochUtcMs: sourceEpochUtcMs,
+      // The publisher is downstream of the live runtime and must not derive a
+      // second clock. The canonical decision already carries its own source
+      // time; this adapter field is metadata only for the snapshot seam.
+      dtSec: 0,
+    });
+  }, [enabled, homepageControllerEnabled, sim, sourceEpochUtcMs]);
   const acceptedHandoverPresentationSession = useMemo(() => {
     if (!enabled || sim.handoverDecisionFrame === null || sim.handoverDecisionFrame === undefined) {
       return null;
     }
-    const session = buildAcceptedHandoverPresentationSession({
-      decision: sim.handoverDecisionFrame,
+    if (!homepageControllerEnabled) {
+      const session = buildAcceptedHandoverPresentationSession({
+        decision: sim.handoverDecisionFrame,
+        policyConfigHash,
+        pinnedKey: candidateInspectionPinnedKey,
+        previousSnapshot: previousAcceptedSnapshotForCurrentPolicy,
+      });
+      if (session === null) return null;
+      previousAcceptedSnapshotRef.current = session.snapshot;
+      return session;
+    }
+    if (homepageSourceFrame === null || homepageSourceFrame.decision === null) {
+      return null;
+    }
+    const decision = homepageSourceFrame.decision;
+    const session = buildHomepageAcceptedSnapshotSession({
+      decisionBoundary: Object.freeze({
+        sourceFrameId: homepageSourceFrame.sourceFrameId,
+        epochToken: homepageSourceFrame.epochToken,
+        simTimeMs: homepageSourceFrame.simTimeMs,
+        phase: decision.phase,
+        decision,
+      }),
       policyConfigHash,
       pinnedKey: candidateInspectionPinnedKey,
-      previousSnapshot: previousAcceptedSnapshotRef.current,
+      previousSnapshot: previousAcceptedSnapshotForCurrentPolicy,
+      // The accepted decision is the sole candidate authority. The homepage
+      // rail shows only alternatives that pass both the hard service gates and
+      // the active decision trigger. Hard-eligible-but-not-trigger-satisfied
+      // rows remain in the immutable decision/overflow for diagnostics but are
+      // not presented as actual next-handover candidates. This keeps the rail
+      // aligned with the candidates that can really advance the handover.
+      // Each selected satellite still carries its configured 1/7/19 beam roster
+      // in the rail, while the scene projection bounds carrier geometry to the
+      // serving beam and the existing winner.
+      displayAllHardEligibleCandidates: true,
+      displayOnlyTriggerSatisfiedCandidates: true,
+      // The homepage scenario controls are the source of the rendered 1/7/19
+      // beam roster. Do not fall back to the profile's default here: doing so
+      // made the accepted snapshot/rail silently disagree with the scene when
+      // the serving layout was changed by the left control panel.
+      configuredBeamCount: servingBeamCount ?? profile.beams.perSatellite,
     });
+    if (session === null) return null;
     previousAcceptedSnapshotRef.current = session.snapshot;
     return session;
-  }, [candidateInspectionPinnedKey, enabled, policyConfigHash, sim.handoverDecisionFrame]);
+  }, [
+    candidateInspectionPinnedKey,
+    enabled,
+    homepageControllerEnabled,
+    homepageSourceFrame,
+    previousAcceptedSnapshotForCurrentPolicy,
+    policyConfigHash,
+    profile.beams.perSatellite,
+    sim.handoverDecisionFrame,
+  ]);
+  // During one React render the runtime can expose the old SimFrame while the
+  // decision model has already moved to the new identity. Keep the last
+  // accepted homepage snapshot/metrics for that bridge; the strict adapter
+  // above will resume publication as soon as the joins agree again.
+  const acceptedHandoverPresentationSnapshotForRender = homepageControllerEnabled
+    ? acceptedHandoverPresentationSession?.snapshot ?? previousAcceptedSnapshotForCurrentPolicy
+    : acceptedHandoverPresentationSession?.snapshot ?? null;
 
+  // In-place signal controls update `profile` without changing the structural
+  // `signalResetKey`. While paused, useSimulation intentionally emits exactly
+  // one recomputed frame; if that frame lands inside the one-second UI throttle
+  // there is no later time frame to retry it. Reset the publication throttle on
+  // every effective-profile change so the right rail cannot remain one control
+  // edit behind the central selected-link callout.
   useEffect(() => {
     lastUiUpdateAtRef.current = 0;
     lastUiStateRef.current = null;
-  }, [signalResetKey, handoverResetKey, measurementResetEpoch, seekRequestKey]);
+    previousHomepageBeamMetricsRef.current = null;
+    if (publishedProfileRef.current !== profile) {
+      publishedProfileRef.current = profile;
+      // This effect runs before useSimulation publishes the one recomputed
+      // paused frame. Remember the pre-edit object so the publication effect
+      // below skips it and force-publishes the next object instead.
+      profileChangeSourceFrameRef.current = sim;
+    }
+  }, [profile, signalResetKey, handoverResetKey, measurementResetEpoch, seekRequestKey]);
 
   useEffect(() => {
     canonicalEePublisherRef.current?.resetWindow();
@@ -861,10 +991,26 @@ export function useSimStatePublisher({
       lastUiStateRef.current = null;
     }
     previousAcceptedSnapshotRef.current = null;
+    previousHomepageBeamMetricsRef.current = null;
   }, [enabled, onSimUpdate]);
 
   useEffect(() => {
+    if (homepageControllerEnabled) return;
+    previousHomepageBeamMetricsRef.current = null;
+  }, [homepageControllerEnabled]);
+
+  useEffect(() => {
     if (!enabled) return;
+
+    const profileChangeSourceFrame = profileChangeSourceFrameRef.current;
+    if (profileChangeSourceFrame === sim) {
+      // The effective profile changed, but this is still the old frame returned
+      // during that React render. Publishing it would restart the throttle just
+      // before the recomputed paused frame arrives.
+      return;
+    }
+    const profileFrameReseat = profileChangeSourceFrame !== null;
+    if (profileFrameReseat) profileChangeSourceFrameRef.current = null;
 
     const topoBySatId = new Map(sim.satellites.map(sat => [sat.id, sat.topo]));
     const pendingTargetSinrDb = sim.pendingTargetSinrDb;
@@ -1277,7 +1423,22 @@ export function useSimStatePublisher({
         ? null
         : primaryCellRecord.comparisonSinrDb ?? null
       : pendingTargetSinrDb;
-
+    const homepageBeamMetrics = homepageControllerEnabled && homepageSourceFrame !== null
+      ? buildHomepageBeamMetrics({
+        sourceFrame: homepageSourceFrame,
+        snapshot: acceptedHandoverPresentationSnapshotForRender,
+        servingBeamCount: servingBeamCount ?? profile.beams.perSatellite,
+        candidateBeamCount: candidateBeamCount ?? profile.beams.perSatellite,
+        beamCountBySatellite,
+        previousMetrics: previousHomepageBeamMetricsRef.current,
+        // Homepage-only teaching projection: the current service beam is the
+        // visible baseline; accepted handover candidates may lead it. This is
+        // display-only and never feeds the canonical decision engine.
+        eeDisplayPolicy: 'handover-hierarchy',
+      })
+      : homepageControllerEnabled
+        ? previousHomepageBeamMetricsRef.current
+        : null;
     const nextState: SimState = {
       profileId: profile.id,
       formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
@@ -1293,11 +1454,12 @@ export function useSimStatePublisher({
       livePaperEnergyEfficiency,
       ch5DemoPaperEnergyEfficiency,
       canonicalEe,
+      homepageBeamMetrics,
       angleAwareFormulaFrame: sim.sinrLiveCells?.angleAwareFormulaFrame
         ?? sim.angleAwareFormulaFrame
         ?? null,
-      handoverDecisionFrame: acceptedHandoverPresentationSession?.snapshot.decision ?? null,
-      acceptedHandoverPresentation: acceptedHandoverPresentationSession?.snapshot ?? null,
+      handoverDecisionFrame: acceptedHandoverPresentationSnapshotForRender?.decision ?? null,
+      acceptedHandoverPresentation: acceptedHandoverPresentationSnapshotForRender,
       servingSatId: publishedPrimaryServing.servingSatId,
       servingBeamId: publishedPrimaryServing.servingBeamId,
       servingCellId: publishedPrimaryServing.servingCellId,
@@ -1348,12 +1510,27 @@ export function useSimStatePublisher({
       pendingTargetActiveBeamIds: pendingTargetBeamHopState?.activeBeamIds ?? [],
     };
     const nowMs = performance.now();
+    const decisionPhase = sim.handoverDecisionFrame?.phase;
+    const decisionHandoverWindowActive = decisionPhase === 'evaluating'
+      || decisionPhase === 'qualifying'
+      || decisionPhase === 'selection-hold'
+      || decisionPhase === 'switching';
     const handoverWindowActive =
       sim.pendingTargetSatId !== null
       || sim.recentHoSourceSatId !== null
       || sim.recentHoTargetSatId !== null
-      || sim.intraHandoverEvent !== null;
-    const uiIntervalMs = handoverWindowActive
+      || sim.intraHandoverEvent !== null
+      || decisionHandoverWindowActive;
+    const normalizedPlaybackSpeed = Number.isFinite(playbackSpeed) && playbackSpeed > 0
+      ? playbackSpeed
+      : 1;
+    const decisionIntervalMs = Math.max(
+      UI_DECISION_UPDATE_MIN_INTERVAL_MS,
+      Math.min(UI_DECISION_UPDATE_INTERVAL_MS, UI_DECISION_UPDATE_INTERVAL_MS / normalizedPlaybackSpeed),
+    );
+    const uiIntervalMs = decisionHandoverWindowActive
+      ? decisionIntervalMs
+      : handoverWindowActive
       ? UI_HANDOVER_UPDATE_INTERVAL_MS
       : UI_STABLE_UPDATE_INTERVAL_MS;
     // A live SEEK (or loop-wrap) reseats the cursor discontinuously: backward by any
@@ -1376,22 +1553,33 @@ export function useSimStatePublisher({
       nowMs,
       lastUpdateAtMs: lastUiUpdateAtRef.current,
       intervalMs: uiIntervalMs,
-      cursorReseat,
+      cursorReseat: cursorReseat || profileFrameReseat,
     })) {
       lastUiStateRef.current = nextState;
       lastUiUpdateAtRef.current = nowMs;
       onSimUpdate(nextState);
+      // The smoothing baseline must be the last frame the UI actually received.
+      // Updating this ref before the throttle let hidden source frames become
+      // the next baseline, which made a visible row jump through several source
+      // samples and then snap back on the next publish.
+      if (nextState.homepageBeamMetrics !== null && nextState.homepageBeamMetrics !== undefined) {
+        previousHomepageBeamMetricsRef.current = nextState.homepageBeamMetrics;
+      }
     }
   }, [
     enabled,
+    homepageControllerEnabled,
+    homepageSourceFrame,
     handoverResetKey,
     measurementResetEpoch,
     modqnCellServiceReadout,
+    playbackSpeed,
     onSimUpdate,
     profile,
     beamCountBySatellite,
     candidateBeamCount,
     acceptedHandoverPresentationSession,
+    acceptedHandoverPresentationSnapshotForRender,
     servingBeamCount,
     seekRequestKey,
     signalResetKey,

@@ -42,6 +42,12 @@ function getServiceAreaPassTargets(shell: Shell): number[] | null {
   return targets.length >= shell.planes ? targets.slice(0, shell.planes) : null;
 }
 
+function resolveShellOffsetRad(value: number | undefined, label: string): number {
+  if (value === undefined) return 0;
+  if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite when provided`);
+  return degToRad(value);
+}
+
 function createServiceAreaPassElement(input: {
   shell: Shell;
   planeIndex: number;
@@ -51,6 +57,8 @@ function createServiceAreaPassElement(input: {
   observerLonDeg: number;
   inclinationRad: number;
   meanMotionRevPerDay: number;
+  raanOffsetRad: number;
+  phaseOffsetRad: number;
 }): OrbitElement {
   const {
     shell,
@@ -61,6 +69,8 @@ function createServiceAreaPassElement(input: {
     observerLonDeg,
     inclinationRad,
     meanMotionRevPerDay,
+    raanOffsetRad,
+    phaseOffsetRad,
   } = input;
   const meanMotionRadPerSec = (meanMotionRevPerDay * TWO_PI) / DAY_SEC;
   const observerLatRad = degToRad(observerLatDeg);
@@ -78,10 +88,10 @@ function createServiceAreaPassElement(input: {
   const orbitPlaneX = Math.cos(targetArgumentLatitudeRad);
   const orbitPlaneY = Math.sin(targetArgumentLatitudeRad) * Math.cos(inclinationRad);
   const raanRad = normalizeAngleRad(
-    Math.atan2(targetY, targetX) - Math.atan2(orbitPlaneY, orbitPlaneX),
+    Math.atan2(targetY, targetX) - Math.atan2(orbitPlaneY, orbitPlaneX) + raanOffsetRad,
   );
   const meanAnomalyRad = normalizeAngleRad(
-    targetArgumentLatitudeRad - meanMotionRadPerSec * targetPassSec,
+    targetArgumentLatitudeRad - meanMotionRadPerSec * targetPassSec + phaseOffsetRad,
   );
 
   return {
@@ -124,6 +134,8 @@ export function generateWalkerConstellation(config: {
     const incRad = degToRad(shell.inclinationDeg);
     const totalSats = shell.planes * shell.satsPerPlane;
     const serviceAreaPassTargets = getServiceAreaPassTargets(shell);
+    const raanOffsetRad = resolveShellOffsetRad(shell.raanOffsetDeg, `${shell.id}.raanOffsetDeg`);
+    const phaseOffsetRad = resolveShellOffsetRad(shell.phaseOffsetDeg, `${shell.id}.phaseOffsetDeg`);
 
     if (
       serviceAreaPassTargets !== null
@@ -140,15 +152,17 @@ export function generateWalkerConstellation(config: {
           observerLonDeg: config.observerLonDeg,
           inclinationRad: incRad,
           meanMotionRevPerDay,
+          raanOffsetRad,
+          phaseOffsetRad,
         }));
       }
       continue;
     }
 
     for (let p = 0; p < shell.planes; p++) {
-      const raanRad = (TWO_PI * p) / shell.planes;
+      const raanRad = normalizeAngleRad((TWO_PI * p) / shell.planes + raanOffsetRad);
       // Walker-delta F=1 phasing: adjacent planes are offset by 360 / totalSats.
-      const planePhaseOffset = (TWO_PI * p) / totalSats;
+      const planePhaseOffset = (TWO_PI * p) / totalSats + phaseOffsetRad;
 
       for (let s = 0; s < shell.satsPerPlane; s++) {
         // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml

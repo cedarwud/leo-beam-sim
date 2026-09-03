@@ -329,6 +329,7 @@ export function LossControlSection({
   accentColor,
   children,
   testId,
+  side,
   tone = 'formula',
   helpId,
   visualVariant = 'default',
@@ -358,6 +359,8 @@ export function LossControlSection({
   accentColor?: string;
   children: ReactNode;
   testId: string;
+  /** Optional public SINR ownership; omitted for implementation-only research cards. */
+  side?: 'numerator' | 'denominator';
   tone?: 'formula' | 'research';
   helpId?: string;
   /** Visual-only variant used by the legacy Walker rail. */
@@ -377,6 +380,7 @@ export function LossControlSection({
   return (
     <section
       data-testid={testId}
+      data-formula-side={side}
       style={{
         display: 'grid',
         gap: isLegacy ? 12 : 14,

@@ -6,7 +6,14 @@ import { CanonicalParameterSection } from './CanonicalParameterPrimitives';
 import { CanonicalSinrTabList, type CanonicalSinrSectionKey } from './CanonicalSinrTabList';
 import { NumericControl } from './Controls';
 import { FormulaFraction, FormulaHeader, FormulaRow } from './FormulaHeader';
-import { SystemAngleState } from './FormulaSymbols';
+import {
+  LinkChannel,
+  LinkInterference,
+  LinkRfPower,
+  LinkSinr,
+  LinkTransmitGain,
+  Theta3db,
+} from './FormulaSymbols';
 import { txBi } from './labels';
 import { captionTextStyle, controlStackStyle, groupTitleStyle, pagePanelStyle } from './styles';
 import { SIMPLIFIED_EE_LINK_INDEX } from './simplifiedEeSymbols';
@@ -68,19 +75,19 @@ export function CanonicalSinrTab({
           style={{ width: '100%' }}
         >
           <FormulaFraction
-            lhs={<>γ<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+            lhs={<LinkSinr />}
             numerator={(
               <>
-                <span style={{ color: SINR_ACCENT }} data-formula-symbol="link-request-power"><i>p</i><sub>u,s,v</sub>(t, θ<sub>u,s,v</sub>)</span>
+                <span style={{ color: SINR_ACCENT }} data-formula-symbol="link-request-power"><LinkRfPower /></span>
                 {' · '}
-                <span data-formula-symbol="effective-channel">H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)</span>
+                <span data-formula-symbol="effective-channel"><LinkChannel /></span>
                 {' · '}
-                <span data-formula-symbol="transmit-gain">G<sup>T</sup>(θ<sub>u,s,v</sub>)</span>
+                <span data-formula-symbol="transmit-gain"><LinkTransmitGain /></span>
               </>
             )}
             denominator={(
               <>
-                I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) + σ²
+                <LinkInterference /> + σ²
               </>
             )}
             numeratorAccent={SINR_ACCENT}
@@ -106,25 +113,25 @@ export function CanonicalSinrTab({
               emphasis
               expression={(
                 <>
-                  <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ<sub>u,s,v</sub>)
+                  <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ<sub>u,s,v</sub>, <Theta3db />)
                 </>
               )}
               source={isEnglish ? (
                 <>
-                  <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ<sub>u,s,v</sub>) is the actual RF power used by γ.
+                  <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ<sub>u,s,v</sub>, <Theta3db />) is the actual RF power used by γ.
                 </>
               ) : (
                 <>
-                  <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ<sub>u,s,v</sub>) 是 γ 使用的實際 RF 功率。
+                  <i>p</i><sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, θ<sub>u,s,v</sub>, <Theta3db />) 是 γ 使用的實際 RF 功率。
                 </>
               )}
             />
           </div>
           <p style={{ ...captionTextStyle, margin: 0 }}>
             {isEnglish ? (
-              <>The γ link term uses the actual RF power of the selected link.</>
+              <>The γ link term uses the actual RF power of the selected link under the configured θ<sub>3dB</sub>.</>
             ) : (
-              <>γ 的鏈路項使用單一使用者的實際 RF 功率。</>
+              <>γ 的鏈路項使用設定的 θ<sub>3dB</sub> 與單一使用者的實際 RF 功率。</>
             )}
           </p>
         </CanonicalParameterSection>
@@ -140,10 +147,10 @@ export function CanonicalSinrTab({
               testId="canonical-sinr-channel-gain"
               accent={UI_TOKENS.color.semantic.loss}
               emphasis
-              expression={<>H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t)</>}
+              expression={<LinkChannel />}
               source={isEnglish
-                ? <>H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) is the composite effective channel used by SINR.</>
-                : <>H<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t) 是 SINR 使用的複合有效通道。</>}
+                ? <><LinkChannel /> is the composite effective channel used by SINR.</>
+                : <><LinkChannel /> 是 SINR 使用的複合有效通道。</>}
             />
           </div>
           <NumericControl
@@ -158,6 +165,7 @@ export function CanonicalSinrTab({
             description={say('homepage.sinr.carrierFrequency.description', '自由空間路徑損耗使用的頻率；提高頻率會增加損耗。', 'Carrier frequency used in free-space path loss; higher frequency increases loss.')}
             effect={say('homepage.sinr.carrierFrequency.effect', '提高頻率會改變 H，並連帶改變 SINR 與速率。', 'Increasing frequency changes H and therefore the SINR and rate.')}
             resetValue={`${DEFAULT_SIMULATOR_PARAMETERS.carrierFrequencyGHz.toFixed(1)} GHz`}
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · carrier frequency"
             helpId="param.canonicalSinr.carrierFrequency"
             accentColor={UI_TOKENS.color.semantic.beam}
             formatValue={value => `${value.toFixed(1)} GHz`}
@@ -175,10 +183,29 @@ export function CanonicalSinrTab({
             description={say('homepage.sinr.atmosphericLoss.description', '大氣衰減係數，以 dB/km 表示。', 'Atmospheric attenuation coefficient, in dB/km.')}
             effect={say('homepage.sinr.atmosphericLoss.effect', '提高大氣衰減係數會改變 H，並連帶改變 SINR 與速率。', 'Increasing atmospheric attenuation changes H and therefore the SINR and rate.')}
             resetValue={`${DEFAULT_SIMULATOR_PARAMETERS.atmosphericZenithLossDb.toFixed(2)} dB/km`}
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · atmospheric attenuation coefficient"
             helpId="param.canonicalSinr.atmosphericLoss"
             accentColor={UI_TOKENS.color.semantic.beam}
             formatValue={value => `${value.toFixed(2)} dB/km`}
             onChange={chiAtm => update({ atmosphericZenithLossDb: chiAtm })}
+          />
+          <NumericControl
+            testId="sinr-tab-receiver-gain-control"
+            symbol={<>G<sup>R</sup></>}
+            label={say('homepage.sinr.receiveGain.label', '接收天線增益', 'Receive antenna gain')}
+            unit="dBi"
+            value={parameters.receiveGainDbi}
+            min={-10}
+            max={60}
+            step={0.1}
+            description={say('homepage.sinr.receiveGain.description', '接收端天線增益，屬於 H 的通道組成。', 'Receive-antenna gain, included in the H channel term.')}
+            effect={say('homepage.sinr.receiveGain.effect', '提高接收增益會改變 H，並連帶改變 γ 與速率。', 'Increasing receive gain changes H and therefore γ and rate.')}
+            resetValue={`${DEFAULT_SIMULATOR_PARAMETERS.receiveGainDbi.toFixed(1)} dBi`}
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · receive antenna gain"
+            helpId="param.canonicalSinr.receiveGain"
+            accentColor={UI_TOKENS.color.semantic.loss}
+            formatValue={value => `${value.toFixed(1)} dBi`}
+            onChange={receiveGainDbi => update({ receiveGainDbi })}
           />
         </CanonicalParameterSection>
       )}
@@ -191,15 +218,15 @@ export function CanonicalSinrTab({
               testId="canonical-sinr-beam-gain"
               accent={UI_TOKENS.color.semantic.beam}
               emphasis
-              expression={<>G<sup>T</sup>(θ<sub>u,s,v</sub>)</>}
+              expression={<>G<sup>T</sup>(θ<sub>u,s,v</sub>, <Theta3db />)</>}
               source={isEnglish
-                ? <>G<sup>T</sup>(θ<sub>u,s,v</sub>) is the angle-dependent transmit beam gain.</>
-                : <>G<sup>T</sup>(θ<sub>u,s,v</sub>) 是隨離軸角 θ<sub>u,s,v</sub> 變化的發射波束增益。</>}
+                ? <>G<sup>T</sup>(θ<sub>u,s,v</sub>, <Theta3db />) is the angle-dependent transmit beam gain.</>
+                : <>G<sup>T</sup>(θ<sub>u,s,v</sub>, <Theta3db />) 是隨離軸角與 θ<sub>3dB</sub> 變化的發射波束增益。</>}
             />
           </div>
           <NumericControl
             testId="sinr-tab-g0-control"
-            symbol={<>G<sup>T</sup>(0)</>}
+            symbol={<>G<sup>T</sup>(0, <Theta3db />)</>}
             label={say('homepage.sinr.g0.label', '波束中心發射增益', 'Boresight transmit gain')}
             unit="dBi"
             value={g0Dbi}
@@ -207,13 +234,14 @@ export function CanonicalSinrTab({
             max={40}
             step={0.1}
             description={say('homepage.sinr.g0.description', '波束中心的發射增益。', 'Boresight transmit gain.')}
-            effect={say('homepage.sinr.g0.effect', '提高 Gᵀ(0) 會改變角度相關發射增益，並連帶改變 SINR 與速率。', 'Increasing Gᵀ(0) changes the angle-dependent transmit gain and therefore the SINR and rate.')}
+            effect={say('homepage.sinr.g0.effect', '提高 Gᵀ(0,θ₃dB) 會改變角度相關發射增益，並連帶改變 SINR 與速率。', 'Increasing Gᵀ(0,θ₃dB) changes the angle-dependent transmit gain and therefore the SINR and rate.')}
             resetValue={say(
               'homepage.sinr.g0.resetValue',
               `預設 ${defaultG0Dbi.toFixed(1)} dBi`,
               `Default ${defaultG0Dbi.toFixed(1)} dBi`,
             )}
             helpId="param.canonicalSinr.g0"
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · boresight transmit gain"
             accentColor={UI_TOKENS.color.semantic.beam}
             formatValue={value => `${value.toFixed(1)} dBi`}
             onChange={value => update({ g0Linear: dbToLinear(value) })}
@@ -228,13 +256,14 @@ export function CanonicalSinrTab({
             max={20}
             step={0.1}
             description={say('homepage.sinr.theta3db.description', '完整半功率波束寬；公式使用其一半作為單側角度。', 'Full half-power beam width; the formula uses half of it as the one-sided angle.')}
-            effect={say('homepage.sinr.theta3db.effect', '調整波束寬會改變 Gᵀ(θᵤ,ₛ,ᵥ)，並連帶改變 SINR 與速率。', 'Changing beamwidth changes Gᵀ(θᵤ,ₛ,ᵥ) and therefore the SINR and rate.')}
+            effect={say('homepage.sinr.theta3db.effect', '調整波束寬會改變 Gᵀ(θᵤ,ₛ,ᵥ,θ₃dB)，並連帶改變 SINR 與速率。', 'Changing beamwidth changes Gᵀ(θᵤ,ₛ,ᵥ,θ₃dB) and therefore the SINR and rate.')}
             resetValue={say(
               'homepage.sinr.theta3db.resetValue',
               `預設 ${defaultThetaDegrees.toFixed(1)}°`,
               `Default ${defaultThetaDegrees.toFixed(1)}°`,
             )}
             helpId="param.canonicalSinr.theta3db"
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · full 3 dB beamwidth"
             accentColor={UI_TOKENS.color.semantic.beam}
             formatValue={value => `${value.toFixed(1)}°`}
             onChange={value => update({ theta3dbRad: value * Math.PI / 180 })}
@@ -252,11 +281,11 @@ export function CanonicalSinrTab({
               testId="canonical-sinr-interference-decomposition"
               accent="#ff8a6b"
               emphasis
-              expression={<>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />)</>}
+              expression={<LinkInterference />}
               source={isEnglish ? (
-                <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) is the total co-channel interference used by the SINR equation.</>
+                <><LinkInterference /> is the total co-channel interference used by the SINR equation.</>
               ) : (
-                <>I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) 是 SINR 式使用的總同頻干擾。</>
+                <><LinkInterference /> 是 SINR 式使用的總同頻干擾。</>
               )}
             />
           </div>
@@ -269,9 +298,10 @@ export function CanonicalSinrTab({
             min={1}
             max={7}
             step={1}
-            description={say('homepage.sinr.frequencyReuse.description', '將系統頻寬分成指定數量的重用群組；這會決定哪些作用中波束共同形成 I_{u,s,v}(t,θ)，也會改變每道波束頻寬。', 'Splits system bandwidth into the selected number of reuse groups; this determines which active beams contribute to I_{u,s,v}(t,θ) and changes per-beam bandwidth.')}
-            effect={say('homepage.sinr.frequencyReuse.effect', '增加重用群組數會改變 I_{u,s,v}(t,θ) 的同頻波束集合，並降低每道波束頻寬與 σ²。', 'Increasing the reuse-group count changes the co-channel contributors to I_{u,s,v}(t,θ) and lowers per-beam bandwidth and σ².')}
+            description={say('homepage.sinr.frequencyReuse.description', '將系統頻寬分成指定數量的重用群組；這會決定哪些作用中波束共同形成 I_{u,s,v}(t,θ,θ₃dB)，也會改變每道波束頻寬。', 'Splits system bandwidth into the selected number of reuse groups; this determines which active beams contribute to I_{u,s,v}(t,θ,θ₃dB) and changes per-beam bandwidth.')}
+            effect={say('homepage.sinr.frequencyReuse.effect', '增加重用群組數會改變 I_{u,s,v}(t,θ,θ₃dB) 的同頻波束集合，並降低每道波束頻寬與 σ²。', 'Increasing the reuse-group count changes the co-channel contributors to I_{u,s,v}(t,θ,θ₃dB) and lowers per-beam bandwidth and σ².')}
             resetValue={`${DEFAULT_SIMULATOR_PARAMETERS.frequencyReuse}`}
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · frequency-reuse group count"
             helpId="param.canonicalSinr.frequencyReuse"
             accentColor={SINR_ACCENT}
             formatValue={value => `${Math.round(value)}`}
@@ -290,10 +320,64 @@ export function CanonicalSinrTab({
               emphasis
               expression={<>σ² = B<sup>w</sup> · N<sub>0</sub></>}
               source={isEnglish
-                ? <>σ² is the noise power paired with I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) in SINR.</>
-                : <>σ² 是與 I<sub>{SIMPLIFIED_EE_LINK_INDEX}</sub>(t, <SystemAngleState />) 一起進入 SINR 的接收端雜訊功率。</>}
+                ? <>σ² is the noise power paired with <LinkInterference /> in SINR.</>
+                : <>σ² 是與 <LinkInterference /> 一起進入 SINR 的接收端雜訊功率。</>}
             />
           </div>
+          <NumericControl
+            testId="sinr-tab-antenna-noise-temperature-control"
+            symbol={<>T<sub>ant</sub></>}
+            label={say('homepage.sinr.antennaTemperature.label', '天線雜訊溫度', 'Antenna noise temperature')}
+            unit="K"
+            value={parameters.antennaNoiseTemperatureK}
+            min={1}
+            max={2000}
+            step={1}
+            description={say('homepage.sinr.antennaTemperature.description', '接收端天線雜訊溫度，參與 σ² 推導。', 'Receiver antenna noise temperature used in the σ² derivation.')}
+            effect={say('homepage.sinr.antennaTemperature.effect', '提高天線雜訊溫度會提高 σ²，並降低 γ 與速率。', 'Increasing antenna noise temperature raises σ² and lowers γ and rate.')}
+            resetValue={`${DEFAULT_SIMULATOR_PARAMETERS.antennaNoiseTemperatureK} K`}
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · antenna noise temperature"
+            helpId="param.canonicalSinr.antennaNoiseTemperature"
+            accentColor={UI_TOKENS.color.semantic.noise}
+            formatValue={value => `${Math.round(value)} K`}
+            onChange={antennaNoiseTemperatureK => update({ antennaNoiseTemperatureK: Math.round(antennaNoiseTemperatureK) })}
+          />
+          <NumericControl
+            testId="sinr-tab-noise-figure-control"
+            symbol={<>NF</>}
+            label={say('homepage.sinr.noiseFigure.label', '接收器雜訊指數', 'Receiver noise figure')}
+            unit="dB"
+            value={parameters.noiseFigureDb}
+            min={0}
+            max={20}
+            step={0.1}
+            description={say('homepage.sinr.noiseFigure.description', '接收器雜訊指數，參與 σ² 推導。', 'Receiver noise figure used in the σ² derivation.')}
+            effect={say('homepage.sinr.noiseFigure.effect', '提高雜訊指數會提高 σ²，並降低 γ 與速率。', 'Increasing noise figure raises σ² and lowers γ and rate.')}
+            resetValue={`${DEFAULT_SIMULATOR_PARAMETERS.noiseFigureDb.toFixed(1)} dB`}
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · receiver noise figure"
+            helpId="param.canonicalSinr.noiseFigure"
+            accentColor={UI_TOKENS.color.semantic.noise}
+            formatValue={value => `${value.toFixed(1)} dB`}
+            onChange={noiseFigureDb => update({ noiseFigureDb })}
+          />
+          <NumericControl
+            testId="sinr-tab-noise-reference-temperature-control"
+            symbol={<>T<sub>0</sub></>}
+            label={say('homepage.sinr.noiseReferenceTemperature.label', '雜訊參考溫度', 'Noise reference temperature')}
+            unit="K"
+            value={parameters.noiseReferenceTemperatureK}
+            min={1}
+            max={2000}
+            step={1}
+            description={say('homepage.sinr.noiseReferenceTemperature.description', '熱雜訊計算使用的參考溫度。', 'Reference temperature used by the thermal-noise calculation.')}
+            effect={say('homepage.sinr.noiseReferenceTemperature.effect', '提高參考溫度會提高 σ²，並降低 γ 與速率。', 'Increasing reference temperature raises σ² and lowers γ and rate.')}
+            resetValue={`${DEFAULT_SIMULATOR_PARAMETERS.noiseReferenceTemperatureK} K`}
+            source="TLE-CANONICAL-EE-SIMULATOR-SDD §8.1 · noise reference temperature"
+            helpId="param.canonicalSinr.noiseReferenceTemperature"
+            accentColor={UI_TOKENS.color.semantic.noise}
+            formatValue={value => `${Math.round(value)} K`}
+            onChange={noiseReferenceTemperatureK => update({ noiseReferenceTemperatureK: Math.round(noiseReferenceTemperatureK) })}
+          />
         </div>
       )}
 

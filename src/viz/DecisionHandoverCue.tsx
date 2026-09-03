@@ -1,4 +1,4 @@
-import { Line } from '@react-three/drei';
+import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 
 import type { AuthorityHandoverTransition } from '../scene/handoverAuthorityJoin';
@@ -13,6 +13,25 @@ export interface DecisionHandoverCueGeometry {
   readonly from: CuePoint;
   readonly to: CuePoint;
   readonly path: readonly CuePoint[];
+}
+
+export interface DecisionHandoverCueLabels {
+  readonly kindLabel: string;
+  readonly sourceLabel: string;
+  readonly targetLabel: string;
+}
+
+/** Display-only copy of the already accepted pair; it never infers a transition kind. */
+export function resolveDecisionHandoverCueLabels(
+  transition: Pick<AuthorityHandoverTransition, 'kind' | 'from' | 'to'>,
+): DecisionHandoverCueLabels {
+  return Object.freeze({
+    kindLabel: transition.kind === 'intra'
+      ? 'INTRA · SAME SATELLITE'
+      : 'INTER · SATELLITE CHANGE',
+    sourceLabel: `SOURCE · ${transition.from.satelliteId} / B${transition.from.beamId}`,
+    targetLabel: `TARGET · ${transition.to.satelliteId} / B${transition.to.beamId}`,
+  });
 }
 
 export function resolveDecisionHandoverCueGeometry(
@@ -43,6 +62,34 @@ export function resolveDecisionHandoverCueGeometry(
   });
 }
 
+const ENDPOINT_LABEL_OFFSET = 11;
+const ENDPOINT_LABEL_LIFT = 8;
+const KIND_LABEL_LIFT = 7;
+
+function resolveCueDirection(geometry: DecisionHandoverCueGeometry): readonly [number, number] {
+  let dx = geometry.to[0] - geometry.from[0];
+  let dz = geometry.to[2] - geometry.from[2];
+  let length = Math.hypot(dx, dz);
+  if (length < 0.5) {
+    dx = geometry.path[1][0] - geometry.from[0];
+    dz = geometry.path[1][2] - geometry.from[2];
+    length = Math.hypot(dx, dz);
+  }
+  return length < 0.5 ? [1, 0] : [dx / length, dz / length];
+}
+
+function endpointLabelPosition(
+  endpoint: CuePoint,
+  direction: readonly [number, number],
+  side: -1 | 1,
+): CuePoint {
+  return [
+    endpoint[0] + direction[0] * ENDPOINT_LABEL_OFFSET * side,
+    endpoint[1] + ENDPOINT_LABEL_LIFT,
+    endpoint[2] + direction[1] * ENDPOINT_LABEL_OFFSET * side,
+  ];
+}
+
 export function DecisionHandoverCue({
   transition,
   placementByCellId,
@@ -65,6 +112,17 @@ export function DecisionHandoverCue({
   const targetOpacity = 0.34 + 0.58 * progress;
   const sourceScale = 1 - 0.28 * progress;
   const targetScale = 0.72 + 0.42 * progress;
+  const labels = resolveDecisionHandoverCueLabels(transition);
+  const direction = resolveCueDirection(geometry);
+  const sourceLabelPosition = endpointLabelPosition(geometry.from, direction, -1);
+  const targetLabelPosition = endpointLabelPosition(geometry.to, direction, 1);
+  const kindLabelPosition: CuePoint = [
+    geometry.path[1][0],
+    geometry.path[1][1] + KIND_LABEL_LIFT,
+    geometry.path[1][2],
+  ];
+  const sourceLabelOpacity = Math.max(0.42, sourceOpacity);
+  const targetLabelOpacity = Math.max(0.42, targetOpacity);
 
   return (
     <group
@@ -94,6 +152,48 @@ export function DecisionHandoverCue({
         renderOrder={25}
         userData={{ isDataLink: false, transitionBoundary: transition.boundary }}
       />
+      <Text
+        name="decision-handover-kind-label"
+        position={kindLabelPosition}
+        fontSize={6.2}
+        color={targetColor}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.65}
+        outlineColor="#000000"
+        fillOpacity={Math.max(sourceLabelOpacity, targetLabelOpacity)}
+        renderOrder={28}
+      >
+        {labels.kindLabel}
+      </Text>
+      <Text
+        name="decision-handover-source-label"
+        position={sourceLabelPosition}
+        fontSize={5.2}
+        color={sourceColor}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.55}
+        outlineColor="#000000"
+        fillOpacity={sourceLabelOpacity}
+        renderOrder={28}
+      >
+        {labels.sourceLabel}
+      </Text>
+      <Text
+        name="decision-handover-target-label"
+        position={targetLabelPosition}
+        fontSize={5.2}
+        color={targetColor}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.55}
+        outlineColor="#000000"
+        fillOpacity={targetLabelOpacity}
+        renderOrder={28}
+      >
+        {labels.targetLabel}
+      </Text>
       <mesh
         name="decision-handover-source-boundary"
         position={geometry.from}

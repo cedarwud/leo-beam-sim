@@ -7,9 +7,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  SIX_ACTS_HANDOVER_PRESET_HREF,
+  SIX_ACTS_ACT3_HREF,
+  SIX_ACTS_ACT4_HREF,
+  SIX_ACTS_ACT5_HREF,
+  SIX_ACTS_ACT6_HREF,
   SIX_ACTS_INDEX_HREF,
   SIX_ACTS_ROUTES,
+  SIX_ACTS_VISIBLE_ROUTES,
   nextSixActsRoute,
   previousSixActsRoute,
   sixActsRouteFor,
@@ -21,33 +25,34 @@ test('every listed route is actually registered in the router', () => {
   // A nav entry pointing at an unrouted path is a dead link in a lecture.
   const main = readFileSync(join(REPO_ROOT, 'src/main.tsx'), 'utf8');
   for (const entry of SIX_ACTS_ROUTES) {
-    if (entry.href === SIX_ACTS_HANDOVER_PRESET_HREF) {
-      assert.ok(main.includes("window.location.pathname === '/'"), `${entry.href} is not routed to the homepage`);
-    } else {
-      assert.ok(main.includes(`'${entry.href}'`), `${entry.href} is not routed in main.tsx`);
-    }
+    assert.ok(main.includes(`'${entry.href.split('?')[0]}'`), `${entry.href} is not routed in main.tsx`);
   }
   assert.ok(main.includes(`'${SIX_ACTS_INDEX_HREF}'`));
 });
 
-test('every act carries the nav strip, so no page is a dead end', () => {
+test('every released teaching surface carries persistent direct navigation', () => {
   const files = [
     'src/prototype/global-constellation/GlobalConstellationPrototype.tsx',
     'src/course/tle-journey/TleJourneyRoute.tsx',
-    'src/course/energy-lab/EnergyLabRoute.tsx',
+    'src/prototype/golden-flow/GoldenFlowPrototype.tsx',
+    'src/course/contact-window-labs/ContactWindowLabRoute.tsx',
     'src/course/six-acts-index/SixActsIndexRoute.tsx',
   ];
   for (const file of files) {
     const source = readFileSync(join(REPO_ROOT, file), 'utf8');
     assert.ok(source.includes('<SixActsNav'), `${file} has no nav strip`);
   }
+
+  const stageFiles = files.slice(0, 4);
+  for (const file of stageFiles) {
+    const source = readFileSync(join(REPO_ROOT, file), 'utf8');
+    assert.ok(source.includes('variant="stage"'), `${file} has no persistent stage navigation`);
+  }
 });
 
-test('every route render carries the way in, so none can be forgotten', () => {
-  // Mounted at the router, not inside one root component: five different roots
-  // serve "the app", and putting the entry in one of them left the other four
-  // without it. This asserts the stronger property — every successful render
-  // goes through the shell that adds it.
+test('standalone routes share the router-owned launcher mount', () => {
+  // The homepage intentionally suppresses this corner launcher and keeps its
+  // visible top-band entry. Other standalone roots still share one mount.
   const main = readFileSync(join(REPO_ROOT, 'src/main.tsx'), 'utf8');
   assert.ok(main.includes('<SixActsLauncher />'), 'main.tsx does not mount the launcher');
 
@@ -64,13 +69,13 @@ test('every route render carries the way in, so none can be forgotten', () => {
   );
 });
 
-test('the homepage carries a visible top-band entry, not only the corner one', () => {
-  // The corner launcher alone was dark-on-dark at the screen edge of a full
-  // engineering dashboard and went unnoticed in review. The top band is where
-  // the eye lands, so the entry lives there too.
+test('the homepage keeps its visible top-band entry and suppresses the corner launcher', () => {
   const app = readFileSync(join(REPO_ROOT, 'src/App.tsx'), 'utf8');
+  const main = readFileSync(join(REPO_ROOT, 'src/main.tsx'), 'utf8');
   assert.ok(app.includes('data-testid="six-acts-top-entry"'));
   assert.ok(app.includes(SIX_ACTS_INDEX_HREF));
+  assert.ok(main.includes("const isHomepageRoute = window.location.pathname === '/';"));
+  assert.ok(main.includes('isHomepageRoute || isSixActsSurface || isSixActsTeachingStage'));
 });
 
 test('the six-acts surfaces suppress the launcher, having their own nav', () => {
@@ -79,17 +84,13 @@ test('the six-acts surfaces suppress the launcher, having their own nav', () => 
   for (const entry of SIX_ACTS_ROUTES) {
     // Each act's route flag must feed the suppression check, or an act would
     // show both its nav strip and the corner launcher.
-    if (entry.href === SIX_ACTS_HANDOVER_PRESET_HREF) {
-      assert.ok(main.includes("window.location.pathname === '/'"));
-    } else {
-      assert.ok(main.includes(`'${entry.href}'`));
-    }
+    assert.ok(main.includes(`'${entry.href.split('?')[0]}'`));
   }
 });
 
 test('the running order chains forwards and backwards', () => {
-  const first = SIX_ACTS_ROUTES[0]!;
-  const last = SIX_ACTS_ROUTES[SIX_ACTS_ROUTES.length - 1]!;
+  const first = SIX_ACTS_VISIBLE_ROUTES[0]!;
+  const last = SIX_ACTS_VISIBLE_ROUTES[SIX_ACTS_VISIBLE_ROUTES.length - 1]!;
 
   assert.strictEqual(previousSixActsRoute(first.href), null);
   assert.strictEqual(nextSixActsRoute(last.href), null);
@@ -103,21 +104,41 @@ test('the running order chains forwards and backwards', () => {
     cursor = next;
     visited += 1;
   }
-  assert.strictEqual(visited, new Set(SIX_ACTS_ROUTES.map(entry => entry.href)).size);
+  assert.strictEqual(visited, new Set(SIX_ACTS_VISIBLE_ROUTES.map(entry => entry.href)).size);
 });
 
-test('every act except the last hands off with a bridge', () => {
-  SIX_ACTS_ROUTES.forEach((entry, index) => {
-    const isLast = index === SIX_ACTS_ROUTES.length - 1;
+test('every visible act except the last hands off with a bridge', () => {
+  SIX_ACTS_VISIBLE_ROUTES.forEach((entry, index) => {
+    const isLast = index === SIX_ACTS_VISIBLE_ROUTES.length - 1;
     assert.strictEqual(entry.bridgeZhHant === null, isLast, `${entry.id} bridge is wrong`);
   });
 });
 
-test('hrefs resolve, with one shared homepage preset for Acts 3 and 4', () => {
+test('Acts 3 and 4 use distinct scene-first Golden Flow segment hrefs', () => {
   const hrefs = SIX_ACTS_ROUTES.map(entry => entry.href);
-  assert.strictEqual(new Set(hrefs).size, hrefs.length - 1, 'Act 3 and Act 4 intentionally share the preset surface');
+  assert.strictEqual(new Set(hrefs).size, hrefs.length, 'every act has a distinct stable href');
+  assert.strictEqual(SIX_ACTS_ROUTES.find(entry => entry.id === 'act3')?.href, SIX_ACTS_ACT3_HREF);
+  assert.strictEqual(SIX_ACTS_ROUTES.find(entry => entry.id === 'act4')?.href, SIX_ACTS_ACT4_HREF);
+  assert.notStrictEqual(SIX_ACTS_ACT3_HREF, SIX_ACTS_ACT4_HREF);
   for (const href of hrefs) assert.strictEqual(sixActsRouteFor(href)?.href, href);
   assert.strictEqual(sixActsRouteFor('/nope'), null);
+});
+
+test('released sequential navigation stops at Act 4 while hidden routes remain directly addressable', () => {
+  assert.strictEqual(nextSixActsRoute(SIX_ACTS_ACT3_HREF)?.href, SIX_ACTS_ACT4_HREF);
+  assert.strictEqual(previousSixActsRoute(SIX_ACTS_ACT4_HREF)?.href, SIX_ACTS_ACT3_HREF);
+  assert.strictEqual(nextSixActsRoute(SIX_ACTS_ACT4_HREF), null);
+  assert.strictEqual(previousSixActsRoute(SIX_ACTS_ACT5_HREF), null);
+  assert.strictEqual(nextSixActsRoute(SIX_ACTS_ACT5_HREF), null);
+  assert.strictEqual(previousSixActsRoute(SIX_ACTS_ACT6_HREF), null);
+  assert.strictEqual(sixActsRouteFor(SIX_ACTS_ACT5_HREF)?.hiddenFromNavigation, true);
+  assert.strictEqual(sixActsRouteFor(SIX_ACTS_ACT6_HREF)?.hiddenFromNavigation, true);
+});
+
+test('the registry preserves six direct routes but releases only Acts 1–4', () => {
+  assert.deepStrictEqual(SIX_ACTS_ROUTES.map(entry => entry.actLabel), ['1', '2', '3', '4', '5', '6']);
+  assert.strictEqual(new Set(SIX_ACTS_ROUTES.map(entry => entry.href)).size, 6);
+  assert.deepStrictEqual(SIX_ACTS_VISIBLE_ROUTES.map(entry => entry.actLabel), ['1', '2', '3', '4']);
 });
 
 test('the index no longer keeps its own copy of the running order', () => {

@@ -1,12 +1,16 @@
 import {
   candidateLinkKey,
   candidateLinkKeyString,
+  deriveHandoverKind,
   sameCandidateLinkKey,
   validateHandoverDecisionFrame,
   type CandidateLinkKey,
+  type CandidateOpportunity,
   type HandoverCommitReceipt,
   type HandoverDecisionFrame,
+  type HandoverKind,
   type HandoverPhase,
+  type MetricEvidence,
 } from '../engine/handover/candidateDecisionContract';
 import {
   buildCandidatePresentationPlan,
@@ -16,11 +20,14 @@ import {
 
 export type AcceptedHandoverPolicyMode =
   | 'sinr-compatibility'
+  | 'instantaneous-ee-optimization'
   | 'forecast-ee-validation'
   | 'service-continuity-protection';
 
 export type AcceptedHandoverTriggerObjective =
   | 'sinr-offset'
+  | 'instantaneous-ee-max'
+  | 'forecast-ee-validation'
   | 'initial-attach-compatibility'
   | 'service-continuity-compatibility';
 
@@ -29,7 +36,7 @@ export type AcceptedHandoverHardGateProfile =
   | 'initial-attach-compatibility'
   | 'service-continuity-compatibility';
 
-export type AcceptedHandoverEeActivationStatus = 'blocked' | 'validation-only';
+export type AcceptedHandoverEeActivationStatus = 'blocked' | 'validation-only' | 'active';
 
 export type ServingOrigin =
   | 'bootstrap-serving-seed'
@@ -64,8 +71,8 @@ export interface CandidateSceneRenderReceipt {
  * The immutable decision frame remains the scientific authority and the plan
  * remains the bounded presentation projection. Keeping both on one accepted
  * object lets the scene and right rail consume the exact same references while
- * the richer Forecast-EE decision fields are migrated behind the blocked
- * activation gate.
+ * the homepage's instantaneous EE objective remains distinct from the richer
+ * forecast/counterfactual EE contract.
  */
 export interface AcceptedHandoverPresentationSnapshot {
   readonly snapshotId: string;
@@ -92,6 +99,12 @@ export interface AcceptedHandoverPresentationSnapshot {
    * can finish one readable presentation from the same receipt.
    */
   readonly commit: HandoverCommitReceipt | null;
+  /**
+   * The active source/target pair plus exact endpoint EE evidence. Before a
+   * commit it follows the accepted selected/provisional pair; after a commit
+   * it is latched with the commit and carried through guard.
+   */
+  readonly handoverEvidence: AcceptedHandoverTransitionEvidence | null;
   /** Same immutable objects consumed by scene and rail; neither may rebuild it. */
   readonly decision: HandoverDecisionFrame;
   readonly plan: CandidatePresentationPlan;
@@ -110,11 +123,89 @@ export interface AcceptedHandoverPresentationSession {
   readonly renderReceipt: CandidateSceneRenderReceipt | null;
 }
 
+/**
+ * The exact accepted transition and already-published endpoint EE evidence.
+ *
+ * `sourceEe`/`targetEe` are copied from the candidate opportunities without
+ * computing or normalising a value. `undefined` means that endpoint was not
+ * published by that decision frame. Once a commit receipt exists, this object
+ * is retained through later guard frames so a newer guard measurement cannot
+ * rewrite the evidence that explains the accepted switch.
+ */
+export interface AcceptedHandoverTransitionEvidence {
+  readonly source: CandidateLinkKey | null;
+  readonly target: CandidateLinkKey;
+  readonly kind: HandoverKind;
+  readonly sourceEe: MetricEvidence | undefined;
+  readonly targetEe: MetricEvidence | undefined;
+}
+
+/**
+ * Maximum age of a published candidate snapshot while the live scene advances.
+ *
+ * The scene publishes its accepted rail snapshot on a throttled UI cadence,
+ * while the simulation decision frame advances every render tick. Requiring
+ * their millisecond source-frame IDs to be identical made the central candidate
+ * layer blink for one frame per publication. Keep the scene and rail on the
+ * same immutable snapshot, but allow that snapshot to follow the current frame
+ * for one publication interval. Episode/epoch and serving-link checks still
+ * fail closed across a seek or an actual handover.
+ */
+export const ACCEPTED_HANDOVER_SNAPSHOT_MAX_DRIFT_MS = 1_500;
+
+export function acceptedHandoverSnapshotTracksDecisionFrame(
+  snapshot: AcceptedHandoverPresentationSnapshot | null,
+  decision: HandoverDecisionFrame | null | undefined,
+  maxDriftMs: number = ACCEPTED_HANDOVER_SNAPSHOT_MAX_DRIFT_MS,
+): boolean {
+  if (snapshot === null || decision === null || decision === undefined) return false;
+  if (snapshot.episodeId !== decision.episodeId || snapshot.epochToken !== decision.epochToken) return false;
+  if (snapshot.sourceFrameId === decision.sourceFrameId) return true;
+  if (!Number.isFinite(maxDriftMs) || maxDriftMs < 0) return false;
+  if (!Number.isFinite(snapshot.simTimeMs) || !Number.isFinite(decision.simTimeMs)) return false;
+  if (Math.abs(snapshot.simTimeMs - decision.simTimeMs) > maxDriftMs) return false;
+
+  const snapshotServing = snapshot.serving?.key ?? null;
+  const decisionServing = decision.serving;
+  const servingMatches = snapshotServing !== null
+    && decisionServing !== null
+    && sameCandidateLinkKey(snapshotServing, decisionServing);
+  if (servingMatches) return true;
+
+  // A publication can straddle the atomic commit boundary: the immutable
+  // snapshot still names the old serving link while the next decision frame
+  // names the new one and carries the authoritative from -> to receipt. Admit
+  // only that exact transition, in the same episode and within the already
+  // bounded time window. This keeps the scene/rail on one snapshot without
+  // allowing a stale or unrelated decision to seize the presentation.
+  const commit = decision.recentCommit;
+  const commitMatches = commit !== null
+    && commit.episodeId === snapshot.episodeId
+    && decisionServing !== null
+    && sameCandidateLinkKey(commit.to, decisionServing)
+    && (
+      (snapshotServing === null && commit.from === null)
+      || (snapshotServing !== null && commit.from !== null && sameCandidateLinkKey(snapshotServing, commit.from))
+    );
+  if (commitMatches) return true;
+
+  return snapshotServing === null && decisionServing === null;
+}
+
 export interface BuildAcceptedHandoverPresentationInput {
   readonly decision: HandoverDecisionFrame;
   readonly policyConfigHash: string;
   readonly pinnedKey: CandidateLinkKey | null;
   readonly previousSnapshot?: AcceptedHandoverPresentationSnapshot | null;
+  /** Homepage-only opt-in; direct/legacy callers retain forecast metadata. */
+  readonly instantaneousEeActive?: boolean;
+  /** Direct callers retain the historical full-comparison default; the homepage
+   * publisher opts into the satellite-centric compact projection explicitly. */
+  readonly displayAllHardEligibleCandidates?: boolean;
+  /** Homepage keeps only candidates that passed the active EE trigger visible. */
+  readonly displayOnlyTriggerSatisfiedCandidates?: boolean;
+  /** Profile-declared beam inventory; never used to fabricate measurements. */
+  readonly configuredBeamCount?: number;
 }
 
 function fail(message: string): never {
@@ -148,12 +239,16 @@ export function createHandoverPresentationPolicyConfigHash(identity: string): st
   return `homepage-ee-handover-v1:fnv1a32-${fnv1a32(requireNonEmpty(identity, 'policy identity'))}`;
 }
 
-function policyProjection(decision: HandoverDecisionFrame): Readonly<{
+function policyProjection(
+  decision: HandoverDecisionFrame,
+  instantaneousEeActive: boolean,
+): Readonly<{
   policyMode: AcceptedHandoverPolicyMode;
   activeTriggerObjective: AcceptedHandoverTriggerObjective;
   activeHardGateProfile: AcceptedHandoverHardGateProfile;
   eeActivationStatus: AcceptedHandoverEeActivationStatus;
 }> {
+  const usesInstantaneousEe = decision.mode === 'ee-optimization' && instantaneousEeActive;
   if (decision.mode === 'service-continuity-protection') {
     return Object.freeze({
       policyMode: 'service-continuity-protection',
@@ -164,17 +259,26 @@ function policyProjection(decision: HandoverDecisionFrame): Readonly<{
   }
   if (decision.serving === null) {
     return Object.freeze({
-      policyMode: decision.mode === 'ee-optimization' ? 'forecast-ee-validation' : 'sinr-compatibility',
-      activeTriggerObjective: 'initial-attach-compatibility',
+      policyMode: usesInstantaneousEe ? 'instantaneous-ee-optimization'
+        : decision.mode === 'ee-optimization' ? 'forecast-ee-validation' : 'sinr-compatibility',
+      activeTriggerObjective: usesInstantaneousEe
+        ? 'instantaneous-ee-max'
+        : decision.mode === 'ee-optimization' ? 'initial-attach-compatibility'
+        : 'initial-attach-compatibility',
       activeHardGateProfile: 'initial-attach-compatibility',
-      eeActivationStatus: decision.mode === 'ee-optimization' ? 'validation-only' : 'blocked',
+      eeActivationStatus: usesInstantaneousEe ? 'active'
+        : decision.mode === 'ee-optimization' ? 'validation-only' : 'blocked',
     });
   }
   return Object.freeze({
-    policyMode: decision.mode === 'ee-optimization' ? 'forecast-ee-validation' : 'sinr-compatibility',
-    activeTriggerObjective: 'sinr-offset',
+    policyMode: usesInstantaneousEe ? 'instantaneous-ee-optimization'
+      : decision.mode === 'ee-optimization' ? 'forecast-ee-validation' : 'sinr-compatibility',
+    activeTriggerObjective: usesInstantaneousEe
+      ? 'instantaneous-ee-max'
+      : decision.mode === 'ee-optimization' ? 'forecast-ee-validation' : 'sinr-offset',
     activeHardGateProfile: 'sinr-compatibility',
-    eeActivationStatus: decision.mode === 'ee-optimization' ? 'validation-only' : 'blocked',
+    eeActivationStatus: usesInstantaneousEe ? 'active'
+      : decision.mode === 'ee-optimization' ? 'validation-only' : 'blocked',
   });
 }
 
@@ -203,17 +307,166 @@ function retainedPresentationCommit(
   decision: HandoverDecisionFrame,
   previous: AcceptedHandoverPresentationSnapshot | null,
   epochToken: string,
+  policyConfigHash: string,
 ): HandoverCommitReceipt | null {
   if (decision.recentCommit !== null) return decision.recentCommit;
   const previousCommit = previous?.commit ?? null;
   if (
     previousCommit === null
     || previous?.epochToken !== epochToken
+    || previous?.policyConfigHash !== policyConfigHash
     || decision.simTimeMs < previous.simTimeMs
     || decision.serving === null
     || !sameCandidateLinkKey(previousCommit.to, decision.serving)
   ) return null;
   return previousCommit;
+}
+
+type AcceptedHandoverTransitionPair = Pick<
+  AcceptedHandoverTransitionEvidence,
+  'source' | 'target' | 'kind'
+>;
+
+function transitionPairFromCommit(
+  commit: HandoverCommitReceipt,
+): AcceptedHandoverTransitionPair {
+  return {
+    source: commit.from === null ? null : copyKey(commit.from),
+    target: copyKey(commit.to),
+    kind: commit.kind,
+  };
+}
+
+function transitionPairFromDecision(
+  decision: HandoverDecisionFrame,
+): AcceptedHandoverTransitionPair | null {
+  if (decision.recentCommit !== null) return transitionPairFromCommit(decision.recentCommit);
+
+  const target = decision.selectedTarget ?? decision.provisionalLeader;
+  if (target === null) return null;
+  const source = decision.serving === null ? null : copyKey(decision.serving);
+  const targetCopy = copyKey(target);
+  return {
+    source,
+    target: targetCopy,
+    kind: decision.selectedTarget !== null && decision.selectedKind !== null
+      ? decision.selectedKind
+      : deriveHandoverKind(source, targetCopy),
+  };
+}
+
+function opportunityForKey(
+  decision: HandoverDecisionFrame,
+  key: CandidateLinkKey | null,
+): CandidateOpportunity | undefined {
+  if (key === null) return undefined;
+  return decision.opportunities.find(opportunity => sameCandidateLinkKey(opportunity.key, key));
+}
+
+function transitionEvidenceMatches(
+  evidence: AcceptedHandoverTransitionEvidence | null,
+  pair: AcceptedHandoverTransitionPair,
+): evidence is AcceptedHandoverTransitionEvidence {
+  if (evidence === null) return false;
+  const sourceMatches = evidence.source === null
+    ? pair.source === null
+    : pair.source !== null && sameCandidateLinkKey(evidence.source, pair.source);
+  return sourceMatches
+    && sameCandidateLinkKey(evidence.target, pair.target)
+    && evidence.kind === pair.kind;
+}
+
+function canRetainTransitionEvidence(
+  decision: HandoverDecisionFrame,
+  previous: AcceptedHandoverPresentationSnapshot | null,
+  epochToken: string,
+  policyConfigHash: string,
+): previous is AcceptedHandoverPresentationSnapshot {
+  return previous !== null
+    && previous.episodeId === decision.episodeId
+    && previous.epochToken === epochToken
+    && previous.policyConfigHash === policyConfigHash
+    && previous.simTimeMs <= decision.simTimeMs;
+}
+
+function buildTransitionEvidence(
+  decision: HandoverDecisionFrame,
+  pair: AcceptedHandoverTransitionPair,
+  previousEvidence: AcceptedHandoverTransitionEvidence | null,
+): AcceptedHandoverTransitionEvidence {
+  const sourceOpportunity = opportunityForKey(decision, pair.source);
+  const targetOpportunity = opportunityForKey(decision, pair.target);
+  const priorEvidence = transitionEvidenceMatches(previousEvidence, pair)
+    ? previousEvidence
+    : null;
+  const endpointEvidence = (
+    opportunity: CandidateOpportunity | undefined,
+    prior: MetricEvidence | undefined,
+  ): MetricEvidence | undefined => {
+    // An endpoint that is present in the current decision owns its current
+    // availability. Do not resurrect a finite value when the producer has
+    // explicitly published an unavailable/stale/invalid sample.
+    if (opportunity === undefined) return prior;
+    const current = opportunity.instantaneousEe;
+    if (current === undefined || current.status !== 'available') return current;
+    // Once a transition has been accepted, keep the finite selection-boundary
+    // witness through commit/guard. The current frame remains authoritative for
+    // pair identity, never for rewriting the evidence of the accepted switch.
+    return prior ?? current;
+  };
+  return Object.freeze({
+    source: pair.source === null ? null : copyKey(pair.source),
+    target: copyKey(pair.target),
+    kind: pair.kind,
+    sourceEe: endpointEvidence(sourceOpportunity, priorEvidence?.sourceEe),
+    targetEe: endpointEvidence(targetOpportunity, priorEvidence?.targetEe),
+  });
+}
+
+function currentEvidenceCanRetainAcceptedValue(
+  decision: HandoverDecisionFrame,
+  pair: AcceptedHandoverTransitionPair,
+): boolean {
+  return [pair.source, pair.target].every(key => {
+    const opportunity = opportunityForKey(decision, key);
+    // Omitted endpoint evidence means the producer has not published a newer
+    // measurement. An available sample may be newer, but must not rewrite an
+    // already accepted selection witness. An explicit unavailable/stale/etc.
+    // sample is different: it is current truth and must pass through.
+    return opportunity === undefined
+      || opportunity.instantaneousEe === undefined
+      || opportunity.instantaneousEe.status === 'available';
+  });
+}
+
+function retainedHandoverEvidence(
+  decision: HandoverDecisionFrame,
+  previous: AcceptedHandoverPresentationSnapshot | null,
+  commit: HandoverCommitReceipt | null,
+  epochToken: string,
+  policyConfigHash: string,
+): AcceptedHandoverTransitionEvidence | null {
+  const previousEvidence = canRetainTransitionEvidence(decision, previous, epochToken, policyConfigHash)
+    ? previous.handoverEvidence
+    : null;
+  const commitPair = commit === null ? null : transitionPairFromCommit(commit);
+  if (
+    commitPair !== null
+    && transitionEvidenceMatches(previousEvidence, commitPair)
+    && currentEvidenceCanRetainAcceptedValue(decision, commitPair)
+  ) {
+    return previousEvidence;
+  }
+
+  const currentPair = transitionPairFromDecision(decision);
+  if (currentPair !== null) {
+    return buildTransitionEvidence(decision, currentPair, previousEvidence);
+  }
+
+  if (commitPair !== null) {
+    return buildTransitionEvidence(decision, commitPair, previousEvidence);
+  }
+  return null;
 }
 
 function deterministicSnapshotId(
@@ -275,6 +528,9 @@ export function buildAcceptedHandoverPresentationSession(
   const plan = buildCandidatePresentationPlan(input.decision, undefined, {
     pinnedKey: input.pinnedKey,
     previousIdentityAllocation: previous?.plan.identityAllocation ?? null,
+    displayAllHardEligibleCandidates: input.displayAllHardEligibleCandidates ?? true,
+    displayOnlyTriggerSatisfiedCandidates: input.displayOnlyTriggerSatisfiedCandidates ?? false,
+    configuredBeamCount: input.configuredBeamCount ?? 7,
   });
   assertPlanJoins(plan);
 
@@ -310,9 +566,16 @@ export function buildAcceptedHandoverPresentationSession(
     fail('candidate stage counts must form a monotonic eligibility pipeline');
   }
 
-  const policy = policyProjection(input.decision);
+  const policy = policyProjection(input.decision, input.instantaneousEeActive === true);
   const snapshotId = deterministicSnapshotId(input.decision, policyConfigHash, plan);
-  const commit = retainedPresentationCommit(input.decision, previous, epochToken);
+  const commit = retainedPresentationCommit(input.decision, previous, epochToken, policyConfigHash);
+  const handoverEvidence = retainedHandoverEvidence(
+    input.decision,
+    previous,
+    commit,
+    epochToken,
+    policyConfigHash,
+  );
   const snapshot: AcceptedHandoverPresentationSnapshot = Object.freeze({
     snapshotId,
     episodeId: input.decision.episodeId,
@@ -330,6 +593,7 @@ export function buildAcceptedHandoverPresentationSession(
     counts,
     activeDataLinkCount: plan.activeDataLinkCount,
     commit,
+    handoverEvidence,
     decision: input.decision,
     plan,
   });

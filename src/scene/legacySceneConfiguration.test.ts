@@ -30,6 +30,7 @@ const satelliteCount = (profile: typeof starlink) => profile.orbit.shells.reduce
 
 assert(oneweb.orbit.shells.every(shell => shell.altitudeKm > 550));
 assert(satelliteCount(oneweb) < satelliteCount(starlink));
+assert.equal(oneweb.demoStartOffsetSec, undefined, 'OneWeb must not inherit the Starlink-only demo start instant');
 assert.equal(applyLegacyConstellationPreset(starlink, 'starlink'), starlink);
 
 const layout = buildSinrLiveCellLayout(starlink);

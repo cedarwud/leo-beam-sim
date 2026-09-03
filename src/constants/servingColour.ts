@@ -49,21 +49,21 @@ const SERVING_IDENTITY_SATURATION = 0.72;
  */
 const SERVING_IDENTITY_PALETTE = [
   { hueDegrees: 48, baseLightness: 0.60 },  // gold
-  { hueDegrees: 208, baseLightness: 0.70 }, // sky
-  { hueDegrees: 92, baseLightness: 0.60 },  // lime
-  { hueDegrees: 260, baseLightness: 0.66 }, // violet
-  { hueDegrees: 164, baseLightness: 0.60 }, // mint
-  { hueDegrees: 228, baseLightness: 0.70 }, // periwinkle (lifted blue)
-  { hueDegrees: 68, baseLightness: 0.61 },  // yellow-green
-  { hueDegrees: 284, baseLightness: 0.66 }, // orchid
-  { hueDegrees: 188, baseLightness: 0.64 }, // cyan
-  { hueDegrees: 124, baseLightness: 0.60 }, // green
-  { hueDegrees: 244, baseLightness: 0.70 }, // indigo (lifted blue)
-  { hueDegrees: 52, baseLightness: 0.62 },  // amber
-  { hueDegrees: 196, baseLightness: 0.70 }, // azure
-  { hueDegrees: 104, baseLightness: 0.61 }, // spring green
-  { hueDegrees: 276, baseLightness: 0.66 }, // purple
-  { hueDegrees: 148, baseLightness: 0.62 }, // seafoam
+  { hueDegrees: 216, baseLightness: 0.76 }, // sky (lifted)
+  { hueDegrees: 78, baseLightness: 0.54 },  // lime (separated from spring)
+  { hueDegrees: 264, baseLightness: 0.78 }, // violet (lifted purple)
+  { hueDegrees: 168, baseLightness: 0.60 }, // mint
+  { hueDegrees: 232, baseLightness: 0.80 }, // periwinkle (lifted blue)
+  { hueDegrees: 60, baseLightness: 0.61 },  // yellow-green
+  { hueDegrees: 300, baseLightness: 0.80 }, // orchid (lifted purple)
+  { hueDegrees: 184, baseLightness: 0.57 }, // cyan (separated from indigo)
+  { hueDegrees: 126, baseLightness: 0.72 }, // green (separated from lime)
+  { hueDegrees: 242, baseLightness: 0.80 }, // indigo (lifted blue)
+  { hueDegrees: 32, baseLightness: 0.62 },  // amber
+  { hueDegrees: 202, baseLightness: 0.76 }, // azure (lifted)
+  { hueDegrees: 108, baseLightness: 0.78 }, // spring green (separated from lime)
+  { hueDegrees: 280, baseLightness: 0.82 }, // purple (lifted purple)
+  { hueDegrees: 144, baseLightness: 0.64 }, // seafoam (separated from spring)
 ] as const;
 
 const SERVING_IDENTITY_PALETTE_NAMES = [
@@ -94,8 +94,10 @@ const SERVING_IDENTITY_PALETTE_NAMES = [
  * shell namespace without changing contrast.
  */
 const INTERLEAVED_PALETTE_SLOTS = [
-  5, 0, 14, 2, 3, 6, 1, 11,
-  9, 12, 13, 8, 7, 4, 10, 15,
+  // Keep the one-plane audit sequence well separated while avoiding the
+  // cyan/green and blue/violet near-collisions seen in the handover trace.
+  6, 12, 0, 15, 1, 13, 14, 2,
+  8, 7, 9, 5, 11, 3, 4, 10,
 ] as const;
 
 /**
@@ -107,13 +109,20 @@ const INTERLEAVED_PALETTE_SLOTS = [
 const WALKER_PLANE_PALETTE_STRIDE = 14;
 
 /**
- * Five explicit same-satellite shade levels.  A relative +/- offset was too
- * subtle for adjacent beam IDs (and the blue floor collapsed its first two
- * values to the same colour), so the renderer now uses visible 7-point
- * lightness steps.  The hue remains the satellite identity cue.
+ * Seven explicit same-satellite shade levels.  The cell-truth lane exposes
+ * seven configured beams, so a five-step cycle made beam 2 and beam 7 share a
+ * colour and made an intra-satellite switch look like a no-op.  The hue
+ * remains the satellite identity cue; the lightness step identifies the beam.
  */
-const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.53, 0.60, 0.67, 0.74, 0.81] as const;
-const SERVING_IDENTITY_BLUE_BEAM_LIGHTNESS_LEVELS = [0.64, 0.69, 0.74, 0.79, 0.84] as const;
+// Keep the seven beam steps far enough apart that an intra-satellite switch is
+// visible in the short handover envelope.  The previous 0.06 staircase made
+// B2/B7 look almost identical once the GLB/material and dark-scene compositing
+// were applied.
+const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.56, 0.64, 0.72, 0.80, 0.87, 0.92, 0.96, 0.99] as const;
+// Blue/violet hues need a higher floor on the dark globe.  This rail also keeps
+// the same-satellite shade separation; it only lifts the family rather than
+// changing the satellite/beam identity contract.
+const SERVING_IDENTITY_BLUE_BEAM_LIGHTNESS_LEVELS = [0.72, 0.78, 0.84, 0.89, 0.93, 0.96, 0.98, 0.99] as const;
 
 /** FNV-1a string hash → [0, 1). Deterministic, display-order independent. */
 function hashStringToUnit(value: string): number {
@@ -134,6 +143,63 @@ function hslToHex(h: number, s: number, l: number): string {
     return Math.round(255 * c).toString(16).padStart(2, '0');
   };
   return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+
+interface HslColor {
+  readonly hue: number;
+  readonly saturation: number;
+  readonly lightness: number;
+}
+
+function hexToHsl(color: string): HslColor | null {
+  const match = /^#?([0-9a-f]{6})$/i.exec(color.trim());
+  if (match === null) return null;
+  const channels = match[1]!.match(/../g)!.map(channel => Number.parseInt(channel, 16) / 255);
+  const [red, green, blue] = channels;
+  const maximum = Math.max(red!, green!, blue!);
+  const minimum = Math.min(red!, green!, blue!);
+  const delta = maximum - minimum;
+  const lightness = (maximum + minimum) / 2;
+  if (delta <= Number.EPSILON) {
+    return { hue: 0, saturation: 0, lightness };
+  }
+  const saturation = delta / (1 - Math.abs((2 * lightness) - 1));
+  const hue = maximum === red
+    ? ((green! - blue!) / delta) % 6
+    : maximum === green
+      ? ((blue! - red!) / delta) + 2
+      : ((red! - green!) / delta) + 4;
+  return {
+    hue: ((hue / 6) % 1 + 1) % 1,
+    saturation,
+    lightness,
+  };
+}
+
+function clampUnit(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * Make the two sides of an intra-satellite handover readable for the short
+ * transition envelope while retaining the allocated satellite hue.  This is
+ * intentionally a transient render treatment: steady-state beam colours and
+ * the right-rail identity allocation continue to use their original tokens.
+ * The source is a restrained darker shade and the target is a brighter shade;
+ * both are derived from the same input hue, so the change cannot be mistaken
+ * for an inter-satellite identity swap or for a role colour.
+ */
+export function emphasizeIntraHandoverColor(
+  color: string,
+  side: 'source' | 'target',
+): string {
+  const hsl = hexToHsl(color);
+  if (hsl === null) return color;
+  const saturation = clampUnit(Math.max(0.78, Math.min(0.92, hsl.saturation * 1.12)));
+  const lightness = side === 'source'
+    ? Math.min(0.62, Math.max(0.42, hsl.lightness * 0.64 + 0.12))
+    : Math.min(0.94, Math.max(0.74, hsl.lightness * 0.50 + 0.48));
+  return hslToHex(hsl.hue, saturation, lightness);
 }
 
 function positiveModulo(value: number, modulus: number): number {
@@ -207,11 +273,12 @@ export function colorForServingBeam(satId: string, beamId: number): ServingIdent
   const satHue = paletteEntry.hueDegrees / 360;
   const beamMod = Math.abs(Math.trunc(beamId));
   const hue = satHue;
-  const isBlueFamily = paletteEntry.hueDegrees >= 200 && paletteEntry.hueDegrees <= 255;
-  // Blue/cyan identities use a lifted range so even their darkest beam shade
-  // cannot read as navy/black against the dark globe.  Other identities use a
-  // broader range to make adjacent beam IDs visibly distinguishable.
-  const lightnessLevels = isBlueFamily
+  const isBluePurpleFamily = paletteEntry.hueDegrees >= 200 && paletteEntry.hueDegrees <= 300;
+  // Blue/cyan/purple identities use a lifted range so even their darkest beam
+  // shade cannot read as navy or a near-black violet against the dark globe.
+  // Other identities use a broader range to make adjacent beam IDs visibly
+  // distinguishable without changing the satellite hue.
+  const lightnessLevels = isBluePurpleFamily
     ? SERVING_IDENTITY_BLUE_BEAM_LIGHTNESS_LEVELS
     : SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS;
   const lightness = lightnessLevels[beamMod % lightnessLevels.length]!;

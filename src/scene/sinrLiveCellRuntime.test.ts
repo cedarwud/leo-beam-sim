@@ -24,6 +24,7 @@
  */
 import { DEFAULT_MIN_ELEVATION_DEG } from '../engine/cells/cellLayout';
 import { loadProfile } from '../profiles/index';
+import { applyLegacyConstellationPreset } from '../sceneTopology';
 import { SinrLiveCellModel, type CellModelSat } from './sinrLiveCellModel';
 import {
   SINR_LIVE_CELL_COUNT,
@@ -51,6 +52,7 @@ function check(label: string, fn: () => void): void {
 
 const EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 const profile = loadProfile('hobs-2024-candidate-rich');
+const onewebProfile = applyLegacyConstellationPreset(profile, 'oneweb');
 const OBS_LAT = profile.orbit.observerLatDeg;
 const OBS_LON = profile.orbit.observerLonDeg;
 
@@ -137,6 +139,21 @@ check('cell layout is built from the live profile at the tunable cell count', ()
   assertEqual(layout.beamwidth3dBRad, profile.antenna.beamwidth3dBRad, 'beamwidth = profile antenna');
 });
 
+check('Walker OneWeb keeps the homepage ground-cell footprint readable', () => {
+  const starlinkLayout = buildSinrLiveCellLayout(profile);
+  const onewebLayout = buildSinrLiveCellLayout(onewebProfile);
+  assert(onewebProfile.orbit.shells[0]!.altitudeKm > profile.orbit.shells[0]!.altitudeKm, 'OneWeb keeps the higher shell altitude');
+  assert(onewebProfile.orbit.shells[0]!.planes < profile.orbit.shells[0]!.planes, 'OneWeb keeps fewer planes');
+  assert(onewebProfile.orbit.shells[0]!.satsPerPlane < profile.orbit.shells[0]!.satsPerPlane, 'OneWeb keeps fewer satellites per plane');
+  assertEqual(onewebProfile.orbit.shells[0]!.inclinationDeg, profile.orbit.shells[0]!.inclinationDeg, 'OneWeb keeps the same Walker inclination');
+  assertEqual(onewebProfile.antenna.beamwidth3dBRad, profile.antenna.beamwidth3dBRad, 'OneWeb keeps the same antenna beamwidth');
+  assertEqual(onewebProfile.beams.perSatellite, profile.beams.perSatellite, 'OneWeb keeps the same beam count');
+  assert(
+    onewebLayout.cellRadiusKm <= starlinkLayout.cellRadiusKm * 1.05,
+    `OneWeb ground cells must stay within the Starlink presentation scale (Starlink ${starlinkLayout.cellRadiusKm}, OneWeb ${onewebLayout.cellRadiusKm})`,
+  );
+});
+
 check('serving-satellite layout selects matching 1/7/19 scene-cell truth', () => {
   assertEqual(resolveSinrLiveSceneCellCount(1), 1, 'serving layout 1 → one scene cell');
   assertEqual(resolveSinrLiveSceneCellCount(7), 7, 'serving layout 7 → seven scene cells');
@@ -210,6 +227,7 @@ check('gate ON attach populates a well-formed sinrLiveCells frame and mutates no
   assertEqual(cells!.cells.length, SINR_LIVE_CELL_COUNT, 'one record per cell');
   assertEqual(cells!.ues.length, frame.perUePositions.length, 'one record per UE');
   assertEqual(cells!.simTimeSec, frame.simTimeSec, 'cell frame carries the frame sim time');
+  assertEqual(cells!.sourceFrameId, `walker:${EPOCH_MS}:${EPOCH_MS}`, 'cell frame carries the accepted source frame id');
   assert(cells!.servedUeCount >= 1, 'at least one UE served by the overhead sat');
   assert(cells!.servingSatCount >= 1, 'at least one serving sat');
   assert(cells!.servedCellCount >= 1, 'at least one cell lit');

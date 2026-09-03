@@ -10,10 +10,12 @@ import type {
   ActiveBeamAssignment,
   LinkSample,
 } from '../engine/signal/types';
+import type { HandoverEvent } from '../engine/handover/types';
 import type {
   SimulationAnalysisFrame,
   CanonicalLinkResult,
 } from '../simulator/types';
+import type { CanonicalTleHandoverAnchorTrace } from '../simulator/canonicalTleHandover';
 import { deriveObserverLinkGeometry } from '../simulator/observer';
 import {
   createEmptyFrame,
@@ -32,6 +34,7 @@ import {
 } from './archivedTleSevenCellPlacement';
 import {
   cellBeamIdentity,
+  SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
   type CellServingRecord,
   type IlluminatedCellBeam,
   type SinrLiveCellFrame,
@@ -60,6 +63,8 @@ export interface ArchivedTleSimFrameAdapterOptions {
   readonly visualOffsetSec?: number;
   /** Exact source-layout projection built by the active scene profile. */
   readonly displayPlacement?: ArchivedTleSevenCellPlacement;
+  /** Additional TLE identities that an event projection must keep visible. */
+  readonly retainSatelliteIds?: readonly string[];
 }
 
 function finite(value: number, label: string): number {
@@ -133,10 +138,26 @@ function resolveVisualScene(
   options: ArchivedTleSimFrameAdapterOptions,
 ): HomepageTleSceneFrame {
   const limit = contextLimit(options.contextLimit);
-  const current = adaptSimulationAnalysisFrameToHomepageTleScene(frame, { contextLimit: limit });
   const next = options.nextFrame;
+  const retainedEndpointIds = new Set(options.retainSatelliteIds ?? []);
+  for (const trace of [frame.handover, next?.handover]) {
+    if (trace?.eventFromSatelliteId !== null && trace?.eventFromSatelliteId !== undefined) {
+      retainedEndpointIds.add(trace.eventFromSatelliteId);
+    }
+    if (trace?.eventToSatelliteId !== null && trace?.eventToSatelliteId !== undefined) {
+      retainedEndpointIds.add(trace.eventToSatelliteId);
+    }
+  }
+  const retainSatelliteIds = [...retainedEndpointIds];
+  const current = adaptSimulationAnalysisFrameToHomepageTleScene(frame, {
+    contextLimit: limit,
+    retainSatelliteIds,
+  });
   if (next === undefined || next === null || next.instantUtc === frame.instantUtc) return current;
-  const nextScene = adaptSimulationAnalysisFrameToHomepageTleScene(next, { contextLimit: limit });
+  const nextScene = adaptSimulationAnalysisFrameToHomepageTleScene(next, {
+    contextLimit: limit,
+    retainSatelliteIds,
+  });
   return interpolateHomepageTleSceneFrame(current, nextScene, options.visualOffsetSec ?? 0);
 }
 
@@ -153,24 +174,151 @@ function toBeamCellState(
   frame: SimulationAnalysisFrame,
   cell: SimulationAnalysisFrame['scenario']['cells'][number],
   placement?: ArchivedTleSevenCellPlacement,
+  satelliteId = frame.selectedSatelliteId,
 ): BeamCellState {
-  const satId = frame.selectedSatelliteId;
   const displayCell = placement?.cellByCanonicalId.get(cell.index);
   return {
     beamId: cell.index,
     offsetEastKm: displayCell?.centerKm[0] ?? cell.centerKm[0],
     offsetNorthKm: displayCell?.centerKm[1] ?? cell.centerKm[1],
     scanAngleDeg: 0,
-    coreLayoutSatId: satId,
-    coreBeamId: cellBeamIdentity(satId, cell.index),
+    coreLayoutSatId: satelliteId,
+    coreBeamId: cellBeamIdentity(satelliteId, cell.index),
     coreLocalBeamIndex: cell.index,
     reuseGroup: cell.color,
     runtimeFrequencyReuse: frame.parameters.frequencyReuse,
   };
 }
 
-function emptyAssignments(): ActiveBeamAssignment[] {
-  return [];
+function assignment(satId: string, beamId: number): ActiveBeamAssignment {
+  return { satId, beamId };
+}
+
+interface ArchivedTleHandoverProjection {
+  readonly trace: CanonicalTleHandoverAnchorTrace | null;
+  readonly representativeUserIndex: number;
+  readonly representativeUeId: string;
+  readonly candidateLink: CanonicalLinkResult | null;
+  readonly candidateBeamId: number | null;
+  readonly pendingTargetSatId: string | null;
+  readonly pendingTargetBeamId: number | null;
+  readonly pendingTargetSinrDb: number | null;
+  readonly event: {
+    readonly fromSatId: string;
+    readonly toSatId: string;
+    readonly fromBeamId: number;
+    readonly toBeamId: number;
+  } | null;
+  readonly lastHoEvent: HandoverEvent | null;
+}
+
+function resolveRepresentativeUserIndex(frame: SimulationAnalysisFrame): number {
+  const linkIndex = frame.links[0]?.userIndex;
+  if (linkIndex !== undefined && frame.scenario.users.some(user => user.index === linkIndex)) {
+    return linkIndex;
+  }
+  const servedIndex = frame.inputs.frame.servingBeamU.findIndex(beamId => beamId >= 0);
+  return servedIndex >= 0 ? servedIndex : 0;
+}
+
+function buildHandoverProjection(
+  frame: SimulationAnalysisFrame,
+  selectedLink: CanonicalLinkResult | null,
+): ArchivedTleHandoverProjection {
+  const trace = frame.handover ?? null;
+  const representativeIndex = resolveRepresentativeUserIndex(frame);
+  const representativeUeId = `ue-${representativeIndex + 1}`;
+  const candidateLink = frame.candidateLink !== null
+    && frame.candidateLink.satelliteId !== frame.selectedSatelliteId
+    ? frame.candidateLink
+    : null;
+
+  if (trace === null) {
+    return {
+      trace,
+      representativeUserIndex: representativeIndex,
+      representativeUeId,
+      candidateLink,
+      candidateBeamId: candidateLink?.beamId ?? null,
+      pendingTargetSatId: null,
+      pendingTargetBeamId: null,
+      pendingTargetSinrDb: null,
+      event: null,
+      lastHoEvent: null,
+    };
+  }
+
+  if (trace.servingSatelliteId !== frame.selectedSatelliteId) {
+    throw new Error(
+      `archived TLE SimFrame handover serving identity ${trace.servingSatelliteId} `
+      + `does not match selected frame satellite ${frame.selectedSatelliteId}`,
+    );
+  }
+  if (trace.candidateSatelliteId === frame.selectedSatelliteId) {
+    throw new Error('archived TLE SimFrame handover candidate reuses the serving identity');
+  }
+
+  const candidateBeamId = candidateLink?.satelliteId === trace.candidateSatelliteId
+    ? candidateLink.beamId
+    : null;
+  if (trace.state === 'pending') {
+    if (trace.candidateSatelliteId === null) {
+      throw new Error('archived TLE SimFrame pending handover has no candidate identity');
+    }
+    if (candidateLink === null || candidateLink.satelliteId !== trace.candidateSatelliteId) {
+      throw new Error(
+        `archived TLE SimFrame pending candidate ${trace.candidateSatelliteId} `
+        + 'does not match the immutable candidate link',
+      );
+    }
+  }
+
+  const isServingChange = trace.event === 'inter-handover' || trace.event === 'forced-continuity';
+  if (isServingChange) {
+    if (
+      trace.eventFromSatelliteId === null
+      || trace.eventToSatelliteId === null
+      || trace.eventFromSatelliteId === trace.eventToSatelliteId
+      || trace.eventToSatelliteId !== frame.selectedSatelliteId
+    ) {
+      throw new Error('archived TLE SimFrame serving-change trace has inconsistent endpoint identities');
+    }
+  }
+
+  const event = isServingChange
+    ? {
+      fromSatId: trace.eventFromSatelliteId!,
+      toSatId: trace.eventToSatelliteId!,
+      fromBeamId: frame.scenario.users[representativeIndex]?.cellIndex ?? 0,
+      toBeamId: selectedLink?.beamId ?? frame.scenario.users[representativeIndex]?.cellIndex ?? 0,
+    }
+    : null;
+  const lastHoEvent: HandoverEvent | null = event === null
+    ? null
+    : {
+      timeMs: Math.round((frame.runAnchor?.elapsedSec ?? 0) * 1_000),
+      action: 'inter-handover',
+      fromSatId: event.fromSatId,
+      fromBeamId: event.fromBeamId,
+      fromSinrDb: null,
+      toSatId: event.toSatId,
+      toBeamId: event.toBeamId,
+      toSinrDb: selectedLink?.sinrDb ?? trace.servingSinrDb ?? -Infinity,
+      deltaDb: null,
+    };
+
+  return {
+    trace,
+    representativeUserIndex: representativeIndex,
+    representativeUeId,
+    candidateLink,
+    candidateBeamId,
+    pendingTargetSatId: trace.state === 'pending' ? trace.candidateSatelliteId : null,
+    pendingTargetBeamId: trace.state === 'pending' ? candidateBeamId : null,
+    pendingTargetSinrDb: trace.state === 'pending' ? trace.candidateSinrDb : null,
+    event,
+    lastHoEvent,
+  };
 }
 
 function canonicalUserSinrDb(
@@ -200,10 +348,14 @@ function buildCellTruth(
   frame: SimulationAnalysisFrame,
   simTimeSec: number,
   placement?: ArchivedTleSevenCellPlacement,
+  handover?: ArchivedTleHandoverProjection,
 ): SinrLiveCellFrame {
   const selectedId = frame.selectedSatelliteId;
   const cells = frame.scenario.cells;
   const users = frame.scenario.users;
+  const primaryUserIndex = handover?.representativeUserIndex ?? resolveRepresentativeUserIndex(frame);
+  const representativeUeId = `ue-${primaryUserIndex + 1}`;
+  const eventSourceTimeSec = frame.runAnchor?.elapsedSec ?? simTimeSec;
   const cellById = new Map(cells.map(cell => [cell.index, cell]));
   const sinrByCell = new Map<number, number[]>();
   for (const user of users) {
@@ -238,7 +390,14 @@ function buildCellTruth(
     const eastDelta = displayPosition[0] - (displayCell?.centerKm[0] ?? cell.centerKm[0]);
     const northDelta = displayPosition[1] - (displayCell?.centerKm[1] ?? cell.centerKm[1]);
     const distance = Math.hypot(eastDelta, northDelta);
-    const comparisonSinr = user.index === 0 ? frame.candidateLink?.sinrDb ?? null : null;
+    const isRepresentative = user.index === primaryUserIndex;
+    const comparisonSatId = isRepresentative
+      ? handover?.candidateLink?.satelliteId ?? frame.tleState.candidateSatellite?.satelliteId ?? null
+      : null;
+    const comparisonSinr = isRepresentative
+      ? handover?.candidateLink?.sinrDb ?? null
+      : null;
+    const isCommitted = isRepresentative && handover?.event !== null;
     return {
       ueId: `ue-${user.index + 1}`,
       cellId: user.cellIndex,
@@ -248,11 +407,11 @@ function buildCellTruth(
       servingSatId: selectedId,
       beamIdentity: cellBeamIdentity(selectedId, user.cellIndex),
       frequencyIndex: cell.color,
-      handoverKind: 'none',
-      comparisonSatId: frame.tleState.candidateSatellite?.satelliteId ?? null,
+      handoverKind: isCommitted ? 'inter' : 'none',
+      comparisonSatId,
       comparisonSinrDb: comparisonSinr,
-      pendingTargetSatId: null,
-      triggerProgressSec: 0,
+      pendingTargetSatId: isRepresentative ? handover?.pendingTargetSatId ?? null : null,
+      triggerProgressSec: isRepresentative ? handover?.trace?.progressSec ?? 0 : 0,
     };
   });
 
@@ -271,10 +430,24 @@ function buildCellTruth(
     servedUeCount: users.length,
     servingSatCount: 1,
     intraHandoverCount: 0,
-    interHandoverCount: 0,
+    interHandoverCount: handover?.event === null || handover?.event === undefined ? 0 : 1,
     cumulativeIntraHandoverCount: 0,
-    cumulativeInterHandoverCount: 0,
-    recentHandoverEvents: Object.freeze([]),
+    cumulativeInterHandoverCount: handover?.trace?.cumulativeCount ?? 0,
+    primaryUeId: representativeUeId,
+    recentHandoverEvents: handover?.event === null || handover?.event === undefined
+      ? Object.freeze([])
+      : Object.freeze([{
+        ueId: representativeUeId,
+        kind: 'inter' as const,
+        sourceTimeSec: eventSourceTimeSec,
+        fromSatId: handover.event.fromSatId,
+        fromCellId: handover.event.fromBeamId,
+        toSatId: handover.event.toSatId,
+        toCellId: handover.event.toBeamId,
+        fromSinrDb: null,
+        toSinrDb: handover.trace?.servingSinrDb ?? null,
+        deltaDb: null,
+      }]),
   };
 }
 
@@ -319,7 +492,6 @@ export function adaptSimulationAnalysisFrameToArchivedTleSimFrame(
   const visualScene = resolveVisualScene(frame, options);
   const visible = visibleSatellites(visualScene, frame);
   const selectedId = frame.selectedSatelliteId;
-  const selectedLink = frame.links[0] ?? null;
   const scale = worldUnitsPerKm(options.worldUnitsPerKm);
   const visualElapsedSec = Math.max(
     0,
@@ -332,9 +504,23 @@ export function adaptSimulationAnalysisFrameToArchivedTleSimFrame(
     cells,
     sourceCellRadiusKm: frame.scenario.topology.cellRadiusKm,
   });
-  const selectedBeamCells = cells.map(cell => ({
-    ...toBeamCellState(frame, cell, placement),
-  }));
+  const selectedLink = frame.links.find(link => (
+    link.satelliteId === selectedId && link.userIndex === resolveRepresentativeUserIndex(frame)
+  ))
+    ?? frame.links.find(link => link.satelliteId === selectedId)
+    ?? null;
+  const handover = buildHandoverProjection(frame, selectedLink);
+  const displaySatelliteIds = new Set<string>([selectedId]);
+  if (handover.pendingTargetSatId !== null) displaySatelliteIds.add(handover.pendingTargetSatId);
+  if (handover.event !== null) displaySatelliteIds.add(handover.event.fromSatId);
+  if (handover.candidateLink !== null) displaySatelliteIds.add(handover.candidateLink.satelliteId);
+  const beamCellsBySatId = new Map<string, BeamCellState[]>();
+  const steeringBeamCellsBySatId = new Map<string, BeamCellState[]>();
+  for (const satelliteId of displaySatelliteIds) {
+    const satelliteCells = cells.map(cell => toBeamCellState(frame, cell, placement, satelliteId));
+    beamCellsBySatId.set(satelliteId, satelliteCells);
+    steeringBeamCellsBySatId.set(satelliteId, satelliteCells);
+  }
   const perUePositions = frame.scenario.users.map(user => {
     const displayPosition = remapArchivedTleUePosition(placement, user);
     return {
@@ -346,27 +532,61 @@ export function adaptSimulationAnalysisFrameToArchivedTleSimFrame(
       sinrDb: canonicalUserSinrDb(frame, user.index),
       servingSatId: selectedId,
       servingBeamId: user.cellIndex,
-      pendingTargetSatId: null,
-      pendingTargetBeamId: null,
-      triggerProgressSec: 0,
+      pendingTargetSatId: user.index === handover.representativeUserIndex
+        ? handover.pendingTargetSatId
+        : null,
+      pendingTargetBeamId: user.index === handover.representativeUserIndex
+        ? handover.pendingTargetBeamId
+        : null,
+      triggerProgressSec: user.index === handover.representativeUserIndex
+        ? handover.trace?.progressSec ?? 0
+        : 0,
     };
   });
-  const selectedBeamHopState = {
-    satId: selectedId,
-    slotIndex: 0,
-    frameSlotIndex: 0,
-    activeBeamIds: cells.map(cell => cell.index),
-    candidateBeamIds: [],
-  };
-  const cellTruth = buildCellTruth(frame, simTimeSec, placement);
+  const beamHopStatesBySatId = new Map<string, {
+    satId: string;
+    slotIndex: number;
+    frameSlotIndex: number;
+    activeBeamIds: number[];
+    candidateBeamIds: number[];
+  }>();
+  for (const satelliteId of displaySatelliteIds) {
+    const isServing = satelliteId === selectedId;
+    const isPending = satelliteId === handover.pendingTargetSatId;
+    const beamId = isPending ? handover.pendingTargetBeamId : null;
+    beamHopStatesBySatId.set(satelliteId, {
+      satId: satelliteId,
+      slotIndex: 0,
+      frameSlotIndex: 0,
+      activeBeamIds: isServing ? cells.map(cell => cell.index) : [],
+      candidateBeamIds: beamId === null ? [] : [beamId],
+    });
+  }
+  const activeAssignments: ActiveBeamAssignment[] = cells.map(cell => assignment(selectedId, cell.index));
+  const displayAssignments: ActiveBeamAssignment[] = [...activeAssignments];
+  if (handover.pendingTargetSatId !== null && handover.pendingTargetBeamId !== null) {
+    displayAssignments.push(assignment(handover.pendingTargetSatId, handover.pendingTargetBeamId));
+  }
+  if (handover.event !== null) {
+    displayAssignments.push(assignment(handover.event.fromSatId, handover.event.fromBeamId));
+  }
+  const linkSamples = [
+    ...(selectedLink === null ? [] : [toLinkSample(selectedLink)]),
+    ...(handover.candidateLink === null ? [] : [toLinkSample(handover.candidateLink)]),
+  ];
+  const cellTruth = buildCellTruth(frame, simTimeSec, placement, handover);
+  const committedEvent = handover.event;
+  const eventSourceTimeSec = frame.runAnchor?.elapsedSec ?? simTimeSec;
+  const recentSourceSinrDb = handover.lastHoEvent?.fromSinrDb ?? null;
+  const recentTargetSinrDb = handover.lastHoEvent?.toSinrDb ?? null;
   return {
     ...sim,
     satellites: [...visible],
-    linkSamples: selectedLink === null ? [] : [toLinkSample(selectedLink)],
-    activeAssignments: emptyAssignments(),
-    displayAssignments: emptyAssignments(),
-    beamCellsBySatId: new Map([[selectedId, selectedBeamCells]]),
-    steeringBeamCellsBySatId: new Map([[selectedId, selectedBeamCells]]),
+    linkSamples,
+    activeAssignments,
+    displayAssignments,
+    beamCellsBySatId,
+    steeringBeamCellsBySatId,
     linkRangeKmBySatId: new Map(
       visualScene.satellites.map(satellite => [
         satellite.satelliteId,
@@ -377,33 +597,45 @@ export function adaptSimulationAnalysisFrameToArchivedTleSimFrame(
     beamHopSlotStartSec: 0,
     beamHopSlotSec: 0,
     beamHopEnabled: false,
-    beamHopStatesBySatId: new Map([[selectedId, selectedBeamHopState]]),
+    beamHopStatesBySatId,
     serving: {
       satId: selectedId,
-      beamId: frame.scenario.users[0]?.cellIndex ?? 0,
+      beamId: selectedLink?.beamId ?? frame.scenario.users[handover.representativeUserIndex]?.cellIndex ?? 0,
       sinrDb: selectedLink?.sinrDb ?? -Infinity,
     },
-    pendingTargetSatId: null,
-    pendingTargetBeamId: null,
-    pendingTargetSinrDb: null,
-    recentHoSourceSatId: null,
-    recentHoTargetSatId: null,
-    recentHoSourceBeamId: null,
-    recentHoTargetBeamId: null,
-    recentHoSourceSinrDb: null,
-    recentHoTargetSinrDb: null,
-    recentHoDeltaDb: null,
-    lastHoEvent: null,
-    handoverTriggerProgressSec: 0,
-    hoCount: 0,
+    pendingTargetSatId: handover.pendingTargetSatId,
+    pendingTargetBeamId: handover.pendingTargetBeamId,
+    pendingTargetSinrDb: handover.pendingTargetSinrDb,
+    recentHoSourceSatId: committedEvent?.fromSatId ?? null,
+    recentHoTargetSatId: committedEvent?.toSatId ?? null,
+    recentHoSourceBeamId: committedEvent?.fromBeamId ?? null,
+    recentHoTargetBeamId: committedEvent?.toBeamId ?? null,
+    recentHoSourceSinrDb: recentSourceSinrDb,
+    recentHoTargetSinrDb: recentTargetSinrDb,
+    recentHoDeltaDb: handover.lastHoEvent?.deltaDb ?? null,
+    lastHoEvent: handover.lastHoEvent,
+    handoverTriggerProgressSec: handover.trace?.state === 'pending'
+      ? handover.trace.progressSec
+      : 0,
+    hoCount: handover.trace?.cumulativeCount ?? 0,
     intraHoCount: 0,
-    lastHoReason: '',
+    lastHoReason: handover.trace !== null
+      && (handover.trace.state === 'pending' || handover.trace.state === 'handover' || handover.trace.state === 'forced-continuity')
+      ? handover.trace.reason
+      : '',
     simTimeSec,
     intraHandoverEvent: null,
     intraHandoverPreview: null,
     intraHandoverWallClockStartMs: null,
     intraHandoverWallClockExpiresMs: null,
-    interHandoverEvent: null,
+    interHandoverEvent: committedEvent === null ? null : {
+      fromSatId: committedEvent.fromSatId,
+      fromBeamId: committedEvent.fromBeamId,
+      toSatId: committedEvent.toSatId,
+      toBeamId: committedEvent.toBeamId,
+      triggeredAtSec: eventSourceTimeSec,
+      expiresAtSec: eventSourceTimeSec + SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
+    },
     interHandoverWallClockStartMs: null,
     interHandoverWallClockExpiresMs: null,
     ueGroundX: perUePositions[0]?.groundX ?? 0,
@@ -416,6 +648,7 @@ export function adaptSimulationAnalysisFrameToArchivedTleSimFrame(
 function toLinkSample(link: CanonicalLinkResult): LinkSample {
   const dbm = (watts: number): number => watts > 0 ? 10 * Math.log10(watts * 1000) : -Infinity;
   return {
+    ueId: link.userId,
     satId: link.satelliteId,
     beamId: link.beamId,
     rsrpDbm: dbm(link.signalW),

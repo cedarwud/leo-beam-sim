@@ -14,13 +14,11 @@ import type { TuningTabKey } from './types';
 import type { AppExperienceMode } from '../appMode';
 
 /**
- * Secondary tab strip: one button per term of the SINR expression (p, H, Gᵀ, I, σ²).
+ * Secondary tab grid: one button per term of the SINR expression (p, H, Gᵀ, I, σ²).
  *
- * The buttons carry ONLY the notation. The plain-language name and the
- * one-line description moved to the button's `title` (and to the "?" inside
- * each tab body) — on a narrow rail, captioned buttons read as a wall of
- * words above the formula they are supposed to index. The hidden canonical
- * span still names the group for the provenance gates.
+ * The homepage rail is too narrow for five indexed expressions on one line.
+ * A content-sized responsive grid keeps every symbol readable without
+ * clipping; the selected tab's body supplies the longer plain-language copy.
  */
 export function FormulaTabList({
   activeTab,
@@ -88,12 +86,9 @@ export function FormulaTabList({
     >
       <div style={{
         display: 'grid',
-        // Keep all five groups visible in one row. σ² is a compact scalar, so
-        // give the four link terms the space needed for indexed notation.
-        gridTemplateColumns: isLegacy
-          ? 'minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 0.75fr)'
-          : 'repeat(4, minmax(0, 1fr)) minmax(40px, 0.45fr)',
-        gap: 5,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 138px), 1fr))',
+        gridAutoRows: 'minmax(58px, auto)',
+        gap: 6,
       }}>
         {visibleTabs.map((tab, index) => {
           const active = index === activeIndex;
@@ -115,27 +110,53 @@ export function FormulaTabList({
               onKeyDown={event => handleTabKeyDown(event, index)}
               style={{
                 cursor: 'pointer',
-                height: 46,
-                minHeight: 46,
-                padding: '5px 4px',
+                minWidth: 0,
+                minHeight: 58,
+                padding: isLegacy ? '7px 3px' : '7px 8px',
                 borderRadius: UI_TOKENS.radius.md,
                 border: active ? `1px solid ${accent}` : `1px solid ${UI_TOKENS.color.border.subtle}`,
                 background: active ? `${accent}1f` : UI_TOKENS.color.surface.card,
                 color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
                 boxShadow: active ? `inset 0 -3px 0 ${accent}` : 'none',
                 display: 'grid',
-                gap: 2,
+                gridTemplateColumns: 'minmax(0, 1fr)',
+                gap: 3,
                 alignContent: 'center',
-                justifyItems: 'center',
-                textAlign: 'center',
+                justifyItems: 'start',
+                textAlign: 'left',
                 transition: 'background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease',
                 boxSizing: 'border-box',
-                overflow: 'hidden',
+                overflow: 'visible',
               }}
             >
-              {/* Notation never wraps: a symbol broken across two lines reads as
-                  two terms, and the 46px chip clips the second line. */}
-              <span style={{ ...formulaTextStyle, fontSize: 21, color: accent, lineHeight: 1.05, whiteSpace: 'nowrap' }}>
+              <span
+                aria-hidden="true"
+                style={{
+                  minWidth: 0,
+                  color: active ? UI_TOKENS.color.text.primary : UI_TOKENS.color.text.secondary,
+                  fontSize: 13,
+                  fontWeight: UI_TOKENS.type.weight.strong,
+                  lineHeight: 1.15,
+                }}
+              >
+                {shortLabel}
+              </span>
+              {/* A term remains a single mathematical token; the wider grid cell
+                  makes wrapping or ellipsis unnecessary. */}
+              <span
+                data-formula-tab-symbol={tab.key}
+                style={{
+                  ...formulaTextStyle,
+                  display: 'block',
+                  maxWidth: '100%',
+                  // Keep the mathematical token legible in the narrow Walker
+                  // rail while retaining a single-line expression.
+                  fontSize: isLegacy ? 20 : 18,
+                  color: accent,
+                  lineHeight: 1.15,
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {tab.symbol}
               </span>
               {/* Canonical English term: kept in the DOM so the formula-side

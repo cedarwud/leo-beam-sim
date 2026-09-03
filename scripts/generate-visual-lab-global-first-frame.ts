@@ -10,11 +10,12 @@ import {
 import type { SimulatorConstellation } from '../src/simulator/types';
 import {
   buildVisualLabGlobalConstellationArtifact,
-  VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE,
+  VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES,
   VISUAL_LAB_GLOBAL_CONSTELLATION_INSTANT_UTC,
   type VisualLabGlobalConstellationArtifact,
 } from '../src/visualLab/globalConstellation/visualLabGlobalConstellationArtifact';
 import { parseUtcInstant } from '../src/tle/time';
+import { LATEST_TLE_REFERENCE_ARTIFACT_DATE } from '../src/tle/latestTleDefaults';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const constellations: readonly SimulatorConstellation[] = ['oneweb', 'starlink'];
@@ -49,7 +50,8 @@ function sha256(bytes: Uint8Array): string {
 }
 
 function sourcePathFor(constellation: SimulatorConstellation): string {
-  return `/tle-archive/${constellation}/${constellation}_${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE}.tle`;
+  const archiveDate = VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES[constellation];
+  return `/tle-archive/${constellation}/${constellation}_${archiveDate}.tle`;
 }
 
 async function sourceArtifact(
@@ -58,11 +60,12 @@ async function sourceArtifact(
   const catalogPath = join(repoRoot, 'public', 'tle-archive', constellation, 'catalog.json');
   const catalogRaw = JSON.parse(await readFile(catalogPath, 'utf8')) as unknown;
   const catalog = parseTleWebArchiveCatalog(catalogRaw);
+  const archiveDate = VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATES[constellation];
   const metadata = catalog.snapshots.find(
-    snapshot => snapshot.archiveDate === VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE,
+    snapshot => snapshot.archiveDate === archiveDate,
   );
   if (metadata === undefined) {
-    throw new Error(`${constellation} catalog has no ${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE} publication`);
+    throw new Error(`${constellation} catalog has no ${archiveDate} publication`);
   }
   const expectedPath = sourcePathFor(constellation);
   if (metadata.path !== expectedPath) {
@@ -101,7 +104,7 @@ async function sourceArtifact(
   if (artifact.satelliteCount !== admittedEntries.length) {
     throw new Error(`${metadata.path} artifact count drifted: expected ${admittedEntries.length}, got ${artifact.satelliteCount}`);
   }
-  const outputPath = join(repoRoot, 'public', 'global-first-frame', `${constellation}-${VISUAL_LAB_GLOBAL_CONSTELLATION_ARCHIVE_DATE}.json`);
+  const outputPath = join(repoRoot, 'public', 'global-first-frame', `${constellation}-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`);
   return { artifact, outputPath };
 }
 

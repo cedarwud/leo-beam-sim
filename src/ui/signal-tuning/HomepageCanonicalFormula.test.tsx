@@ -111,10 +111,10 @@ for (const testId of [
   assert.ok(row, `${testId} should be visible in the homepage SINR result`);
   assert.doesNotMatch(row, /(?:^|\s)linear(?:<|$)/);
 }
-assert.doesNotMatch(sinrMarkup, /G<sup>LS<\/sup>|L<sub>(?:FS|atm|scan)<\/sub>|θ<sub>3dB<\/sub>/);
+assert.doesNotMatch(sinrMarkup, /G<sup>LS<\/sup>|L<sub>(?:FS|atm|scan)<\/sub>/);
 assert.match(sinrMarkup, /data-testid="sinr-result-beam-bandwidth"[\s\S]*?(?:MHz|GHz)/);
-assert.match(sinrMarkup, /Non-angle effective-channel factor/);
-assert.match(sinrMarkup, /Transmit gain for the link off-axis angle/);
+assert.match(sinrMarkup, /Effective channel factor H<sub[^>]*>u,s,v<\/sub>\(t\)/);
+assert.match(sinrMarkup, /Transmit gain from the link off-axis angle and θ₃dB/);
 assert.doesNotMatch(sinrMarkup, /H<sub>u,b<\/sub>|Propagation and fading gain/);
 assert.doesNotMatch(sinrMarkup, /data-testid="sinr-canonical-formula-header"/);
 assert.doesNotMatch(sinrMarkup, /data-testid="sinr-result-scope"/);
@@ -159,6 +159,8 @@ assert.match(handoverComparisonMarkup, /data-handover-count="2"/);
 assert.match(handoverComparisonMarkup, /\+3\.0 dB/);
 assert.match(handoverComparisonMarkup, /15\.0 \/ 30\.0 s/);
 assert.match(handoverComparisonMarkup, /data-testid="info-panel-duel-handover-count"[\s\S]*?>2</);
+assert.match(handoverComparisonMarkup, /data-testid="canonical-tle-handover-reason"/);
+assert.match(handoverComparisonMarkup, /candidate satisfies offset/);
 assert.doesNotMatch(handoverComparisonMarkup, /Switching data is unavailable/);
 
 console.log('Homepage canonical SINR closure and dimensionless/watt readouts are consistent.');

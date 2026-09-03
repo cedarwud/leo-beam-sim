@@ -21,7 +21,7 @@
  *        - frequency = `cellId mod reuseFactor` (STABLE per cell, geographic —
  *          never a rotating per-slot beamIndex)
  *        - handover  = a change in a UE's SERVING (intra = serving SAT unchanged
- *          + serving CELL changes; inter = serving SAT changes)
+ *          + serving CELL or BEAM changes; inter = serving SAT changes)
  *   4. per-(sat,cell) scan angle (sat-nadir → fixed cell centre), per-cell slant
  *      range + elevation, and per-UE off-axis (dist UE → cell centre) (§5.3).
  *   5. intra/inter classification from the UE's serving transition (§5.2).
@@ -37,7 +37,16 @@
  */
 
 import { computeGeometricOffAxisDeg } from '../engine/signal/beam-gain';
-import { angleAwareLinkKey } from '../engine/signal/angle-aware-ee';
+import {
+  ANGLE_AWARE_BACKOFF_DB,
+  ANGLE_AWARE_BEAM_POWER_CAP_W,
+  ANGLE_AWARE_EE_CONTRACT_VERSION,
+  ANGLE_AWARE_FIXED_BASEBAND_POWER_W,
+  ANGLE_AWARE_FIXED_RF_CHAIN_POWER_W,
+  ANGLE_AWARE_MAX_EFFICIENCY,
+  angleAwareLinkKey,
+  resolveAngleAwareConversionEfficiency,
+} from '../engine/signal/angle-aware-ee';
 import {
   computeBoresightAxisEcefKm,
   resolveBeamPointing,
@@ -81,7 +90,7 @@ import {
   type WalkerAcceptedFrameIdentity,
 } from '../engine/handover/walkerAcceptedFrameIdentity';
 import { HandoverDecisionEngine } from '../engine/handover/handoverDecisionEngine';
-import { SinrOffsetPolicy } from '../engine/handover/handoverSelectionPolicy';
+import { InstantaneousEePolicy } from '../engine/handover/handoverSelectionPolicy';
 import {
   applyPrimaryServingAssignmentTransaction,
   type PrimaryServingAssignmentState,
@@ -118,6 +127,17 @@ const DEG_TO_RAD = Math.PI / 180;
  * link-budget encoding detail, asserted equivalent in the model validator.
  */
 const CELL_BEAM_ID_OFFSET = 1;
+
+/**
+ * Reserved link-budget id range for the one deterministic same-cell beam
+ * variant used by the homepage authority lane. 420 is greater than every
+ * supported earth-fixed layout id and is divisible by each runtime tuning
+ * option (1..7), so the variant keeps the same frequency-reuse partition as
+ * its geographic cell while remaining a distinct `(satelliteId, beamId)` key.
+ */
+const INTRA_CELL_BEAM_ID_STRIDE = 420;
+const INTRA_CELL_BEAM_VARIANT_INDEX = 1;
+const INTRA_CELL_BEAM_OFFSET_FRACTION = 0.4;
 
 export type ServingTransitionKind = 'none' | 'intra' | 'inter' | 'attach' | 'drop';
 
@@ -228,7 +248,8 @@ export interface UeCellServingRecord {
 
 /**
  * A satellite's beam illuminating a cell this slot — one per post-beam-hopping
- * lit (sat, cell) pair. This is the "where the beams POINT" surface (S-cells-4b):
+ * lit (sat, cell) pair, plus an explicitly identified selected same-cell
+ * variant in the homepage authority lane. This is the "where the beams POINT" surface (S-cells-4b):
  * the render draws the focused satellite's illuminated beams as cones, not only
  * the cells that ended up SERVED. `serving` marks the beam whose sat is the
  * cell's CHOSEN serving sat (SINR + HandoverManager) — a cell can be illuminated
@@ -238,6 +259,8 @@ export interface UeCellServingRecord {
 export interface IlluminatedCellBeam {
   readonly satId: string;
   readonly cellId: number;
+  /** Explicit only for the homepage's selected same-cell beam variant. */
+  readonly beamId?: number;
   /** Stable geographic frequency colour (`cellId mod reuse`). */
   readonly frequencyIndex: number;
   /** True when this sat is the cell's chosen serving sat (not merely illuminating). */
@@ -261,9 +284,13 @@ export interface SinrLiveCellHandoverEvent {
   /** Previous serving (the cell the UE handed OFF). For an inter-HO this sat differs from `toSatId`. */
   readonly fromSatId: string | null;
   readonly fromCellId: number | null;
+  /** Exact previous serving beam when the source publishes one. */
+  readonly fromBeamId?: number | null;
   /** New serving (the cell the UE handed ONTO) — always served on a real HO. */
   readonly toSatId: string;
   readonly toCellId: number;
+  /** Exact new serving beam, including the same-cell intra variant. */
+  readonly toBeamId?: number | null;
   /** Optional display evidence for an explicitly presented pair. */
   readonly fromSinrDb?: number | null;
   readonly toSinrDb?: number | null;
@@ -271,8 +298,60 @@ export interface SinrLiveCellHandoverEvent {
   readonly deltaDb?: number | null;
 }
 
+/**
+ * Provenance for the small H-14 candidate measurement seam. This is an
+ * instantaneous primary-UE display probe only; it is deliberately not a
+ * forecast/counterfactual policy result.
+ */
+export const SINR_LIVE_CANDIDATE_PROBE_PROVENANCE =
+  'primary-ue-same-frame-angle-aware-display-only' as const;
+export type SinrLiveCandidateProbeProvenance = typeof SINR_LIVE_CANDIDATE_PROBE_PROVENANCE;
+export type SinrLiveCandidateProbeEeBasis = 'candidate-probe';
+export type SinrLiveCandidateProbeStatus = 'available' | 'unavailable';
+
+export interface SinrLiveCandidateProbeEvidence {
+  readonly key: CandidateLinkKey;
+  readonly primaryUeId: string;
+  readonly sourceFrameId: string;
+  readonly simTimeSec: number;
+  readonly provenance: SinrLiveCandidateProbeProvenance;
+  readonly eeBasis: SinrLiveCandidateProbeEeBasis;
+  readonly status: SinrLiveCandidateProbeStatus;
+  /** Null is the fail-closed representation of missing/non-finite evidence. */
+  readonly sample: LinkSample | null;
+  readonly reason: string | null;
+}
+
+/**
+ * Same-frame primary-UE readout for the configured beams visible in the
+ * homepage rail.  This is a measurement surface only: it never enters the
+ * candidate opportunity set, the decision engine, TTT, or the serving
+ * transaction.  Keeping it on the cell frame means every rail row can use the
+ * same LinkSample/angle-aware EE contract instead of mixing a primary-UE value
+ * with a background-UE aggregate.
+ */
+export const SINR_LIVE_PRIMARY_BEAM_METRIC_PROVENANCE =
+  'primary-ue-same-frame-angle-aware-beam-metric-display-only' as const;
+export type SinrLivePrimaryBeamMetricProvenance =
+  typeof SINR_LIVE_PRIMARY_BEAM_METRIC_PROVENANCE;
+export type SinrLivePrimaryBeamMetricStatus = 'available' | 'unavailable';
+
+export interface SinrLivePrimaryBeamMetricEvidence {
+  readonly key: CandidateLinkKey;
+  readonly primaryUeId: string;
+  readonly sourceFrameId: string;
+  readonly simTimeSec: number;
+  readonly provenance: SinrLivePrimaryBeamMetricProvenance;
+  readonly status: SinrLivePrimaryBeamMetricStatus;
+  /** Null is the fail-closed representation of a gain-floor/non-finite sample. */
+  readonly sample: LinkSample | null;
+  readonly reason: string | null;
+}
+
 export interface SinrLiveCellFrame {
   readonly simTimeSec: number;
+  /** Accepted Walker source-frame identity shared by all same-frame joins. */
+  readonly sourceFrameId?: string;
   readonly cells: readonly CellServingRecord[];
   readonly ues: readonly UeCellServingRecord[];
   /**
@@ -297,6 +376,18 @@ export interface SinrLiveCellFrame {
    * separate activation gates pass.
    */
   readonly primaryCandidateOpportunities?: CandidateOpportunitySet | null;
+  /**
+   * Same-frame, primary-UE, angle-aware LinkSample probes for the already
+   * admitted candidate identities. These are display-only evidence: they are
+   * never passed to HandoverDecision/TTT/commit and never added to
+   * activeAssignments, so a candidate cannot become an interferer.
+   */
+  readonly primaryCandidateProbeEvidence?: readonly SinrLiveCandidateProbeEvidence[] | null;
+  /**
+   * Same-frame primary-UE measurements for the homepage's visible beam roster.
+   * These are display-only and do not create candidate/serving identities.
+   */
+  readonly primaryBeamMetricEvidence?: readonly SinrLivePrimaryBeamMetricEvidence[] | null;
   /** Lit (sat, cell) beams this slot (post beam-hopping) — the cone render surface. */
   readonly illuminatedBeams: readonly IlluminatedCellBeam[];
   readonly servedCellCount: number;
@@ -478,14 +569,74 @@ export function cellLinkBudgetBeamId(cellId: number): number {
   return Math.max(0, Math.floor(cellId)) + CELL_BEAM_ID_OFFSET;
 }
 
+/** Link-budget beam id for the deterministic alternate beam in one cell. */
+export function intraCellLinkBudgetBeamId(cellId: number): number {
+  const id = Math.max(0, Math.floor(cellId));
+  if (id >= INTRA_CELL_BEAM_ID_STRIDE) {
+    throw new RangeError(`cellId ${id} cannot be encoded as an intra-cell beam variant`);
+  }
+  return cellLinkBudgetBeamId(id) + INTRA_CELL_BEAM_VARIANT_INDEX * INTRA_CELL_BEAM_ID_STRIDE;
+}
+
+/** Decode the geographic cell and reserved same-cell variant from a link id. */
+export function decodeCellLinkBudgetBeamId(beamId: number): {
+  readonly cellId: number;
+  readonly variantIndex: number;
+} {
+  const encoded = Math.max(0, Math.floor(beamId) - CELL_BEAM_ID_OFFSET);
+  return {
+    cellId: encoded % INTRA_CELL_BEAM_ID_STRIDE,
+    variantIndex: Math.floor(encoded / INTRA_CELL_BEAM_ID_STRIDE),
+  };
+}
+
 /** Recover a cellId from the internal link-budget beamId. */
 export function cellIdFromLinkBudgetBeamId(beamId: number): number {
-  return Math.max(0, Math.floor(beamId) - CELL_BEAM_ID_OFFSET);
+  return decodeCellLinkBudgetBeamId(beamId).cellId;
 }
 
 /** Beam identity = sat × cell (§5.2). */
 export function cellBeamIdentity(satId: string, cellId: number): string {
   return `${satId}#cell${Math.max(0, Math.floor(cellId))}`;
+}
+
+/** Distinguish the selected physical beam while retaining its cell identity. */
+export function cellBeamIdentityForLink(
+  satId: string,
+  beamId: number,
+): string {
+  const decoded = decodeCellLinkBudgetBeamId(beamId);
+  return decoded.variantIndex === 0
+    ? cellBeamIdentity(satId, decoded.cellId)
+    : `${cellBeamIdentity(satId, decoded.cellId)}#variant${decoded.variantIndex}`;
+}
+
+/**
+ * Deterministic alternate boresight inside the same geographic cell. The
+ * offset points toward the fixed service-area origin, not toward the UE, so
+ * the candidate remains a real geometry choice rather than a presentation
+ * flag or a UE-following cheat.
+ */
+export function resolveIntraCellBeamCenter(
+  cell: CellCenter,
+  cellRadiusKm: number,
+  observer: { readonly latDeg: number; readonly lonDeg: number },
+): CellCenter {
+  const radius = Number.isFinite(cellRadiusKm) && cellRadiusKm > 0 ? cellRadiusKm : 0;
+  const distanceToOrigin = Math.hypot(cell.localXKm, cell.localYKm);
+  const direction = distanceToOrigin > 1e-9
+    ? { east: -cell.localXKm / distanceToOrigin, north: -cell.localYKm / distanceToOrigin }
+    : { east: 1, north: 0 };
+  const localXKm = cell.localXKm + direction.east * radius * INTRA_CELL_BEAM_OFFSET_FRACTION;
+  const localYKm = cell.localYKm + direction.north * radius * INTRA_CELL_BEAM_OFFSET_FRACTION;
+  const latLon = localKmToLatLon(observer.latDeg, observer.lonDeg, localXKm, localYKm);
+  return {
+    ...cell,
+    latDeg: latLon.latDeg,
+    lonDeg: latLon.lonDeg,
+    localXKm,
+    localYKm,
+  };
 }
 
 /** UE → nearest earth-fixed cell by local-ENU distance (§5.1). */
@@ -563,13 +714,13 @@ export function listCellCandidateSats(
 
 /**
  * Classify a UE serving transition (§5.2 / codex BLOCK-4). intra-HO = serving
- * SAT unchanged + serving CELL changes (UE crossed a boundary into a cell the
- * same sat serves); inter-HO = serving SAT changes. Cold attach / service drop
- * are distinct and are NOT counted as handovers.
+ * SAT unchanged + serving CELL or BEAM changes (including a same-cell beam
+ * switch); inter-HO = serving SAT changes. Cold attach / service drop are
+ * distinct and are NOT counted as handovers.
  */
 export function classifyServingTransition(
-  prev: { satId: string | null; cellId: number | null } | null,
-  next: { satId: string | null; cellId: number | null },
+  prev: { satId: string | null; cellId: number | null; beamId?: number | null } | null,
+  next: { satId: string | null; cellId: number | null; beamId?: number | null },
 ): ServingTransitionKind {
   const prevServed = prev != null && prev.satId !== null;
   const nextServed = next.satId !== null;
@@ -578,7 +729,16 @@ export function classifyServingTransition(
   if (prevServed && !nextServed) return 'drop';
   // both served
   if (prev!.satId !== next.satId) return 'inter';
-  if (prev!.cellId !== next.cellId) return 'intra';
+  if (
+    prev!.cellId !== next.cellId
+    || (
+      prev!.beamId !== null
+      && prev!.beamId !== undefined
+      && next.beamId !== null
+      && next.beamId !== undefined
+      && prev!.beamId !== next.beamId
+    )
+  ) return 'intra';
   return 'none';
 }
 
@@ -613,6 +773,13 @@ interface ResolvedCellBeamPointing {
   readonly scanAngleDeg: number;
 }
 
+interface CellBeamMeasurement {
+  readonly cell: CellCenter;
+  readonly geometry: CellScanGeometry;
+  readonly pointing: ResolvedCellBeamPointing;
+  readonly beamId: number;
+}
+
 /** Readable confirmation interval after candidate TTT in SINR compatibility mode. */
 export const SINR_LIVE_SELECTION_HOLD_SEC = 1;
 
@@ -641,6 +808,7 @@ function buildCellBeamSnapshot(
   cell: CellCenter,
   geom: CellScanGeometry,
   pointing: ResolvedCellBeamPointing,
+  beamId = cellLinkBudgetBeamId(cell.cellId),
 ): SatelliteSnapshot {
   return {
     id: sat.id,
@@ -654,7 +822,7 @@ function buildCellBeamSnapshot(
     azimuthDeg: sat.topo.azimuthDeg,
     beamCellsKm: [
       {
-        beamId: cellLinkBudgetBeamId(cell.cellId),
+        beamId,
         offsetEastKm: cell.localXKm,
         offsetNorthKm: cell.localYKm,
         scanAngleDeg: pointing.scanAngleDeg,
@@ -664,6 +832,123 @@ function buildCellBeamSnapshot(
       },
     ],
   };
+}
+
+function hasFiniteAngleAwarePrimaryTerms(
+  sample: LinkSample,
+  primaryUeId: string,
+  key: CandidateLinkKey,
+  simTimeSec: number,
+): boolean {
+  const terms = sample.angleAware;
+  if (
+    sample.ueId !== primaryUeId
+    || sample.satId !== key.satelliteId
+    || sample.beamId !== key.beamId
+    || !Number.isFinite(sample.sinrDb)
+    || terms === undefined
+    || terms.timeSec !== simTimeSec
+  ) return false;
+
+  const finiteTerms = [
+    terms.timeSec,
+    terms.thetaRad,
+    terms.distanceM,
+    terms.powerW,
+    terms.transmitGainLinear,
+    terms.channelGainLinear,
+    terms.desiredSignalW,
+    terms.interferenceW,
+    terms.noiseW,
+    terms.gammaLinear,
+    terms.gammaDb,
+    terms.bandwidthHz,
+    terms.beamLoad,
+    terms.throughputBps,
+    terms.conversionEfficiency,
+    terms.powerConsumptionW,
+    terms.systemPowerW,
+    terms.energyEfficiencyBitsPerJoule,
+  ];
+  return finiteTerms.every(value => Number.isFinite(value))
+    && terms.distanceM > 0
+    && terms.powerW > 0
+    && terms.transmitGainLinear > 0
+    && terms.channelGainLinear > 0
+    && terms.desiredSignalW >= 0
+    && terms.interferenceW >= 0
+    && terms.noiseW > 0
+    && terms.gammaLinear >= 0
+    && terms.bandwidthHz > 0
+    && terms.beamLoad > 0
+    && terms.throughputBps >= 0
+    && terms.conversionEfficiency > 0
+    && terms.powerConsumptionW > 0
+    && terms.systemPowerW > 0
+    && terms.energyEfficiencyBitsPerJoule >= 0;
+}
+
+function freezeCandidateProbeSample(sample: LinkSample): LinkSample {
+  const angleAware = sample.angleAware === undefined
+    ? undefined
+    : Object.freeze({ ...sample.angleAware });
+  return Object.freeze({
+    ...sample,
+    ...(angleAware === undefined ? {} : { angleAware }),
+  });
+}
+
+function freezeCandidateProbeEvidence(
+  evidence: Omit<SinrLiveCandidateProbeEvidence, 'key' | 'sample'> & {
+    readonly key: CandidateLinkKey;
+    readonly sample: LinkSample | null;
+  },
+): SinrLiveCandidateProbeEvidence {
+  return Object.freeze({
+    ...evidence,
+    key: candidateLinkKey(evidence.key.satelliteId, evidence.key.beamId),
+    sample: evidence.sample === null ? null : freezeCandidateProbeSample(evidence.sample),
+  });
+}
+
+function freezePrimaryBeamMetricEvidence(
+  evidence: Omit<SinrLivePrimaryBeamMetricEvidence, 'key' | 'sample'> & {
+    readonly key: CandidateLinkKey;
+    readonly sample: LinkSample | null;
+  },
+): SinrLivePrimaryBeamMetricEvidence {
+  return Object.freeze({
+    ...evidence,
+    key: candidateLinkKey(evidence.key.satelliteId, evidence.key.beamId),
+    sample: evidence.sample === null ? null : freezeCandidateProbeSample(evidence.sample),
+  });
+}
+
+/**
+ * Stable identity for the inputs that define an angle-aware power recurrence.
+ * React recreates equivalent profile/runtime objects during ordinary control
+ * updates; that must not be mistaken for a signal change and reset every live
+ * link to the segment-start power. Real tuning/topology changes still produce a
+ * different key and intentionally re-anchor the recurrence.
+ */
+function angleAwareRuntimeContinuityKey(input: {
+  readonly profile: Profile;
+  readonly beamsPerSat: number;
+  readonly beamsPerSatById: Readonly<Record<string, number>>;
+  readonly servingBeamsPerSat?: number;
+  readonly candidateBeamsPerSat?: number;
+  readonly beamHoppingEnabled: boolean;
+}): string {
+  return JSON.stringify({
+    profile: input.profile,
+    beamsPerSat: input.beamsPerSat,
+    beamsPerSatById: Object.entries(input.beamsPerSatById).sort(([left], [right]) => (
+      left < right ? -1 : left > right ? 1 : 0
+    )),
+    servingBeamsPerSat: input.servingBeamsPerSat,
+    candidateBeamsPerSat: input.candidateBeamsPerSat,
+    beamHoppingEnabled: input.beamHoppingEnabled,
+  });
 }
 
 export class SinrLiveCellModel {
@@ -714,10 +999,23 @@ export class SinrLiveCellModel {
    */
   private lastSteppedUes: readonly UeInput[] = [];
   private antenna: Profile['antenna'];
+  private angleAwareRuntimeContinuityKey: string;
   private readonly cellManagers = new Map<number, HandoverManager>();
   /** Previous published-frame power state for currently served (u,s,v) links only. */
   private readonly angleAwarePowerStates = new Map<string, AngleAwarePowerState>();
-  private prevUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
+  /**
+   * Display-only continuity for the homepage's visible primary-UE beam roster.
+   * This is deliberately separate from the serving-state map: a counterfactual
+   * beam must not become a decision input merely because the rail rendered it.
+   * It uses the same sim-time and angle-aware recurrence, but never enters
+   * candidate measurement, TTT, commit, interference, or serving state.
+   */
+  private readonly primaryBeamMetricPowerStates = new Map<string, AngleAwarePowerState>();
+  private prevUeServing = new Map<string, {
+    satId: string | null;
+    cellId: number | null;
+    beamId: number | null;
+  }>();
   // Rolling log of handovers fired within the last retention window (sim-time),
   // for the ambient live-handover pulse to fade by age. Pruned each step; cleared
   // on reset/rebase (a teleport is not a handover — mirrors prevUeServing).
@@ -780,13 +1078,21 @@ export class SinrLiveCellModel {
     // KPI stays byte-identical). When no override is supplied the spread is a
     // value-identical shallow copy → the pure-model default is unchanged.
     this.antenna = this.resolveAntenna(config.profile);
+    this.angleAwareRuntimeContinuityKey = angleAwareRuntimeContinuityKey({
+      profile: this.profile,
+      beamsPerSat: this.beamsPerSat,
+      beamsPerSatById: this.beamsPerSatById,
+      servingBeamsPerSat: this.servingBeamsPerSat,
+      candidateBeamsPerSat: this.candidateBeamsPerSat,
+      beamHoppingEnabled: this.beamHoppingEnabled,
+    });
   }
 
   private createPrimaryDecisionEngine(initialServing: CandidateLinkKey | null): HandoverDecisionEngine {
     return new HandoverDecisionEngine({
       episodeId: `walker-primary:${this.epochUtcMs}`,
       initialServing,
-      policy: new SinrOffsetPolicy({
+      policy: new InstantaneousEePolicy({
         initialTttSec: this.profile.handover.triggerTimeSec,
         interTttSec: this.profile.handover.triggerTimeSec,
         // A same-satellite beam switch is the short intra procedure described
@@ -795,13 +1101,9 @@ export class SinrLiveCellModel {
         // canonical handover policy explicitly provides a 0.75 s intra dwell;
         // most measured intra opportunities expired before they could commit.
         intraTttSec: this.profile.handover.intraSwitchTimeSec,
-        interOffsetDb: this.profile.handover.offsetDb,
-        // The legacy HandoverManager's intra path already uses a strict
-        // stronger-beam comparison (no extra inter-satellite hysteresis). Keep
-        // the primary multi-candidate authority aligned with that policy so a
-        // same-satellite beam opportunity can produce an actual intra commit
-        // instead of being filtered by the 3 dB inter margin.
-        intraOffsetDb: 0,
+        // The homepage asks for the largest current EE. Keep the comparison
+        // strict; no lower-EE target may win through a tie tolerance.
+        eeToleranceRelative: 0,
       }),
       selectionHoldSec: SINR_LIVE_SELECTION_HOLD_SEC,
       guardSec: this.profile.handover.pingPongGuardSec,
@@ -943,6 +1245,7 @@ export class SinrLiveCellModel {
     sat: CellModelSat,
     cell: CellCenter,
     simTimeSec: number,
+    pointingKey?: string,
   ): ResolvedCellBeamPointing {
     const exactAxis = computeBoresightAxisEcefKm({
       satLatDeg: sat.latDeg,
@@ -955,7 +1258,7 @@ export class SinrLiveCellModel {
     if (this.beamPointingMode === 'sampled-steering') {
       const safeTimeSec = Number.isFinite(simTimeSec) ? simTimeSec : 0;
       const bucket = Math.floor(safeTimeSec / this.beamPointingUpdateSec);
-      const key = `${sat.id}:${cell.cellId}`;
+      const key = `${sat.id}:${pointingKey ?? cell.cellId}`;
       const previous = this.beamPointingAnchors.get(key);
       if (previous?.bucket === bucket) {
         axisEcefKm = previous.axisEcefKm;
@@ -991,6 +1294,73 @@ export class SinrLiveCellModel {
     };
   }
 
+  private resolveCandidateBeamForKey(
+    key: CandidateLinkKey,
+    candidatesByCell: ReadonlyMap<number, readonly CellScanGeometry[]>,
+    satById: ReadonlyMap<string, CellModelSat>,
+    simTimeSec: number,
+  ): CellBeamMeasurement | null {
+    const decoded = decodeCellLinkBudgetBeamId(key.beamId);
+    if (decoded.variantIndex > INTRA_CELL_BEAM_VARIANT_INDEX) return null;
+    const cell = this.cellById.get(decoded.cellId);
+    const satellite = satById.get(key.satelliteId);
+    const baseGeometry = candidatesByCell.get(decoded.cellId)?.find(candidate => (
+      candidate.satId === key.satelliteId
+    ));
+    if (cell === undefined || satellite === undefined || baseGeometry === undefined) return null;
+    if (decoded.variantIndex === 0) {
+      return {
+        cell,
+        geometry: baseGeometry,
+        pointing: this.resolveCellBeamPointing(satellite, cell, simTimeSec),
+        beamId: key.beamId,
+      };
+    }
+
+    const variantCell = resolveIntraCellBeamCenter(
+      cell,
+      this.cellLayout.cellRadiusKm,
+      this.observer,
+    );
+    const variantGeometry = computeCellScanGeometry(satellite, variantCell, this.observer);
+    return {
+      cell: variantCell,
+      geometry: variantGeometry,
+      pointing: this.resolveCellBeamPointing(
+        satellite,
+        variantCell,
+        simTimeSec,
+        `beam${key.beamId}`,
+      ),
+      beamId: key.beamId,
+    };
+  }
+
+  private resolveIntraCellCandidateBeam(
+    cell: CellCenter,
+    satellite: CellModelSat,
+    simTimeSec: number,
+  ): CellBeamMeasurement {
+    const variantCell = resolveIntraCellBeamCenter(
+      cell,
+      this.cellLayout.cellRadiusKm,
+      this.observer,
+    );
+    const variantGeometry = computeCellScanGeometry(satellite, variantCell, this.observer);
+    const beamId = intraCellLinkBudgetBeamId(cell.cellId);
+    return {
+      cell: variantCell,
+      geometry: variantGeometry,
+      pointing: this.resolveCellBeamPointing(
+        satellite,
+        variantCell,
+        simTimeSec,
+        `beam${beamId}`,
+      ),
+      beamId,
+    };
+  }
+
   /**
    * Refresh profile-backed link-budget inputs without destroying cell-serving
    * continuity. Signal tuning is a next-frame recompute, not a new replay epoch:
@@ -1010,6 +1380,16 @@ export class SinrLiveCellModel {
     candidateBeamsPerSat = this.candidateBeamsPerSat,
     beamHoppingEnabled = this.beamHoppingEnabled,
   ): void {
+    const nextAngleAwareRuntimeContinuityKey = angleAwareRuntimeContinuityKey({
+      profile,
+      beamsPerSat,
+      beamsPerSatById,
+      servingBeamsPerSat,
+      candidateBeamsPerSat,
+      beamHoppingEnabled,
+    });
+    const angleAwareInputsChanged = nextAngleAwareRuntimeContinuityKey
+      !== this.angleAwareRuntimeContinuityKey;
     const handoverChanged = profile.handover.sinrThresholdDb !== this.profile.handover.sinrThresholdDb
       || profile.handover.offsetDb !== this.profile.handover.offsetDb
       || profile.handover.triggerTimeSec !== this.profile.handover.triggerTimeSec
@@ -1022,10 +1402,14 @@ export class SinrLiveCellModel {
     this.candidateBeamsPerSat = candidateBeamsPerSat;
     this.beamHoppingEnabled = beamHoppingEnabled;
     this.antenna = this.resolveAntenna(profile);
+    this.angleAwareRuntimeContinuityKey = nextAngleAwareRuntimeContinuityKey;
     // A signal-profile change starts a new formula continuity segment for C2/C3.
     // Handover continuity remains owned by the managers above; the angle-aware
     // power state is re-anchored to the new scenario parameters.
-    this.angleAwarePowerStates.clear();
+    if (angleAwareInputsChanged) {
+      this.angleAwarePowerStates.clear();
+      this.primaryBeamMetricPowerStates.clear();
+    }
     if (handoverChanged && this.multiCandidateDecisionEnabled) {
       this.primaryDecisionEngine = this.createPrimaryDecisionEngine(
         this.primaryServingAssignment?.key ?? null,
@@ -1043,7 +1427,7 @@ export class SinrLiveCellModel {
    * change has no business touching. Rebuilding the model resets every cell's
    * HandoverManager, which cold-attaches all UEs and fires a burst of spurious
    * handovers; `updateRuntimeProfile` clears `angleAwarePowerStates`, which
-   * would snap every link's recurrence back to the 2 W segment start.
+   * would snap every link's recurrence back to the p_max / 2 segment start.
    *
    * A focus change is a viewpoint change, so it touches neither. Serving,
    * handover and power continuity for all UEs — including the newly focused one,
@@ -1129,8 +1513,13 @@ export class SinrLiveCellModel {
       ...baseOptions,
       angleAware: {
         previousStates: this.angleAwarePowerStates,
-        conversionEfficiency: this.profile.antenna.efficiency,
-        fixedPowerW: 0,
+        conversionEfficiency: ANGLE_AWARE_MAX_EFFICIENCY,
+        fixedPowerW: activeAssignments.length * ANGLE_AWARE_FIXED_RF_CHAIN_POWER_W
+          + new Set(activeAssignments.map(assignment => assignment.satId)).size
+            * ANGLE_AWARE_FIXED_BASEBAND_POWER_W,
+        beamPowerCapW: ANGLE_AWARE_BEAM_POWER_CAP_W,
+        backoffDb: ANGLE_AWARE_BACKOFF_DB,
+        maxEfficiency: ANGLE_AWARE_MAX_EFFICIENCY,
       },
     };
   }
@@ -1141,6 +1530,7 @@ export class SinrLiveCellModel {
     this.recentHandovers = [];
     this.beamPointingAnchors.clear();
     this.angleAwarePowerStates.clear();
+    this.primaryBeamMetricPowerStates.clear();
     this.cumulativeIntraHandoverCount = 0;
     this.cumulativeInterHandoverCount = 0;
     this.clearPrimaryDecisionState();
@@ -1177,6 +1567,7 @@ export class SinrLiveCellModel {
     this.recentHandovers = [];
     this.beamPointingAnchors.clear();
     this.angleAwarePowerStates.clear();
+    this.primaryBeamMetricPowerStates.clear();
     // The cumulative ticker totals rebase to ZERO with the window: a backward seek
     // replays an already-counted span, so keeping the pre-seek totals would
     // DOUBLE-COUNT the replayed handovers. A seek opens a fresh continuity epoch —
@@ -1343,18 +1734,16 @@ export class SinrLiveCellModel {
     satById: ReadonlyMap<string, CellModelSat>,
     simTimeSec: number,
   ): SatelliteSnapshot | null {
-    const servingCellId = cellIdFromLinkBudgetBeamId(key.beamId);
-    const cell = this.cellById.get(servingCellId);
+    const beam = this.resolveCandidateBeamForKey(key, candidatesByCell, satById, simTimeSec);
+    if (beam === null) return null;
     const sat = satById.get(key.satelliteId);
-    const geometry = candidatesByCell
-      .get(servingCellId)
-      ?.find(candidate => candidate.satId === key.satelliteId);
-    if (cell === undefined || sat === undefined || geometry === undefined) return null;
+    if (sat === undefined) return null;
     return buildCellBeamSnapshot(
       sat,
-      cell,
-      geometry,
-      this.resolveCellBeamPointing(sat, cell, simTimeSec),
+      beam.cell,
+      beam.geometry,
+      beam.pointing,
+      beam.beamId,
     );
   }
 
@@ -1909,11 +2298,24 @@ export class SinrLiveCellModel {
       },
     };
 
-    // Display-only same-satellite candidate for the primary UE. The normal
-    // cell decision compares different satellites serving the same cell; the
-    // teaching intra story needs a different beam/cell on the SAME satellite.
-    // Measure it against the same final active field and keep it out of every
-    // serving decision so the canonical runtime remains untouched.
+    const primaryCandidateProbeEvidence = primaryUe === undefined
+      ? null
+      : this.measurePrimaryCandidateProbeEvidence(
+        primaryUe,
+        primaryCandidateOpportunities,
+        allCandidatesByCell,
+        satById,
+        finalLit,
+        finalActive,
+        finalOptions,
+        simTimeSec,
+        acceptedFrameIdentity,
+      );
+
+    // Legacy display-only same-satellite candidate for the primary UE. The
+    // authoritative same-cell variant is measured above and enters the single
+    // primary decision engine; this older adjacent-cell probe remains a
+    // separate read-only surface for the existing seven-cell teaching view.
     const primaryIntraCandidate = primaryUe === undefined || primaryUeMembership === null
       ? null
       : this.measureIntraCandidate(
@@ -1958,15 +2360,35 @@ export class SinrLiveCellModel {
         });
       }
     }
+    if (this.multiCandidateDecisionEnabled && authoritativeServingPairs !== null) {
+      const primaryKey = this.primaryServingAssignment?.key;
+      if (primaryKey !== undefined
+        && decodeCellLinkBudgetBeamId(primaryKey.beamId).variantIndex === INTRA_CELL_BEAM_VARIANT_INDEX
+        && authoritativeServingPairs.has(`${primaryKey.satelliteId}:${primaryKey.beamId}`)) {
+        const cellId = cellIdFromLinkBudgetBeamId(primaryKey.beamId);
+        illuminatedBeams.push({
+          satId: primaryKey.satelliteId,
+          cellId,
+          beamId: primaryKey.beamId,
+          frequencyIndex: cellFrequencyIndex(cellId, reuse),
+          serving: true,
+        });
+      }
+    }
 
     // 5. Per-UE geographic membership plus its independently selected serving
     //    pair. Background UEs still inherit the cell manager; the primary UE
     //    consumes only the authoritative assignment transaction above.
     let ueRecords: UeCellServingRecord[] = [];
-    const nextUeServing = new Map<string, { satId: string | null; cellId: number | null }>();
+    const nextUeServing = new Map<string, {
+      satId: string | null;
+      cellId: number | null;
+      beamId: number | null;
+    }>();
     let intraHandoverCount = 0;
     let interHandoverCount = 0;
     const firedHandovers: SinrLiveCellHandoverEvent[] = [];
+    const ueById = new Map(ues.map(ue => [ue.id, ue] as const));
     for (const ue of ues) {
       const membership = assignUeToNearestCell(ue, this.cellLayout);
       const cellId = membership.cellId;
@@ -2012,7 +2434,7 @@ export class SinrLiveCellModel {
         }
       }
 
-      const next = { satId: servingSatId, cellId: servingCellId };
+      const next = { satId: servingSatId, cellId: servingCellId, beamId: servingBeamId };
       const prevServing = this.prevUeServing.get(ue.id) ?? null;
       const kind = classifyServingTransition(prevServing, next);
       if (kind === 'intra') intraHandoverCount += 1;
@@ -2027,8 +2449,10 @@ export class SinrLiveCellModel {
           sourceTimeSec: simTimeSec,
           fromSatId: prevServing?.satId ?? null,
           fromCellId: prevServing?.cellId ?? null,
+          fromBeamId: prevServing?.beamId ?? null,
           toSatId: servingSatId,
           toCellId: servingCellId,
+          toBeamId: servingBeamId,
         });
       }
       nextUeServing.set(ue.id, next);
@@ -2047,7 +2471,7 @@ export class SinrLiveCellModel {
         servingBeamId,
         beamIdentity: servingSatId === null || servingCellId === null
           ? null
-          : cellBeamIdentity(servingSatId, servingCellId),
+          : cellBeamIdentityForLink(servingSatId, servingBeamId!),
         frequencyIndex: cellId === null
           ? null
           : cellFrequencyIndex(cellId, this.profile.beams.frequencyReuse),
@@ -2063,31 +2487,112 @@ export class SinrLiveCellModel {
         intraCandidateLinkSample: ue.id === primaryUeId ? primaryIntraCandidate?.sample ?? null : null,
       });
     }
-    // C7 is a system-level sum over the selected (x=1) UE-links. The link
-    // budget computes each link before all UEs have been visited, so normalize
-    // P^N and eta once here and publish that same denominator everywhere.
+    // C7 is a system-level sum over active physical beams. The link budget
+    // computes each link before all UEs have been visited, so normalize beam
+    // max RF power, P^p, P^N, and eta once here and publish that same frame to
+    // the left rail, scene, and right rail.
     const fixedPowerW = finalOptions.angleAware?.fixedPowerW ?? 0;
-    const systemPowerW = Math.max(fixedPowerW, 0) + ueRecords.reduce((sum, record) => {
-      const power = record.servingLinkSample?.angleAware?.powerConsumptionW;
-      return Number.isFinite(power) ? sum + (power ?? 0) : sum;
-    }, 0);
+    const beamPowerByKey = new Map<string, number>();
+    for (const record of ueRecords) {
+      const terms = record.servingLinkSample?.angleAware;
+      const beamId = record.servingLinkSample?.beamId ?? record.servingBeamId;
+      if (terms === undefined || record.servingSatId === null || beamId === null || beamId === undefined) continue;
+      const key = `${record.servingSatId}:${beamId}`;
+      beamPowerByKey.set(key, Math.max(beamPowerByKey.get(key) ?? 0, terms.powerW));
+    }
+    const beamSupplyPowerByKey = new Map<string, number>();
+    for (const [key, beamPowerW] of beamPowerByKey) {
+      const efficiency = resolveAngleAwareConversionEfficiency(
+        beamPowerW,
+        finalOptions.angleAware?.maxEfficiency,
+        finalOptions.angleAware?.beamPowerCapW,
+        finalOptions.angleAware?.backoffDb,
+      );
+      beamSupplyPowerByKey.set(key, beamPowerW / efficiency);
+    }
+    const systemPowerW = Math.max(fixedPowerW, 0) + Array.from(beamSupplyPowerByKey.values())
+      .reduce((sum, power) => sum + power, 0);
+    // The first pass above is needed to discover the maximum p_(s,v) across
+    // users sharing a physical beam. Re-evaluate every selected link with
+    // that accepted-frame projection so its I_(u,s,v), γ_(u,s,v), R_(u,s,v),
+    // and η_(u,s,v) use the same beam maximum and U_(s,v) as the system-power
+    // terms. The wanted numerator remains each link's own p_(u,s,v).
+    const canonicalFinalOptions = {
+      ...finalOptions,
+      angleAware: {
+        ...finalAngleAware,
+        beamPowerByKey,
+      },
+    };
     ueRecords = ueRecords.map(record => {
       const sample = record.servingLinkSample;
       const terms = sample?.angleAware;
       if (sample === null || sample === undefined || terms === undefined) return record;
+      const beamId = sample.beamId ?? record.servingBeamId;
+      const beamKey = record.servingSatId === null || beamId === null || beamId === undefined
+        ? null
+        : `${record.servingSatId}:${beamId}`;
+      const beamPowerW = beamKey === null
+        ? terms.powerW
+        : beamPowerByKey.get(beamKey) ?? terms.powerW;
+      const beamSupplyPowerW = beamKey === null
+        ? terms.powerConsumptionW
+        : beamSupplyPowerByKey.get(beamKey) ?? terms.powerConsumptionW;
+      const ue = ueById.get(record.ueId);
+      const canonicalSample = ue === undefined
+        ? sample
+        : computeLinkBudget(this.uePosition(ue), finalLit, canonicalFinalOptions).find(
+          candidate => candidate.satId === record.servingSatId && candidate.beamId === beamId,
+        ) ?? sample;
+      const canonicalTerms = canonicalSample.angleAware ?? terms;
+      const conversionEfficiency = beamPowerW > 0
+        ? beamPowerW / Math.max(beamSupplyPowerW, 1e-30)
+        : canonicalTerms.conversionEfficiency;
       const normalizedTerms = {
-        ...terms,
+        ...canonicalTerms,
+        beamPowerW,
+        beamSupplyPowerW,
+        conversionEfficiency,
+        powerConsumptionW: beamSupplyPowerW,
+        contractVersion: ANGLE_AWARE_EE_CONTRACT_VERSION,
         systemPowerW,
-        energyEfficiencyBitsPerJoule: terms.throughputBps / Math.max(systemPowerW, 1e-30),
+        energyEfficiencyBitsPerJoule: canonicalTerms.throughputBps / Math.max(systemPowerW, 1e-30),
       };
       return {
         ...record,
+        sinrDb: canonicalSample.sinrDb,
         servingLinkSample: {
-          ...sample,
+          ...canonicalSample,
           angleAware: normalizedTerms,
         },
       };
     });
+    // The homepage rail reads the same primary-UE angle-aware contract for the
+    // serving beam, candidate beams, and configured same-satellite context
+    // beams.  This sampler is display-only: its continuity map never enters
+    // the decision engine or the active RF field.
+    const primaryBeamMetricSatelliteIds = new Set<string>();
+    for (const snapshot of finalLit) primaryBeamMetricSatelliteIds.add(snapshot.id);
+    if (this.primaryServingAssignment !== null) {
+      primaryBeamMetricSatelliteIds.add(this.primaryServingAssignment.key.satelliteId);
+    }
+    for (const opportunity of primaryCandidateOpportunities?.opportunities ?? []) {
+      primaryBeamMetricSatelliteIds.add(opportunity.key.satelliteId);
+    }
+    const primaryBeamMetricEvidence = primaryUe === undefined
+      ? null
+      : this.measurePrimaryBeamMetricEvidence(
+        primaryUe,
+        primaryBeamMetricSatelliteIds,
+        primaryCandidateOpportunities,
+        allCandidatesByCell,
+        satById,
+        finalLit,
+        finalActive,
+        canonicalFinalOptions,
+        simTimeSec,
+        acceptedFrameIdentity,
+      );
     const primaryRecord = ueRecords.find(record => record.ueId === primaryUeId) ?? ueRecords[0];
     const angleAwareFormulaFrame = primaryRecord?.servingLinkSample?.angleAware
       && primaryRecord.servingSatId !== null
@@ -2112,7 +2617,7 @@ export class SinrLiveCellModel {
     // geometry update). That is not a handover or a new segment, so preserve
     // the prior state for that exact key. A real drop or serving identity
     // change has no matching current key and is therefore removed here; its
-    // next attachment starts from the 2 W segment-start condition.
+    // next attachment starts from the p^0 segment-start condition.
     const nextAngleAwarePowerStates = new Map<string, AngleAwarePowerState>();
     for (const record of ueRecords) {
       const sample = record.servingLinkSample;
@@ -2164,10 +2669,13 @@ export class SinrLiveCellModel {
 
     return {
       simTimeSec,
+      sourceFrameId: acceptedFrameIdentity.sourceFrameId,
       cells: cellRecords,
       ues: ueRecords,
       primaryUeId,
       primaryCandidateOpportunities,
+      primaryCandidateProbeEvidence,
+      primaryBeamMetricEvidence,
       illuminatedBeams,
       servedCellCount: finalServingByCell.size,
       servedUeCount: ueRecords.filter(ue => ue.servingSatId !== null).length,
@@ -2213,22 +2721,69 @@ export class SinrLiveCellModel {
       }
     }
 
-    const measuredPairs: Array<{
-      readonly geometry: CellScanGeometry;
-      readonly pointing: ResolvedCellBeamPointing;
-    }> = [];
+    // A primary-UE decision is a handover between beams that can serve the
+    // primary UE's current geographic cell.  The surrounding cell fan-out is
+    // still rendered by the cell-truth scene, but it must not leak into this
+    // decision set: a same-satellite beam belonging to another geographic cell
+    // would otherwise be misclassified as an intra-satellite target merely
+    // because the generic decision kind compares satellite ids.
+    const primaryCellId = assignUeToNearestCell(ue, this.cellLayout).cellId;
+    const measuredPairs: CellBeamMeasurement[] = [];
     for (const [cellId, geometries] of allCandidatesByCell) {
+      if (primaryCellId === null || cellId !== primaryCellId) continue;
       const cell = this.cellById.get(cellId);
       if (cell === undefined) continue;
       for (const geometry of geometries) {
         const satellite = satById.get(geometry.satId);
         if (satellite === undefined) continue;
         const pointing = this.resolveCellBeamPointing(satellite, cell, simTimeSec);
-        measuredPairs.push({ geometry, pointing });
         const beamId = cellLinkBudgetBeamId(cellId);
+        measuredPairs.push({ cell, geometry, pointing, beamId });
         const key = pairKey(geometry.satId, beamId);
         if (!snapshotsByKey.has(key)) {
-          snapshotsByKey.set(key, buildCellBeamSnapshot(satellite, cell, geometry, pointing));
+          snapshotsByKey.set(key, buildCellBeamSnapshot(satellite, cell, geometry, pointing, beamId));
+        }
+      }
+    }
+
+    // The homepage authority lane needs one real alternate beam on the
+    // CURRENT serving satellite, including for a one-cell layout where no
+    // second geographic cell exists. It remains in the same cellId and source
+    // frame, but gets a distinct beam key and a distinct fixed boresight
+    // geometry. Do not add variants for every inter-satellite contender: that
+    // would turn a normal inter candidate into a different-satellite beam
+    // variant and would no longer model one same-satellite intra decision.
+    const primaryCell = primaryCellId === null ? undefined : this.cellById.get(primaryCellId);
+    const primaryServingKey = this.primaryServingAssignment?.key;
+    const primaryServingSatId = primaryServingKey?.satelliteId ?? null;
+    if (this.multiCandidateDecisionEnabled
+      && primaryCell !== undefined
+      && primaryCellId !== null
+      && primaryServingSatId !== null) {
+      for (const geometry of allCandidatesByCell.get(primaryCellId) ?? []) {
+        if (geometry.satId !== primaryServingSatId) continue;
+        const satellite = satById.get(geometry.satId);
+        if (satellite === undefined) continue;
+        const variant = this.resolveIntraCellCandidateBeam(
+          primaryCell,
+          satellite,
+          simTimeSec,
+        );
+        measuredPairs.push(variant);
+        const normalKey = pairKey(geometry.satId, cellLinkBudgetBeamId(primaryCellId));
+        const variantKey = pairKey(geometry.satId, variant.beamId);
+        if (scheduledKeys.has(normalKey)) scheduledKeys.add(variantKey);
+        if (!snapshotsByKey.has(variantKey)) {
+          snapshotsByKey.set(
+            variantKey,
+            buildCellBeamSnapshot(
+              satellite,
+              variant.cell,
+              variant.geometry,
+              variant.pointing,
+              variant.beamId,
+            ),
+          );
         }
       }
     }
@@ -2252,7 +2807,7 @@ export class SinrLiveCellModel {
       // the current serving pair) is measured at the profile-rated power against
       // one common active-interference field. Candidate probes remain x(t)=0 and
       // never become interferers. A committed link still starts its published
-      // angle-aware recurrence at 2 W in the final serving pass below.
+      // angle-aware recurrence at p_max / 2 in the final serving pass below.
       //
       // This seam is deliberately NOT forecast-EE evidence. EE activation still
       // requires the SDD's per-target replacement counterfactual with explicit
@@ -2260,6 +2815,18 @@ export class SinrLiveCellModel {
       this.linkBudgetOptions([...finalActive], simTimeSec, false),
     );
     const sampleByKey = new Map(samples.map(sample => [pairKey(sample.satId, sample.beamId), sample]));
+    // The decision and the rail must consume the same same-frame EE evidence.
+    // Candidate snapshots stay outside activeAssignments, so they are measured
+    // without becoming interferers while the denominator still reflects the
+    // current active field.
+    const angleAwareSamples = computeLinkBudget(
+      uePosition,
+      [...snapshotsByKey.values()],
+      this.linkBudgetOptions([...finalActive], simTimeSec),
+    );
+    const angleAwareSampleByKey = new Map(
+      angleAwareSamples.map(sample => [pairKey(sample.satId, sample.beamId), sample]),
+    );
     const availableMetric = (value: number, unit: string): MetricEvidence => ({
       status: 'available',
       value,
@@ -2277,8 +2844,7 @@ export class SinrLiveCellModel {
       measuredAtSimTimeMs: acceptedFrameIdentity.absoluteUtcMs,
     });
 
-    const measurements: CandidateLinkMeasurement[] = measuredPairs.map(({ geometry, pointing }) => {
-      const beamId = cellLinkBudgetBeamId(geometry.cellId);
+    const measurements: CandidateLinkMeasurement[] = measuredPairs.map(({ geometry, pointing, beamId }) => {
       const key = pairKey(geometry.satId, beamId);
       const satellite = satById.get(geometry.satId)!;
       const elevationDeg = (elevationAngleRad(
@@ -2289,6 +2855,7 @@ export class SinrLiveCellModel {
         uePosition.lonDeg,
       ) * 180) / Math.PI;
       const sample = sampleByKey.get(key);
+      const angleAware = angleAwareSampleByKey.get(key)?.angleAware;
       const scheduledAndIlluminated = scheduledKeys.has(key);
       const scheduledGate: CandidateGateResult = {
         code: 'scheduled-illumination',
@@ -2322,6 +2889,12 @@ export class SinrLiveCellModel {
           's',
           'Walker remaining-service prediction is not implemented in S1',
         ),
+        instantaneousEe: angleAware !== undefined && Number.isFinite(angleAware.energyEfficiencyBitsPerJoule)
+          ? availableMetric(angleAware.energyEfficiencyBitsPerJoule, 'bit/J')
+          : unavailableMetric(
+            'bit/J',
+            'same-frame angle-aware EE is unavailable for this candidate beam',
+          ),
         scheduledIllumination: scheduledGate,
       };
     });
@@ -2338,6 +2911,339 @@ export class SinrLiveCellModel {
       },
       measurements,
     });
+  }
+
+  /**
+   * H-14: measure the already-admitted primary candidate identities at the
+   * primary UE's true position through the final angle-aware link-budget path.
+   *
+   * This is intentionally a display-only instantaneous probe. The candidate
+   * snapshots are added to the read-only measurement list, while
+   * `activeAssignments` remains the final serving field. Therefore candidates
+   * neither enter HandoverDecision/TTT/commit nor contribute interference or
+   * a second clock. Forecast-EE remains a separate, unavailable contract.
+   */
+  private measurePrimaryCandidateProbeEvidence(
+    ue: UeInput,
+    opportunitySet: CandidateOpportunitySet | null,
+    allCandidatesByCell: ReadonlyMap<number, readonly CellScanGeometry[]>,
+    satById: ReadonlyMap<string, CellModelSat>,
+    finalLit: readonly SatelliteSnapshot[],
+    finalActive: readonly ActiveBeamAssignment[],
+    options: Parameters<typeof computeLinkBudget>[2],
+    simTimeSec: number,
+    acceptedFrameIdentity: WalkerAcceptedFrameIdentity,
+  ): readonly SinrLiveCandidateProbeEvidence[] | null {
+    if (opportunitySet === null) return null;
+
+    const pairKey = (satelliteId: string, beamId: number): string => `${satelliteId}:${beamId}`;
+    const snapshotsByKey = new Map<string, SatelliteSnapshot>();
+    for (const snapshot of finalLit) {
+      for (const beam of snapshot.beamCellsKm) {
+        snapshotsByKey.set(pairKey(snapshot.id, beam.beamId), snapshot);
+      }
+    }
+
+    const geometryByKey = new Map<string, CellBeamMeasurement>();
+    for (const opportunity of opportunitySet.opportunities) {
+      const beam = this.resolveCandidateBeamForKey(
+        opportunity.key,
+        allCandidatesByCell,
+        satById,
+        simTimeSec,
+      );
+      const satellite = satById.get(opportunity.key.satelliteId);
+      if (beam === null || satellite === undefined) continue;
+      const key = pairKey(opportunity.key.satelliteId, opportunity.key.beamId);
+      geometryByKey.set(key, beam);
+      if (!snapshotsByKey.has(key)) {
+        snapshotsByKey.set(
+          key,
+          buildCellBeamSnapshot(
+            satellite,
+            beam.cell,
+            beam.geometry,
+            beam.pointing,
+            beam.beamId,
+          ),
+        );
+      }
+    }
+
+    const samples = computeLinkBudget(
+      this.uePosition(ue),
+      [...snapshotsByKey.values()],
+      {
+        ...options,
+        // Candidate probe snapshots are deliberately absent from this list.
+        // `computeLinkBudget` therefore excludes them from the interference
+        // and angle-aware system-power reductions.
+        activeAssignments: [...finalActive],
+        simTimeSec,
+      },
+    );
+    const sampleByKey = new Map(
+      samples.map(sample => [pairKey(sample.satId, sample.beamId), sample]),
+    );
+
+    const evidence = opportunitySet.opportunities.map(opportunity => {
+      const key = candidateLinkKey(opportunity.key.satelliteId, opportunity.key.beamId);
+      const pair = pairKey(key.satelliteId, key.beamId);
+      const sample = sampleByKey.get(pair) ?? null;
+      const hasGeometry = geometryByKey.has(pair);
+      const usable = sample !== null && hasFiniteAngleAwarePrimaryTerms(sample, ue.id, key, simTimeSec);
+      const reason = !hasGeometry
+        ? 'candidate display-only angle-aware probe geometry is unavailable for this source frame'
+        : sample === null
+          ? 'candidate display-only angle-aware LinkSample is unavailable for this source frame'
+          : !usable
+            ? 'candidate display-only angle-aware LinkSample has non-finite Power, Throughput, SINR, or instantaneous EE'
+            : null;
+      return freezeCandidateProbeEvidence({
+        key,
+        primaryUeId: ue.id,
+        sourceFrameId: acceptedFrameIdentity.sourceFrameId,
+        simTimeSec,
+        provenance: SINR_LIVE_CANDIDATE_PROBE_PROVENANCE,
+        eeBasis: 'candidate-probe',
+        status: usable ? 'available' : 'unavailable',
+        sample: usable ? sample : null,
+        reason,
+      });
+    });
+    return Object.freeze(evidence);
+  }
+
+  /**
+   * Measure the configured homepage beam roster for the primary UE.
+   *
+   * The old rail assembled its non-primary rows from background-UE aggregates.
+   * That made a row's numerator, power denominator, and time continuity depend
+   * on which unrelated UE happened to occupy the beam, and it restarted every
+   * non-active beam at `p_max / 2` whenever beam hopping omitted a sample. This
+   * display-only surface keeps the physical source of truth singular: every
+   * visible beam is measured at the same UE, in the same frame, by the same
+   * `computeLinkBudget` + angle-aware EE path.
+   *
+   * `primaryBeamMetricPowerStates` is intentionally not the serving state. It
+   * prevents a displayed counterfactual from changing HandoverDecision, TTT,
+   * commit, or interference. It is still the same simulation clock and is
+   * cleared with the model's continuity epoch/configuration.
+   */
+  private measurePrimaryBeamMetricEvidence(
+    ue: UeInput,
+    displaySatelliteIds: ReadonlySet<string>,
+    opportunitySet: CandidateOpportunitySet | null,
+    allCandidatesByCell: ReadonlyMap<number, readonly CellScanGeometry[]>,
+    satById: ReadonlyMap<string, CellModelSat>,
+    finalLit: readonly SatelliteSnapshot[],
+    finalActive: readonly ActiveBeamAssignment[],
+    options: Parameters<typeof computeLinkBudget>[2],
+    simTimeSec: number,
+    acceptedFrameIdentity: WalkerAcceptedFrameIdentity,
+  ): readonly SinrLivePrimaryBeamMetricEvidence[] {
+    const pairKey = (satelliteId: string, beamId: number): string => `${satelliteId}:${beamId}`;
+    const snapshotsByKey = new Map<string, SatelliteSnapshot>();
+    const geometryByKey = new Map<string, CellBeamMeasurement>();
+    const requiredKeys = new Set<string>();
+
+    for (const opportunity of opportunitySet?.opportunities ?? []) {
+      requiredKeys.add(pairKey(opportunity.key.satelliteId, opportunity.key.beamId));
+    }
+    if (this.primaryServingAssignment !== null) {
+      requiredKeys.add(pairKey(
+        this.primaryServingAssignment.key.satelliteId,
+        this.primaryServingAssignment.key.beamId,
+      ));
+    }
+    for (const assignment of finalActive) {
+      requiredKeys.add(pairKey(assignment.satId, assignment.beamId));
+    }
+
+    // Keep the already accepted active snapshots as the first identity source.
+    // The geometry map below fills in configured/counterfactual rows without
+    // replacing an active snapshot with a second representation.
+    for (const snapshot of finalLit) {
+      if (!displaySatelliteIds.has(snapshot.id)) continue;
+      for (const beam of snapshot.beamCellsKm) {
+        snapshotsByKey.set(pairKey(snapshot.id, beam.beamId), snapshot);
+      }
+    }
+
+    const addResolvedGeometry = (key: CandidateLinkKey): void => {
+      if (!displaySatelliteIds.has(key.satelliteId) || !satById.has(key.satelliteId)) return;
+      const pair = pairKey(key.satelliteId, key.beamId);
+      const resolved = this.resolveCandidateBeamForKey(
+        key,
+        allCandidatesByCell,
+        satById,
+        simTimeSec,
+      );
+      if (resolved === null) return;
+      geometryByKey.set(pair, resolved);
+      if (!snapshotsByKey.has(pair)) {
+        const satellite = satById.get(key.satelliteId);
+        if (satellite === undefined) return;
+        snapshotsByKey.set(
+          pair,
+          buildCellBeamSnapshot(
+            satellite,
+            resolved.cell,
+            resolved.geometry,
+            resolved.pointing,
+            resolved.beamId,
+          ),
+        );
+      }
+    };
+
+    // Select the configured number of ordinary geographic beams per satellite,
+    // but always retain source/candidate/active identities even if a sparse
+    // fixture orders them after the display budget.
+    const sortedCellIds = [...allCandidatesByCell.keys()].sort((left, right) => left - right);
+    for (const satelliteId of displaySatelliteIds) {
+      if (!satById.has(satelliteId)) continue;
+      const roleBeamCount = this.primaryServingAssignment?.key.satelliteId === satelliteId
+        ? this.servingBeamsPerSat
+        : this.candidateBeamsPerSat;
+      const beamBudget = resolveSinrLiveBeamBudget({
+        fallbackBeamCount: this.beamsPerSat,
+        satelliteId,
+        roleBeamCount,
+        beamCountBySatellite: this.beamsPerSatById,
+      });
+      const maxBeamCount = Number.isFinite(beamBudget)
+        ? Math.max(1, Math.floor(beamBudget))
+        : Number.POSITIVE_INFINITY;
+      let selectedCount = 0;
+      for (const cellId of sortedCellIds) {
+        const geometry = allCandidatesByCell.get(cellId)?.find(
+          candidate => candidate.satId === satelliteId,
+        );
+        if (geometry === undefined) continue;
+        const beamId = cellLinkBudgetBeamId(cellId);
+        const pair = pairKey(satelliteId, beamId);
+        const required = requiredKeys.has(pair);
+        if (!required && selectedCount >= maxBeamCount) continue;
+        selectedCount += 1;
+        addResolvedGeometry(candidateLinkKey(satelliteId, beamId));
+      }
+    }
+
+    // Include any required variant/roster identity that is not represented by
+    // an ordinary cell id. This keeps the same-cell intra beam visible in a
+    // one-cell layout as well as in the seven-cell layout.
+    for (const pair of requiredKeys) {
+      const separator = pair.lastIndexOf(':');
+      if (separator <= 0) continue;
+      const satelliteId = pair.slice(0, separator);
+      const beamId = Number(pair.slice(separator + 1));
+      if (!Number.isInteger(beamId)) continue;
+      addResolvedGeometry(candidateLinkKey(satelliteId, beamId));
+    }
+
+    if (
+      [...this.primaryBeamMetricPowerStates.values()].some(
+        state => Number.isFinite(state.timeSec) && state.timeSec > simTimeSec + 1e-9,
+      )
+    ) {
+      // Defensive protection for a caller that seeks without first invoking
+      // the model rebase hook. Never carry a future display segment backward.
+      this.primaryBeamMetricPowerStates.clear();
+    }
+
+    // Active rows use the exact previous active state that produced the
+    // canonical serving sample. Non-active rows use their own display-only
+    // continuation state. Thus the source row remains numerically identical
+    // to the accepted serving path while idle/counterfactual rows no longer
+    // restart at the segment midpoint each frame.
+    const displayPreviousStates = new Map(this.primaryBeamMetricPowerStates);
+    for (const [key, state] of options.angleAware?.previousStates ?? []) {
+      displayPreviousStates.set(key, state);
+    }
+    const displayOptions = options.angleAware === undefined
+      ? options
+      : {
+        ...options,
+        angleAware: {
+          ...options.angleAware,
+          previousStates: displayPreviousStates,
+        },
+      };
+    const samples = computeLinkBudget(
+      this.uePosition(ue),
+      [...snapshotsByKey.values()],
+      {
+        ...displayOptions,
+        activeAssignments: [...finalActive],
+        simTimeSec,
+      },
+    );
+    const sampleByKey = new Map(
+      samples.map(sample => [pairKey(sample.satId, sample.beamId), sample]),
+    );
+
+    const nextDisplayStates = new Map(this.primaryBeamMetricPowerStates);
+    for (const sample of samples) {
+      const terms = sample.angleAware;
+      if (sample.ueId !== ue.id || terms === undefined) continue;
+      nextDisplayStates.set(angleAwareLinkKey(ue.id, sample.satId, sample.beamId), {
+        timeSec: terms.timeSec,
+        thetaRad: terms.thetaRad,
+        transmitGainLinear: terms.transmitGainLinear,
+        powerW: terms.powerW,
+        segmentStartTimeSec: terms.segmentStartTimeSec,
+        segmentStartThetaRad: terms.segmentStartThetaRad,
+        segmentStartTransmitGainLinear: terms.segmentStartTransmitGainLinear,
+        segmentStartPowerW: terms.segmentStartPowerW,
+      });
+    }
+    this.primaryBeamMetricPowerStates.clear();
+    for (const [key, state] of nextDisplayStates) {
+      this.primaryBeamMetricPowerStates.set(key, state);
+    }
+
+    const evidenceKeys = new Set<string>([
+      ...snapshotsByKey.keys(),
+      ...geometryByKey.keys(),
+    ]);
+    const evidence = [...evidenceKeys]
+      .map(pair => {
+        const separator = pair.lastIndexOf(':');
+        if (separator <= 0) return null;
+        const satelliteId = pair.slice(0, separator);
+        const beamId = Number(pair.slice(separator + 1));
+        if (!Number.isInteger(beamId)) return null;
+        const key = candidateLinkKey(satelliteId, beamId);
+        const sample = sampleByKey.get(pair) ?? null;
+        const hasGeometry = geometryByKey.has(pair) || snapshotsByKey.has(pair);
+        const usable = sample !== null
+          && hasGeometry
+          && hasFiniteAngleAwarePrimaryTerms(sample, ue.id, key, simTimeSec);
+        const reason = !hasGeometry
+          ? 'primary-beam display geometry is unavailable for this source frame'
+          : sample === null
+            ? 'primary-beam display LinkSample is unavailable for this source frame'
+            : !usable
+              ? 'primary-beam display LinkSample has non-finite Power, Throughput, SINR, or instantaneous EE'
+              : null;
+        return freezePrimaryBeamMetricEvidence({
+          key,
+          primaryUeId: ue.id,
+          sourceFrameId: acceptedFrameIdentity.sourceFrameId,
+          simTimeSec,
+          provenance: SINR_LIVE_PRIMARY_BEAM_METRIC_PROVENANCE,
+          status: usable ? 'available' : 'unavailable',
+          sample: usable ? sample : null,
+          reason,
+        });
+      })
+      .filter((item): item is SinrLivePrimaryBeamMetricEvidence => item !== null)
+      .sort((left, right) => (
+        left.key.satelliteId.localeCompare(right.key.satelliteId)
+        || left.key.beamId - right.key.beamId
+      ));
+    return Object.freeze(evidence);
   }
 
   /**
@@ -2380,7 +3286,7 @@ export class SinrLiveCellModel {
     }
 
     // Candidate links have x(t)=0 until the handover manager accepts one. The
-    // 2 W segment-start recurrence therefore belongs only to the selected
+    // p_max / 2 segment-start recurrence therefore belongs only to the selected
     // served link, not to this admission/counterfactual measurement. Applying
     // it here would reject otherwise valid candidates before any link can be
     // selected, leaving the cell lane with no serving beam.
@@ -2444,7 +3350,20 @@ export class SinrLiveCellModel {
         candidates.push({ cellId: targetCellId, sample });
       }
     }
-    candidates.sort((a, b) => b.sample.sinrDb - a.sample.sinrDb || a.cellId - b.cellId);
+    // The homepage handover authority is instantaneous EE.  Keep SINR only as
+    // a deterministic compatibility fallback when an older LinkSample does
+    // not carry angle-aware terms; otherwise a SINR sort can publish a beam
+    // that is visibly different from the EE decision winner.
+    candidates.sort((a, b) => {
+      const leftEe = a.sample.angleAware?.energyEfficiencyBitsPerJoule;
+      const rightEe = b.sample.angleAware?.energyEfficiencyBitsPerJoule;
+      const leftHasEe = typeof leftEe === 'number' && Number.isFinite(leftEe) && leftEe >= 0;
+      const rightHasEe = typeof rightEe === 'number' && Number.isFinite(rightEe) && rightEe >= 0;
+      if (leftHasEe && rightHasEe && leftEe !== rightEe) return rightEe - leftEe;
+      if (leftHasEe && !rightHasEe) return -1;
+      if (!leftHasEe && rightHasEe) return 1;
+      return b.sample.sinrDb - a.sample.sinrDb || a.cellId - b.cellId;
+    });
     return candidates[0] ?? null;
   }
 }

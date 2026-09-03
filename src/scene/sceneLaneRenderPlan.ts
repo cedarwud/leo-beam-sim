@@ -138,9 +138,14 @@ export function isSceneLaneSourceCompatible(input: SceneLaneSourceCompatibilityI
   // `ModqnReplaySceneLayer`), clean-deleted in P3 slice-3; the recorded stage that
   // replaced it plays a recording, not the live sim. `sinr-live` +
   // `modqn-live-cell-preview` stay live-sim (negative controls: replay-proof/
-  // artifact + live-sim ⇒ false).
+  // artifact + live-sim ⇒ false). Archived TLE is a peer simulation-shaped
+  // source only for sinr-live; it must never activate a MODQN live lane.
   if (input.sceneLane === 'artifact-replay' || input.sceneLane === 'modqn-replay-proof') {
     return input.sceneSource === 'artifact-replay';
+  }
+
+  if (input.sceneLane === 'sinr-live') {
+    return input.sceneSource === 'live-sim' || input.sceneSource === 'archived-tle';
   }
 
   return input.sceneSource === 'live-sim';
@@ -157,7 +162,7 @@ export function resolveSceneLaneUeMarkerShape(sceneLane: SceneLane): SceneLaneUe
 
 export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): SceneLaneRenderPlan {
   const sourceCompatible = isSceneLaneSourceCompatible(input);
-  const isLiveScene = sourceCompatible && input.sceneSource === 'live-sim';
+  const isLiveScene = sourceCompatible && input.sceneSource !== 'artifact-replay';
   const isArtifactReplay = sourceCompatible && input.sceneSource === 'artifact-replay';
   const showSinrLiveViewport = input.sceneLane === 'sinr-live' && isLiveScene;
   const showCellOverlay = input.sceneLane === 'modqn-live-cell-preview' && isLiveScene;

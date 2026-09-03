@@ -41,16 +41,16 @@ for (const section of visibleSections) {
   assert.match(markup, new RegExp('id="canonical-sinr-section-tab-' + section + '"[^>]*aria-selected="true"'));
   assert.doesNotMatch(visibleText, /[A-Za-z]+_[A-Za-z]/);
   assert.doesNotMatch(visibleText, /(?:numerator|denominator|分子|分母)/i);
-  assert.doesNotMatch(markup, /P_DL|p_req|P_sys|P<sup>[or]<\/sup>|G<sup>(?:R|LS)<\/sup>|I<sup>[ab]<\/sup>|γ<sup>[er]<\/sup>/);
+  assert.doesNotMatch(markup, /P_DL|p_req|P_sys|P<sup>[or]<\/sup>|G<sup>LS<\/sup>|I<sup>[ab]<\/sup>|γ<sup>[er]<\/sup>/);
 }
 
 const power = renderSection('power');
 const formula = topFormula(power);
 assert.equal((power.match(/data-testid="homepage-sinr-top-formula"/g) ?? []).length, 1);
 assert.match(formula, /γ<sub>u,s,v<\/sub>\(t,/);
-assert.match(formula, /<i>p<\/i><sub>u,s,v<\/sub>\(t, θ<sub>u,s,v<\/sub>\)/);
+assert.match(formula, /<i>p<\/i><sub>u,s,v<\/sub>\(t, θ<sub>u,s,v<\/sub>[\s\S]*θ<sub>3dB<\/sub>[\s\S]*\)/);
 assert.match(formula, /H<sub>u,s,v<\/sub>\(t\)/);
-assert.match(formula, /G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>\)/);
+assert.match(formula, /G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>[\s\S]*θ<sub>3dB<\/sub>[\s\S]*\)/);
 assert.match(formula, /I<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\) \+ σ²/);
 
 assert.match(power, /data-testid="canonical-sinr-formula-power"/);
@@ -62,13 +62,14 @@ assert.match(channel, /data-testid="canonical-sinr-formula-channel"/);
 assert.match(channel, /H<sub>u,s,v<\/sub>\(t\)/);
 assert.match(channel, /data-testid="sinr-tab-carrier-frequency-control"/);
 assert.match(channel, /data-testid="sinr-tab-atmospheric-loss-control"/);
-assert.doesNotMatch(channel, /data-testid="receiver-gain-controls"|G<sup>[R]<\/sup>|G<sup>LS<\/sup>|L<sub>/);
+assert.match(channel, /data-testid="sinr-tab-receiver-gain-control"/);
+assert.doesNotMatch(channel, /data-testid="receiver-gain-controls"|G<sup>LS<\/sup>|L<sub>/);
 
 const beam = renderSection('beam');
-assert.match(beam, /data-testid="canonical-sinr-formula-beam"[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>\)/);
-assert.match(beam, /data-testid="sinr-tab-g0-control"[\s\S]*G<sup>T<\/sup>\(0\)/);
+assert.match(beam, /data-testid="canonical-sinr-formula-beam"[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>[\s\S]*θ<sub>3dB<\/sub>/);
+assert.match(beam, /data-testid="sinr-tab-g0-control"[\s\S]*G<sup>T<\/sup>\(0,[\s\S]*θ<sub>3dB<\/sub>\)/);
 assert.match(beam, /data-testid="sinr-tab-theta3db-control"/);
-assert.doesNotMatch(beam, /G<sup>T<\/sup><sub>max<\/sub>|θ<sub>3dB<\/sub>|steering|scan control/i);
+assert.doesNotMatch(beam, /G<sup>T<\/sup><sub>max<\/sub>|steering|scan control/i);
 
 const interference = renderSection('interference');
 assert.match(interference, /data-testid="canonical-sinr-formula-interference"[\s\S]*I<sub>u,s,v<\/sub>/);
@@ -78,7 +79,14 @@ assert.doesNotMatch(interferenceSection, /data-testid="canonical-sinr-interferen
 
 const noise = renderSection('noise');
 assert.match(noise, /data-testid="canonical-sinr-formula-noise"[\s\S]*σ²\s*=\s*B<sup>w<\/sup>\s*·\s*N<sub>0<\/sub>/);
-assert.doesNotMatch(noise, /T<sub>|NF|k<sub>B<\/sub>|data-testid="sinr-tab-(?:antenna-noise-temperature|noise-figure|noise-reference-temperature)-control"/);
+for (const testId of [
+  'sinr-tab-antenna-noise-temperature-control',
+  'sinr-tab-noise-figure-control',
+  'sinr-tab-noise-reference-temperature-control',
+]) {
+  assert.match(noise, new RegExp(`data-testid="${testId}"`));
+}
+assert.match(noise, /T<sub>ant<\/sub>|NF|T<sub>0<\/sub>/);
 
 const receiverAlias = renderSection('receiver');
 assert.match(receiverAlias, /id="canonical-sinr-section-tab-channel"[^>]*aria-selected="true"/);

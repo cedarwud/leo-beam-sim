@@ -33,6 +33,8 @@ export interface HandoverDecisionEngineConfig {
   readonly guardSec: number;
   /** A missing pair retains its TTT only for this much simulation time. */
   readonly candidateAbsenceToleranceSec?: number;
+  /** Optional selection floor; zero keeps the historical single-candidate behaviour. */
+  readonly minimumDistinctCandidateSatellites?: number;
   readonly initialServing?: CandidateLinkKey | null;
 }
 
@@ -226,6 +228,7 @@ function frozenState(
   qualificationSec: number,
   rank: number | null,
   triggerBlocked: boolean,
+  selectionBlocked = false,
 ): CandidateDecisionState {
   const servingState = assessment === null;
   const hardEligibility = servingState
@@ -239,6 +242,7 @@ function frozenState(
   const requiredTttSec = assessment?.requiredTttSec ?? 0;
   const stable = !servingState
     && !triggerBlocked
+    && !selectionBlocked
     && hardEligibility === 'eligible'
     && triggerStatus === 'satisfied'
     && qualificationSec >= requiredTttSec;
@@ -262,7 +266,11 @@ function frozenState(
 export class HandoverDecisionEngine {
   private readonly config: Readonly<Required<Pick<
     HandoverDecisionEngineConfig,
-    'episodeId' | 'selectionHoldSec' | 'guardSec' | 'candidateAbsenceToleranceSec'
+    | 'episodeId'
+    | 'selectionHoldSec'
+    | 'guardSec'
+    | 'candidateAbsenceToleranceSec'
+    | 'minimumDistinctCandidateSatellites'
   >>>;
   private readonly policy: HandoverSelectionPolicy;
   private readonly timers = new Map<string, CandidateTimer>();
@@ -290,6 +298,13 @@ export class HandoverDecisionEngine {
         config.candidateAbsenceToleranceSec ?? 0,
         'candidateAbsenceToleranceSec',
       ),
+      minimumDistinctCandidateSatellites: (() => {
+        const value = config.minimumDistinctCandidateSatellites ?? 0;
+        if (!Number.isSafeInteger(value) || value < 0) {
+          throw new TypeError('minimumDistinctCandidateSatellites must be a non-negative safe integer');
+        }
+        return value;
+      })(),
     });
     this.policy = config.policy;
     this.serving = copyKey(config.initialServing ?? null);
@@ -476,7 +491,32 @@ export class HandoverDecisionEngine {
         servingEvidenceMissing || guardActive,
       );
     });
-    const stableKeys = new Set(preRankStates.filter(state => state.stable).map(state => candidateLinkKeyString(state.key)));
+    const eligibleAlternateSatelliteIds = new Set(
+      preRankStates
+        .filter(state => state.hardEligibility === 'eligible')
+        .map(state => state.key.satelliteId)
+        .filter(satelliteId => this.serving === null || satelliteId !== this.serving.satelliteId),
+    );
+    const selectionFloorSatisfied = this.config.minimumDistinctCandidateSatellites === 0
+      || eligibleAlternateSatelliteIds.size >= this.config.minimumDistinctCandidateSatellites;
+    // The distinct-satellite floor protects an INTER replacement from being
+    // chosen before the requested number of independent spacecraft has been
+    // compared.  It must not suppress an INTRA beam switch: a same-satellite
+    // target is a valid alternate beam, but it cannot increase the count of
+    // alternate satellites by definition.  Keeping this exception here lets
+    // the unified decision set produce a measured intra event even while an
+    // inter comparison is still below its two-spacecraft floor.
+    const selectionFloorAllows = (key: CandidateLinkKey): boolean =>
+      selectionFloorSatisfied
+      || (
+        this.serving !== null
+        && key.satelliteId === this.serving.satelliteId
+      );
+    const stableKeys = new Set(
+      preRankStates
+        .filter(state => selectionFloorAllows(state.key) && state.stable)
+        .map(state => candidateLinkKeyString(state.key)),
+    );
     const orderedStableKeys = evaluation.assessments
       .map(assessment => assessment.key)
       .filter(key => stableKeys.has(candidateLinkKeyString(key)));
@@ -495,6 +535,7 @@ export class HandoverDecisionEngine {
         preRank.qualificationSec,
         rankByKey.get(key) ?? null,
         servingEvidenceMissing || guardActive,
+        !selectionFloorAllows(opportunity.key),
       );
     });
     const topStable = orderedStableKeys[0] ?? null;
@@ -513,7 +554,7 @@ export class HandoverDecisionEngine {
         kind,
         mode: evaluation.mode,
         reason: evaluation.mode === 'ee-optimization'
-          ? 'forecast EE target remained first through independent TTT and selection hold'
+          ? 'EE target remained first through independent TTT and selection hold'
           : 'SINR compatibility target remained first through independent TTT and selection hold',
         oldLinkEnded: from !== null,
         newLinkStarted: true,
@@ -536,6 +577,11 @@ export class HandoverDecisionEngine {
         selectionHoldRequiredSec: this.config.selectionHoldSec,
         mode: evaluation.mode,
         recentCommit: receipt,
+        selectionGate: {
+          minimumDistinctCandidateSatellites: this.config.minimumDistinctCandidateSatellites,
+          eligibleDistinctCandidateSatellites: eligibleAlternateSatelliteIds.size,
+          satisfied: selectionFloorSatisfied,
+        },
         epochToken: clock.epochToken,
       });
     }
@@ -590,6 +636,11 @@ export class HandoverDecisionEngine {
       selectionHoldRequiredSec: this.config.selectionHoldSec,
       mode: evaluation.mode,
       recentCommit: null,
+      selectionGate: {
+        minimumDistinctCandidateSatellites: this.config.minimumDistinctCandidateSatellites,
+        eligibleDistinctCandidateSatellites: eligibleAlternateSatelliteIds.size,
+        satisfied: selectionFloorSatisfied,
+      },
       epochToken: clock.epochToken,
     });
   }

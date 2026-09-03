@@ -6,6 +6,30 @@ export interface ArchivedTlePlaybackCursorInput {
   readonly durationSec: number;
 }
 
+export interface ArchivedTlePlaybackStart {
+  readonly currentTimeSec: number;
+  readonly restarted: boolean;
+}
+
+/**
+ * Resolve the cursor used when the archived-TLE transport is started.
+ *
+ * The completed run is intentionally paused at its last published anchor. A
+ * subsequent Play is a replay request, not a request to remain pinned at the
+ * end; reset the cursor to the run origin before scheduling the next RAF.
+ */
+export function resolveArchivedTlePlaybackStart(
+  currentTimeSec: number,
+  durationSec: number,
+): ArchivedTlePlaybackStart {
+  const duration = Number.isFinite(durationSec) ? Math.max(0, durationSec) : 0;
+  const current = Number.isFinite(currentTimeSec)
+    ? Math.min(Math.max(0, currentTimeSec), duration)
+    : 0;
+  if (duration > 0 && current >= duration) return { currentTimeSec: 0, restarted: true };
+  return { currentTimeSec: current, restarted: false };
+}
+
 /**
  * Advance the cursor for a fully published archived-TLE run.
  *

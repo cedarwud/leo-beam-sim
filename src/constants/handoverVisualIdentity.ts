@@ -200,10 +200,13 @@ const BEAM_PATTERNS: readonly HandoverVisualIdentityPattern[] = [
   'cross-hatch',
   'zigzag',
 ];
-// Rail shades intentionally span a wider range than the former 0.03 steps;
-// adjacent beam IDs must remain readable during an intra-satellite switch.
-// The floor stays high enough that blue/violet identities never become navy.
-const BEAM_LIGHTNESSES = [0.62, 0.67, 0.72, 0.77, 0.82, 0.65, 0.70, 0.75] as const;
+// Rail shades intentionally span a wide, non-monotonic range. The beam hash
+// is stable (rather than display-order based), and the larger jumps keep an
+// intra-satellite switch legible in the short handover envelope. The floor is
+// deliberately lifted so blue/violet identities do not become navy, while the
+// eight-slot contract still supports overflow.
+const BEAM_LIGHTNESSES = [0.56, 0.64, 0.72, 0.80, 0.87, 0.92, 0.96, 0.99] as const;
+const BLUE_PURPLE_BEAM_LIGHTNESSES = [0.72, 0.78, 0.84, 0.89, 0.93, 0.96, 0.98, 0.99] as const;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -643,6 +646,79 @@ function isPaletteAssignment(value: HandoverVisualIdentityAssignment): boolean {
     && (value.paletteIndex ?? -1) >= 0;
 }
 
+function circularHueDistance(left: number, right: number): number {
+  const distance = Math.abs(left - right) % 360;
+  return Math.min(distance, 360 - distance);
+}
+
+/**
+ * Choose an unused identity slot that is visually distant from the colours
+ * already reserved in this episode.  The deterministic preferred slot remains
+ * the tie-breaker, so this is still input-order independent and keeps prior
+ * assignments untouched.  Small/custom palettes retain the historical linear
+ * probe semantics; the contrast-aware branch is for the full homepage palette
+ * where the user must distinguish several simultaneous candidates.
+ */
+function choosePaletteIndex(
+  preferred: number,
+  palette: readonly NormalizedPaletteEntry[],
+  reservedPaletteSlots: ReadonlySet<number>,
+  assignments: Readonly<Record<string, HandoverVisualIdentityAssignment>>,
+): number | null {
+  for (let offset = 0; offset < palette.length; offset += 1) {
+    const candidate = (preferred + offset) % palette.length;
+    if (!reservedPaletteSlots.has(candidate)) return candidate;
+  }
+  return null;
+}
+
+function chooseContrastAwarePaletteIndex(
+  preferred: number,
+  palette: readonly NormalizedPaletteEntry[],
+  reservedPaletteSlots: ReadonlySet<number>,
+  assignments: Readonly<Record<string, HandoverVisualIdentityAssignment>>,
+): number | null {
+  const available: number[] = [];
+  for (let candidate = 0; candidate < palette.length; candidate += 1) {
+    if (!reservedPaletteSlots.has(candidate)) available.push(candidate);
+  }
+  if (available.length === 0) return null;
+
+  const assignedHues = Object.values(assignments)
+    .filter(isPaletteAssignment)
+    .map(assignment => palette[assignment.paletteIndex ?? -1]?.hueDegrees)
+    .filter((hue): hue is number => hue !== undefined && Number.isFinite(hue));
+  if (assignedHues.length === 0) return preferred;
+
+  let best = available[0]!;
+  let bestMinimumDistance = -Infinity;
+  let bestPreferred = false;
+  let bestProbeDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of available) {
+    const hue = palette[candidate]?.hueDegrees;
+    if (hue === undefined) continue;
+    const minimumDistance = Math.min(
+      ...assignedHues.map(assignedHue => circularHueDistance(hue, assignedHue)),
+    );
+    const isPreferred = candidate === preferred;
+    const probeDistance = (candidate - preferred + palette.length) % palette.length;
+    if (
+      minimumDistance > bestMinimumDistance
+      || (
+        minimumDistance === bestMinimumDistance
+        && (isPreferred && !bestPreferred
+          || isPreferred === bestPreferred && probeDistance < bestProbeDistance)
+      )
+    ) {
+      best = candidate;
+      bestMinimumDistance = minimumDistance;
+      bestPreferred = isPreferred;
+      bestProbeDistance = probeDistance;
+    }
+  }
+  return best;
+}
+
 function nextOverflowIndex(
   assignments: Readonly<Record<string, HandoverVisualIdentityAssignment>>,
 ): number {
@@ -663,6 +739,13 @@ function uniqueBeamIds(values: readonly number[] | undefined): readonly number[]
 }
 
 function beamShadeIndex(beamId: number): number {
+  // The seven configured beams use an explicit, deterministic tone order. In
+  // particular, B2 and B7 are deliberately placed at opposite ends of the
+  // rail so a common intra-satellite switch cannot collapse into one shade.
+  // IDs outside the configured seven retain a stable hash and are resolved by
+  // the existing collision/reuse disclosure path.
+  const canonical = [3, 4, 0, 2, 6, 1, 5, 7] as const;
+  if (beamId >= 0 && beamId < canonical.length) return canonical[beamId]!;
   const hash = stableHashUint32(`beam:${beamId}`);
   return hash % BEAM_LIGHTNESSES.length;
 }
@@ -682,7 +765,11 @@ function buildHandoverBeamVisualIdentity(
   colorMayRepeat: boolean,
 ): HandoverBeamVisualIdentity {
   const hueDegrees = satellite.hueDegrees ?? OVERFLOW_FALLBACK_HUE_DEGREES;
-  const lightness = BEAM_LIGHTNESSES[shadeIndex] ?? BEAM_LIGHTNESSES[0];
+  const isBluePurpleFamily = hueDegrees >= 200 && hueDegrees <= 300;
+  const lightnessRail = isBluePurpleFamily
+    ? BLUE_PURPLE_BEAM_LIGHTNESSES
+    : BEAM_LIGHTNESSES;
+  const lightness = lightnessRail[shadeIndex] ?? lightnessRail[0];
   const color = oklchToHex({
     lightness,
     chroma: DEFAULT_BEAM_CHROMA,
@@ -850,14 +937,14 @@ export function allocateHandoverVisualIdentities(
   for (const satelliteId of orderedIds) {
     if (assignments[satelliteId] !== undefined) continue;
     const preferred = handoverVisualPaletteStartIndex(satelliteId, palette.length);
-    let paletteIndex: number | null = null;
-    for (let offset = 0; offset < palette.length; offset += 1) {
-      const candidateIndex = (preferred + offset) % palette.length;
-      if (!reservedPaletteSlots.has(candidateIndex)) {
-        paletteIndex = candidateIndex;
-        break;
-      }
-    }
+    // The full homepage palette is intentionally allocated by hue distance:
+    // the next candidate should be visibly different from the identities that
+    // are already on stage, even when the stable hash starts nearby.  Keep the
+    // historical linear probe for small/custom palettes because those callers
+    // use the slot order as an explicit contract in their focused tests.
+    const paletteIndex = palette.length >= 8
+      ? chooseContrastAwarePaletteIndex(preferred, palette, reservedPaletteSlots, assignments)
+      : choosePaletteIndex(preferred, palette, reservedPaletteSlots, assignments);
     if (paletteIndex === null) {
       assignments[satelliteId] = buildOverflowAssignment(satelliteId, overflowIndex);
       overflowIndex += 1;

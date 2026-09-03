@@ -464,8 +464,8 @@ export function HandoverPolicyControls({
               titleText={sectionTitle}
               bodyText={say(
                 'section.handoverPolicy.hint',
-                '本區參數決定連線在什麼條件下改由哪一顆衛星或哪一道波束服務。調整後立即生效並重新開始模擬。',
-                'These parameters decide the conditions under which the link moves to another satellite or another beam. An edit takes effect on its own and restarts the run.',
+                '本區參數同時套用到主 UE 的現行服務鏈路，以及同一時間框內所有衛星／波束候選；右欄選取只供檢視，不會把控制範圍限縮到單一候選。調整後會重新開始模擬。',
+                'These parameters apply to the primary UE serving link and every satellite/beam candidate in the same frame. Selecting a row in the right rail is inspection only and does not narrow the control scope. Applying a change restarts the run.',
               )}
               effectText={say(
                 'section.handoverPolicy.scope',

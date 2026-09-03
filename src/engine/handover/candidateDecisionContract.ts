@@ -483,6 +483,12 @@ export interface CandidateOpportunity {
   readonly sinr: MetricEvidence;
   readonly predictedThroughput: MetricEvidence;
   readonly remainingServiceTime: MetricEvidence;
+  /**
+   * Same-frame angle-aware EE used by the homepage decision policy. This is an
+   * instantaneous measurement, not the separate forecast/counterfactual EE
+   * contract below, and remains optional for legacy/non-homepage producers.
+   */
+  readonly instantaneousEe?: MetricEvidence;
   readonly forecastEe: ForecastEeEvidence | null;
   readonly gates: readonly CandidateGateResult[];
 }
@@ -531,7 +537,7 @@ export function validateCandidateOpportunity(opportunity: CandidateOpportunity):
     }
   }
   if (!GEOMETRY_CLASSES.includes(opportunity.geometryClass)) fail('candidate opportunity geometryClass is invalid');
-  const metrics: readonly [string, MetricEvidence][] = [
+  const metrics: [string, MetricEvidence][] = [
     ['elevation', opportunity.elevation],
     ['steering', opportunity.steering],
     ['range', opportunity.range],
@@ -539,6 +545,9 @@ export function validateCandidateOpportunity(opportunity: CandidateOpportunity):
     ['predictedThroughput', opportunity.predictedThroughput],
     ['remainingServiceTime', opportunity.remainingServiceTime],
   ];
+  if (opportunity.instantaneousEe !== undefined) {
+    metrics.push(['instantaneousEe', opportunity.instantaneousEe]);
+  }
   for (const [name, metric] of metrics) {
     validateMetricEvidence(metric, `candidate opportunity ${name}`);
     if (metric.status === 'available' && metric.sourceFrameId !== opportunity.sourceFrameId) {
@@ -587,6 +596,9 @@ export function freezeCandidateOpportunity(opportunity: CandidateOpportunity): C
     sinr: cloneMetricEvidence(opportunity.sinr),
     predictedThroughput: cloneMetricEvidence(opportunity.predictedThroughput),
     remainingServiceTime: cloneMetricEvidence(opportunity.remainingServiceTime),
+    instantaneousEe: opportunity.instantaneousEe === undefined
+      ? undefined
+      : cloneMetricEvidence(opportunity.instantaneousEe),
     forecastEe: cloneForecastEeEvidence(opportunity.forecastEe),
     gates: freezeArray(opportunity.gates.map(gate => createCandidateGateResult(gate))),
   });
@@ -728,6 +740,13 @@ export type HandoverDecisionMode =
   | 'service-continuity-protection'
   /** Migration compatibility mode while forecast-EE activation is gated. */
   | 'sinr-offset';
+
+/** Optional selection-floor evidence for a candidate-rich teaching run. */
+export interface HandoverSelectionGate {
+  readonly minimumDistinctCandidateSatellites: number;
+  readonly eligibleDistinctCandidateSatellites: number;
+  readonly satisfied: boolean;
+}
 
 export interface HandoverCommitReceipt {
   readonly episodeId: string;
@@ -892,6 +911,8 @@ export interface HandoverDecisionFrame {
   readonly selectionHoldRequiredSec: number;
   readonly mode: HandoverDecisionMode;
   readonly recentCommit: HandoverCommitReceipt | null;
+  /** Present when the active lane requires a minimum number of alternate satellites. */
+  readonly selectionGate?: HandoverSelectionGate;
   /** Optional until all producers carry the clock epoch token. */
   readonly epochToken?: string;
 }
@@ -908,6 +929,22 @@ function keyIn(keys: readonly CandidateLinkKey[], candidate: CandidateLinkKey | 
   return candidate !== null && keys.some(key => sameCandidateLinkKey(key, candidate));
 }
 
+function validateSelectionGate(gate: HandoverSelectionGate): void {
+  if (!isObject(gate)) fail('handover selection gate must be an object');
+  if (!Number.isSafeInteger(gate.minimumDistinctCandidateSatellites)
+    || gate.minimumDistinctCandidateSatellites < 0) {
+    fail('handover selection gate minimum must be a non-negative safe integer');
+  }
+  if (!Number.isSafeInteger(gate.eligibleDistinctCandidateSatellites)
+    || gate.eligibleDistinctCandidateSatellites < 0) {
+    fail('handover selection gate eligible count must be a non-negative safe integer');
+  }
+  if (typeof gate.satisfied !== 'boolean') fail('handover selection gate satisfied must be boolean');
+  const derived = gate.minimumDistinctCandidateSatellites === 0
+    || gate.eligibleDistinctCandidateSatellites >= gate.minimumDistinctCandidateSatellites;
+  if (gate.satisfied !== derived) fail('handover selection gate satisfied does not match its counts');
+}
+
 export function validateHandoverDecisionFrame(frame: HandoverDecisionFrame): void {
   if (!isObject(frame)) fail('handover decision frame must be an object');
   nonEmpty(frame.episodeId, 'decision frame episodeId');
@@ -915,6 +952,7 @@ export function validateHandoverDecisionFrame(frame: HandoverDecisionFrame): voi
   nonNegative(frame.simTimeMs, 'decision frame simTimeMs');
   validatePhase(frame.phase);
   if (frame.epochToken !== undefined) nonEmpty(frame.epochToken, 'decision frame epochToken');
+  if (frame.selectionGate !== undefined) validateSelectionGate(frame.selectionGate);
   if (frame.serving !== null) validateCandidateLinkKey(frame.serving);
   if (!Array.isArray(frame.opportunities)) fail('decision frame opportunities must be an array');
   if (!Array.isArray(frame.states)) fail('decision frame states must be an array');
@@ -1004,6 +1042,9 @@ export function freezeHandoverDecisionFrame(frame: HandoverDecisionFrame): Hando
     selectedTarget: frame.selectedTarget === null
       ? null : candidateLinkKey(frame.selectedTarget.satelliteId, frame.selectedTarget.beamId),
     recentCommit: cloneCommitReceipt(frame.recentCommit),
+    selectionGate: frame.selectionGate === undefined
+      ? undefined
+      : Object.freeze({ ...frame.selectionGate }),
   };
   validateHandoverDecisionFrame(cloned);
   return Object.freeze(cloned);

@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react';
 
-import { SIX_ACTS_INDEX_HREF, SIX_ACTS_ROUTES } from './sixActsRoutes';
+import { SIX_ACTS_INDEX_HREF, SIX_ACTS_VISIBLE_ROUTES } from './sixActsRoutes';
+import { sixActsHref } from './lightCapture';
 import './SixActsLauncher.scss';
 
 /**
@@ -23,19 +24,19 @@ export function SixActsLauncher(): ReactElement {
         aria-expanded={open}
         onClick={() => setOpen(value => !value)}
       >
-        <span aria-hidden="true">◎</span> 六幕教學
+        <span aria-hidden="true">◎</span> 教學實驗
       </button>
 
       {!open ? null : (
         <div className="six-acts-launcher__menu" role="menu">
-          <a href={SIX_ACTS_INDEX_HREF} className="six-acts-launcher__index" role="menuitem">
+          <a href={sixActsHref(SIX_ACTS_INDEX_HREF)} className="six-acts-launcher__index" role="menuitem">
             <strong>動線總覽</strong>
-            <small>六幕順序與彼此的橋接</small>
+            <small>目前開放的四個實驗與彼此銜接</small>
           </a>
           <ol>
-            {SIX_ACTS_ROUTES.map(entry => (
+            {SIX_ACTS_VISIBLE_ROUTES.map(entry => (
               <li key={entry.id}>
-                <a href={entry.href} role="menuitem">
+                <a href={sixActsHref(entry.href)} role="menuitem">
                   <em>{entry.actLabel}</em>
                   <span>
                     <strong>{entry.titleZhHant}</strong>
@@ -46,7 +47,7 @@ export function SixActsLauncher(): ReactElement {
             ))}
           </ol>
           <p className="six-acts-launcher__note">
-            六幕頁面各自保留閱讀動線；Act 3／4 會以首頁 handover preset 進入同一段教學動畫。
+            四個實驗可隨時切換；畫面只在事件發生時呈現當下必要資訊。
           </p>
         </div>
       )}

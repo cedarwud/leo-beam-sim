@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildCellLayout } from '../engine/cells/cellLayout';
-import { sameCandidateLinkKey } from '../engine/handover/candidateDecisionContract';
+import {
+  candidateLinkKeyString,
+  sameCandidateLinkKey,
+} from '../engine/handover/candidateDecisionContract';
 import { loadProfile } from '../profiles/index';
 import {
   SinrLiveCellModel,
@@ -14,6 +17,7 @@ import {
   createSinrLiveCellModel,
   type CellTruthFrame,
 } from './sinrLiveCellRuntime';
+import { ANGLE_AWARE_SEGMENT_START_POWER_W } from '../engine/signal/angle-aware-ee';
 
 const OBSERVER = { latDeg: 25.1519, lonDeg: 121.7811 };
 const EPOCH_MS = Date.UTC(2026, 7, 27, 12, 0, 0);
@@ -75,7 +79,7 @@ test('primary multi-candidate authority commits one remeasured link without chan
   const membershipCellId = initialPrimary.cellId;
   const initialDecision = model.getHandoverDecisionFrame();
   assert.ok(initialDecision);
-  assert.equal(initialDecision.mode, 'sinr-offset');
+  assert.equal(initialDecision.mode, 'ee-optimization');
   assert.ok(new Set(initialDecision.opportunities.map(item => item.key.satelliteId)).size >= 3);
   assert.equal(initialDecision.opportunities.some(item => item.forecastEe !== null), false);
 
@@ -117,11 +121,11 @@ test('primary multi-candidate authority commits one remeasured link without chan
     ratedTransmitPowerDbm: profile.channel.maxTxPowerDbm ?? null,
     activeInterferenceKeys: committedOpportunity?.sinrMeasurementContext?.activeInterferenceKeys,
   });
-  assert.equal(committedPrimary.servingLinkSample?.angleAware?.powerW, 2);
+  assert.equal(committedPrimary.servingLinkSample?.angleAware?.powerW, ANGLE_AWARE_SEGMENT_START_POWER_W);
   assert.notEqual(
     committedOpportunity!.sinr.value,
     committedPrimary.servingLinkSample!.sinrDb,
-    'rated RF admission must remain distinct from the committed 2 W active-link sample',
+    'rated RF admission must remain distinct from the committed angle-aware active-link sample',
   );
   assert.equal(
     committedFrame.ues.filter(item => item.ueId === ue.id && item.servingLinkSample !== null).length,
@@ -167,7 +171,192 @@ test('runtime attach publishes the model decision only when the explicit homepag
   attachSinrLiveCellFrame(homepageFrame, homepageModel, 0);
   assert.ok(homepageFrame.handoverDecisionFrame);
   assert.equal(homepageFrame.handoverDecisionFrame, homepageModel.getHandoverDecisionFrame());
-  assert.equal(homepageFrame.handoverDecisionFrame.mode, 'sinr-offset');
+  assert.equal(homepageFrame.handoverDecisionFrame.mode, 'ee-optimization');
+});
+
+test('candidate display probes stay frozen and outside the primary decision/serving set', () => {
+  const baseProfile = loadProfile('hobs-2024-candidate-rich');
+  const profile = {
+    ...baseProfile,
+    handover: {
+      ...baseProfile.handover,
+      sinrThresholdDb: -100,
+    },
+  };
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 1,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: false,
+    beamsPerSat: Infinity,
+    coverageSteeringAngleDeg: 50,
+  });
+  const frame = model.step({
+    visibleSats: [satellite('SAT-A', 0), satellite('SAT-B', 1.8), satellite('SAT-C', -1.5)],
+    ues: [{ id: 'ue-primary', eastKm: 8, northKm: 2 }],
+    simTimeSec: 0,
+    dtSec: 0,
+  });
+  const decision = model.getHandoverDecisionFrame();
+  const probes = frame.primaryCandidateProbeEvidence;
+  assert.ok(decision);
+  assert.ok(probes);
+  assert.equal(decision.recentCommit, null);
+  assert.deepEqual(
+    new Set(probes.map(probe => candidateLinkKeyString(probe.key))),
+    new Set(decision.opportunities.map(opportunity => candidateLinkKeyString(opportunity.key))),
+  );
+
+  const primaryServing = frame.ues.find(ue => ue.ueId === 'ue-primary');
+  assert.ok(primaryServing?.servingSatId);
+  assert.ok(primaryServing?.servingBeamId !== null && primaryServing?.servingBeamId !== undefined);
+  const servingKey = `${primaryServing.servingSatId}:${primaryServing.servingBeamId}`;
+  const servingBeamKeys = new Set(
+    frame.illuminatedBeams
+      .filter(beam => beam.serving)
+      .map(beam => `${beam.satId}:${cellLinkBudgetBeamId(beam.cellId)}`),
+  );
+  for (const probe of probes) {
+    const key = `${probe.key.satelliteId}:${probe.key.beamId}`;
+    if (key !== servingKey) assert.equal(servingBeamKeys.has(key), false);
+    assert.ok(Object.isFrozen(probe));
+    assert.ok(Object.isFrozen(probe.key));
+    assert.ok(Object.isFrozen(probe.sample));
+  }
+  assert.equal(
+    frame.ues.filter(ue => ue.ueId === 'ue-primary' && ue.servingLinkSample !== null).length,
+    1,
+  );
+  const decisionJson = JSON.stringify(decision);
+  assert.equal(model.getHandoverDecisionFrame(), decision);
+  assert.equal(JSON.stringify(model.getHandoverDecisionFrame()), decisionJson);
+  const firstProbe = probes[0]!;
+  assert.throws(
+    () => ((firstProbe.sample as unknown as { sinrDb: number }).sinrDb = -999),
+    TypeError,
+  );
+});
+
+test('multi-candidate beam hopping keeps the primary cell lit for every reachable alternative', () => {
+  const baseProfile = loadProfile('hobs-2024-candidate-rich');
+  const profile = {
+    ...baseProfile,
+    handover: {
+      ...baseProfile.handover,
+      sinrThresholdDb: -100,
+      offsetDb: 0.1,
+      triggerTimeSec: 1,
+      pingPongGuardSec: 1,
+    },
+  };
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 7,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: true,
+    beamsPerSat: 1,
+    candidateBeamsPerSat: 1,
+    coverageSteeringAngleDeg: 50,
+  });
+  const frame = model.step({
+    visibleSats: [satellite('SAT-A', 0), satellite('SAT-B', 1.8), satellite('SAT-C', -1.5)],
+    ues: [{ id: 'ue-primary', eastKm: 8, northKm: 2 }],
+    simTimeSec: 0,
+    dtSec: 0,
+  });
+  const decision = model.getHandoverDecisionFrame();
+  assert.ok(decision);
+  const primaryCellId = frame.ues[0]?.cellId;
+  assert.notEqual(primaryCellId, null);
+  const primaryBeamId = cellLinkBudgetBeamId(primaryCellId!);
+  const primaryCellCandidates = decision.opportunities.filter(item => item.key.beamId === primaryBeamId);
+  assert.equal(
+    new Set(primaryCellCandidates.map(item => item.key.satelliteId)).size,
+    3,
+    'all three reachable satellites remain measurable on the primary cell despite one-beam hopping',
+  );
+  assert(primaryCellCandidates.every(item => (
+    item.gates.find(gate => gate.code === 'scheduled-illumination')?.result === 'pass'
+  )));
+});
+
+test('candidate measurement does not evict an already-serving one-beam satellite', () => {
+  const baseProfile = loadProfile('hobs-2024-candidate-rich');
+  const profile = {
+    ...baseProfile,
+    handover: {
+      ...baseProfile.handover,
+      sinrThresholdDb: -100,
+      offsetDb: 0.1,
+      triggerTimeSec: 1,
+      pingPongGuardSec: 1,
+    },
+  };
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 7,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: true,
+    beamsPerSat: 1,
+    candidateBeamsPerSat: 1,
+    coverageSteeringAngleDeg: 50,
+  });
+  const ue = { id: 'ue-primary', eastKm: 8, northKm: 2 };
+  const initial = model.step({
+    visibleSats: [satellite('SAT-A', 0)],
+    ues: [ue],
+    simTimeSec: 0,
+    dtSec: 0,
+  });
+  assert.equal(initial.ues[0]?.servingSatId, 'SAT-A');
+
+  const comparison = model.step({
+    visibleSats: [satellite('SAT-A', 0), satellite('SAT-B', 1.8), satellite('SAT-C', -1.5)],
+    ues: [ue],
+    simTimeSec: 1,
+    dtSec: 1,
+  });
+  const decision = model.getHandoverDecisionFrame();
+  assert.equal(
+    comparison.ues[0]?.servingSatId,
+    'SAT-A',
+    'adding candidate measurements must preserve the established serving satellite',
+  );
+  assert.equal(comparison.ues[0]?.servingBeamId, cellLinkBudgetBeamId(comparison.ues[0]?.cellId ?? 0));
+  const primaryBeamId = cellLinkBudgetBeamId(comparison.ues[0]?.cellId ?? 0);
+  const primaryCellCandidates = decision?.opportunities.filter(item => item.key.beamId === primaryBeamId) ?? [];
+  assert.equal(
+    new Set(primaryCellCandidates.map(item => item.key.satelliteId)).size,
+    3,
+    'candidate satellites remain measured on the same primary cell while the serving link stays lit',
+  );
 });
 
 test('a vanished serving pair uses an explicit measured service-continuity transaction', () => {

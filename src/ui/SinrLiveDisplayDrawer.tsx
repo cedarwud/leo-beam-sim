@@ -21,6 +21,8 @@ interface SinrLiveDisplayDrawerProps {
   /** Display-only medium switch for the homepage scene floor. */
   readonly campusVisible?: boolean;
   readonly onCampusVisibleChange?: () => void;
+  /** Temporarily hides the teaching floor and teaching-mode dock on homepage. */
+  readonly showTeachingAuxiliaryUi?: boolean;
 }
 
 export function SinrLiveDisplayDrawer({
@@ -43,6 +45,7 @@ export function SinrLiveDisplayDrawer({
   teachingPlatformSection,
   campusVisible,
   onCampusVisibleChange,
+  showTeachingAuxiliaryUi = true,
 }: SinrLiveDisplayDrawerProps): ReactElement {
   return (
     <section
@@ -50,7 +53,7 @@ export function SinrLiveDisplayDrawer({
       data-testid="sinr-live-display"
       aria-label="SINR-live tuning controls"
     >
-      {typeof campusVisible === 'boolean' && onCampusVisibleChange && (
+      {showTeachingAuxiliaryUi && typeof campusVisible === 'boolean' && onCampusVisibleChange && (
       <section className="leo-teaching-surface-control" data-testid="teaching-surface-control" aria-label="教學地板">
         <div className="leo-teaching-surface-control__copy">
           <span className="leo-teaching-surface-control__eyebrow">SCENE FLOOR</span>
@@ -71,14 +74,20 @@ export function SinrLiveDisplayDrawer({
       )}
       <div className="leo-sinr-advanced-section" data-testid="sinr-live-advanced-formula">
         <div className="leo-sinr-advanced-body">
-          <TeachingPanelDock
-            mode={teachingMode}
-            onModeChange={onTeachingModeChange}
-            engineeringContent={parameterSection}
-            linkSnapshot={teachingLinkSnapshot}
-            policyContent={teachingPolicySection}
-            platformContent={teachingPlatformSection}
-          />
+          {showTeachingAuxiliaryUi ? (
+            <TeachingPanelDock
+              mode={teachingMode}
+              onModeChange={onTeachingModeChange}
+              engineeringContent={parameterSection}
+              linkSnapshot={teachingLinkSnapshot}
+              policyContent={teachingPolicySection}
+              platformContent={teachingPlatformSection}
+            />
+          ) : (
+            <section className="leo-engineering-dock" data-testid="engineering-panel-dock">
+              {parameterSection}
+            </section>
+          )}
         </div>
       </div>
     </section>

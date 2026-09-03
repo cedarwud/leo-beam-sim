@@ -20,6 +20,7 @@ import {
 import type { SimulationAnalysisFrameBuildOptions } from '../../simulator/analysis';
 import { RUN_PAYLOAD_PROTOCOL_SCHEMA } from '../../tle/runPayload/types';
 import type { RunPayloadIdentity } from '../../tle/runPayload/types';
+import { LATEST_TLE_REFERENCE_ARTIFACT_DATE } from '../../tle/latestTleDefaults';
 
 /**
  * A checked-in, source-bound complete run used only for the canonical default
@@ -29,7 +30,7 @@ import type { RunPayloadIdentity } from '../../tle/runPayload/types';
  */
 export const VISUAL_LAB_DEFAULT_FULL_RUN_ARTIFACT_SCHEMA = 'visual-lab-default-full-run-artifact-v1' as const;
 export const VISUAL_LAB_DEFAULT_FULL_RUN_ARTIFACT_PROTOCOL = RUN_PAYLOAD_PROTOCOL_SCHEMA;
-export const VISUAL_LAB_DEFAULT_FULL_RUN_ARTIFACT_URL = '/visual-lab-default-full-run/starlink-20260812/manifest.json';
+export const VISUAL_LAB_DEFAULT_FULL_RUN_ARTIFACT_URL = `/visual-lab-default-full-run/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}/manifest.json`;
 export const VISUAL_LAB_DEFAULT_FULL_RUN_ARTIFACT_FORMULA_VERSION = 'angle-aware-ee-v3' as const;
 export const VISUAL_LAB_DEFAULT_FULL_RUN_ARTIFACT_LINK_SHAPE_VERSION = 'canonical-link-result:before-satellite-cap-power-v1' as const;
 export const VISUAL_LAB_DEFAULT_FULL_RUN_GEOMETRY_ENCODING = 'float64-anchor-major-v1' as const;

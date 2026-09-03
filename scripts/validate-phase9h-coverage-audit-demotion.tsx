@@ -5,6 +5,7 @@ import {
   assertNoTestId,
   assertNotContainsTestId,
   assertTestId,
+  assertTestIdAttr,
   assertTestIdOrder,
   openingTagOfTestId,
 } from './lib/dom-structure.ts';
@@ -101,8 +102,6 @@ function assertCoverageSummaryIsRemovedFromPrimaryFlow(): void {
   assertTestIdOrder(markup, [
     'sinr-formula-tabs',
     'signal-power-controls',
-    'signal-power-output-formula',
-    'signal-power-controls-formula-context',
   ], 'primary SINR tuning flow');
 
   assertNoTestId(markup, 'sinr-coverage-assumptions-disclosure', 'primary tuning flow');
@@ -126,13 +125,14 @@ function assertOpenByDefault(markup: string, testId: string): void {
 function assertEssentialContextRemainsInline(): void {
   const signal = renderPanel('signal-power');
 
-  // G^R stays discoverable as its own tab rather than being folded into P_t.
+  // G^R stays discoverable inside the public H/channel expansion rather than
+  // being folded into runtime p or the denominator.
   const tabStrip = openingTagOfTestId(signal.markup, 'sinr-formula-tabs');
   assert.ok(tabStrip.length > 0, 'expected the SINR formula tab strip to render');
   assertTestId(signal.markup, 'sinr-formula-tabs');
   assert.ok(
-    signal.markup.includes('id="sinr-formula-tab-receiver-gain"'),
-    'expected G^R to remain reachable as its own tab, not folded into the P_t group',
+    signal.markup.includes('id="sinr-formula-tab-channel"'),
+    'expected G^R to remain reachable in the H/channel tab, not folded into runtime p',
   );
   assertNotContainsTestId(signal.markup, 'signal-power-controls', 'gr-receiver-gain-control');
 
@@ -140,11 +140,11 @@ function assertEssentialContextRemainsInline(): void {
   assertNoTestId(signal.markup, 'active-tab-formula-context', 'signal-power tab');
   assertNoTestId(signal.markup, 'sinr-overview-disclosure', 'signal-power tab');
 
-  // The genuine RF parameter card lives on Power and retains help/range hooks.
+  // Power is a derived formula page. It must not recreate the retired RF input.
   const power = renderPanel('signal-power', 'power');
-  assertContainsTestId(power.markup, 'walker-power-output-control', 'walker-power-output-control-details');
-  assertContainsTestId(power.markup, 'walker-power-output-control', 'walker-power-output-control-effect');
-  assertContainsTestId(power.markup, 'walker-power-output-control', 'walker-power-output-control-range-endpoints');
+  assertTestIdAttr(power.markup, 'walker-power-page', 'data-readonly', 'true');
+  assertTestIdAttr(power.markup, 'walker-power-page', 'data-control-surface', 'derived-only');
+  assertNoTestId(power.markup, 'walker-power-output-control', 'Walker derived Power page');
 
   assertNotContains(signal.text, 'HOBS paper parameter table');
   assertNotContains(signal.text, 'Research Override / teaching control');
@@ -184,14 +184,14 @@ function run(): void {
       placement: [
         'old sinr-coverage-audit test id is gone',
         'coverage / assumptions no longer remains as a separate disclosure in the primary SINR tuning flow',
-        'the P^o formula appears without a duplicate p^r parameter card',
-        'the actual RF parameter card keeps its help, effect, and range hooks on Power',
+        'runtime p appears without a duplicate RF parameter card',
+        'the Power page remains a derived-only explanation surface',
         'the repeated active-tab formula notes and old SINR overview are absent',
       ],
       preserved: [
-        'G^R remains discoverable as a separate Receiver Gain control',
+        'G^R remains discoverable in the public H/channel expansion',
         'path-loss sensitivity controls remain visible in the Loss control group',
-        'actual RF output help remains available from the Power control',
+        'actual RF output recurrence remains explained on the Power page',
       ],
     },
   }, null, 2));

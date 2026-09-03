@@ -1,59 +1,255 @@
 @use '../nav/sixActsType';
 
+/* The public index is intentionally a compact orientation surface. The
+   linked act routes keep the detailed experiment copy and controls. */
+.six-acts,
+.six-acts * {
+  box-sizing: border-box;
+}
+
 .six-acts {
   min-height: 100vh;
-  padding: clamp(1.4rem, 4vw, 3rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(1.25rem, 2.5vw, 2.5rem);
   color: #cfe9ef;
   background: #020a10;
-  font: 16px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  font: 17px/1.62 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
 
-  &__kicker { margin: 0 0 .4rem; font-size: .74rem; letter-spacing: .2em; color: #76ead7; }
-  h1 { margin: 0 0 .6rem; font-size: clamp(1.8rem, 4vw, 2.7rem); color: #eafcff; }
-  &__lede { margin: 0 0 2rem; color: #8fb6c0; strong { color: #d8eef3; } }
+.six-acts > * {
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+}
 
-  &__list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.six-acts .six-acts-nav {
+  background: #020a10;
+  border-color: rgba(118, 234, 215, .16);
+  box-shadow: none;
+  backdrop-filter: none;
+  font-size: 15px;
+}
 
-  &__card {
-    display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start;
-    padding: 1rem 1.1rem;
-    border: 1px solid rgba(118, 234, 215, .18); border-radius: 12px;
-    background: rgba(6, 20, 27, .6);
-    color: inherit; text-decoration: none;
-    transition: border-color .16s ease, background .16s ease;
-    &:hover { border-color: #76ead7; background: rgba(118, 234, 215, .08); }
+.six-acts .six-acts-nav a {
+  color: #a9cdd6;
+  transition: none;
+}
 
-    h2 {
-      display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap;
-      margin: 0 0 .3rem; font-size: 1.2rem; color: #eafcff;
-      em { font-style: normal; font-size: .74rem; color: #6f9aa4; }
-    }
+.six-acts .six-acts-nav a:focus-visible {
+  outline-color: #ffd78a;
+}
+
+.six-acts .six-acts-nav__home,
+.six-acts .six-acts-nav__index,
+.six-acts .six-acts-nav__step a {
+  border-color: rgba(118, 234, 215, .24);
+}
+
+.six-acts .six-acts-nav__home {
+  color: #ffd78a;
+  border-color: rgba(255, 215, 138, .3);
+}
+
+.six-acts .six-acts-nav__acts a.is-current {
+  border-color: #76ead7;
+  background: rgba(118, 234, 215, .14);
+}
+
+.six-acts .six-acts-nav__acts a em {
+  color: #76ead7;
+  background: rgba(118, 234, 215, .14);
+}
+
+.six-acts .six-acts-nav__acts a.is-current em {
+  color: #052027;
+  background: #76ead7;
+}
+
+.six-acts .six-acts__header--overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(27rem, .75fr);
+  gap: clamp(2rem, 5vw, 6rem);
+  align-items: end;
+  margin-top: 2.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.six-acts .six-acts__header--overview .six-acts__kicker {
+  margin-bottom: .55rem;
+  font-size: .85rem;
+  letter-spacing: .16em;
+  color: #76ead7;
+}
+
+.six-acts .six-acts__header--overview h1 {
+  margin-bottom: .7rem;
+  font-size: clamp(2.5rem, 3.2vw, 3.65rem);
+  line-height: 1.12;
+  letter-spacing: -.025em;
+  color: #eafcff;
+}
+
+.six-acts .six-acts__header--overview .six-acts__lede {
+  max-width: 78rem;
+  margin: 0;
+  font-size: clamp(1.05rem, 1.25vw, 1.3rem);
+  line-height: 1.55;
+  color: #8fb6c0;
+}
+
+.six-acts .six-acts__summary {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  padding: 0 0 .25rem 1.5rem;
+  border-left: 3px solid #76ead7;
+}
+
+.six-acts .six-acts__summary-label {
+  margin-bottom: .7rem;
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: #76ead7;
+}
+
+.six-acts .six-acts__summary-flow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .55rem;
+  margin: 0 0 .55rem;
+  font-size: clamp(1.35rem, 1.55vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #eafcff;
+}
+
+.six-acts .six-acts__summary-flow b {
+  font-size: .9em;
+  font-weight: 500;
+  color: #76ead7;
+}
+
+.six-acts .six-acts__summary-note {
+  margin: 0;
+  font-size: clamp(.95rem, 1.05vw, 1.1rem);
+  line-height: 1.45;
+  color: #7fa6b0;
+}
+
+.six-acts .six-acts__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+  list-style: none;
+  margin-top: 0;
+  padding: 0;
+}
+
+.six-acts .six-acts__list > li {
+  min-width: 0;
+}
+
+.six-acts .six-acts__card {
+  display: grid;
+  min-height: 12.75rem;
+  grid-template-columns: 3.75rem minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+  padding: 1.7rem 1.8rem;
+  border: 1px solid rgba(118, 234, 215, .22);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #06141b;
+  color: #cfe9ef;
+  text-decoration: none;
+  transition: none;
+}
+
+.six-acts .six-acts__card > div {
+  min-width: 0;
+}
+
+.six-acts .six-acts__card h2 {
+  display: flex;
+  align-items: baseline;
+  gap: .65rem;
+  flex-wrap: wrap;
+  margin: 0 0 .85rem;
+  font-size: clamp(1.55rem, 1.9vw, 2.2rem);
+  line-height: 1.25;
+  color: #eafcff;
+}
+
+.six-acts .six-acts__card h2 em {
+  font-style: normal;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6f9aa4;
+}
+
+.six-acts .six-acts__order {
+  display: grid;
+  place-items: center;
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 50%;
+  background: rgba(118, 234, 215, .14);
+  color: #76ead7;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.six-acts .six-acts__question {
+  max-width: 54rem;
+  margin: 0;
+  font-size: clamp(1.1rem, 1.25vw, 1.35rem);
+  line-height: 1.52;
+  color: #d8eef3;
+}
+
+.six-acts .six-acts__card:hover {
+  border-color: #76ead7;
+  border-left-color: #76ead7;
+  background: #0a1c24;
+}
+
+@media (max-width: 900px) {
+  .six-acts .six-acts__header--overview {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 
-  &__order {
-    display: grid; place-items: center;
-    width: 38px; height: 38px; border-radius: 50%;
-    background: rgba(118, 234, 215, .14); color: #76ead7;
-    font-size: 1.05rem; font-weight: 700;
+  .six-acts .six-acts__summary {
+    padding: 1.25rem 0 0;
+    border-top: 3px solid #08766d;
+    border-left: 0;
   }
 
-  &__question { margin: 0 0 .25rem; color: #d8eef3; font-size: .95rem; }
-  &__handson { margin: 0; color: #7fa6b0; font-size: .84rem; }
-
-  &__bridge {
-    margin: .35rem 0 .5rem 3.4rem;
-    padding-left: .8rem;
-    border-left: 2px solid rgba(255, 215, 138, .4);
-    color: #c3ab7d; font-size: .86rem;
-    span {
-      display: inline-block; margin-right: .5rem;
-      font-size: .66rem; letter-spacing: .14em; color: #ffd78a;
-    }
+  .six-acts .six-acts__list {
+    grid-template-columns: 1fr;
   }
 
-  &__footer {
-    margin-top: 2rem; padding-top: 1rem;
-    border-top: 1px solid rgba(118, 234, 215, .14);
-    p { margin: 0; color: #7fa6b0; font-size: .82rem; }
-    b { color: #a9cdd6; font-weight: 600; }
+  .six-acts .six-acts__header--overview h1 {
+    font-size: clamp(2.2rem, 7vw, 3.2rem);
+  }
+}
+
+@media (max-width: 560px) {
+  .six-acts .six-acts__card {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    gap: 1rem;
+    min-height: 0;
+    padding: 1.15rem;
+  }
+
+  .six-acts .six-acts__order {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.4rem;
   }
 }

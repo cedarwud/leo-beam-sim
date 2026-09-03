@@ -32,6 +32,36 @@ const interCinema = resolveHandoverDisplayIsolation({
 });
 assert.equal(interCinema.hideNormalBeamField, true, 'inter cinema hides the normal timeline beam field');
 assert.equal(interCinema.showCinemaCandidateFan, true, 'inter cinema restores the candidate satellite fan');
+assert.equal(interCinema.preserveConfiguredServingFan, false, 'legacy/non-opted-in inter keeps the old field gate');
+
+const homepageInterCinema = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: true,
+  cinemaCandidateKind: 'inter',
+  preserveConfiguredServingFan: true,
+});
+assert.equal(homepageInterCinema.preserveConfiguredServingFan, true, 'homepage may explicitly retain its configured serving fan');
+assert.equal(homepageInterCinema.hideCandidateFan, true, 'retaining the serving fan does not restore a stale candidate fan');
+assert.equal(homepageInterCinema.suppressNaturalHandoverLayers, true, 'retaining the serving fan does not restore natural duplicate layers');
+
+const homepageIntraCinema = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: true,
+  cinemaCandidateKind: 'intra',
+  preserveConfiguredServingFan: true,
+});
+assert.equal(homepageIntraCinema.preserveConfiguredServingFan, false, 'the opt-in is inter-only');
+
+const homepageInterSeekArm = resolveHandoverDisplayIsolation({
+  manualHandoverActive: false,
+  cinemaCandidateActive: false,
+  cinemaCandidateArmed: true,
+  cinemaCandidateReady: false,
+  cinemaCandidateKind: 'inter',
+  preserveConfiguredServingFan: true,
+  presentationSource: 'cinema',
+});
+assert.equal(homepageInterSeekArm.preserveConfiguredServingFan, false, 'the opt-in waits for the existing inter owner to become active');
 
 const interCinemaPending = resolveHandoverDisplayIsolation({
   manualHandoverActive: false,
@@ -91,6 +121,7 @@ assert.deepEqual(
   {
     active: false,
     hidePrimaryServingBeam: false,
+    preserveConfiguredServingFan: false,
     hideCandidateFan: false,
     hideNormalBeamField: false,
     showCinemaCandidateFan: false,
@@ -137,7 +168,7 @@ const naturalInterCandidatePending = resolveHandoverDisplayIsolation({
 });
 assert.equal(naturalInterCandidatePending.active, false, 'a pending inter candidate does not claim the story before the event fires');
 assert.equal(naturalInterCandidatePending.hidePrimaryServingBeam, false, 'the serving beam remains visible during the pre-fire candidate window');
-assert.equal(naturalInterCandidatePending.hideCandidateFan, true, 'the pre-fire candidate cannot paint a competing ordinary fan');
+assert.equal(naturalInterCandidatePending.hideCandidateFan, false, 'the pre-fire candidate remains visible while the live scene keeps moving');
 assert.equal(naturalInterCandidatePending.hideNormalBeamField, false, 'the normal serving field remains visible before the story owner starts');
 assert.equal(naturalInterCandidatePending.showCinemaCandidateFan, false, 'the normalized target fan is not shown before the story owner starts');
 
@@ -149,7 +180,13 @@ const naturalIntraPresentation = resolveHandoverDisplayIsolation({
   presentationKind: 'intra',
   presentationMode: 'presenting',
 });
-assert.equal(naturalIntraPresentation.active, false, 'natural intra keeps the ordinary field and pulse path');
+assert.equal(naturalIntraPresentation.active, true, 'the normalized natural intra owner claims the viewport');
+assert.equal(naturalIntraPresentation.hidePrimaryServingBeam, true, 'natural intra keeps only its owner pair on the serving path');
+assert.equal(naturalIntraPresentation.hideCandidateFan, true, 'natural intra suppresses the ordinary candidate fan');
+assert.equal(naturalIntraPresentation.hideNormalBeamField, false, 'natural intra keeps the existing beam field geometry');
+assert.equal(naturalIntraPresentation.showCinemaCandidateFan, false, 'natural intra does not add an inter candidate fan');
+assert.equal(naturalIntraPresentation.hideTimelineEffects, true, 'natural intra suppresses competing timeline effects');
+assert.equal(naturalIntraPresentation.suppressNaturalHandoverLayers, true, 'natural intra suppresses competing natural layers');
 
 const presentationCooldown = resolveHandoverDisplayIsolation({
   manualHandoverActive: false,
@@ -220,6 +257,7 @@ const idle = resolveHandoverDisplayIsolation({
 assert.deepEqual(idle, {
   active: false,
   hidePrimaryServingBeam: false,
+  preserveConfiguredServingFan: false,
   hideCandidateFan: false,
   hideNormalBeamField: false,
   showCinemaCandidateFan: false,
@@ -239,19 +277,41 @@ assert.equal(resolveHandoverCinemaReady({
   kind: 'inter',
   requestedSeekKey: 'seek-next-inter',
   landedSeekKey: null,
+  requestedSeekTargetSec: 24,
+  currentSimTimeSec: 24,
 }), false, 'inter clock waits for the requested live seek to land');
 assert.equal(resolveHandoverCinemaReady({
   active: true,
   kind: 'inter',
   requestedSeekKey: 'seek-next-inter',
   landedSeekKey: 'seek-next-inter',
+  requestedSeekTargetSec: 24,
+  currentSimTimeSec: 24.4,
 }), true, 'inter clock starts after the requested live seek lands');
 assert.equal(resolveHandoverCinemaReady({
   active: true,
   kind: 'intra',
-  requestedSeekKey: null,
+  requestedSeekKey: 'seek-next-intra',
   landedSeekKey: null,
-}), true, 'intra keeps its existing cinema start contract');
+  requestedSeekTargetSec: 24,
+  currentSimTimeSec: 24,
+}), false, 'intra clock also waits for the requested live seek to land');
+assert.equal(resolveHandoverCinemaReady({
+  active: true,
+  kind: 'intra',
+  requestedSeekKey: 'seek-next-intra',
+  landedSeekKey: 'seek-next-intra',
+  requestedSeekTargetSec: 24,
+  currentSimTimeSec: 24.4,
+}), true, 'intra clock starts after the requested live seek lands');
+assert.equal(resolveHandoverCinemaReady({
+  active: true,
+  kind: 'intra',
+  requestedSeekKey: 'seek-next-intra',
+  landedSeekKey: 'seek-next-intra',
+  requestedSeekTargetSec: 24,
+  currentSimTimeSec: 42,
+}), false, 'matching callback key alone cannot start cinema on an old frame');
 assert.equal(resolveDirectorFocusAutoExitMs('intra'), 20000, 'intra focus hold remains unchanged');
 assert.equal(resolveDirectorFocusAutoExitMs('inter'), 6500, 'inter focus hold is bounded separately');
 

@@ -66,8 +66,9 @@ check('selects the next event at/after the live cursor', () => {
   ], 'inter', 450, 7200, 'profile-derived-forecast'), 'target');
 
   assert.equal(target.eventSec, 515, 'eventSec');
-  // seek target is the lead-in BEFORE the event (2s default), never the event itself.
-  assert.equal(target.seekTargetSec, 513, 'seekTargetSec');
+  // The live indexed source window starts 10s before the event, never at the
+  // event or in the post-commit guard.
+  assert.equal(target.seekTargetSec, 505, 'seekTargetSec');
   assert.equal(target.fromSatId, 'sat-c', 'fromSatId');
   assert.equal(target.toSatId, 'sat-d', 'toSatId');
 });
@@ -81,6 +82,8 @@ check('kind filter selects only the requested handover kind', () => {
   const intra = requireTarget(resolveLiveWalkerFocusWindow(events, 'intra', 0, 7200, 'profile-derived-forecast'), 'intra');
   assert.equal(inter.eventSec, 300, 'inter eventSec');
   assert.equal(intra.eventSec, 200, 'intra eventSec');
+  assert.equal(inter.seekTargetSec, 290, 'inter seekTargetSec');
+  assert.equal(intra.seekTargetSec, 190, 'intra seekTargetSec');
 });
 
 check('no event of the requested kind returns null', () => {

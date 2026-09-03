@@ -58,6 +58,15 @@ export interface ForecastEePolicyConfig extends HandoverTttConfig {
   readonly eeToleranceRelative: number;
 }
 
+/**
+ * Active homepage policy configuration. It deliberately shares the same TTT
+ * inputs as every other policy while ranking the current frame's measured EE.
+ */
+export interface InstantaneousEePolicyConfig extends HandoverTttConfig {
+  /** Relative EE difference treated as equal; homepage uses zero by default. */
+  readonly eeToleranceRelative: number;
+}
+
 export const SINR_OFFSET_REQUIRED_GATES: readonly GateCode[] = Object.freeze([
   'elevation',
   'steering',
@@ -72,6 +81,7 @@ type PolicyMode = Extract<HandoverDecisionMode, 'sinr-offset' | 'ee-optimization
 interface PreparedAssessment {
   readonly assessment: CandidatePolicyAssessment;
   readonly sinrDb: number | null;
+  readonly instantaneousEeBitPerJ: number | null;
   readonly forecastEeBitPerJ: number | null;
   readonly remainingServiceTimeSec: number | null;
   readonly predictedThroughputBps: number | null;
@@ -251,6 +261,35 @@ function forecastTriggerStatus(
   return eeGate.result === 'pass' ? 'satisfied' : 'not-satisfied';
 }
 
+function instantaneousEeValue(candidate: CandidateOpportunity): number | null {
+  const evidence = candidate.instantaneousEe;
+  if (evidence?.status !== 'available' || evidence.value === null || evidence.value < 0) return null;
+  return evidence.value;
+}
+
+function instantaneousEeTriggerStatus(
+  serving: CandidateOpportunity | null,
+  candidate: CandidateOpportunity,
+  hardEligibility: CandidateEligibility,
+  tolerance: number,
+): CandidateTriggerStatus {
+  if (hardEligibility === 'unavailable') return 'unavailable';
+  if (hardEligibility === 'ineligible') return 'not-satisfied';
+  if (serving !== null && hasSameKey(serving.key, candidate.key)) return 'not-satisfied';
+
+  const candidateEe = instantaneousEeValue(candidate);
+  if (candidateEe === null) return 'unavailable';
+  if (serving === null) return 'satisfied';
+
+  const servingEe = instantaneousEeValue(serving);
+  if (servingEe === null) return 'unavailable';
+  const requiredEe = servingEe + Math.abs(servingEe) * tolerance;
+  // The active homepage decision is an EE maximisation: equality is not a
+  // handover opportunity, and the configured tolerance is applied only as a
+  // deterministic tie band.
+  return candidateEe > requiredEe ? 'satisfied' : 'not-satisfied';
+}
+
 function forecastWindowSignature(candidate: CandidateOpportunity): string | null {
   try {
     const evidence = candidate.forecastEe;
@@ -341,6 +380,7 @@ function safePreparedAssessment(
         rejectionCodes,
       }),
       sinrDb: candidate.sinr.status === 'available' ? candidate.sinr.value : null,
+      instantaneousEeBitPerJ: instantaneousEeValue(candidate),
       forecastEeBitPerJ: isForecastEeRankable(candidate.forecastEe)
         ? candidate.forecastEe.eeBitPerJ
         : null,
@@ -363,6 +403,7 @@ function safePreparedAssessment(
         triggerCode,
       ),
       sinrDb: null,
+      instantaneousEeBitPerJ: null,
       forecastEeBitPerJ: null,
       remainingServiceTimeSec: null,
       predictedThroughputBps: null,
@@ -386,6 +427,17 @@ function compareSinrPrepared(left: PreparedAssessment, right: PreparedAssessment
   if (leftSinr !== null && rightSinr !== null && leftSinr !== rightSinr) return rightSinr - leftSinr;
   if (leftSinr !== null && rightSinr === null) return -1;
   if (leftSinr === null && rightSinr !== null) return 1;
+  return compareCandidateLinkKey(left.assessment.key, right.assessment.key);
+}
+
+function compareInstantaneousEePrepared(left: PreparedAssessment, right: PreparedAssessment): number {
+  const priority = eligibilityPriority(left.assessment) - eligibilityPriority(right.assessment);
+  if (priority !== 0) return priority;
+  const leftEe = left.instantaneousEeBitPerJ;
+  const rightEe = right.instantaneousEeBitPerJ;
+  if (leftEe !== null && rightEe !== null && leftEe !== rightEe) return rightEe - leftEe;
+  if (leftEe !== null && rightEe === null) return -1;
+  if (leftEe === null && rightEe !== null) return 1;
   return compareCandidateLinkKey(left.assessment.key, right.assessment.key);
 }
 
@@ -497,6 +549,37 @@ export class SinrOffsetPolicy implements HandoverSelectionPolicy {
         this.config.intraOffsetDb,
       ),
       values => [...values].sort(compareSinrPrepared),
+    );
+  }
+}
+
+/**
+ * Homepage's single active selection policy: choose the largest instantaneous
+ * angle-aware EE among hard-eligible pairs, then let HandoverDecisionEngine own
+ * the independent TTT, selection hold, guard, and atomic commit.
+ */
+export class InstantaneousEePolicy implements HandoverSelectionPolicy {
+  private readonly config: InstantaneousEePolicyConfig;
+
+  constructor(config: InstantaneousEePolicyConfig) {
+    validateEeConfig(config);
+    this.config = Object.freeze({ ...config });
+  }
+
+  evaluate(input: HandoverSelectionPolicyInput): HandoverPolicyEvaluation {
+    return evaluatePolicy(
+      'ee-optimization',
+      input,
+      SINR_OFFSET_REQUIRED_GATES,
+      this.config,
+      'ee-advantage',
+      (candidate, hard) => instantaneousEeTriggerStatus(
+        input.serving,
+        candidate,
+        hard.hardEligibility,
+        this.config.eeToleranceRelative,
+      ),
+      values => [...values].sort(compareInstantaneousEePrepared),
     );
   }
 }

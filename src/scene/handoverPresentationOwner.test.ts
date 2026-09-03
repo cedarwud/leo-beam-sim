@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 
+import { HANDOVER_CONE_PHASE_END } from '../constants/sinrLiveConeStyle';
 import { resolveLegacyAutoSlowActive } from '../usePlaybackControls';
 import {
   advanceHandoverPresentation,
@@ -18,6 +19,12 @@ assert.equal(
   resolveLegacyAutoSlowActive({ visibleHandoverActive: true }),
   true,
   'a drawable active handover enables HO Slow',
+);
+
+assert.equal(
+  resolveLegacyAutoSlowActive({ visibleHandoverActive: false, candidateComparisonActive: true }),
+  true,
+  'a real multi-candidate comparison enables display-only focus speed',
 );
 
 const walkerEvent: HandoverPresentationEvent = {
@@ -58,6 +65,39 @@ const manualEvent: HandoverPresentationEvent = {
   to: { satId: 'sat-a', cellId: 3, drawable: true },
   durationMs: 8000,
 };
+const sameCellIntraEvent: HandoverPresentationEvent = {
+  ...manualEvent,
+  eventId: 'natural-intra-same-cell-1',
+  from: { satId: 'sat-a', cellId: 2, beamId: 3, drawable: true },
+  to: { satId: 'sat-a', cellId: 2, beamId: 423, drawable: true },
+};
+const sameCellIntraStarted = advanceHandoverPresentation(createHandoverPresentationState(), {
+  nowMs: 2000,
+  candidate: sameCellIntraEvent,
+});
+assert.equal(sameCellIntraStarted.view.active, true, 'same-cell intra with distinct beam ids is drawable');
+assert.equal(sameCellIntraStarted.view.event?.from.beamId, 3);
+assert.equal(sameCellIntraStarted.view.event?.to.beamId, 423);
+
+const intraPhaseSamples = [
+  { progress01: 0.1, phase: 'serving' },
+  { progress01: HANDOVER_CONE_PHASE_END.serving + 0.001, phase: 'measuring' },
+  { progress01: HANDOVER_CONE_PHASE_END.measuring + 0.001, phase: 'holding' },
+  { progress01: HANDOVER_CONE_PHASE_END.holding + 0.001, phase: 'releasing' },
+  { progress01: HANDOVER_CONE_PHASE_END.releasing + 0.001, phase: 'settled' },
+] as const;
+for (const sample of intraPhaseSamples) {
+  const stepped = advanceHandoverPresentation(sameCellIntraStarted.state, {
+    nowMs: 2000 + 8000 * sample.progress01,
+    candidate: sameCellIntraEvent,
+  });
+  assert.equal(
+    stepped.view.phase,
+    sample.phase,
+    `intra owner phase follows the shared cone boundary at ${sample.progress01}`,
+  );
+}
+
 const manualStarted = advanceHandoverPresentation(started.state, {
   nowMs: 2100,
   candidate: manualEvent,

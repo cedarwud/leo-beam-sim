@@ -7,6 +7,10 @@ import {
   type HandoverDecisionFrame,
 } from '../engine/handover/candidateDecisionContract';
 import {
+  cellLinkBudgetBeamId,
+  intraCellLinkBudgetBeamId,
+} from './sinrLiveCellModel';
+import {
   commitReceiptMatchesHandoverPresentation,
   resolveAuthorityHandoverPresentationEvent,
   resolveAuthorityHandoverPresentationSnapshot,
@@ -120,6 +124,8 @@ test('presentation adapter keeps exact beam-to-cell geometry and fails closed wh
   });
   assert.equal(event?.from.cellId, from.beamId - 1);
   assert.equal(event?.to.cellId, interTarget.beamId - 1);
+  assert.equal(event?.from.beamId, from.beamId);
+  assert.equal(event?.to.beamId, interTarget.beamId);
   assert.equal(event?.eventId, join?.transition?.eventId);
 
   const missing = resolveAuthorityHandoverPresentationEvent(join, {
@@ -188,4 +194,58 @@ test('authority presentation follows selected and committed frame boundaries ins
   );
   assert.equal(guard.mode, 'idle');
   assert.equal(guard.view.active, false);
+});
+
+test('same-cell intra cue keeps exact beam identity through selected and committed boundaries', () => {
+  const cellId = 4;
+  const source = candidateLinkKey('SAT-A', cellLinkBudgetBeamId(cellId));
+  const target = candidateLinkKey('SAT-A', intraCellLinkBudgetBeamId(cellId));
+  const selectedJoin = resolveHandoverAuthorityJoin(frame({
+    phase: 'switching',
+    serving: source,
+    selectedTarget: target,
+    selectedKind: 'intra-satellite',
+  }));
+  const geometry = {
+    source: 'walker' as const,
+    hasCellPlacement: (candidateCellId: number) => candidateCellId === cellId,
+    hasSatelliteWorld: (satelliteId: string) => satelliteId === 'SAT-A',
+    durationMs: { intra: 8_000, inter: 6_000 },
+  };
+  const selectedEvent = resolveAuthorityHandoverPresentationEvent(selectedJoin, geometry);
+
+  assert.equal(selectedEvent?.from.cellId, cellId);
+  assert.equal(selectedEvent?.to.cellId, cellId);
+  assert.equal(selectedEvent?.from.beamId, source.beamId);
+  assert.equal(selectedEvent?.to.beamId, target.beamId);
+  assert.equal(selectedEvent?.eventId, selectedJoin?.transition?.eventId);
+  const selected = resolveAuthorityHandoverPresentationSnapshot(selectedJoin, selectedEvent);
+  assert.equal(selected.view.phase, 'holding');
+  assert.equal(selected.view.targetRole, 'candidate');
+
+  const receipt = createHandoverCommitReceipt({
+    episodeId: 'episode-1',
+    sourceFrameId: 'frame-10',
+    simTimeMs: 10_000,
+    from: source,
+    to: target,
+    kind: 'intra-satellite',
+    mode: 'service-continuity-protection',
+    reason: 'same-cell beam replacement fixture',
+    oldLinkEnded: true,
+    newLinkStarted: true,
+  });
+  const committedJoin = resolveHandoverAuthorityJoin(frame({
+    phase: 'switching',
+    serving: target,
+    recentCommit: receipt,
+  }));
+  const committedEvent = resolveAuthorityHandoverPresentationEvent(committedJoin, geometry);
+
+  assert.equal(committedEvent?.eventId, selectedEvent?.eventId);
+  assert.equal(commitReceiptMatchesHandoverPresentation(receipt, selectedEvent), true);
+  assert.equal(commitReceiptMatchesHandoverPresentation(receipt, committedEvent), true);
+  const committed = resolveAuthorityHandoverPresentationSnapshot(committedJoin, committedEvent);
+  assert.equal(committed.view.phase, 'releasing');
+  assert.equal(committed.view.targetRole, 'serving');
 });

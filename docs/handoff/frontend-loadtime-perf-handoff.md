@@ -4,9 +4,9 @@
 > Open this + `.agent-memory/project_frontend_loadtime_perf_2026-06-13.md` to continue.
 > Scratch probes are untracked `_*.ts` in `scripts/` (repo convention keeps them).
 >
-> **Rank-1 (chunk the index scan) is DONE — commit `3559a6f`.** Next lever = move
-> the scan to a **Web Worker** (erases the rail/paint trade the main-thread chunk
-> still pays); the sim dep-graph was audited Worker-safe. See "Remaining" below.
+> **Rank-1 (chunk the index scan) is DONE — commit `3559a6f`.** The current WIP
+> now moves the scan to a **Web Worker** (erasing the rail/paint trade); the
+> deterministic chunked path remains as fallback. See the 2026-08-31 checkpoint.
 
 ## TL;DR
 
@@ -75,25 +75,35 @@ wall ≈ `7s + (240/batch)×0.3s`. Bigger batch → faster rail but coarser scen
 stutter; smaller → smoother scene but slow rail (batch=3's 43.9 s). batch=12 is
 the empirical sweet spot but still pays the frame tax.
 
+## 2026-08-31 direction checkpoint — Worker stage
+
+The heavy SINR-live event-index scan is now wired through a module Worker in the
+current WIP. The Worker and the deterministic chunked fallback receive the same
+`BuildSinrLiveCellHandoverEventIndexInput`; cancellation and stale responses are
+fail-closed, so this performance change does not create a second scientific
+source. The established serving/motion/event carrier remains mounted while the
+multi-candidate comparison layer is phase-gated, and the event toast is no
+longer blanked by the comparison flag.
+
+Checkpoint evidence:
+
+- `npm run lint`, `npm run build`, `npm run test:multi-candidate`, the focused
+  event-index test, and the Worker runtime/transport/equivalence tests pass.
+- On port 3000 with clean storage, the real index published `Next Intra · 3`
+  and `Next Inter · 112`; clicking `Next Intra` produced a source-backed seek
+  and a focused candidate-comparison rail with no console errors.
+- This is an implementation/performance checkpoint, not the SDD's final visual
+  acceptance gate. The next checkpoint must still inspect continuous inter and
+  intra playback, scene/rail snapshot identity, parameter rebuild gating, and
+  visual obstruction at the required viewport sizes.
+
 ## Remaining — the next session's work (ranked)
 
-1. **🥇 Move the scan to a Web Worker (erases the rail/paint trade).** Off-thread
-   → the canvas renders at full rAF the whole time (no frame competition) AND the
-   rail fills in ~8 s of pure compute — beats batch=12 on BOTH axes. The sim
-   dep-graph was **kill-switch audited Worker-safe** (entry layer
-   `sinrLiveCellHandoverEventIndex` + `sinrLiveCellRuntime`/`Model`,
-   `runtimeFrameStep`, `handover-manager`, `multiUeMobility`, `orbit` have no
-   `window`/DOM/Three/React — only the word "window" in sim-time comments). Plan:
-   `new Worker(new URL('./sinrLiveCellHandoverEventIndexWorker.ts', import.meta.url),
-   {type:'module'})`, postMessage the `BuildSinrLiveCellHandoverEventIndexInput`
-   (Profile is structured-cloneable plain JSON), worker calls the **one-shot**
-   (no chunking needed off-thread) and posts the index back; App `setLiveWalker…`
-   on message, `terminate()` on cleanup/cancel. **Risks to verify:** (a) a
-   transitive import touching a browser global → run a worker smoke before wiring;
-   (b) governance relock (App will postMessage, not call the builder — update the
-   QUAR-C1-DIRECTOR lock to pin the worker wiring); (c) the chunked builder +
-   golden stay (the one-shot IS the builder; golden still guards determinism).
-   Medium effort.
+1. **✅ Worker wiring is implemented in the current WIP.** Keep its structured-
+   clone protocol, cancellation/error fallback, worker smoke, equivalence tests,
+   and port-3000 timing as regression gates. The chunked builder and golden
+   determinism check remain the fallback/truth guard; no second scientific source
+   was introduced.
 2. **computeLinkBudget storm (~6s).** `src/scene/sinrLiveCellModel.ts:771-796,800` — a
    12 Hz gate is bypassed in-scan so 99 UEs × cells recompute SINR every step; selection
    (`:800`) needs SINR only at serving-transition rows → lazy-FILL (not drop) `sinrDb`
@@ -112,8 +122,10 @@ the empirical sweet spot but still pays the frame tax.
 - Audit workflow result (ranked plan + 10 confirmed findings) is in this session's
   task `wnh5cg77h` output. 13 verify agents failed on a session usage-limit (resets
   7:30pm Asia/Taipei) — the surviving plan is sound + matches direct measurement.
-- The index scan fires on lane entry for BOTH sinr-live (`buildSinrLiveCellHandoverEventIndex`)
-  and modqn-live-cell-preview (`buildLiveWalkerHandoverEventIndex`). The defer covers both.
+- The index scan fires on lane entry for BOTH sinr-live (Worker-backed
+  `buildSinrLiveCellHandoverEventIndex`) and modqn-live-cell-preview
+  (`buildLiveWalkerHandoverEventIndex`). The chunked defer remains the fallback
+  for the SINR lane and still covers the MODQN preview lane.
 - Pre-existing red validators carry over (NOT this work): phase6b, phase6r, phase7k,
   handover-story-layer, s5-diagnostics-rate, vc4a/vc4d/vc1a/phase1a.
 - This work is OFF the governance-locked `src/modqn/replay-bundle/` core. Cinematic

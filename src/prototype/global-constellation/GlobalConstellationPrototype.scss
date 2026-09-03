@@ -1,795 +1,740 @@
-@use '../../course/nav/sixActsType';
+/*
+ * The constellation is a full-viewport cinema stage.  DOM chrome is a timed
+ * edge annotation layer; the quiet middle belongs to the WebGL scene.
+ */
 
-:root {
-  color-scheme: dark;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  background: #020a10;
-}
-
-.global-constellation,
-.global-constellation * {
-  box-sizing: border-box;
-}
-
-.global-constellation {
-  --ink: #e8f4f4;
-  --muted: #8ca8aa;
-  --line: rgba(103, 180, 193, .24);
-  --panel: rgba(5, 19, 26, .92);
-  --panel-deep: rgba(2, 11, 17, .96);
-  --accent: #ffd166;
-  --accent-bright: #ffe39a;
-  --aqua: #72d7e3;
-  --visible: #82c4ce;
-  min-height: 100vh;
-  padding: clamp(16px, 2.2vw, 28px) clamp(16px, 2.8vw, 38px) 14px;
-  color: var(--ink);
-  background:
-    radial-gradient(circle at 52% 42%, rgba(23, 98, 119, .16), transparent 34%),
-    linear-gradient(rgba(70, 154, 169, .035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(70, 154, 169, .035) 1px, transparent 1px),
-    #020a10;
-  background-size: auto, 26px 26px, 26px 26px, auto;
-  font-family: "IBM Plex Sans", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
-  overflow-x: hidden;
-}
-
-.global-constellation__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 28px;
-  max-width: 1720px;
-  margin: 0 auto 16px;
-}
-
-.global-constellation__kicker,
-.global-constellation__panel-heading > span,
-.global-constellation__stage-heading > div > span,
-.global-constellation__section-label {
-  margin: 0 0 7px;
-  color: var(--aqua);
-  font: 700 10px/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
-  letter-spacing: .16em;
-}
-
-.global-constellation__header h1 {
-  margin: 0;
-  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
-  font-size: clamp(29px, 3vw, 50px);
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: .015em;
-}
-
-.global-constellation__lede {
-  margin: 9px 0 0;
-  color: #9eb7b9;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.global-constellation__badge {
-  min-width: 226px;
-  padding: 13px 16px 12px;
-  border: 1px solid rgba(114, 215, 227, .5);
-  border-radius: 12px;
-  background: rgba(5, 25, 31, .72);
-  box-shadow: inset 0 1px rgba(225, 253, 255, .06), 0 16px 38px rgba(0, 0, 0, .2);
-}
-
-.global-constellation__badge strong,
-.global-constellation__badge span,
-.global-constellation__badge small {
-  display: block;
-}
-
-.global-constellation__badge strong {
-  color: var(--aqua);
-  font: 700 10px/1.2 "IBM Plex Mono", monospace;
-  letter-spacing: .13em;
-}
-
-.global-constellation__badge span {
-  margin-top: 5px;
-  color: #e8fbff;
-  font-size: 15px;
-  font-weight: 750;
-}
-
-.global-constellation__badge small {
-  margin-top: 3px;
-  color: #86aaae;
-  font-size: 11px;
-}
-
-.global-constellation__workspace {
-  display: grid;
-  grid-template-columns: minmax(220px, 276px) minmax(0, 1fr) minmax(230px, 292px);
-  gap: 13px;
-  max-width: 1720px;
-  height: calc(100vh - 183px);
-  min-height: 580px;
-  margin: 0 auto;
-}
-
-.global-constellation__panel,
-.global-constellation__stage {
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  background: var(--panel);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
+.global-constellation-story {
+  --gc-bg: #020a10;
+  --gc-ink: #e9f6f3;
+  --gc-muted: #9dbdbb;
+  --gc-starlink: #58e6d0;
+  --gc-oneweb: #f6c86c;
+  --gc-ntpu: #ffdf88;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
+  color: var(--gc-ink);
+  background: var(--gc-bg);
+  font-family: "IBM Plex Sans", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
 
-.global-constellation__panel {
-  padding: 19px;
-}
-
-.global-constellation__controls,
-.global-constellation__insights {
-  display: flex;
-  flex-direction: column;
-}
-
-.global-constellation__panel-heading {
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(103, 180, 193, .18);
-}
-
-.global-constellation__panel-heading h2 {
-  margin: 0;
-  color: #e9f5f5;
-  font-size: 20px;
-  font-weight: 650;
-}
-
-.global-constellation__panel-heading p {
-  margin: 7px 0 0;
-  color: #7f9b9f;
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.global-constellation__selector {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.global-constellation__selector button {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-height: 67px;
-  padding: 12px 13px;
-  border: 1px solid rgba(103, 180, 193, .23);
-  border-radius: 10px;
-  color: #9bb8bb;
-  background: rgba(5, 25, 32, .72);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
-}
-
-.global-constellation__selector button:hover {
-  transform: translateY(-1px);
-  border-color: rgba(114, 215, 227, .55);
-  color: #d8f1f2;
-}
-
-.global-constellation__selector button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.global-constellation__selector button.is-active {
-  border-color: rgba(255, 209, 102, .82);
-  color: var(--accent-bright);
-  background: linear-gradient(135deg, rgba(67, 51, 16, .76), rgba(10, 32, 37, .78));
-  box-shadow: inset 3px 0 var(--accent);
-}
-
-.global-constellation__selector strong {
-  font-size: 15px;
-  font-weight: 750;
-}
-
-.global-constellation__selector small {
-  margin-top: 4px;
-  color: #759397;
-  font-size: 11px;
-}
-
-.global-constellation__selector button.is-active small {
-  color: #b2b39a;
-}
-
-.global-constellation__source-state {
-  min-height: 38px;
-  margin: 14px 0 0;
-  padding: 9px 10px;
-  border: 1px solid rgba(103, 180, 193, .16);
-  border-radius: 8px;
-  color: #86a8ad;
-  background: rgba(2, 13, 19, .62);
-  font-size: 10px;
-  line-height: 1.45;
-}
-
-.global-constellation__source-state.is-ready {
-  color: #9ee6d6;
-  border-color: rgba(114, 215, 190, .28);
-}
-
-.global-constellation__source-state.is-error {
-  color: #ffad91;
-  border-color: rgba(255, 135, 98, .4);
-}
-
-.global-constellation__rule {
-  height: 1px;
-  margin: 18px 0 17px;
-  background: rgba(103, 180, 193, .18);
-}
-
-.global-constellation__section-label {
-  color: #719397;
-  font-size: 9px;
-}
-
-.global-constellation__selection {
-  margin: 0;
-}
-
-.global-constellation__selection strong,
-.global-constellation__selection span {
-  display: block;
-}
-
-.global-constellation__selection strong {
-  color: var(--accent-bright);
-  font: 500 26px/1.1 "Iowan Old Style", Georgia, serif;
-}
-
-.global-constellation__selection span {
-  margin-top: 5px;
-  color: #86a8ad;
-  font-size: 11px;
-}
-
-.global-constellation__note {
-  margin: auto 0 0;
-  padding-top: 16px;
-  color: #779497;
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-.global-constellation__stage {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  background: var(--panel-deep);
-}
-
-.global-constellation__stage-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 21px 11px;
-}
-
-.global-constellation__stage-heading h2 {
-  margin: 0;
-  color: #effafa;
-  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
-  font-size: 23px;
-  font-weight: 500;
-}
-
-.global-constellation__stage-heading p {
-  margin: 17px 0 0;
-  color: var(--accent-bright);
-  font: 700 11px/1.2 "IBM Plex Mono", monospace;
-  white-space: nowrap;
-}
-
-.global-constellation__canvas {
+.global-constellation-stage {
   position: relative;
-  min-height: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 320px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 49%, rgba(23, 96, 119, .18), transparent 42%);
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(23, 96, 103, .1), transparent 38%),
+    radial-gradient(circle at 50% 50%, rgba(2, 10, 16, 0), rgba(2, 10, 16, .42) 80%),
+    var(--gc-bg);
 }
 
-.global-constellation__canvas canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  outline: none;
-}
-
-.global-constellation__canvas-hint {
+.global-constellation-stage__canvas-wrap {
   position: absolute;
-  right: 16px;
-  bottom: 13px;
-  padding: 5px 8px;
-  border: 1px solid rgba(103, 180, 193, .22);
-  border-radius: 4px;
-  color: #6f969c;
-  background: rgba(2, 11, 17, .78);
-  font: 10px/1.2 "IBM Plex Mono", monospace;
+  z-index: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.global-constellation-stage__canvas-wrap[data-orbit-enabled="true"] { cursor: grab; }
+.global-constellation-stage__canvas-wrap[data-orbit-enabled="true"]:active { cursor: grabbing; }
+
+.global-constellation-stage__canvas-wrap:focus-visible {
+  outline: 2px solid var(--gc-starlink);
+  outline-offset: -4px;
+}
+
+.global-constellation-stage__canvas-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* One shared compositor envelope. Hidden chrome is unmounted by React; the
+ * phase classes provide a small, readable enter/exit rhythm for live playback. */
+.global-constellation-chrome {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .42s ease, transform .42s ease;
+}
+
+.global-constellation-chrome.is-enter { opacity: .62; }
+.global-constellation-chrome.is-hold { opacity: 1; }
+.global-constellation-chrome.is-exit { opacity: 0; }
+
+/* Switching the single displayed constellation is a comparison action, not
+ * a new reading fade. Keep the selected count and its bottom caption fully
+ * legible while the manual choice is being shown. */
+.global-constellation-story[data-beat="oneweb-compare"][data-comparison-state="completed"] .global-constellation-edge-number.is-enter,
+.global-constellation-story[data-beat="oneweb-compare"][data-comparison-state="completed"] .global-constellation-caption.is-enter {
+  opacity: 1;
+}
+
+.global-constellation-title {
+  top: clamp(1rem, 2.1vw, 1.65rem);
+  left: clamp(1.35rem, 3.7vw, 4.5rem);
+  display: grid;
+  gap: .22rem;
+  color: #eaf8f2;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, .9);
+}
+
+.global-constellation-title__eyebrow {
+  color: var(--gc-starlink);
+  font: 700 1rem/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: .18em;
+}
+
+.global-constellation-title > strong {
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-size: clamp(1.2rem, 1.45vw, 1.65rem);
+  font-weight: 600;
+  letter-spacing: .035em;
+}
+
+.global-constellation-beat-counter {
+  position: absolute;
+  z-index: 3;
+  top: clamp(1rem, 2.1vw, 1.65rem);
+  left: clamp(1.35rem, 3.7vw, 4.5rem);
+  display: flex;
+  align-items: baseline;
+  gap: .48rem;
+  color: #9dbab7;
+  font: 600 1rem/1 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .9);
   pointer-events: none;
 }
 
-.global-constellation__legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 10px 21px 13px;
-  border-top: 1px solid rgba(103, 180, 193, .16);
-  color: #78979b;
-  font-size: 10px;
+.global-constellation-beat-counter span {
+  color: var(--gc-starlink);
+  font-size: 1rem;
+  letter-spacing: .14em;
 }
 
-.global-constellation__legend span {
+.global-constellation-beat-counter strong {
+  color: #eaf8f2;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.global-constellation-story[data-beat="earth-question"] .global-constellation-beat-counter {
+  top: clamp(5.1rem, 6.2vw, 6.4rem);
+}
+
+.global-constellation-story:is([data-beat="starlink-density"], [data-beat="oneweb-compare"]) .global-constellation-beat-counter {
+  top: clamp(5.1rem, 6.2vw, 6.4rem);
+}
+
+.global-constellation-truth-cue {
+  top: clamp(1.2rem, 3.1vw, 2.5rem);
+  left: 50%;
+  display: grid;
+  gap: .2rem;
+  width: min(56rem, 72vw);
+  padding-left: .95rem;
+  border-left: 2px solid rgba(246, 200, 108, .88);
+  transform: translateX(-50%);
+  color: #e7f5ef;
+  font-size: clamp(1.15rem, 1.25vw, 1.45rem);
+  font-weight: 650;
+  letter-spacing: .025em;
+  line-height: 1.3;
+  text-shadow: 0 2px 22px #020a10, 0 0 30px #020a10;
+}
+
+.global-constellation-truth-cue span { display: block; }
+
+.global-constellation-truth-cue span:last-child { color: #f4dca4; }
+
+.global-constellation-stage__legend {
+  top: clamp(1.2rem, 2.8vw, 2.15rem);
+  right: clamp(1.35rem, 3.7vw, 4.5rem);
+  display: flex;
+  gap: 1.1rem;
+  align-items: center;
+  color: #c2d9d4;
+  font-size: clamp(1rem, 1.05vw, 1.2rem);
+  letter-spacing: .04em;
+  text-shadow: 0 2px 18px #020a10;
+}
+
+.global-constellation-stage__legend span {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: .38rem;
+  white-space: nowrap;
 }
 
-.global-constellation__legend i {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
+.global-constellation-stage__legend i {
+  width: .55rem;
+  height: .55rem;
   border-radius: 50%;
+  box-shadow: 0 0 12px currentColor;
 }
 
-.global-constellation__legend i.is-satellite { background: #2e4854; }
-.global-constellation__legend i.is-visible { background: var(--visible); }
-.global-constellation__legend i.is-earth { border: 1px solid #74cfdf; background: transparent; }
+.global-constellation-stage__legend i.is-starlink { color: var(--gc-starlink); background: currentColor; }
+.global-constellation-stage__legend i.is-oneweb { color: var(--gc-oneweb); background: currentColor; }
 
-.global-constellation__metrics {
+.global-constellation-selector {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  right: clamp(5.25rem, 6vw, 7rem);
   display: grid;
-  gap: 8px;
-  margin: 16px 0 0;
+  width: min(11rem, 13vw);
+  gap: .65rem;
+  padding: .85rem 0 .85rem .9rem;
+  border-left: 2px solid rgba(246, 200, 108, .72);
+  transform: translateY(-50%);
+  color: #d8e9e5;
+  background: linear-gradient(90deg, rgba(2, 10, 16, .72), rgba(2, 10, 16, 0));
+  text-shadow: 0 2px 18px #020a10;
+  pointer-events: auto;
 }
 
-.global-constellation__density-readout {
+.global-constellation-selector__heading {
   display: grid;
-  gap: 4px;
-  margin-top: 11px;
-  padding: 10px 11px;
-  border-left: 3px solid var(--accent);
-  background: rgba(53, 43, 18, .34);
+  gap: .2rem;
 }
 
-.global-constellation__density-readout span,
-.global-constellation__density-readout strong,
-.global-constellation__density-readout small {
+.global-constellation-selector__heading span {
+  color: #f2faf7;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.global-constellation-selector small {
+  color: #aac8c4;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.global-constellation-selector > div[role="group"] {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .45rem;
+}
+
+.global-constellation-selector button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: .55rem .45rem;
+  border: 1px solid rgba(164, 202, 196, .45);
+  border-radius: 0;
+  color: #d7e9e5;
+  background: rgba(2, 10, 16, .76);
+  cursor: pointer;
+  font: 700 1rem/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+}
+
+.global-constellation-selector button[data-constellation="starlink"][aria-pressed="true"] {
+  border-color: var(--gc-starlink);
+  color: #03151a;
+  background: var(--gc-starlink);
+}
+
+.global-constellation-selector button[data-constellation="oneweb"][aria-pressed="true"] {
+  border-color: var(--gc-oneweb);
+  color: #171105;
+  background: var(--gc-oneweb);
+}
+
+.global-constellation-selector button:focus-visible {
+  outline: 3px solid #f7fbeb;
+  outline-offset: 3px;
+}
+
+/* Numbers live outside x=16%..84%; they are typography, never a card. */
+.global-constellation-edge-number {
+  top: 50%;
+  display: grid;
+  width: min(13.5rem, 11vw);
+  gap: .22rem;
+  transform: translateY(-50%);
+  text-shadow: 0 3px 28px #020a10, 0 0 18px #020a10;
+}
+
+.global-constellation-edge-number--left {
+  left: clamp(1.35rem, 3.5vw, 4rem);
+  justify-items: start;
+  text-align: left;
+}
+
+.global-constellation-edge-number--right {
+  right: clamp(1.35rem, 3.5vw, 4rem);
+  justify-items: end;
+  text-align: right;
+}
+
+.global-constellation-edge-number__label {
+  color: #aac8c4;
+  font: 700 clamp(1rem, .95vw, 1.1rem)/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: .14em;
+}
+
+.global-constellation-edge-number strong {
+  color: currentColor;
+  font-size: clamp(2.8rem, 4.5vw, 5.2rem);
+  font-weight: 620;
+  letter-spacing: -.035em;
+  line-height: .9;
+}
+
+.global-constellation-edge-number small {
+  color: #aac8c4;
+  font-size: clamp(1rem, 1.05vw, 1.2rem);
+  letter-spacing: .035em;
+  line-height: 1.3;
+}
+
+.global-constellation-edge-number.is-starlink { color: var(--gc-starlink); }
+.global-constellation-edge-number.is-oneweb { color: var(--gc-oneweb); }
+
+.global-constellation-question {
+  top: 39%;
+  display: grid;
+  width: 14rem;
+  transform: translateY(-50%);
+  text-shadow: 0 3px 24px #020a10, 0 0 18px #020a10;
+}
+
+.global-constellation-question--left { left: clamp(1.35rem, 3.5vw, 4rem); justify-items: start; }
+.global-constellation-question--right { right: clamp(1.35rem, 3.5vw, 4rem); justify-items: end; }
+.global-constellation-question--left-lower { top: 61%; left: clamp(1.35rem, 3.5vw, 4rem); justify-items: start; }
+.global-constellation-question--right-lower { top: 61%; right: clamp(5.25rem, 6vw, 7rem); justify-items: end; text-align: right; }
+
+.global-constellation-question span {
+  color: #e8f4e8;
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-size: clamp(1.8rem, 2.4vw, 3rem);
+  font-weight: 600;
+  letter-spacing: .035em;
+  line-height: 1.08;
+}
+
+.global-constellation-question span.is-starlink { color: var(--gc-starlink); }
+.global-constellation-question span.is-height { color: #e6f6df; }
+.global-constellation-question span.is-ntpu { color: var(--gc-ntpu); }
+
+.global-constellation-caption {
+  bottom: clamp(4.8rem, 6.2vw, 6.2rem);
+  left: 50%;
+  display: grid;
+  width: min(68vw, 58rem);
+  gap: .25rem;
+  transform: translateX(-50%);
+  color: #eff8f4;
+  font-size: clamp(1.35rem, 1.6vw, 1.8rem);
+  font-weight: 600;
+  letter-spacing: .035em;
+  line-height: 1.32;
+  text-align: center;
+  text-shadow: 0 2px 24px #020a10, 0 0 36px #020a10, 0 0 10px rgba(2, 10, 16, .9);
+}
+
+.global-constellation-edge-control {
+  bottom: clamp(10rem, 10vw, 12.5rem);
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: #b6d2cd;
+  font: 700 clamp(1rem, .95vw, 1.05rem)/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: .11em;
+  text-shadow: 0 2px 18px #020a10;
+}
+
+.global-constellation-edge-control--reveal {
+  left: clamp(1.35rem, 3.5vw, 4rem);
+  flex-direction: column;
+  align-items: flex-start;
+  width: min(14rem, 12vw);
+}
+
+.global-constellation-edge-control--reveal > span {
   display: block;
-}
-
-.global-constellation__density-readout span {
-  color: #b7a46a;
-  font: 700 9px/1.2 "IBM Plex Mono", monospace;
-  letter-spacing: .12em;
-}
-
-.global-constellation__density-readout strong {
-  color: var(--accent-bright);
-  font-size: 15px;
-}
-
-.global-constellation__density-readout small {
-  color: #9d9b7c;
-  font-size: 10px;
+  max-width: 100%;
+  color: #ffe8a2;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  letter-spacing: .02em;
   line-height: 1.45;
 }
 
-.global-constellation__metric {
-  min-height: 76px;
-  padding: 10px 11px;
-  border: 1px solid rgba(103, 180, 193, .2);
-  border-radius: 9px;
-  background: rgba(4, 25, 32, .62);
+.global-constellation-edge-control--reveal button {
+  width: 100%;
+  max-width: 14rem;
+  padding-inline: .65rem;
 }
 
-.global-constellation__metric dt,
-.global-constellation__metric dd,
-.global-constellation__metric small {
-  display: block;
-  margin: 0;
-}
-
-.global-constellation__metric dt {
-  color: #78999d;
-  font-size: 10px;
-}
-
-.global-constellation__metric dd {
-  margin-top: 5px;
-  color: #edfafa;
-  font: 700 18px/1.1 "IBM Plex Mono", monospace;
-  overflow-wrap: anywhere;
-}
-
-.global-constellation__metric small {
-  margin-top: 5px;
-  color: #638488;
-  font-size: 9px;
-}
-
-.global-constellation__provenance {
-  margin: auto 0 0;
-  padding-top: 17px;
-  color: #65878c;
-  font: 9px/1.55 "IBM Plex Mono", monospace;
-  overflow-wrap: anywhere;
-}
-
-.global-constellation__footer {
-  display: flex;
+.global-constellation-edge-control button,
+.global-constellation-finale-control button,
+.global-constellation-finale-control a {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  min-height: 28px;
-  max-width: 1720px;
-  margin: 0 auto;
-  color: #628187;
-  font-size: 9px;
+  box-sizing: border-box;
+  min-width: 48px;
+  min-height: 48px;
+  padding: .75rem 1.1rem;
+  border: 1px solid rgba(255, 223, 136, .76);
+  border-radius: 0;
+  color: #ffe8a2;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  font: 700 clamp(1rem, 1.05vw, 1.15rem)/1.1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+  letter-spacing: .02em;
+  pointer-events: auto;
+  text-decoration: none;
+  text-shadow: 0 1px 12px #020a10;
+}
+
+.global-constellation-edge-control button:hover,
+.global-constellation-finale-control button:hover,
+.global-constellation-finale-control a:hover {
+  color: #071619;
+  background: var(--gc-ntpu);
+}
+
+.global-constellation-edge-control button:disabled {
+  cursor: default;
+  opacity: .68;
+}
+
+.global-constellation-edge-control button:focus-visible,
+.global-constellation-finale-control button:focus-visible,
+.global-constellation-finale-control a:focus-visible {
+  outline: 3px solid #f7fbeb;
+  outline-offset: 4px;
+}
+
+.global-constellation-finale-copy {
+  top: clamp(1.55rem, 4vw, 3.8rem);
+  left: 50%;
+  width: min(70vw, 60rem);
+  transform: translateX(-50%);
+  color: #f4faf4;
+  text-align: center;
+  text-shadow: 0 2px 22px #020a10, 0 0 34px #020a10;
+}
+
+.global-constellation-finale-copy > div {
+  display: grid;
+  gap: .18rem;
+  font-size: clamp(1.35rem, 1.6vw, 1.8rem);
+  font-weight: 650;
   letter-spacing: .03em;
+  line-height: 1.32;
 }
 
-.global-constellation__footer strong {
-  color: #a7dfe2;
-  font: 700 9px/1 "IBM Plex Mono", monospace;
-  letter-spacing: .12em;
+.global-constellation-finale-control {
+  bottom: clamp(5.2rem, 7.5vw, 6.8rem);
+  display: flex;
+  align-items: center;
 }
 
-@media (max-width: 1120px) {
-  .global-constellation__workspace {
-    grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
-    height: auto;
-    min-height: 0;
+.global-constellation-finale-control--replay { left: clamp(1.35rem, 3.5vw, 4rem); gap: .55rem; }
+.global-constellation-finale-control--replay button { color: #d2ebe5; border-color: rgba(177, 228, 218, .62); }
+.global-constellation-finale-control a,
+.global-constellation-finale-control button { display: flex; }
+
+.global-constellation-accessible-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Genuine scene-anchored labels are not compositor chrome and are exempt from
+ * the central safe-area check. They have no card or pill container. */
+.global-height-label,
+.global-elevation-label,
+.global-ntpu-label {
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.global-height-label span,
+.global-elevation-label span,
+.global-ntpu-label span {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  letter-spacing: .04em;
+  text-shadow: 0 2px 18px #020a10, 0 0 14px #020a10, 0 0 6px #020a10;
+}
+
+.global-height-label span {
+  font: 700 clamp(1.125rem, 1.25vw, 1.35rem)/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+}
+
+.global-elevation-label span {
+  color: #effffc;
+  font: 700 clamp(1.25rem, 1.3vw, 1.5rem)/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  text-shadow: 0 2px 14px #020a10, 0 0 8px #020a10;
+}
+
+.global-elevation-label--angle span {
+  color: #fff3bd;
+  font-size: clamp(1.5rem, 1.55vw, 1.8rem);
+  transform: translate(-2.5rem, -1rem);
+}
+
+.global-elevation-label--horizon span { transform: translate(-.45rem, 1.1rem); }
+.global-elevation-label--zenith span { transform: translateY(-1.15rem); }
+.global-elevation-label--satellite span {
+  color: #effffc;
+  line-height: 1.25;
+  text-align: left;
+  transform: translate(.75rem, -1rem);
+}
+.global-elevation-label--satellite small {
+  color: #a9c8c2;
+  font-size: clamp(1.125rem, 1.05vw, 1.25rem);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.global-height-label span { color: #e6f6df; }
+.global-height-label--starlink span { color: var(--gc-starlink); }
+.global-height-label--oneweb span { color: var(--gc-oneweb); }
+.global-ntpu-label span {
+  color: #ffe4a1;
+  font: 700 clamp(1.375rem, 1.4vw, 1.625rem)/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: .08em;
+  transform: translate(-.65rem, 2.15rem);
+}
+
+.global-constellation-loading {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  gap: .85rem;
+  width: min(32rem, 80vw);
+  transform: translate(-50%, -50%);
+  color: var(--gc-ink);
+  text-align: center;
+}
+
+.global-constellation-loading__orb {
+  width: 4rem;
+  height: 4rem;
+  border: 1px solid rgba(88, 230, 208, .4);
+  border-radius: 50%;
+  box-shadow: 0 0 48px rgba(88, 230, 208, .2), inset 0 0 30px rgba(88, 230, 208, .1);
+}
+
+.global-constellation-loading strong { font-size: 1.15rem; }
+.global-constellation-loading small { color: var(--gc-muted); font-size: 1rem; line-height: 1.5; }
+
+.global-constellation-mobile-height-labels { display: none; }
+
+@media (max-width: 760px) {
+  .global-constellation-truth-cue {
+    top: 1rem;
+    width: calc(100vw - 2rem);
+    box-sizing: border-box;
+    padding-left: .65rem;
+    font-size: 1rem;
   }
 
-  .global-constellation__stage {
-    min-height: 610px;
+  .global-constellation-stage__legend { top: 6.5rem; right: 1rem; gap: .65rem; font-size: 1rem; }
+  .global-constellation-selector {
+    top: 8.2rem;
+    right: 4.5rem;
+    width: min(10rem, calc(100vw - 5.5rem));
+    padding: .55rem 0 .55rem .65rem;
+    transform: none;
   }
-
-  .global-constellation__insights {
-    grid-column: 1 / -1;
+  .global-constellation-selector__heading { display: flex; justify-content: space-between; gap: .45rem; }
+  .global-constellation-selector__heading small { display: none; }
+  .global-constellation-selector > small { display: none; }
+  .global-constellation-beat-counter {
+    top: 6.5rem;
+    left: 1rem;
   }
-
-  .global-constellation__metrics {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .global-constellation-story[data-beat="earth-question"] .global-constellation-beat-counter,
+  .global-constellation-story:is([data-beat="starlink-density"], [data-beat="oneweb-compare"]) .global-constellation-beat-counter {
+    top: 6.5rem;
   }
-
-  .global-constellation__provenance {
-    margin-top: 15px;
+  .global-constellation-edge-number {
+    width: min(14rem, calc(50vw - 1.5rem));
+    max-width: calc(50vw - 1.5rem);
+  }
+  .global-constellation-edge-number strong { font-size: clamp(2rem, 9vw, 3.2rem); }
+  .global-constellation-edge-number--left,
+  .global-constellation-question--left,
+  .global-constellation-question--left-lower,
+  .global-constellation-edge-control--reveal,
+  .global-constellation-finale-control--replay { left: 1rem; }
+  .global-constellation-edge-number--right,
+  .global-constellation-question--right,
+  .global-constellation-question--right-lower,
+  .global-constellation-edge-number--right,
+  .global-constellation-question--right,
+  .global-constellation-question--right-lower { right: 4.5rem; }
+  .global-constellation-question--right-lower {
+    width: min(12rem, calc(100vw - 6rem));
+  }
+  .global-constellation-caption {
+    right: 4.5rem;
+    left: 1rem;
+    bottom: 9rem;
+    width: auto;
+    transform: none;
+    font-size: 1rem;
+    text-align: left;
+  }
+  .global-constellation-edge-control { left: 1rem; bottom: 14.3rem; gap: .5rem; font-size: 1rem; }
+  .global-constellation-edge-control--reveal {
+    bottom: 16.5rem;
+    align-items: flex-start;
+    width: min(14rem, calc(100vw - 5.5rem));
+  }
+  .global-constellation-edge-control span { display: none; }
+  .global-constellation-finale-copy { top: 5.2rem; width: calc(100vw - 2rem); }
+  .global-constellation-finale-copy > div { font-size: 1rem; }
+  .global-constellation-finale-control { bottom: 10.6rem; }
+  .global-constellation-finale-control--replay {
+    right: auto;
+    flex-direction: row;
+    align-items: center;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+  }
+  .global-constellation-finale-control button,
+  .global-constellation-finale-control a {
+    min-height: 48px;
+    padding: .58rem .7rem;
+    font-size: 1rem;
+    white-space: nowrap;
   }
 }
 
-@media (max-width: 720px) {
-  .global-constellation__header {
+@media (max-width: 420px) {
+  .global-constellation-title__eyebrow { font-size: 1rem; letter-spacing: .11em; }
+  .global-constellation-title > strong { font-size: 1rem; }
+  .global-constellation-stage__legend { top: 5.6rem; right: 1rem; font-size: 1rem; }
+  .global-constellation-story[data-beat="earth-question"] .global-constellation-beat-counter,
+  .global-constellation-story:is([data-beat="starlink-density"], [data-beat="oneweb-compare"]) .global-constellation-beat-counter {
+    top: 7.4rem;
+  }
+  .global-constellation-beat-counter { top: 7.4rem; }
+  .global-constellation-selector { top: 9.75rem; }
+  .global-constellation-edge-number {
+    width: min(14rem, calc(50vw - 1.5rem));
+    max-width: calc(50vw - 1.5rem);
+  }
+  .global-constellation-edge-number__label { font-size: 1rem; }
+  .global-constellation-edge-number strong { font-size: 2.2rem; }
+  .global-constellation-edge-number small { font-size: 1rem; }
+
+  .global-constellation-story:is([data-beat="starlink-visible"], [data-beat="oneweb-visible"]) .global-constellation-edge-number {
+    top: 9.75rem;
+    width: 10rem;
+    transform: none;
+  }
+  .global-constellation-story:is([data-beat="starlink-visible"], [data-beat="oneweb-visible"]) .global-constellation-edge-number strong {
+    font-size: 2.35rem;
+  }
+  .global-elevation-label--satellite span {
+    transform: translate(-7rem, -3.5rem);
+  }
+  .global-elevation-label--satellite small,
+  .global-elevation-label--satellite .global-elevation-label__detail-break {
+    display: none;
+  }
+  .global-elevation-label--horizon span {
+    transform: translate(.5rem, 4.6rem);
+  }
+  .global-constellation-question { width: 8.5rem; }
+  .global-constellation-question span { font-size: 1.35rem; }
+  .global-constellation-question--right-lower span { font-size: 1.05rem; }
+  .global-constellation-truth-cue { top: .75rem; font-size: 1rem; letter-spacing: 0; }
+  .global-constellation-caption { bottom: 9.25rem; font-size: 1rem; }
+  .global-constellation-edge-control--reveal { bottom: 17.25rem; }
+  .global-constellation-story[data-beat="stable-finale"] .global-constellation-finale-copy { top: 2rem; }
+
+  /* The perspective camera can project the two guide anchors beyond the
+   * narrow viewport. The prototype supplies equivalent scene-owned text in a
+   * dedicated mobile edge lane so both labels remain readable and bounded. */
+  .global-height-label { display: none !important; }
+  .global-constellation-mobile-height-labels {
+    display: grid;
+    position: absolute;
+    z-index: 4;
+    top: 50%;
+    right: 0;
+    left: 0;
+    gap: 1.25rem;
+    padding: 0 5rem 0 1rem;
+    pointer-events: none;
+  }
+  .global-constellation-mobile-height-labels span {
+    position: static;
     display: block;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    box-sizing: border-box;
+    color: #e6f6df;
+    font: 700 1rem/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+    letter-spacing: .02em;
+    text-shadow: 0 2px 18px #020a10, 0 0 14px #020a10, 0 0 6px #020a10;
+    white-space: nowrap;
   }
+  .global-constellation-mobile-height-labels span[data-mobile-height-guide="starlink"] {
+    justify-self: start;
+    color: var(--gc-starlink);
+    text-align: left;
+  }
+  .global-constellation-mobile-height-labels span[data-mobile-height-guide="oneweb"] {
+    justify-self: end;
+    color: var(--gc-oneweb);
+    text-align: right;
+  }
+}
 
-  .global-constellation__badge {
-    width: fit-content;
-    min-width: 0;
-    margin-top: 16px;
+@media (max-width: 360px) {
+  .global-constellation-truth-cue { width: min(16rem, calc(100vw - 2rem)); gap: 0; }
+  .global-constellation-truth-cue span { white-space: nowrap; }
+  .global-constellation-story:is([data-beat="starlink-visible"], [data-beat="oneweb-visible"]) .global-constellation-edge-number {
+    top: 8.75rem;
+    width: auto;
   }
-
-  .global-constellation__workspace {
-    display: block;
+  .global-constellation-story:is([data-beat="starlink-visible"], [data-beat="oneweb-visible"]) .global-constellation-edge-number__label,
+  .global-constellation-story:is([data-beat="starlink-visible"], [data-beat="oneweb-visible"]) .global-constellation-edge-number small {
+    display: none;
   }
-
-  .global-constellation__panel {
-    margin-bottom: 13px;
+  .global-elevation-label--satellite span {
+    transform: translate(-6.4rem, -3.25rem);
   }
-
-  .global-constellation__stage {
-    min-height: 520px;
+  .global-elevation-label--horizon span {
+    transform: translate(.25rem, 2.2rem);
   }
-
-  .global-constellation__metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .global-constellation-selector {
+    padding-top: .4rem;
+    padding-bottom: .4rem;
   }
+  .global-constellation-selector__heading { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .global-constellation__selector button {
-    transition: none;
-  }
-}
-
-/* Act 1 · orbital-shell filter -------------------------------------------- */
-
-.global-constellation__shells {
-  display: grid;
-  gap: .3rem;
-  margin-block: .55rem .7rem;
-
-  button {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: .55rem;
-    padding: .5rem .65rem;
-    min-height: 40px;
-    border: 1px solid rgba(118, 234, 215, .16);
-    border-radius: 7px;
-    background: rgba(6, 22, 30, .62);
-    color: #cfe9ef;
-    font: inherit;
-    font-size: .84rem;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color .16s ease, background .16s ease;
-
-    &:hover:not(:disabled) { border-color: rgba(118, 234, 215, .42); }
-    &:disabled { opacity: .45; cursor: progress; }
-
-    &.is-active {
-      border-color: #76ead7;
-      background: rgba(118, 234, 215, .12);
-      color: #eafcff;
-    }
-
-    i {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: block;
-
-      &.is-all {
-        background: linear-gradient(135deg, #4ee1c1 0%, #f2b134 33%, #7aa5ff 66%, #ff7ab8 100%);
-      }
-    }
-
-    em {
-      font-style: normal;
-      font-variant-numeric: tabular-nums;
-      font-size: .78rem;
-      color: #8fb6c0;
-    }
-
-    &.is-active em { color: #bff3ea; }
-  }
-}
-
-.global-constellation__shell-claim {
-  margin: 0 0 .35rem;
-  padding: .55rem .65rem;
-  border-left: 2px solid rgba(118, 234, 215, .5);
-  background: rgba(8, 26, 34, .55);
-  color: #a9cdd6;
-  font-size: .8rem;
-  line-height: 1.55;
-}
-
-.global-constellation__honesty {
-  display: grid;
-  gap: .3rem;
-  margin-top: .8rem;
-  padding: .7rem .75rem;
-  border: 1px solid rgba(255, 215, 138, .32);
-  border-radius: 8px;
-  background: rgba(42, 33, 16, .5);
-
-  span {
-    font-size: .68rem;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: #ffd78a;
-  }
-
-  strong {
-    font-size: 1.02rem;
-    color: #ffe9bd;
-    font-variant-numeric: tabular-nums;
-  }
-
-  small {
-    color: #d6c39b;
-    font-size: .78rem;
-    line-height: 1.6;
-  }
-}
-
-/* Act 1 · time advance ---------------------------------------------------- */
-
-.global-constellation__timeline {
-  display: grid;
-  gap: .4rem;
-  margin-block: .5rem .7rem;
-  padding: .7rem .85rem;
-  border: 1px solid rgba(118, 234, 215, .18);
-  border-radius: 9px;
-  background: rgba(6, 22, 30, .58);
-}
-
-.global-constellation__timeline-head {
-  display: flex;
-  align-items: baseline;
-  gap: .7rem;
-  flex-wrap: wrap;
-
-  span {
-    font-size: .66rem;
-    letter-spacing: .13em;
-    color: #6f9aa4;
-  }
-
-  strong {
-    font-size: 1.02rem;
-    color: #eafcff;
-    font-variant-numeric: tabular-nums;
-    min-width: 6.5rem;
-  }
-
-  em {
-    font-style: normal;
-    font-size: .76rem;
-    color: #8fb6c0;
-    margin-left: auto;
-
-    &.is-error { color: #ff9a9a; }
-  }
-}
-
-.global-constellation__timeline input[type='range'] {
-  width: 100%;
-  accent-color: #76ead7;
-  cursor: grab;
-
-  &:disabled { cursor: progress; opacity: .5; }
-}
-
-.global-constellation__timeline-scale {
-  display: flex;
-  justify-content: space-between;
-  font-size: .68rem;
-  color: #6f9aa4;
-}
-
-.global-constellation__timeline-ready {
-  position: relative;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(118, 234, 215, .12);
-  overflow: hidden;
-
-  i {
-    position: absolute;
-    inset-block: 0;
-    left: 50%;
-    display: block;
-    background: rgba(118, 234, 215, .55);
-    transform: translateX(-50%);
-    transition: width .2s ease;
-  }
-}
-
-/* Act 1 · click to inspect ------------------------------------------------ */
-
-.global-constellation__pick-hint {
-  margin: .8rem 0 0;
-  padding: .6rem .7rem;
-  border: 1px dashed rgba(118, 234, 215, .28);
-  border-radius: 8px;
-  color: #7fa6b0;
-  font-size: .8rem;
-}
-
-.global-constellation__pick {
-  display: grid;
-  gap: .45rem;
-  margin-top: .8rem;
-  padding: .8rem .85rem;
-  border: 1px solid rgba(118, 234, 215, .4);
-  border-radius: 9px;
-  background: rgba(8, 32, 40, .78);
-
-  > span {
-    font-size: .66rem;
-    letter-spacing: .14em;
-    color: #76ead7;
-  }
-
-  > strong { font-size: 1.05rem; color: #eafcff; overflow-wrap: anywhere; }
-
-  dl {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .35rem .7rem;
-    margin: 0;
-
-    div { display: grid; gap: .1rem; }
-    dt { font-size: .68rem; color: #7fa6b0; }
-    dd { margin: 0; font-size: .9rem; color: #cfe9ef; font-variant-numeric: tabular-nums; }
-  }
-
-  small { color: #8fb6c0; font-size: .72rem; line-height: 1.55; }
-
-  button {
-    justify-self: start;
-    min-height: 34px;
-    padding: .35rem .9rem;
-    border: 1px solid rgba(118, 234, 215, .38);
-    border-radius: 7px;
-    background: transparent;
-    color: #a9dfe0;
-    font: inherit;
-    font-size: .78rem;
-    cursor: pointer;
-  }
-}
-
-/* Act 1 · transport ------------------------------------------------------- */
-
-.global-constellation__transport {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex-wrap: wrap;
-  margin-bottom: .1rem;
-
-  small { color: #6f9aa4; font-size: .74rem; margin-left: auto; }
-}
-
-.global-constellation__play {
-  min-height: 36px;
-  padding: .35rem 1.2rem;
-  border: 1px solid #76ead7;
-  border-radius: 8px;
-  background: #76ead7;
-  color: #052027;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  &:disabled { opacity: .45; cursor: progress; }
-}
-
-.global-constellation__speeds {
-  display: flex;
-  gap: .2rem;
-
-  button {
-    min-height: 32px;
-    padding: .2rem .6rem;
-    border: 1px solid rgba(118, 234, 215, .26);
-    border-radius: 6px;
-    background: transparent;
-    color: #a9cdd6;
-    font: inherit;
-    font-size: .76rem;
-    cursor: pointer;
-    &.is-active { background: rgba(118, 234, 215, .18); border-color: #76ead7; color: #eafcff; }
-    &:disabled { opacity: .45; }
-  }
-}
-
-
-/* These panels are flex columns, so every child defaults to flex-shrink: 1 and
-   gets squeezed to its min-height while its text overflows outside the box —
-   the next heading then lays out against the squeezed height and appears to sit
-   on top of it. Latent all along; readable type made it visible. */
-.global-constellation__controls > *,
-.global-constellation__insights > * {
-  flex: 0 0 auto;
-}
-
-.global-constellation__source-state {
-  min-height: 0;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
+  .global-constellation-chrome,
+  .global-constellation-beat-counter { transition: none; }
 }

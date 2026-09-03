@@ -190,7 +190,15 @@ test('groups mixed intra/inter pairs, preserves priority, and exposes one active
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-b' && link.beamId === 1)?.role, 'selected-target');
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-a' && link.beamId === 2)?.role, 'qualified');
   assert.equal(
+    candidates.find(link => link.key.satelliteId === 'sat-a' && link.beamId === 2)?.visual.coneStyle,
+    'wireframe',
+  );
+  assert.equal(
     candidates.find(link => link.key.satelliteId === 'sat-a' && link.beamId === 2)?.visual.dataLinkStyle,
+    'measurement-dashed',
+  );
+  assert.equal(
+    candidates.find(link => link.key.satelliteId === 'sat-b' && link.beamId === 1)?.visual.dataLinkStyle,
     'measurement-dashed',
   );
   assert.equal(candidates.find(link => link.key.satelliteId === 'sat-d') ?? null, null);
@@ -202,7 +210,7 @@ test('groups mixed intra/inter pairs, preserves priority, and exposes one active
   assert.equal(JSON.stringify(decision), decisionSnapshot);
 });
 
-test('evaluating reveals observed alternatives as ground-cell cues without raising a line cage', () => {
+test('evaluating keeps unpinned observed alternatives footprint-only without raising a line cage', () => {
   const baseline = decisionFixture();
   const observedStates = baseline.states.map(candidate => ({
     ...candidate,
@@ -229,9 +237,23 @@ test('evaluating reveals observed alternatives as ground-cell cues without raisi
 
   assert.ok(observed.length >= 2);
   assert.ok(observed.every(link => link.visual.coneStyle === 'hidden'));
+  assert.ok(observed.every(link => link.visual.footprintStyle === 'dotted'));
   assert.ok(observed.every(link => link.visual.dataLinkStyle === 'none'));
   assert.ok(observed.every(link => link.visual.isMeasurementOnly));
+  assert.ok(observed.every(link => !link.visual.isActiveDataLink));
   assert.equal(evaluatingPlan.activeDataLinkCount, 1);
+
+  const pinnedKey = candidateLinkKey('sat-c', 1);
+  const pinnedPlan = buildCandidatePresentationPlan(evaluating, DEFAULT_CANDIDATE_DISPLAY_BUDGET, {
+    pinnedKey,
+  });
+  const pinnedObserved = pinnedPlan.displayedLinks.find(link => sameCandidateLinkKey(link.key, pinnedKey));
+  assert.ok(pinnedObserved);
+  assert.equal(pinnedObserved?.role, 'observed');
+  assert.equal(pinnedObserved?.visual.coneStyle, 'wireframe');
+  assert.equal(pinnedObserved?.visual.dataLinkStyle, 'measurement-dashed');
+  assert.equal(pinnedObserved?.visual.isMeasurementOnly, true);
+  assert.equal(pinnedObserved?.visual.isActiveDataLink, false);
 
   const monitoring = createHandoverDecisionFrame({
     ...evaluating,
@@ -239,8 +261,12 @@ test('evaluating reveals observed alternatives as ground-cell cues without raisi
   });
   const monitoringObserved = buildCandidatePresentationPlan(monitoring)
     .displayedLinks.filter(link => link.role === 'observed');
+  assert.ok(monitoringObserved.length >= 2);
   assert.ok(monitoringObserved.every(link => link.visual.coneStyle === 'hidden'));
+  assert.ok(monitoringObserved.every(link => link.visual.footprintStyle === 'dotted'));
   assert.ok(monitoringObserved.every(link => link.visual.dataLinkStyle === 'none'));
+  assert.ok(monitoringObserved.every(link => link.visual.isMeasurementOnly));
+  assert.ok(monitoringObserved.every(link => !link.visual.isActiveDataLink));
 });
 
 test('hard-eligible pairs remain visible before their active trigger is satisfied', () => {
@@ -322,7 +348,7 @@ test('reserves distinct eligible satellite identities before observed decoration
   );
   assert.ok(displayedCandidates.every(link => (
     link.role === 'qualified' || link.role === 'hard-eligible'
-      ? link.visual.dataLinkStyle === 'measurement-dashed'
+      ? link.visual.coneStyle === 'wireframe' && link.visual.dataLinkStyle === 'measurement-dashed'
       : true
   )));
   assert.equal(plan.activeDataLinkCount, 1);
@@ -537,4 +563,131 @@ test('hidden scientific satellites cannot exhaust colours used by the bounded di
     plan.groups.map(group => group.satelliteId).sort(),
   );
   assert.equal(plan.scientificSatelliteGroupCount, 13);
+});
+
+test('full hard-eligible comparison keeps every measured beam and exposes the configured seven-beam roster', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const candidateKeys = [
+    ...Array.from({ length: 7 }, (_, index) => candidateLinkKey('sat-alpha', index + 1)),
+    ...Array.from({ length: 7 }, (_, index) => candidateLinkKey('sat-beta', index + 1)),
+  ];
+  const opportunities = [
+    opportunity(serving.satelliteId, serving.beamId),
+    ...candidateKeys.map(key => opportunity(key.satelliteId, key.beamId)),
+  ];
+  const decision = createHandoverDecisionFrame({
+    episodeId: 'full-seven-beam-comparison-episode',
+    sourceFrameId: SOURCE_FRAME_ID,
+    simTimeMs: 60_000,
+    phase: 'evaluating',
+    serving,
+    opportunities,
+    states: opportunities.map((item, index) => state(item.key, {
+      stable: index > 0,
+      rank: index > 0 ? index : 99,
+    })),
+    provisionalLeader: candidateKeys[0]!,
+    selectedTarget: null,
+    selectedKind: null,
+    selectionHoldSec: 0,
+    selectionHoldRequiredSec: 1,
+    mode: 'sinr-offset',
+    recentCommit: null,
+  });
+
+  const plan = buildCandidatePresentationPlan(decision, DEFAULT_CANDIDATE_DISPLAY_BUDGET, {
+    displayAllHardEligibleCandidates: true,
+    configuredBeamCount: 7,
+  });
+
+  assert.deepEqual(plan.groups.map(group => group.satelliteId), [
+    'sat-serving',
+    'sat-alpha',
+    'sat-beta',
+  ]);
+  assert.equal(plan.displayedCandidatePairCount, 14);
+  assert.equal(plan.hiddenCandidatePairCount, 0);
+  assert.equal(plan.hiddenSatelliteGroupCount, 0);
+  for (const group of plan.groups) {
+    assert.deepEqual(group.beamRoster.map(entry => entry.beamId), [1, 2, 3, 4, 5, 6, 7]);
+    assert.equal(group.beamRoster.filter(entry => entry.observed).length, group.isServingSatellite ? 1 : 7);
+    assert.ok(group.beamRoster.some(entry => entry.status === 'not-observed') === group.isServingSatellite);
+  }
+  assert.equal(plan.activeDataLinkCount, 1);
+});
+
+test('full comparison keeps observed-only satellite groups in overflow', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const eligibleKeys = [
+    candidateLinkKey('sat-alpha', 1),
+    candidateLinkKey('sat-beta', 1),
+  ];
+  const observedOnly = candidateLinkKey('sat-observed-only', 1);
+  const opportunities = [
+    opportunity(serving.satelliteId, serving.beamId),
+    ...eligibleKeys.map(key => opportunity(key.satelliteId, key.beamId)),
+    opportunity(observedOnly.satelliteId, observedOnly.beamId, { hardPass: false }),
+  ];
+  const decision = createHandoverDecisionFrame({
+    episodeId: 'full-comparison-observed-overflow-episode',
+    sourceFrameId: SOURCE_FRAME_ID,
+    simTimeMs: 60_000,
+    phase: 'evaluating',
+    serving,
+    opportunities,
+    states: [
+      state(serving, { stable: true, rank: 99 }),
+      ...eligibleKeys.map((key, index) => state(key, { stable: true, rank: index + 1 })),
+      state(observedOnly, { hardEligibility: 'ineligible', triggerStatus: 'not-satisfied' }),
+    ],
+    provisionalLeader: null,
+    selectedTarget: null,
+    selectedKind: null,
+    selectionHoldSec: 0,
+    selectionHoldRequiredSec: 1,
+    mode: 'sinr-offset',
+    recentCommit: null,
+  });
+
+  const plan = buildCandidatePresentationPlan(decision, DEFAULT_CANDIDATE_DISPLAY_BUDGET, {
+    displayAllHardEligibleCandidates: true,
+    configuredBeamCount: 7,
+  });
+
+  assert.deepEqual(plan.groups.map(group => group.satelliteId), [
+    'sat-serving',
+    'sat-alpha',
+    'sat-beta',
+  ]);
+  assert.equal(plan.displayedSatelliteGroupCount, 3);
+  assert.ok(plan.displayedSatelliteGroupCount <= plan.budget.maxSatelliteGroups);
+  assert.equal(plan.hiddenSatelliteGroupCount, 1);
+  assert.equal(plan.overflowSatelliteGroupCount, 1);
+  assert.equal(plan.overflow.bySatellite.some(entry => entry.satelliteId === 'sat-observed-only'), true);
+  assert.equal(plan.displayedCandidatePairCount, 2);
+  assert.equal(plan.hiddenCandidatePairCount, 1);
+});
+
+test('homepage trigger-only comparison excludes merely hard-eligible candidates from the story', () => {
+  const decision = decisionFixture();
+  const filteredDecision = createHandoverDecisionFrame({
+    ...decision,
+    states: decision.states.map(item => item.key.satelliteId === 'sat-b'
+      ? { ...item, triggerStatus: 'not-satisfied' as const, stable: false, rank: null }
+      : item),
+    provisionalLeader: null,
+    selectedTarget: null,
+    selectedKind: null,
+  });
+
+  const plan = buildCandidatePresentationPlan(filteredDecision, DEFAULT_CANDIDATE_DISPLAY_BUDGET, {
+    displayAllHardEligibleCandidates: true,
+    displayOnlyTriggerSatisfiedCandidates: true,
+    configuredBeamCount: 7,
+  });
+
+  assert.deepEqual(plan.groups.map(group => group.satelliteId), ['sat-a', 'sat-c']);
+  assert.equal(plan.displayedCandidatePairCount, 3);
+  assert.equal(plan.overflow.bySatellite.some(entry => entry.satelliteId === 'sat-b'), true);
+  assert.equal(plan.displayedLinks.some(link => link.satelliteId === 'sat-b'), false);
 });

@@ -94,6 +94,10 @@ export interface Shell {
   inclinationDeg: number;
   planes: number;
   satsPerPlane: number;
+  /** Optional Walker plane rotation used by candidate-rich sensitivity profiles. */
+  raanOffsetDeg?: number;
+  /** Optional along-track phase rotation used by candidate-rich sensitivity profiles. */
+  phaseOffsetDeg?: number;
   /** Live-sim initializer: one service-area pass target per plane when satsPerPlane is 1. */
   serviceAreaPassTargetsSec?: number[];
   /** Disable visual-only phase jitter when a profile must keep exact in-plane spacing. */
@@ -180,6 +184,8 @@ export interface Profile {
     policy: 'sinr-offset';
     sinrThresholdDb: number;
     offsetDb: number;
+    /** Teaching/readability floor: do not select a replacement with fewer than this many distinct alternate satellites. */
+    minimumDistinctCandidateSatellites?: number;
     triggerTimeSec: number;
     pingPongGuardSec: number;
     pendingTargetHoldSec: number;

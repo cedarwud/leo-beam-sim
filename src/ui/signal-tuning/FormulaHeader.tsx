@@ -152,6 +152,7 @@ export function FormulaRow({
   emphasis = false,
   testId,
   help,
+  formulaFontSize = UI_TOKENS.type.size.subheading,
 }: {
   expression: ReactNode;
   note?: string;
@@ -165,6 +166,8 @@ export function FormulaRow({
   emphasis?: boolean;
   testId?: string;
   help?: { helpId: string; title: string; body: string; effect?: string };
+  /** Formula-only size override; source/explanatory copy keeps its own type scale. */
+  formulaFontSize?: number;
 }) {
   return (
     <div
@@ -186,7 +189,7 @@ export function FormulaRow({
       }}>
         <div style={{
           ...formulaTextStyle,
-          fontSize: UI_TOKENS.type.size.subheading,
+          fontSize: formulaFontSize,
           lineHeight: 1.35,
           color: emphasis ? accent : UI_TOKENS.color.text.math,
           minWidth: 0,
@@ -273,6 +276,7 @@ export function FormulaFraction({
           fontSize: termFontSize,
           lineHeight: 1.2,
           color: numeratorAccent,
+          whiteSpace: 'nowrap',
         }}>
           {numerator}
         </span>
@@ -287,6 +291,7 @@ export function FormulaFraction({
           fontSize: termFontSize,
           lineHeight: 1.2,
           color: denominatorAccent,
+          whiteSpace: 'nowrap',
         }}>
           {denominator}
         </span>

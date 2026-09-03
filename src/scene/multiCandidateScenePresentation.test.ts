@@ -18,6 +18,7 @@ import {
   DEFAULT_CANDIDATE_DISPLAY_BUDGET,
   type CandidateDisplayBudget,
 } from '../engine/handover/candidatePresentationPlan';
+import { resolveHandoverAuthorityJoin } from './handoverAuthorityJoin';
 import { buildMultiCandidateScenePresentation } from './multiCandidateScenePresentation';
 
 const SOURCE_FRAME_ID = 'walker-frame-scene-presentation-1';
@@ -96,6 +97,8 @@ function decision(
     readonly simTimeMs?: number;
     readonly recentCommit?: HandoverDecisionFrame['recentCommit'];
     readonly phase?: HandoverDecisionFrame['phase'];
+    readonly selectedTarget?: ReturnType<typeof candidateLinkKey> | null;
+    readonly selectedKind?: HandoverDecisionFrame['selectedKind'];
   } = {},
 ): HandoverDecisionFrame {
   const opportunities = keys.map(key => opportunity(key.satelliteId, key.beamId));
@@ -111,8 +114,8 @@ function decision(
       rank: index + 1,
     })),
     provisionalLeader: serving === null ? null : keys.find(key => !sameKey(key, serving)) ?? null,
-    selectedTarget: null,
-    selectedKind: null,
+    selectedTarget: options.selectedTarget ?? null,
+    selectedKind: options.selectedKind ?? null,
     selectionHoldSec: 0,
     selectionHoldRequiredSec: 1,
     mode: 'sinr-offset',
@@ -254,6 +257,116 @@ test('never emits a solid data link for a candidate', () => {
   assert.ok(scene.instructions.filter(item => item.isCandidate).every(item => item.link.style !== 'solid-data'));
   assert.ok(scene.instructions.filter(item => item.isCandidate).every(item => item.link.isMeasurementOnly));
   assert.equal(scene.activeDataLinkCount, 1);
+  assert.equal(scene.solidDataLinkCount, 1);
+});
+
+test('intra transition keeps same-satellite source and target as distinct role-mapped pairs', () => {
+  const source = candidateLinkKey('sat-one', 1);
+  const target = candidateLinkKey('sat-one', 2);
+  const otherBeam = candidateLinkKey('sat-one', 3);
+  const plan = buildCandidatePresentationPlan(
+    decision(source, [source, target, otherBeam], {
+      phase: 'switching',
+      selectedTarget: target,
+      selectedKind: 'intra-satellite',
+    }),
+  );
+  const scene = buildMultiCandidateScenePresentation(plan);
+  const transitionPairs = scene.instructions
+    .filter(item => item.transitionRole !== null)
+    .map(item => item.pairKey);
+
+  assert.deepEqual(transitionPairs, [
+    `${source.satelliteId}|${source.beamId}`,
+    `${target.satelliteId}|${target.beamId}`,
+  ]);
+  const sourceInstruction = scene.instructions.find(item => item.pairKey === `${source.satelliteId}|${source.beamId}`);
+  const targetInstruction = scene.instructions.find(item => item.pairKey === `${target.satelliteId}|${target.beamId}`);
+  assert.equal(sourceInstruction?.transitionRole, 'source');
+  assert.equal(targetInstruction?.transitionRole, 'target');
+  assert.equal(sourceInstruction?.cone.style, 'restrained-translucent');
+  assert.equal(targetInstruction?.cone.style, 'low-alpha');
+  assert.notEqual(sourceInstruction?.cone.style, targetInstruction?.cone.style);
+  assert.equal(targetInstruction?.footprint.style, 'double-line');
+  assert.equal(targetInstruction?.link.style, 'measurement-dashed');
+  assert.equal(sourceInstruction?.identity.satellite.cssColor, targetInstruction?.identity.satellite.cssColor);
+  assert.notEqual(sourceInstruction?.identity.beam?.cssColor, targetInstruction?.identity.beam?.cssColor);
+  assert.equal(scene.instructions.find(item => item.pairKey === `${otherBeam.satelliteId}|${otherBeam.beamId}`)?.transitionRole, null);
+  assert.equal(scene.instructions.filter(item => item.isServing).length, 1);
+  assert.equal(scene.solidDataLinkCount, 1);
+});
+
+test('inter transition isolates serving and accepted target while retaining qualified evidence fan-out', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const acceptedTarget = candidateLinkKey('sat-target', 1);
+  const otherCandidate = candidateLinkKey('sat-other', 1);
+  const plan = buildCandidatePresentationPlan(
+    decision(serving, [serving, acceptedTarget, otherCandidate], {
+      phase: 'switching',
+      selectedTarget: acceptedTarget,
+      selectedKind: 'inter-satellite',
+    }),
+  );
+  const scene = buildMultiCandidateScenePresentation(plan);
+  const transition = scene.instructions.filter(item => item.transitionRole !== null);
+
+  assert.deepEqual(
+    transition.map(item => item.pairKey),
+    [
+      `${serving.satelliteId}|${serving.beamId}`,
+      `${acceptedTarget.satelliteId}|${acceptedTarget.beamId}`,
+    ],
+  );
+  assert.equal(scene.instructions.find(item => item.pairKey === `${acceptedTarget.satelliteId}|${acceptedTarget.beamId}`)?.link.style, 'measurement-dashed');
+  assert.equal(scene.instructions.find(item => item.pairKey === `${acceptedTarget.satelliteId}|${acceptedTarget.beamId}`)?.transitionRole, 'target');
+  assert.equal(scene.instructions.find(item => item.pairKey === `${otherCandidate.satelliteId}|${otherCandidate.beamId}`)?.transitionRole, null);
+  assert.equal(scene.instructions.find(item => item.pairKey === `${otherCandidate.satelliteId}|${otherCandidate.beamId}`)?.cone.style, 'wireframe');
+  assert.equal(scene.candidates.length, 2);
+  assert.equal(scene.solidDataLinkCount, 1);
+});
+
+test('ignores an authority join from another accepted episode', () => {
+  const source = candidateLinkKey('sat-one', 1);
+  const target = candidateLinkKey('sat-one', 2);
+  const plan = buildCandidatePresentationPlan(
+    decision(source, [source, target], {
+      phase: 'switching',
+      selectedTarget: target,
+      selectedKind: 'intra-satellite',
+    }),
+  );
+  const foreignJoin = resolveHandoverAuthorityJoin(
+    decision(source, [source, target], {
+      episodeId: 'foreign-scene-presentation-episode',
+      phase: 'switching',
+      selectedTarget: target,
+      selectedKind: 'intra-satellite',
+    }),
+  );
+  const scene = buildMultiCandidateScenePresentation(plan, foreignJoin);
+
+  assert.ok(scene.instructions.every(item => item.transitionRole === null));
+  assert.equal(scene.solidDataLinkCount, 1);
+  assert.equal(scene.instructions.find(item => item.pairKey === `${target.satelliteId}|${target.beamId}`)?.cone.style, 'low-alpha');
+});
+
+test('full comparison scene preserves every eligible beam join from the accepted frame', () => {
+  const serving = candidateLinkKey('sat-serving', 1);
+  const candidates = [
+    ...Array.from({ length: 7 }, (_, index) => candidateLinkKey('sat-alpha', index + 1)),
+    ...Array.from({ length: 7 }, (_, index) => candidateLinkKey('sat-beta', index + 1)),
+  ];
+  const plan = buildCandidatePresentationPlan(
+    decision(serving, [serving, ...candidates]),
+    DEFAULT_CANDIDATE_DISPLAY_BUDGET,
+    { displayAllHardEligibleCandidates: true, configuredBeamCount: 7 },
+  );
+  const scene = buildMultiCandidateScenePresentation(plan);
+
+  assert.equal(scene.candidates.length, 14);
+  assert.equal(scene.instructions.filter(item => item.isServing).length, 1);
+  assert.ok(scene.instructions.every(item => item.sourceFrameId === SOURCE_FRAME_ID));
+  assert.equal(new Set(scene.candidates.map(item => item.satelliteId)).size, 2);
   assert.equal(scene.solidDataLinkCount, 1);
 });
 

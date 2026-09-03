@@ -51,8 +51,12 @@ export interface AppRuntimeConfigInput {
   readonly appMode: AppExperienceMode;
   readonly effectiveProfile: Profile;
   readonly demoStartOffsetSec: number;
+  /** Explicit UTC epoch derived from the public Walker scenario time control. */
+  readonly liveEpochUtcMs?: number;
   readonly liveTimelineSeekTargetSec?: number;
   readonly liveTimelineSeekRequestKey?: string;
+  /** Homepage Director only; normal timeline seeks remain cheap rebase seeks. */
+  readonly liveTimelineSeekSourceHistoryReplay?: boolean;
   /** Explicit measurement-window reset; does not rebuild or retune the simulation. */
   readonly measurementResetEpoch?: number;
   readonly signalResetKey: string;
@@ -106,12 +110,17 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     appMode: input.appMode,
     presentationMode: resolvePresentationMode(input.effectiveProfile),
     replay: {
-      epochUtcMs: APP_EPOCH_MS,
+      epochUtcMs: Number.isFinite(input.liveEpochUtcMs)
+        ? input.liveEpochUtcMs as number
+        : APP_EPOCH_MS,
       startOffsetSec: input.demoStartOffsetSec,
       loop: true,
       windowLengthSec: LIVE_SIM_TIMELINE_DURATION_SEC,
       seekTargetSec: input.liveTimelineSeekTargetSec,
       seekRequestKey: input.liveTimelineSeekRequestKey,
+      ...(input.liveTimelineSeekSourceHistoryReplay === true
+        ? { sourceHistoryReplay: true }
+        : {}),
     },
     measurementResetEpoch: input.measurementResetEpoch ?? 0,
     signalResetKey: input.signalResetKey,
@@ -155,9 +164,10 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     // population spreads across the WHOLE map and `generateUePositions` takes the
     // rectangle path (this `ueDistributionScope` radius is only the fallback when
     // no rectangle area is set). Coverage is the constellation's job: a single
-    // candidate-rich satellite reaches ~154 km (16 km footprint + 27.6 km lattice
-    // + 110.5 km steering @ 12 deg) > the 100 km map half-width, so map-wide UEs
-    // stay served. The PRIMARY UE still anchors at the observer (cinema unaffected).
+    // candidate-rich's configured 40° steering envelope reaches well beyond the
+    // 100 km map half-width, so map-wide UEs stay served while multiple Walker
+    // alternatives remain measurable. The PRIMARY UE still anchors at the
+    // observer (cinema unaffected).
     primaryJogEastKm: input.primaryJogEastKm ?? 0,
     primaryJogNorthKm: input.primaryJogNorthKm ?? 0,
     manualHandoverRequestId: input.manualHandoverRequestId,

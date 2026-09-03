@@ -71,6 +71,11 @@ import {
   deriveLiveSceneFields,
 } from './deriveLiveSceneFields';
 
+export interface LiveSimToSceneOptions {
+  /** Explicit producer identity; omitted callers retain the historical Walker path. */
+  readonly source?: 'walker' | 'archived-tle';
+}
+
 function projectLiveLink(
   sample: SimFrame['linkSamples'][number],
   targetId: string,
@@ -103,11 +108,13 @@ function projectLiveLink(
  * @param sim       the live-engine output for the current frame.
  * @param geometry  the live-built `SceneGeometry` (must carry
  *                  `LIVE_GEOMETRY_BRAND`; runtime-asserted).
+ * @param options   explicit producer identity for the shared renderer seam.
  * @returns a `NormalizedSceneFrame` for the renderer.
  */
 export function liveSimToScene(
   sim: SimFrame,
   geometry: SceneGeometry,
+  options: LiveSimToSceneOptions = {},
 ): NormalizedSceneFrame {
   // Defence-in-depth: SDD §3 Q7 last paragraph.
   if (!isLiveSceneGeometry(geometry)) {
@@ -269,7 +276,11 @@ export function liveSimToScene(
   let transitionProgress = derived.transitionProgress;
   let eventRoles = derived.eventRoles;
 
-  if (primaryServingRecord) {
+  // The Walker cell-truth lane owns the override below. Archived-TLE frames
+  // already carry the canonical selected/candidate links and handover fields;
+  // letting this lane replace them with cell-truth summaries would erase the
+  // published pending target, TTT progress, and committed transition.
+  if (primaryServingRecord && options.source !== 'archived-tle') {
     const authoritativeDecision = sim.handoverDecisionFrame ?? null;
     const recordServingBeamId = primaryServingRecord.servingBeamId
       ?? primaryServingRecord.servingLinkSample?.beamId

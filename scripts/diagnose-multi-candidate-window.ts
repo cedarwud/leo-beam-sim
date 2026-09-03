@@ -11,10 +11,11 @@
  * relax steering/SINR/TTT thresholds, add candidates, or choose a target.
  *
  * Default run: the candidate-rich homepage profile, latest Walker teaching
- * epoch, 100 UEs, and the complete 7200 s window at a deterministic 1 s
- * diagnostic cadence.  The cadence is intentionally printed: it is suitable
- * for diagnosing the time-integrated gates, but it is not a claim about the
- * browser's render-FPS sampling.
+ * epoch, the homepage's shared primary-UE story trajectory, 100 UEs, and the
+ * complete 7200 s window at a deterministic 1 s diagnostic cadence. The
+ * cadence is intentionally printed: it is suitable for diagnosing the
+ * time-integrated gates, but it is not a claim about the browser's render-FPS
+ * sampling.
  *
  * Run directly with:
  *   node --import tsx/esm scripts/diagnose-multi-candidate-window.ts
@@ -38,6 +39,8 @@ import {
   DEFAULT_UE_MOBILITY_PARAMS,
 } from '../src/engine/ue/multiUeMobility.ts';
 import { loadProfile } from '../src/profiles/index.ts';
+import type { Profile } from '../src/profiles/types.ts';
+import { HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM } from '../src/homepage/controller/homepageStoryScenario.ts';
 import {
   createBeamLayoutsByShellId,
   createRuntimeFrameStepState,
@@ -100,6 +103,8 @@ interface DecisionReceiptSummary {
 }
 
 export interface MultiCandidateWindowOptions {
+  /** Optional diagnostic-only profile variant. Production callers keep the checked-in profile. */
+  readonly profile?: Profile;
   readonly epochUtcMs?: number;
   readonly durationSec?: number;
   readonly stepSec?: number;
@@ -124,6 +129,8 @@ export interface MultiCandidateWindowReport {
   readonly durationSec: number;
   readonly stepSec: number;
   readonly ueCount: number;
+  readonly primaryJogEastKm: number;
+  readonly primaryJogNorthKm: number;
   readonly frames: number;
   readonly decisionFrames: number;
   readonly observedAll: { readonly max: number; readonly uniquePairs: number };
@@ -133,6 +140,11 @@ export interface MultiCandidateWindowReport {
   readonly stable: { readonly max: number; readonly frames: number; readonly first: TimeMark | null };
   /** Number of sampled frames with at least two eligible alternatives. */
   readonly multipleEligibleFrames: number;
+  /** Number of sampled frames with at least two eligible alternate satellites. */
+  readonly multipleEligibleSatelliteFrames: number;
+  readonly eligibleDistinctCandidateSatellites: { readonly max: number; readonly frames: number };
+  readonly selectionFloorSatisfiedFrames: number;
+  readonly selectionFloorBlockedFrames: number;
   readonly provisionalLeaderFrames: number;
   readonly provisionalLeaderTimes: TimeRange;
   readonly selectedFrames: number;
@@ -261,6 +273,8 @@ function parseArgs(argv: readonly string[]): MultiCandidateWindowOptions {
 export interface RequiredFlowSummary {
   readonly observedAlternativesMax: number;
   readonly eligibleAlternativesMax: number;
+  /** Optional stronger check for distinct alternate satellite identities. */
+  readonly eligibleDistinctSatellitesMax?: number;
   readonly provisionalLeaderFrames: number;
   readonly selectedFrames: number;
   readonly decisionCommits: number;
@@ -277,7 +291,9 @@ export interface RequiredFlowSummary {
 export function requiredFlowFailures(summary: RequiredFlowSummary): readonly string[] {
   const failures: string[] = [];
   if (summary.observedAlternativesMax < 1) failures.push('no observed alternative candidate pair');
-  if (summary.eligibleAlternativesMax < 2) failures.push('fewer than two simultaneously eligible alternatives');
+  const eligibleDistinctSatellitesMax = summary.eligibleDistinctSatellitesMax
+    ?? summary.eligibleAlternativesMax;
+  if (eligibleDistinctSatellitesMax < 2) failures.push('fewer than two simultaneously eligible alternatives');
   if (summary.provisionalLeaderFrames < 1) failures.push('no provisional leader frame');
   if (summary.selectedFrames < 1) failures.push('no selected target frame');
   if (summary.decisionCommits < 1) failures.push('no decision commit receipt');
@@ -297,7 +313,7 @@ export function runMultiCandidateWindow(
   positiveFinite(stepSec, 'stepSec');
   assert.ok(durationSec <= SIM_DURATION_SEC, 'diagnostic duration cannot exceed canonical 7200 s');
 
-  const loadedProfile = loadProfile(PROFILE_ID);
+  const loadedProfile = options.profile ?? loadProfile(PROFILE_ID);
   // The threshold override is a counterfactual diagnostic input.  Keep the
   // checked-in profile and all runtime production callers unchanged while
   // allowing a differential sweep to isolate the SINR gate.
@@ -359,6 +375,8 @@ export function runMultiCandidateWindow(
     true,
   );
   assert.ok(cellModel !== null, 'homepage cell model must be available behind the authority gate');
+  const { east: primaryJogEastKm, north: primaryJogNorthKm } =
+    HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM;
 
   const replay = {
     epochUtcMs,
@@ -387,6 +405,11 @@ export function runMultiCandidateWindow(
   let decisionFrames = 0;
   let eligibleFrames = 0;
   let multipleEligibleFrames = 0;
+  let multipleEligibleSatelliteFrames = 0;
+  let maxEligibleDistinctCandidateSatellites = 0;
+  let eligibleDistinctCandidateSatelliteFrames = 0;
+  let selectionFloorSatisfiedFrames = 0;
+  let selectionFloorBlockedFrames = 0;
   let qualifiedFrames = 0;
   let stableFrames = 0;
   let provisionalLeaderFrames = 0;
@@ -422,6 +445,8 @@ export function runMultiCandidateWindow(
     ueDistributionMode: 'seven-cell-asymmetric',
     uePrimaryAnchorMode: 'observer',
     ueDistributionScope: 'beam-footprint',
+    primaryJogEastKm,
+    primaryJogNorthKm,
     ueDistributionCellCentersKm: cellCentersKm,
     ueDistributionCellRadiusKm: cellLayout.cellRadiusKm,
     ueMobilityMode: 'static',
@@ -480,6 +505,26 @@ export function runMultiCandidateWindow(
       peakObservedAlternatives = peakAt(alternativeKeys.length, time, alternativeKeys);
     }
     const eligibleStates = states.filter(state => state.hardEligibility === 'eligible');
+    // Prefer the authority's pre-commit selection-gate count.  On a commit
+    // frame `decision.serving` already contains the new service link, while
+    // the gate was evaluated against the old one; deriving from the post-
+    // commit frame would therefore under-count alternate satellites exactly
+    // at the handover boundary.  The state-derived path is kept for legacy
+    // frames that predate selectionGate.
+    const servingSatelliteId = decision.serving?.satelliteId ?? null;
+    const eligibleAlternateStates = eligibleStates.filter(state => (
+      servingSatelliteId === null || state.key.satelliteId !== servingSatelliteId
+    ));
+    const eligibleDistinctCandidateSatelliteCount = decision.selectionGate?.eligibleDistinctCandidateSatellites
+      ?? new Set(eligibleAlternateStates.map(state => state.key.satelliteId)).size;
+    maxEligibleDistinctCandidateSatellites = Math.max(
+      maxEligibleDistinctCandidateSatellites,
+      eligibleDistinctCandidateSatelliteCount,
+    );
+    if (eligibleDistinctCandidateSatelliteCount > 0) eligibleDistinctCandidateSatelliteFrames += 1;
+    if (eligibleDistinctCandidateSatelliteCount >= 2) multipleEligibleSatelliteFrames += 1;
+    if (decision.selectionGate?.satisfied === true) selectionFloorSatisfiedFrames += 1;
+    if (decision.selectionGate?.satisfied === false) selectionFloorBlockedFrames += 1;
     const qualifiedStates = states.filter(state => (
       state.hardEligibility === 'eligible' && state.triggerStatus === 'satisfied'
     ));
@@ -588,6 +633,8 @@ export function runMultiCandidateWindow(
       ueDistributionMode: 'seven-cell-asymmetric',
       uePrimaryAnchorMode: 'observer',
       ueDistributionScope: 'beam-footprint',
+      primaryJogEastKm,
+      primaryJogNorthKm,
       ueDistributionCellCentersKm: cellCentersKm,
       ueDistributionCellRadiusKm: cellLayout.cellRadiusKm,
       ueMobilityMode: 'static',
@@ -609,17 +656,26 @@ export function runMultiCandidateWindow(
   assert.ok(decisionFrames > 0, 'authority gate must publish a decision frame');
 
   return {
-    profileId: PROFILE_ID,
+    profileId: profile.id,
     epochUtcMs,
     durationSec,
     stepSec,
     ueCount,
+    primaryJogEastKm,
+    primaryJogNorthKm,
     frames,
     decisionFrames,
     observedAll: { max: peakObservedAll.count, uniquePairs: observedAllPairs.size },
     observedAlternatives: { max: peakObservedAlternatives.count, uniquePairs: observedAlternativePairs.size },
     eligible: { max: peakEligible.count, frames: eligibleFrames, first: firstEligible },
     multipleEligibleFrames,
+    multipleEligibleSatelliteFrames,
+    eligibleDistinctCandidateSatellites: {
+      max: maxEligibleDistinctCandidateSatellites,
+      frames: eligibleDistinctCandidateSatelliteFrames,
+    },
+    selectionFloorSatisfiedFrames,
+    selectionFloorBlockedFrames,
     qualified: { max: peakQualified.count, frames: qualifiedFrames, first: firstQualified },
     stable: { max: peakStable.count, frames: stableFrames, first: firstStable },
     provisionalLeaderFrames,
@@ -685,12 +741,14 @@ function formatMeasurementRanges(ranges: ReadonlyMap<GateCode, GateMeasurementRa
 
 function printReport(report: MultiCandidateWindowReport): void {
   const epoch = new Date(report.epochUtcMs).toISOString();
-  console.log(`[${DIAG}] profile=${report.profileId} epoch=${epoch} duration=${report.durationSec}s step=${report.stepSec}s ueCount=${report.ueCount}`);
+  console.log(`[${DIAG}] profile=${report.profileId} epoch=${epoch} duration=${report.durationSec}s step=${report.stepSec}s ueCount=${report.ueCount} primaryJog=(${report.primaryJogEastKm},${report.primaryJogNorthKm})km`);
   console.log(`[${DIAG}] frames=${report.frames} decisionFrames=${report.decisionFrames}`);
   console.log(`[${DIAG}] ${formatPeak('observed(all opportunities)', report.peakObservedAll)} unique=${report.observedAll.uniquePairs}`);
   console.log(`[${DIAG}] ${formatPeak('observed(alternatives)', report.peakObservedAlternatives)} unique=${report.observedAlternatives.uniquePairs}`);
   console.log(`[${DIAG}] ${formatPeak('eligible(alternatives)', report.peakEligible)} frames=${report.eligible.frames} first=${markText(report.eligible.first)}`);
   console.log(`[${DIAG}] eligible>=2 frames=${report.multipleEligibleFrames} first=${report.firstMultipleEligible === null ? 'none' : markText(report.firstMultipleEligible.at)}`);
+  console.log(`[${DIAG}] eligible>=2 distinct satellites frames=${report.multipleEligibleSatelliteFrames} maxDistinct=${report.eligibleDistinctCandidateSatellites.max} framesWithEligible=${report.eligibleDistinctCandidateSatellites.frames}`);
+  console.log(`[${DIAG}] selectionFloor satisfied=${report.selectionFloorSatisfiedFrames} blocked=${report.selectionFloorBlockedFrames}`);
   console.log(`[${DIAG}] ${formatPeak('qualified(hard eligible + SINR trigger)', report.peakQualified)} frames=${report.qualified.frames} first=${markText(report.qualified.first)}`);
   console.log(`[${DIAG}] ${formatPeak('stable(after TTT)', report.peakStable)} frames=${report.stable.frames} first=${markText(report.stable.first)}`);
   console.log(`[${DIAG}] multipleEligible=${report.firstMultipleEligible === null ? 'NO' : `YES first=${markText(report.firstMultipleEligible.at)} count=${report.firstMultipleEligible.count} keys=${report.firstMultipleEligible.keys.join(',')}`}`);
@@ -735,6 +793,7 @@ if (isMain) {
     const failures = requiredFlowFailures({
       observedAlternativesMax: report.observedAlternatives.max,
       eligibleAlternativesMax: report.eligible.max,
+      eligibleDistinctSatellitesMax: report.eligibleDistinctCandidateSatellites.max,
       provisionalLeaderFrames: report.provisionalLeaderFrames,
       selectedFrames: report.selectedFrames,
       decisionCommits: report.decisionCommits.length,

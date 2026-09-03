@@ -277,7 +277,7 @@ check('angle-aware power keeps the previous state across a transient missing ser
   step(0, 0, 8);
   const changed = step(0.5, 0.5, 8);
   const changedPower = changed.ues[0].servingLinkSample?.angleAware?.powerW;
-  assert(changedPower !== undefined && changedPower > ANGLE_AWARE_SEGMENT_START_POWER_W, 'the live link has moved away from its 2 W segment start');
+  assert(changedPower !== undefined && changedPower > ANGLE_AWARE_SEGMENT_START_POWER_W, 'the live link has moved away from its p_max / 2 segment start');
 
   const gap = step(1, 1, 1000);
   assertEqual(gap.ues[0].servingSatId, 'moving', 'serving identity remains attached during the sample gap');
@@ -642,8 +642,8 @@ check('signal-profile update preserves live cell handover continuity', () => {
   });
   assertEqual(after.ues[0].handoverKind, 'none', 'profile update does not cold-attach the UE');
   assertEqual(after.recentHandoverEvents.length, 1, 'profile update preserves the live-HO pulse window');
-  assertNear(after.angleAwareFormulaFrame?.terms.segmentStartPowerW ?? NaN, 2, 1e-12, 'profile update starts a fresh segment at 2 W');
-  assertNear(after.angleAwareFormulaFrame?.terms.powerW ?? NaN, 2, 1e-12, 'fresh segment RF power is 2 W');
+  assertNear(after.angleAwareFormulaFrame?.terms.segmentStartPowerW ?? NaN, ANGLE_AWARE_SEGMENT_START_POWER_W, 1e-12, 'profile update starts a fresh p_max / 2 segment');
+  assertNear(after.angleAwareFormulaFrame?.terms.powerW ?? NaN, ANGLE_AWARE_SEGMENT_START_POWER_W, 1e-12, 'fresh segment RF power is p_max / 2');
 });
 
 check('profile antenna tuning reaches the selected-link SINR formula', () => {
@@ -671,7 +671,7 @@ check('profile antenna tuning reaches the selected-link SINR formula', () => {
   const afterGamma = after.ues[0]?.servingLinkSample?.angleAware?.gammaDb ?? NaN;
   assert(Number.isFinite(afterGamma), 'tuned selected-link gamma is finite');
   assert(afterGamma < beforeGamma, 'max gain tuning changes the selected-link SINR');
-  assertNear(after.angleAwareFormulaFrame?.terms.powerW ?? NaN, 2, 1e-12, 'tuning starts a new 2 W segment without freezing gain response');
+  assertNear(after.angleAwareFormulaFrame?.terms.powerW ?? NaN, ANGLE_AWARE_SEGMENT_START_POWER_W, 1e-12, 'tuning starts a new p_max / 2 segment without freezing gain response');
 });
 
 check('moving serving satellite changes the angle-aware power and EE frame', () => {
@@ -782,7 +782,7 @@ check('focus cell moves the panel protagonist without touching serving or contin
   );
 
   // The newly focused UE's power recurrence was running all along, so it does
-  // NOT snap back to the 2 W segment start when it becomes the protagonist.
+  // NOT snap back to the p_max / 2 segment start when it becomes the protagonist.
   const otherPowerAfter = focused.ues.find(ue => ue.ueId === 'ue-other')
     ?.servingLinkSample?.angleAware?.powerW;
   assert(

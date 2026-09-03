@@ -21,10 +21,14 @@ import {
   HOMEPAGE_FIRST_FRAME_ARTIFACT_SCHEMA,
   parseHomepageFirstFrameArtifact,
 } from '../src/ui/signal-tuning/homepageFirstFrameCache';
+import {
+  LATEST_TLE_REFERENCE_ARTIFACT_DATE,
+  LATEST_TLE_REFERENCE_TAIPEI_LOCAL,
+} from '../src/tle/latestTleDefaults';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const artifactPath = join(repoRoot, 'public/homepage-first-frame/starlink-20260812.json');
-const requestedTaipeiDateTime = '2026-08-12T20:00';
+const artifactPath = join(repoRoot, `public/homepage-first-frame/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`);
+const requestedTaipeiDateTime = LATEST_TLE_REFERENCE_TAIPEI_LOCAL;
 const requestedInstantUtc = simulatorTaipeiDateTimeToUtc(requestedTaipeiDateTime);
 
 const fetchFromPublic = async (input: RequestInfo | URL): Promise<Response> => {

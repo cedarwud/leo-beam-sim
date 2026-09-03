@@ -283,6 +283,40 @@ test('constellationSeed deterministically changes phase-perturbed Walker geometr
   assert.notEqual(first[0]!.scenarioStateHash, second[0]!.scenarioStateHash);
 });
 
+test('Walker shell plane and along-track offsets provide explicit candidate-density controls', () => {
+  const baseShell = {
+    id: 'offset-shell',
+    altitudeKm: 550,
+    inclinationDeg: 53,
+    planes: 2,
+    satsPerPlane: 2,
+    phasePerturbation: false,
+  };
+  const base = generateWalkerConstellation({
+    shells: [baseShell],
+    epochUtcMs: EPOCH_UTC_MS,
+    phaseSeed: 7,
+  });
+  const shifted = generateWalkerConstellation({
+    shells: [{ ...baseShell, raanOffsetDeg: 17, phaseOffsetDeg: 23 }],
+    epochUtcMs: EPOCH_UTC_MS,
+    phaseSeed: 7,
+  });
+
+  assert.equal(base.length, shifted.length);
+  assert.notEqual(base[0]!.raanRad, shifted[0]!.raanRad);
+  assert.notEqual(base[0]!.meanAnomalyRad, shifted[0]!.meanAnomalyRad);
+  assert.notEqual(base[1]!.meanAnomalyRad, shifted[1]!.meanAnomalyRad);
+  assert.throws(
+    () => generateWalkerConstellation({
+      shells: [{ ...baseShell, phaseOffsetDeg: Number.NaN }],
+      epochUtcMs: EPOCH_UTC_MS,
+      phaseSeed: 7,
+    }),
+    /phaseOffsetDeg must be finite/,
+  );
+});
+
 test('fails closed for relative, off-grid, incomplete, and out-of-horizon sample requests', () => {
   const input = anchor();
   const cases: readonly (readonly number[])[] = [

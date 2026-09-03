@@ -1,0 +1,2622 @@
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #061b1b;
+}
+
+.golden-flow,
+.golden-flow * {
+  box-sizing: border-box;
+}
+
+.golden-flow {
+  --gold: #f5bf4f;
+  --gold-bright: #ffe89a;
+  --cyan: #43cbe8;
+  --aqua: #72ead4;
+  --ink: #f5fffb;
+  --muted: #b8d8d0;
+  width: 100vw;
+  height: 100vh;
+  color: var(--ink);
+  background: #061b1b;
+  font-family: "IBM Plex Sans", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-size: 16px;
+}
+
+.golden-flow-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(42, 150, 130, 0.26), transparent 42%),
+    #061b1b;
+}
+
+.golden-flow-stage::before,
+.golden-flow-stage::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+.golden-flow-stage::before {
+  background:
+    linear-gradient(180deg, rgba(0, 12, 12, 0.62), transparent 18%, transparent 78%, rgba(0, 10, 10, 0.58)),
+    radial-gradient(ellipse at 50% 46%, transparent 54%, rgba(0, 0, 0, 0.2));
+}
+
+.golden-flow-stage::after {
+  opacity: 0.11;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+.golden-flow-canvas {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+}
+
+.golden-flow-canvas > div,
+.golden-flow-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.golden-flow-canvas canvas {
+  display: block;
+  outline: none;
+}
+
+.golden-flow-primary-cue > span,
+.golden-flow-axis-guide__header span,
+.golden-flow-trace__heading span,
+.golden-flow-receipt header span,
+.golden-flow-finale span {
+  color: var(--aqua);
+  font: 700 1.375rem/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+  letter-spacing: 0.14em;
+}
+
+.golden-flow-primary-cue {
+  position: absolute;
+  z-index: 14;
+}
+
+.golden-flow-subject-safe {
+  position: absolute;
+  z-index: 1;
+  top: 22.5%;
+  left: 20%;
+  width: 60%;
+  height: 55%;
+  pointer-events: none;
+}
+
+.golden-flow-scene-cue {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  left: clamp(1.5rem, 3.5vw, 4.5rem);
+  display: grid;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.golden-flow-scene-cue strong {
+  font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  font-size: clamp(1.8rem, 2.4vw, 2.8rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 12px 34px rgba(0, 0, 0, 0.85);
+}
+
+.golden-flow-world-label,
+.golden-flow-angle-label {
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Scene identities are already carried by the edge cue. Duplicate Html labels
+ * attached to the GLB/ground spots obscure the geometry, so the central stage
+ * keeps only the models, links, angle constructions, and circular footprints. */
+.golden-flow-link-spotlight,
+.golden-flow-impact-label {
+  display: none !important;
+}
+
+.golden-flow-world-label.is-serving,
+.golden-flow-world-label.is-candidate,
+.golden-flow-world-label.is-ue {
+  display: none !important;
+}
+
+.golden-flow-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.golden-flow-world-label span {
+  display: block;
+  padding: 7px 11px;
+  border-left: 3px solid currentColor;
+  border-radius: 5px;
+  color: #f4fbf7;
+  background: rgba(3, 25, 24, 0.9);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.52);
+  font: 700 1.35rem/1.2 "Noto Sans TC", sans-serif;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.94);
+}
+
+.golden-flow-world-label.is-serving span { border-color: rgba(245, 191, 79, 0.88); color: #ffebb1; }
+.golden-flow-world-label.is-candidate span { border-color: rgba(67, 203, 232, 0.88); color: #c9f7ff; }
+.golden-flow-world-label.is-ue span { border-color: rgba(238, 248, 243, 0.8); color: #f5faf7; }
+
+.golden-flow-angle-label {
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px;
+  border-left: 2px solid currentColor;
+  border-radius: 6px;
+  background: rgba(1, 13, 12, 0.94);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75);
+  backdrop-filter: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+.golden-flow-angle-label__card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 8px;
+  width: max-content;
+  min-width: 230px;
+}
+
+.golden-flow-angle-label__sketch {
+  grid-row: 1 / 4;
+  width: 44px;
+  height: 38px;
+  overflow: visible;
+}
+
+.golden-flow-angle-label__sketch path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.golden-flow-angle-label__sketch circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.golden-flow-angle-label strong {
+  font: 700 1.2rem/1.2 "Cascadia Mono", monospace;
+}
+
+.golden-flow-angle-label small {
+  font-size: 1.05rem;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
+}
+
+.golden-flow-angle-label em {
+  color: #d6e7df;
+  font-size: 1rem;
+  line-height: 1.35;
+  font-style: normal;
+  letter-spacing: 0.02em;
+}
+
+.golden-flow-angle-label.is-elevation { border-color: rgba(114, 234, 212, 0.85); color: var(--aqua); }
+.golden-flow-angle-label.is-elevation small { color: #8ec3b9; }
+.golden-flow-angle-label.is-off-axis { border-color: rgba(245, 191, 79, 0.88); color: var(--gold-bright); }
+.golden-flow-angle-label.is-off-axis small { color: #caa971; }
+
+.golden-flow-angle-key {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  left: clamp(1.5rem, 3.5vw, 4.5rem);
+  width: min(340px, calc(100vw - 48px));
+  display: grid;
+  gap: 7px;
+  padding: 8px 14px;
+  border-left: 2px solid rgba(94, 171, 155, 0.65);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(2, 18, 16, 0.45), transparent);
+  backdrop-filter: none;
+}
+
+.golden-flow-angle-key > div {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.golden-flow-angle-key i {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.golden-flow-angle-key i.is-elevation { background: var(--aqua); }
+.golden-flow-angle-key i.is-off-axis { background: var(--gold); }
+.golden-flow-angle-key span { display: none; }
+.golden-flow-angle-key strong { font-family: "Noto Serif TC", Georgia, serif; font-size: 1.7rem; font-weight: 650; }
+.golden-flow-angle-key > div > small {
+  color: #eef8f3;
+  font: 700 1.45rem/1 "Cascadia Mono", monospace;
+}
+
+.golden-flow-angle-key > small {
+  display: block;
+  margin-left: 28px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(94, 171, 155, 0.4);
+  color: #bed8d1;
+  font: 600 1.05rem/1.3 "Cascadia Mono", monospace;
+}
+
+.golden-flow-angle-key > small b {
+  display: none;
+  color: #799c94;
+  font-weight: 550;
+}
+
+.golden-flow-angle-readout {
+  position: absolute;
+  z-index: 14;
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  left: clamp(1.5rem, 3.5vw, 4.5rem);
+  width: 220px;
+  display: grid;
+  gap: 4px;
+  padding: 7px 10px;
+  border-left: 2px solid rgba(114, 234, 212, 0.72);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(2, 18, 16, 0.72), rgba(2, 18, 16, 0.18));
+  pointer-events: none;
+}
+
+.golden-flow-mobile-identities {
+  display: none;
+}
+
+.golden-flow-angle-readout > span {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  color: #d2ebe4;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.golden-flow-angle-readout i {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.golden-flow-angle-readout i.is-elevation { background: var(--aqua); }
+.golden-flow-angle-readout i.is-off-axis { background: var(--gold); }
+.golden-flow-angle-readout strong { font-weight: 650; }
+.golden-flow-angle-readout b { color: #f0f8f4; font: 700 1.3rem/1 "Cascadia Mono", monospace; }
+
+.golden-flow-axis-guide {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  right: clamp(1.5rem, 3.5vw, 4.5rem);
+  bottom: auto;
+  width: min(520px, calc(100vw - 8rem));
+  padding: 14px 18px;
+  border-left: 2px solid rgba(245, 191, 79, 0.8);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(10, 21, 17, 0.72), rgba(10, 21, 17, 0.35));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: none;
+}
+
+.golden-flow-axis-guide__header,
+.golden-flow-axis-control__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.golden-flow-axis-guide__header span {
+  color: var(--gold);
+  font-size: 1.15rem;
+  white-space: normal;
+}
+
+.golden-flow-axis-guide__header strong {
+  font: 650 1.65rem/1.2 "Noto Serif TC", Georgia, serif;
+  white-space: nowrap;
+}
+
+.golden-flow-axis-control__footer output {
+  color: var(--gold-bright);
+  font: 700 1.35rem/1.35 "Noto Sans TC", sans-serif;
+}
+
+.golden-flow-axis-control__footer div {
+  display: flex;
+  gap: 6px;
+}
+
+.golden-flow-axis-control__footer button,
+.golden-flow-finale button,
+.golden-flow-finale a,
+.golden-flow-segment-finale button,
+.golden-flow-segment-finale a {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 14px;
+  border: 1px solid rgba(114, 234, 212, 0.5);
+  border-radius: 6px;
+  color: #b7d8d0;
+  background: rgba(3, 24, 21, 0.65);
+  font: 700 1.05rem/1 "Noto Sans TC", sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.golden-flow-axis-control__footer button[aria-pressed="true"] {
+  border-color: var(--gold);
+  color: #241800;
+  background: var(--gold);
+}
+
+.golden-flow-consequence {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  right: clamp(1.5rem, 3.5vw, 4.5rem);
+  width: 220px;
+  display: grid;
+  gap: 6px;
+  padding: 8px 12px;
+  border-right: 2px solid rgba(245, 191, 79, 0.75);
+  border-radius: 6px;
+  background: linear-gradient(270deg, rgba(9, 21, 17, 0.65), transparent);
+  backdrop-filter: none;
+  text-align: right;
+  pointer-events: none;
+}
+
+.golden-flow-consequence > span { color: var(--gold); font-size: 1.05rem; }
+.golden-flow-consequence > strong { color: #f5f7df; font: 650 1.55rem/1.2 "Noto Serif TC", Georgia, serif; }
+.golden-flow-consequence__rows { display: grid; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(114, 234, 212, 0.3); }
+.golden-flow-consequence__rows > div { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 8px; color: #a3c4ba; font-size: 1.05rem; text-align: left; }
+.golden-flow-consequence__rows i { width: 18px; height: 3px; border-radius: 2px; }
+.golden-flow-consequence__rows i.is-original { background: var(--aqua); box-shadow: 0 0 8px rgba(114, 234, 212, 0.5); }
+.golden-flow-consequence__rows i.is-teaching { background: var(--gold); }
+.golden-flow-consequence__rows b { color: #d7eee7; font: 700 1.05rem/1 "Cascadia Mono", monospace; }
+.golden-flow-consequence__bars { display: flex; justify-content: flex-end; gap: 6px; }
+.golden-flow-consequence__bars b { width: 26px; height: 6px; border-radius: 5px; background: rgba(245, 191, 79, 0.2); }
+.golden-flow-consequence__bars b.is-on { background: var(--gold); box-shadow: 0 0 10px rgba(245, 191, 79, 0.55); }
+
+.golden-flow-restore-marker {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  left: clamp(1.5rem, 3.5vw, 4.5rem);
+  width: min(280px, calc(100vw - 48px));
+  display: grid;
+  gap: 8px;
+  padding: 8px 12px;
+  border-left: 0;
+  border-right: 2px solid rgba(114, 234, 212, 0.75);
+  border-radius: 6px;
+  background: linear-gradient(270deg, rgba(2, 20, 18, 0.65), transparent);
+  text-align: left;
+  backdrop-filter: none;
+}
+
+.golden-flow-restore-marker strong { font: 650 1.55rem/1.25 "Noto Serif TC", Georgia, serif; }
+.golden-flow-restore-marker > i { height: 3px; border-radius: 2px; background: var(--aqua); box-shadow: 0 0 15px rgba(114, 234, 212, 0.5); }
+
+/* Segment handoffs are edge controls, never a central teaching card. */
+.golden-flow-segment-finale {
+  position: fixed;
+  z-index: 32;
+  right: clamp(1rem, 3vw, 3.5rem);
+  bottom: clamp(6.8rem, 10vw, 8.5rem);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.golden-flow-segment-finale a {
+  border-color: rgba(67, 203, 232, 0.65);
+  color: #c9f8ff;
+}
+
+.golden-flow-ue-handle-label {
+  pointer-events: auto;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.golden-flow-ue-handle-label > div {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  width: auto;
+  min-width: 128px;
+  height: 48px;
+  padding: 0 16px;
+  border: 2px solid rgba(114, 234, 212, 0.88);
+  border-radius: 8px;
+  color: #e8fff9;
+  background: rgba(4, 28, 24, 0.9);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+  font: 750 1.08rem/1 "Noto Sans TC", sans-serif;
+  text-align: center;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.golden-flow-ue-handle-label > div:focus-visible {
+  outline: 3px solid var(--aqua);
+  outline-offset: 4px;
+}
+
+.golden-flow-impact-label {
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.golden-flow-impact-label span {
+  padding: 4px 8px;
+  border-left: 2px solid rgba(223, 248, 241, 0.85);
+  border-radius: 0;
+  color: #dff8f1;
+  background: rgba(1, 13, 12, 0.6);
+  font: 700 1.05rem/1 "Noto Sans TC", sans-serif;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+}
+
+.golden-flow-pair {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  right: clamp(1.5rem, 3.5vw, 4.5rem);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border-right: 2px solid rgba(99, 176, 161, 0.75);
+  border-radius: 6px;
+  background: linear-gradient(270deg, rgba(2, 18, 16, 0.65), transparent);
+  backdrop-filter: none;
+}
+
+.golden-flow-pair > div {
+  display: grid;
+  grid-template-columns: 8px auto;
+  gap: 4px 10px;
+}
+
+.golden-flow-pair i { grid-row: 1 / 3; width: 8px; height: 100%; border-radius: 4px; }
+.golden-flow-pair i.is-source { background: var(--gold); }
+.golden-flow-pair i.is-target { background: var(--cyan); }
+.golden-flow-pair span { color: #87a9a1; font-size: 1rem; }
+.golden-flow-pair strong { font: 700 1.25rem/1.2 "Cascadia Mono", monospace; }
+.golden-flow-pair > b { color: #72ead4; font-size: 1.15rem; font-weight: 700; }
+
+.golden-flow-threshold {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  right: clamp(1.5rem, 3.5vw, 4.5rem);
+  display: grid;
+  gap: 6px;
+  padding: 8px 16px;
+  border-right: 2px solid rgba(67, 203, 232, 0.85);
+  border-radius: 6px;
+  background: linear-gradient(270deg, rgba(2, 18, 20, 0.65), transparent);
+  backdrop-filter: none;
+}
+
+.golden-flow-threshold span { color: #88a9a3; font: 700 1.05rem/1.2 "IBM Plex Mono", monospace; }
+.golden-flow-threshold strong { color: #a9f3ff; font: 700 2.5rem/1 "Iowan Old Style", Georgia, serif; }
+.golden-flow-threshold i { color: var(--aqua); font: normal 700 1.15rem/1 "Cascadia Mono", monospace; }
+
+.golden-flow-ttt {
+  top: 30%;
+  right: clamp(1.5rem, 3.5vw, 4.5rem);
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.golden-flow-ttt__ring {
+  width: 130px;
+  height: 130px;
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(2, 19, 18, 0.95) 0 57%, transparent 58%),
+    conic-gradient(var(--cyan) var(--progress), rgba(67, 203, 232, 0.15) 0);
+  box-shadow: 0 0 48px rgba(67, 203, 232, 0.25);
+  text-align: center;
+}
+
+.golden-flow-ttt__ring span,
+.golden-flow-ttt__ring strong,
+.golden-flow-ttt__ring small { display: block; }
+.golden-flow-ttt__ring span { color: #77aab3; font: 700 1.05rem/1 "Cascadia Mono", monospace; letter-spacing: 0.14em; }
+.golden-flow-ttt__ring strong { margin-top: 4px; color: #c8f8ff; font: 600 2.5rem/1 "Iowan Old Style", Georgia, serif; }
+.golden-flow-ttt__ring small { color: #80acb2; font: 700 1.125rem/1 "Cascadia Mono", monospace; }
+.golden-flow-ttt p { margin: 0; color: #80acb2; font: 600 1.05rem/1.2 "Noto Sans TC", sans-serif; letter-spacing: 0.08em; }
+
+.golden-flow-ttt__fallback {
+  min-width: 190px;
+  min-height: 130px;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid rgba(245, 191, 79, 0.52);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(38, 31, 16, 0.94) 0 58%, rgba(10, 25, 22, 0.76) 59% 100%);
+  box-shadow: 0 0 42px rgba(245, 191, 79, 0.15);
+  text-align: center;
+}
+
+.golden-flow-ttt__fallback span {
+  color: #d7b66a;
+  font: 700 1rem/1 "Cascadia Mono", monospace;
+  letter-spacing: 0.14em;
+}
+
+.golden-flow-ttt__fallback strong {
+  color: #ffe7a0;
+  font: 700 1.85rem/1.1 "Iowan Old Style", Georgia, serif;
+}
+
+.golden-flow-ttt__fallback small {
+  max-width: 170px;
+  color: #c8aa6c;
+  font: 600 1rem/1.35 "Noto Sans TC", sans-serif;
+}
+
+.golden-flow-continuity-card.golden-flow-ttt {
+  gap: 10px;
+}
+
+.golden-flow-continuity-card.golden-flow-ttt p {
+  max-width: 260px;
+  color: #c8aa6c;
+  text-align: center;
+}
+
+.golden-flow-trace-cue {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  left: clamp(1.5rem, 3.5vw, 4.5rem);
+  bottom: auto;
+}
+
+.golden-flow-trace {
+  width: 270px;
+  padding: 6px 10px;
+  border-left: 2px solid rgba(67, 203, 232, 0.85);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(2, 17, 17, 0.7), transparent);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.golden-flow-trace__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.golden-flow-trace__heading span {
+  color: var(--cyan);
+  font: 700 0.95rem/1.2 "IBM Plex Mono", monospace;
+  white-space: nowrap;
+}
+
+.golden-flow-trace__heading strong {
+  font-size: 0.95rem;
+  font-family: "Cascadia Mono", monospace;
+  color: var(--gold-bright);
+  white-space: nowrap;
+}
+
+.golden-flow-trace svg { display: block; width: 100%; height: auto; overflow: visible; }
+.golden-flow-trace__threshold-text { fill: #ffe89a; font: 700 13px "Cascadia Mono", monospace; }
+.golden-flow-trace__time-text { fill: #7ea59d; font: 700 13px "Cascadia Mono", monospace; }
+.golden-flow-trace__val-text { fill: #d7fbff; font: 700 14px "Cascadia Mono", monospace; }
+.golden-flow-trace svg circle { fill: #d7fbff; stroke: var(--cyan); stroke-width: 2.5; }
+
+.golden-flow-trace--continuity {
+  display: grid;
+  gap: 12px;
+  width: min(330px, 100%);
+  padding: 12px 14px;
+  border-left-color: rgba(245, 191, 79, 0.8);
+}
+
+.golden-flow-continuity-note {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 191, 79, 0.26);
+  background: rgba(38, 31, 16, 0.52);
+}
+
+.golden-flow-continuity-note b {
+  color: #ffe7a0;
+  font: 700 1.05rem/1.25 "Noto Sans TC", sans-serif;
+}
+
+.golden-flow-continuity-pair {
+  display: grid;
+  gap: 2px;
+  color: #c8aa6c;
+}
+
+.golden-flow-continuity-pair span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.golden-flow-continuity-pair strong {
+  color: #ffe7a0;
+  font: 700 1rem/1.3 "Cascadia Mono", monospace;
+}
+
+.golden-flow-continuity-pair small {
+  color: #c8aa6c;
+  font: 700 1rem/1.3 "Cascadia Mono", monospace;
+}
+
+.golden-flow-continuity-pair i {
+  padding-left: 0.25rem;
+  color: var(--aqua);
+  font-size: 1rem;
+  font-style: normal;
+}
+
+.golden-flow-trace--continuity .golden-flow-trace__note {
+  color: #c8aa6c;
+}
+.golden-flow-trace__threshold { stroke: rgba(245, 191, 79, 0.75); stroke-width: 1.5; stroke-dasharray: 5 5; }
+.golden-flow-trace__stem { stroke: rgba(67, 203, 232, 0.65); stroke-width: 1.8; stroke-dasharray: 4 4; }
+.golden-flow-trace__note { display: block; margin-top: 4px; color: #a9c8c0; font-size: 1rem; line-height: 1.25; }
+
+.golden-flow-link-spotlight {
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.golden-flow-link-spotlight > div {
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
+  padding: 6px 12px;
+  border-left: 2px solid currentColor;
+  border-radius: 4px;
+  background: rgba(1, 14, 13, 0.75);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.golden-flow-link-spotlight.is-source > div { border-color: rgba(245, 191, 79, 0.85); color: #ffe7a0; }
+.golden-flow-link-spotlight.is-candidate > div { border-color: rgba(67, 203, 232, 0.85); color: #c8f8ff; }
+.golden-flow-link-spotlight span { font-size: 1.15rem; font-weight: 700; }
+.golden-flow-link-spotlight small { color: #a9c8c0; font-size: 1rem; }
+
+.golden-flow-commit {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 8px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.golden-flow-commit > span { color: #d2f8f2; font: 700 1.125rem/1.2 "IBM Plex Mono", monospace; }
+.golden-flow-commit strong { font: 600 clamp(1.8rem, 2.4vw, 2.8rem)/1.1 "Iowan Old Style", "Noto Serif TC", Georgia, serif; }
+.golden-flow-commit strong i { margin: 0 14px; color: var(--aqua); font-style: normal; }
+
+.golden-flow-receipt {
+  top: clamp(1.2rem, 2.5vw, 2.2rem);
+  right: clamp(1.5rem, 3.5vw, 4.5rem);
+  width: min(300px, calc(100vw - 48px));
+  padding: 8px 14px;
+  border-right: 2px solid rgba(114, 234, 212, 0.85);
+  border-radius: 6px;
+  background: linear-gradient(270deg, rgba(4, 31, 27, 0.7), transparent);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.golden-flow-receipt header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(114, 234, 212, 0.35);
+}
+
+.golden-flow-receipt header span { font: 700 1.05rem/1.2 "IBM Plex Mono", monospace; color: var(--aqua); }
+.golden-flow-receipt header strong { font: 600 1.35rem/1 "Noto Serif TC", Georgia, serif; }
+.golden-flow-receipt dl { display: grid; gap: 0; margin: 8px 0 0; }
+.golden-flow-receipt dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; min-height: 32px; padding: 6px 0; border: 0; border-bottom: 1px solid rgba(89, 154, 141, 0.25); background: transparent; }
+.golden-flow-receipt dt { color: #759a91; font-size: 1.05rem; font-weight: 600; }
+.golden-flow-receipt dd { margin: 0; color: #edf7f3; font: 700 1.15rem/1.2 "Cascadia Mono", monospace; }
+
+.golden-flow-finale {
+  top: auto;
+  right: clamp(1.5rem, 3.5vw, 4.5rem);
+  bottom: clamp(6.5rem, 9.5vw, 8.5rem);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-right: 2px solid rgba(67, 203, 232, 0.85);
+  border-radius: 6px;
+  background: linear-gradient(270deg, rgba(2, 20, 21, 0.7), transparent);
+  backdrop-filter: none;
+}
+
+.golden-flow-finale > div { display: grid; gap: 4px; min-width: 130px; }
+.golden-flow-finale > div span { color: var(--cyan); font: 700 1.05rem/1.2 "IBM Plex Mono", monospace; }
+.golden-flow-finale > div strong { font: 700 1.25rem/1.2 "Cascadia Mono", monospace; }
+.golden-flow-finale button { border-color: rgba(245, 191, 79, 0.7); color: var(--gold-bright); }
+.golden-flow-finale a { display: grid; place-items: center; border-color: rgba(67, 203, 232, 0.7); color: #c9f8ff; }
+
+.golden-flow-caption {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  bottom: clamp(8rem, 10vw, 9.4rem);
+  width: min(1000px, calc(100vw - 4rem));
+  max-width: calc(100vw - 2rem);
+  min-height: 0;
+  transform: translateX(-50%);
+  padding: 0 1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.golden-flow-caption p {
+  max-height: 2.7em;
+  margin: 0;
+  overflow: hidden;
+  color: #f1f7f4;
+  font: 650 clamp(1.65rem, 1.8vw, 2rem)/1.3 "Noto Serif TC", "Iowan Old Style", Georgia, serif;
+  letter-spacing: 0.025em;
+  text-shadow: 0 2px 24px #010909, 0 0 36px #010909, 0 0 10px rgba(0, 0, 0, 0.98);
+}
+
+.golden-flow-caption p span { display: block; }
+
+.golden-flow-accessible-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes golden-flow-breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
+@keyframes golden-flow-caption-arrive {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.golden-flow[data-beat="commit"] .golden-flow-commit,
+.golden-flow[data-beat="ttt"] .golden-flow-ttt__ring {
+  animation: golden-flow-breathe 1.6s ease-in-out infinite;
+}
+
+.golden-flow-transport-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 22;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.golden-flow-transport-container .teaching-transport {
+  pointer-events: auto;
+}
+
+.golden-flow-transport-reveal-btn,
+.golden-flow-transport-dismiss-btn {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .golden-flow-caption { width: min(700px, calc(100vw - 40px)); }
+}
+
+@media (max-width: 760px) {
+  .golden-flow { font-size: 16px; }
+  .golden-flow-subject-safe { top: 22.5%; left: 20%; width: 60%; height: 55%; }
+
+  .golden-flow-transport-reveal-btn {
+    position: absolute;
+    top: auto;
+    left: auto;
+    bottom: 6rem;
+    right: 4.25rem;
+    z-index: 25;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+    border: 1px solid rgba(88, 230, 208, 0.5);
+    border-radius: 22px;
+    background: rgba(3, 18, 24, 0.88);
+    color: var(--aqua);
+    font: 700 1rem/1 "Noto Sans TC", sans-serif;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .golden-flow:is(
+    [data-beat="interaction"],
+    [data-beat="consequence"],
+    [data-beat="qualification"],
+    [data-beat="new-normal"]
+  ) .golden-flow-transport-reveal-btn {
+    top: 0.75rem;
+    right: auto;
+    bottom: auto;
+    left: 0.75rem;
+  }
+
+  /*
+   * The full Act 3 metric chain is intentionally scrollable on phones, but a
+   * 36svh cap left only the title and the first metric visible. Give the sheet
+   * a scene-safe 62svh viewport and place the hidden-transport affordance just
+   * below it; revealing the transport then leaves a clear gap instead of
+   * covering the scroll surface.
+   */
+  .golden-flow[data-course-segment="act3"]:is([data-beat="interaction"], [data-beat="consequence"]) .golden-flow-event-dock {
+    max-height: min(62svh, calc(100svh - 12rem));
+    scroll-padding-bottom: 1rem;
+    overscroll-behavior: contain;
+  }
+
+  .golden-flow[data-course-segment="act3"]:is([data-beat="interaction"], [data-beat="consequence"]) .golden-flow-transport-reveal-btn {
+    top: calc(62svh + 1.25rem);
+    right: auto;
+    bottom: auto;
+    left: 0.75rem;
+  }
+
+  /* Keep the scene-local axis handle unobstructed on narrow screens. */
+  .golden-flow[data-beat="interaction"] .golden-flow-world-label.is-ue {
+    display: none !important;
+  }
+  .golden-flow[data-beat="interaction"] .golden-flow-world-label.is-serving {
+    display: none !important;
+  }
+
+  .golden-flow-transport-dismiss-btn {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 1rem;
+    z-index: 26;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+    border: 1px solid rgba(88, 230, 208, 0.5);
+    border-radius: 22px;
+    background: rgba(3, 18, 24, 0.92);
+    color: var(--aqua);
+    font: 700 1rem/1 "Noto Sans TC", sans-serif;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  }
+
+  .golden-flow-transport-container {
+    z-index: 60;
+  }
+
+  .golden-flow-transport-container:not(.is-mobile-autohidden) {
+    pointer-events: auto !important;
+    z-index: 60 !important;
+  }
+
+  .golden-flow-transport-container:not(.is-mobile-autohidden) * {
+    pointer-events: auto !important;
+  }
+
+  .golden-flow-transport-container.is-mobile-autohidden {
+    opacity: 0;
+    pointer-events: none !important;
+    transform: translateY(20px);
+  }
+
+  .golden-flow-transport-container.is-mobile-autohidden * {
+    pointer-events: none !important;
+  }
+
+  .golden-flow-transport-container .teaching-transport__timeline-wrap {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+  }
+
+  .golden-flow-transport-container .teaching-transport__range {
+    height: 44px;
+    min-height: 44px;
+    padding: 19px 0;
+    box-sizing: border-box;
+    background-clip: content-box;
+  }
+
+  /* Interaction beat: clean 3D scene first */
+  .golden-flow[data-beat="interaction"] .golden-flow-angle-label {
+    display: none !important;
+  }
+
+  .golden-flow-scene-cue { top: 1rem; left: 1rem; }
+  .golden-flow-scene-cue strong { font-size: 1.6rem; }
+  .golden-flow-angle-key { top: 4.5rem; left: 0.75rem; width: min(330px, calc(100vw - 1.5rem)); gap: 7px; padding: 8px 10px; font-size: 1rem; }
+  .golden-flow-angle-key > p,
+  .golden-flow-angle-key > small { display: none; }
+  .golden-flow-angle-readout { top: 9.5rem; left: 0.75rem; width: 205px; padding: 6px 8px; }
+  .golden-flow-angle-key strong { font-size: 1.65rem; }
+  .golden-flow-angle-key > div > small { font-size: 1.45rem; }
+  .golden-flow-angle-label { padding: 6px 10px; font-size: 1rem; }
+  .golden-flow-angle-label strong { font-size: 1rem; }
+  .golden-flow-angle-label small { font-size: 1.25rem; }
+  .golden-flow-world-label span { font-size: 1.2rem; }
+  .golden-flow-world-label.is-serving,
+  .golden-flow-world-label.is-candidate,
+  .golden-flow-world-label.is-ue {
+    display: none !important;
+  }
+
+  .golden-flow-mobile-identities {
+    position: absolute;
+    z-index: 16;
+    top: 3.6rem;
+    left: 0.5rem;
+    width: calc(100% - 1rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 6px;
+    pointer-events: none;
+  }
+
+  .golden-flow-mobile-identities > span {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: 5px 8px;
+    border-left: 2px solid currentColor;
+    border-radius: 4px;
+    background: rgba(3, 25, 24, 0.92);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .golden-flow-mobile-identities > span.is-source { color: var(--gold-bright); }
+  .golden-flow-mobile-identities > span.is-target { color: #bdf6ff; }
+  .golden-flow-mobile-identities small {
+    color: currentColor;
+    font: 600 1rem/1 "Noto Sans TC", sans-serif;
+  }
+  .golden-flow-mobile-identities strong {
+    overflow: hidden;
+    color: #f3fffb;
+    font: 700 1.25rem/1.1 "Cascadia Mono", monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .golden-flow-pair { top: 1rem; right: 1rem; gap: 10px; padding: 6px 10px; }
+  .golden-flow-pair strong { font-size: 1.1rem; }
+  .golden-flow-pair > b { font-size: 1.1rem; }
+  .golden-flow-threshold { top: 1rem; right: 1rem; padding: 6px 10px; }
+  .golden-flow-threshold strong { font-size: 1.8rem; }
+  .golden-flow-commit { top: 1rem; }
+  .golden-flow-commit strong { font-size: 1.6rem; }
+  .golden-flow-commit strong i { margin: 0 8px; }
+  .golden-flow-receipt { top: 1rem; right: 1rem; width: min(280px, calc(100vw - 2rem)); padding: 6px 10px; }
+  .golden-flow-receipt dl > div { min-height: 28px; padding: 4px 0; }
+  .golden-flow-receipt dt, .golden-flow-receipt dd { font-size: 1rem; }
+  .golden-flow-finale { right: 1rem; bottom: 5.5rem; gap: 8px; padding: 6px 10px; }
+  .golden-flow-finale > div { min-width: 90px; }
+  .golden-flow-finale button,
+  .golden-flow-finale a { min-height: 44px; min-width: 44px; padding: 8px 12px; font-size: 1rem; }
+
+  /* Subtitle positioning */
+  .golden-flow-caption {
+    left: 0.5rem;
+    right: 0.5rem;
+    width: auto;
+    max-width: none;
+    padding: 0 0.25rem;
+    bottom: 6.5rem;
+    transform: none;
+    transition: bottom 0.25s ease;
+  }
+  .golden-flow-caption p { font-size: clamp(1.375rem, 5.6vw, 1.65rem); line-height: 1.28; max-height: 2.56em; }
+
+  .golden-flow[data-mobile-transport-hidden="true"] .golden-flow-caption {
+    bottom: 0.5rem;
+  }
+
+  /* Interaction beat keeps only the axis action; the camera is director-owned. */
+  .golden-flow-axis-guide {
+    top: 0.75rem;
+    right: 0.25rem;
+    bottom: auto;
+    left: auto;
+    width: calc(100% - 6rem);
+    max-width: 320px;
+    padding: 6px 8px;
+    border-left: 2px solid rgba(245, 191, 79, 0.88);
+    border-radius: 8px;
+    background: rgba(4, 20, 18, 0.9);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75);
+    display: grid;
+    gap: 4px;
+  }
+
+  .golden-flow-axis-guide__header {
+    display: grid;
+    align-items: start;
+    justify-content: stretch;
+    gap: 4px;
+  }
+  .golden-flow-axis-guide__header span { display: block; font-size: 1rem; line-height: 1.2; }
+  .golden-flow-axis-guide__header strong { font-size: 1.5rem; color: var(--ink); white-space: normal; }
+
+  .golden-flow-axis-control__footer {
+    display: block;
+  }
+  .golden-flow-axis-control__footer output { display: block; font-size: 1.2rem; line-height: 1.3; }
+
+  .golden-flow-ue-handle-label > div {
+    min-height: 48px;
+    min-width: 140px;
+    padding: 8px 14px;
+    font: 700 1rem/1 "Noto Sans TC", sans-serif;
+  }
+
+  .golden-flow-consequence { top: 4.5rem; right: 1rem; width: 220px; padding: 8px 10px; }
+  .golden-flow-restore-marker { top: 4.5rem; left: 1rem; width: min(280px, calc(100vw - 2rem)); padding: 8px 10px; }
+  .golden-flow-restore-marker strong { font-size: 1.15rem; }
+  .golden-flow-trace-cue { top: 0.75rem; right: auto; bottom: auto; left: 1rem; }
+  .golden-flow-trace { width: min(320px, calc(100vw - 2rem)); padding: 8px 10px; }
+  .golden-flow[data-beat="trace"] .golden-flow-world-label.is-serving,
+  .golden-flow[data-beat="trace"] .golden-flow-world-label.is-candidate { display: none; }
+  .golden-flow-trace__heading span,
+  .golden-flow-trace__heading strong { font-size: 1rem; }
+  .golden-flow-trace__threshold-text,
+  .golden-flow-trace__time-text,
+  .golden-flow-trace__val-text { font-size: 16px; }
+  .golden-flow-trace__note { font-size: 1rem; }
+  .golden-flow-ttt { top: 0.75rem; right: 4.5rem; }
+  .golden-flow-ttt__ring { width: 110px; height: 110px; }
+  .golden-flow-ttt__ring strong { font-size: 1.8rem; }
+  .golden-flow-ttt p { display: none; }
+  .golden-flow-segment-finale { right: 0.75rem; bottom: 5.5rem; gap: 8px; }
+}
+
+@media (max-width: 360px) {
+  .golden-flow-mobile-identities strong { font-size: 1rem; }
+  .golden-flow-ue-handle-label > div { min-width: 112px; }
+  .golden-flow-angle-readout { top: 13rem; }
+  .golden-flow[data-beat="trace"] .golden-flow-trace__note,
+  .golden-flow[data-beat="trace"] .golden-flow-trace__heading strong { display: none; }
+  .golden-flow[data-beat="trace"] .golden-flow-trace {
+    width: 240px;
+    padding: 4px 6px;
+  }
+  .golden-flow[data-beat="trace"] .golden-flow-trace__heading { margin-bottom: 0; }
+  .golden-flow[data-beat="trace"] :is(
+    .golden-flow-trace__threshold-text,
+    .golden-flow-trace__time-text,
+    .golden-flow-trace__val-text
+  ) { font-size: 20px; }
+  .golden-flow[data-beat="receipt"] .golden-flow-world-label.is-serving,
+  .golden-flow[data-beat="receipt"] .golden-flow-world-label.is-candidate { display: none; }
+  .golden-flow-receipt { width: min(250px, calc(100vw - 2rem)); padding: 4px 8px; }
+  .golden-flow-receipt header { padding-bottom: 2px; }
+  .golden-flow-receipt header strong { font-size: 1rem; }
+  .golden-flow-receipt dl { margin-top: 2px; }
+  .golden-flow-receipt dl > div { min-height: 24px; padding: 1px 0; }
+}
+
+.golden-flow-angle-symbol {
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.golden-flow-angle-symbol > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: rgba(2, 13, 12, 0.9);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.62);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.92);
+}
+
+.golden-flow-angle-symbol strong {
+  font: 700 1.75rem/1 "Iowan Old Style", Georgia, serif;
+}
+
+.golden-flow-angle-symbol small {
+  color: #e8f4f0;
+  font: 700 1.25rem/1 "Noto Sans TC", sans-serif;
+}
+
+.golden-flow-angle-symbol.is-elevation { color: var(--aqua); }
+.golden-flow-angle-symbol.is-off-axis { color: var(--gold-bright); }
+.golden-flow-angle-symbol.is-off-axis > span { background: rgba(33, 25, 5, .94); }
+
+.golden-flow-angle-magnifier {
+  display: none;
+}
+
+.golden-flow-angle-teaching-rail {
+  position: absolute;
+  z-index: 12;
+  top: 16px;
+  right: 16px;
+  width: clamp(350px, 28vw, 420px);
+  padding: 13px;
+  border: 1px solid rgba(112, 191, 174, .4);
+  border-radius: 12px;
+  background: rgba(3, 17, 15, .94);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .32);
+  pointer-events: none;
+}
+
+.golden-flow-angle-teaching-rail > header,
+.golden-flow-angle-teaching-rail figcaption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.golden-flow-angle-teaching-rail > header {
+  padding: 1px 2px 10px;
+  border-bottom: 1px solid rgba(112, 191, 174, .24);
+}
+
+.golden-flow-angle-teaching-rail > header span {
+  color: #f1faf7;
+  font: 700 1.25rem/1.2 "Noto Serif TC", Georgia, serif;
+}
+
+.golden-flow-angle-teaching-rail > header small {
+  color: #a9c7bf;
+  font-size: 1rem;
+}
+
+.golden-flow-angle-teaching-rail figure {
+  margin: 10px 0 0;
+  padding: 9px 10px 8px;
+  border: 1px solid rgba(94, 151, 139, .22);
+  border-radius: 9px;
+  background: rgba(4, 24, 21, .72);
+  opacity: .52;
+  transition: opacity 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.golden-flow-angle-teaching-rail figure.is-active {
+  border-color: rgba(245, 191, 79, .68);
+  background: linear-gradient(135deg, rgba(58, 42, 10, .6), rgba(5, 31, 27, .78));
+  opacity: 1;
+}
+
+.golden-flow-angle-teaching-rail figcaption span {
+  color: #a8c3bc;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.golden-flow-angle-teaching-rail figcaption strong {
+  color: #f5fbf8;
+  font: 750 1.16rem/1.15 "Cascadia Mono", "Noto Sans TC", monospace;
+}
+
+.golden-flow-angle-teaching-rail svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.golden-flow-angle-teaching-rail figure:first-of-type svg { height: 118px; }
+.golden-flow-angle-teaching-rail figure:last-of-type svg { height: 132px; }
+
+.golden-flow-angle-teaching-rail svg line,
+.golden-flow-angle-teaching-rail svg path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.golden-flow-angle-teaching-rail svg text {
+  fill: #b8d2cb;
+  font: 700 12px/1 "Noto Sans TC", sans-serif;
+}
+
+.golden-flow-angle-teaching-rail .is-horizontal-reference,
+.golden-flow-angle-teaching-rail .is-beam-axis {
+  stroke: #f5bf4f;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+}
+
+.golden-flow-angle-teaching-rail .is-elevation-los,
+.golden-flow-angle-teaching-rail .is-ue-ray {
+  stroke: #72ead4;
+  stroke-width: 3.2;
+}
+
+.golden-flow-angle-teaching-rail .is-elevation-arc,
+.golden-flow-angle-teaching-rail .is-theta-arc {
+  stroke: #fff0ad;
+  stroke-width: 3.5;
+}
+
+.golden-flow-angle-teaching-rail .is-elevation-vertex,
+.golden-flow-angle-teaching-rail .is-theta-vertex {
+  fill: #fff0ad;
+  stroke: rgba(245, 191, 79, .32);
+  stroke-width: 7;
+}
+
+.golden-flow-angle-teaching-rail svg .is-angle-symbol {
+  fill: #fff0ad;
+  font: 750 20px/1 "Iowan Old Style", Georgia, serif;
+}
+
+.golden-flow-angle-teaching-rail figure > small {
+  display: block;
+  margin-top: -3px;
+  color: #abc3bc;
+  font-size: .92rem;
+  line-height: 1.35;
+}
+
+.golden-flow-candidate-marker {
+  pointer-events: none;
+}
+
+.golden-flow-candidate-marker span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 2px solid rgba(95, 231, 255, .7);
+  border-radius: 50%;
+  color: #d6faff;
+  background: rgba(3, 29, 34, .92);
+  box-shadow: 0 0 0 5px rgba(95, 231, 255, .08), 0 8px 22px rgba(0, 0, 0, .42);
+  font: 800 1.15rem/1 "Cascadia Mono", monospace;
+}
+
+.golden-flow-candidate-marker.is-selected span {
+  width: 48px;
+  height: 48px;
+  border-color: #bdf7ff;
+  color: #effdff;
+  background: rgba(4, 48, 55, .96);
+  box-shadow: 0 0 0 6px rgba(95, 231, 255, .12), 0 8px 22px rgba(0, 0, 0, .42);
+}
+
+.golden-flow-handover-transfer-banner {
+  position: absolute;
+  z-index: 13;
+  top: 16px;
+  left: 18px;
+  width: 350px;
+  padding: 12px 16px 13px;
+  transform: none;
+  border: 1px solid rgba(104, 208, 190, .46);
+  border-radius: 11px;
+  background: rgba(3, 20, 18, .94);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .3);
+  pointer-events: none;
+}
+
+.golden-flow-handover-transfer-banner header {
+  display: grid;
+  gap: 3px;
+}
+
+.golden-flow-handover-transfer-banner header span {
+  color: var(--aqua);
+  font: 750 1.05rem/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: .1em;
+}
+
+.golden-flow-handover-transfer-banner header strong {
+  color: #f6fbf9;
+  font: 650 1.3rem/1.2 "Noto Serif TC", Georgia, serif;
+}
+
+.golden-flow-handover-transfer-banner > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.golden-flow-handover-transfer-banner > div span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #819f98;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.golden-flow-handover-transfer-banner > div i {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 1px solid rgba(100, 160, 148, .34);
+  border-radius: 50%;
+  font: 750 1rem/1 "Cascadia Mono", monospace;
+}
+
+.golden-flow-handover-transfer-banner > div span.is-active { color: #fff0ac; }
+.golden-flow-handover-transfer-banner > div span.is-active i { border-color: #f5bf4f; background: rgba(90, 63, 9, .72); }
+.golden-flow-handover-transfer-banner > div span.is-complete { color: #95e3d2; }
+.golden-flow-handover-transfer-banner > div span.is-complete i { border-color: #5be1c6; background: rgba(13, 75, 62, .72); }
+
+/* -------------------------------------------------------------------------
+ * Legacy 3D carrier for the desktop course routes.
+ *
+ * The approved visual reference keeps controls and readouts in side rails so
+ * the satellite/beam/ground relationship remains inspectable.  This carrier
+ * reuses that composition without importing the legacy route's local science
+ * formulae or its hexagonal cells.
+ * ---------------------------------------------------------------------- */
+
+.golden-flow-angle-power-ee {
+  display: grid;
+  gap: 8px;
+}
+
+.golden-flow-angle-power-ee__conditions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.golden-flow-angle-power-ee__conditions span {
+  padding: 4px 8px;
+  border: 1px solid rgba(111, 184, 169, .24);
+  border-radius: 999px;
+  color: #b9cec8;
+  background: rgba(4, 24, 21, .7);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.golden-flow-angle-power-ee__conditions b {
+  margin-right: 4px;
+  color: #f2d785;
+  font-weight: 750;
+}
+
+.golden-flow-angle-power-ee__values {
+  display: grid;
+  grid-template-columns: minmax(84px, 1fr) auto minmax(92px, 1fr) auto minmax(104px, 1fr) auto minmax(105px, 1fr) auto minmax(88px, 1fr);
+  align-items: stretch;
+  gap: 7px;
+}
+
+.golden-flow-angle-power-ee__values > div {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 12px 10px;
+  border: 1px solid rgba(109, 194, 174, .25);
+  border-radius: 8px;
+  background: rgba(7, 29, 25, .78);
+  text-align: center;
+}
+
+.golden-flow-angle-power-ee__values > div > small {
+  color: #a8c2ba;
+  font-size: 1rem;
+  line-height: 1.2;
+  /* The baseline/ratio annotation is intentionally explicit. Let it wrap
+     inside its metric card instead of overflowing into the next arrow/card at
+     narrow desktop widths. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.golden-flow-angle-power-ee span,
+.golden-flow-handover-decision span,
+.golden-flow-handover-decision small {
+  color: #9fbbb3;
+  font-size: .92rem;
+}
+
+.golden-flow-angle-power-ee strong {
+  color: #f7fbf9;
+  font: 750 1.24rem/1.1 "Cascadia Mono", monospace;
+}
+
+.golden-flow-angle-power-ee__note {
+  margin: 0;
+  color: #a8c2ba;
+  font-size: .92rem;
+  line-height: 1.35;
+}
+
+.golden-flow-angle-power-ee__values > i,
+.golden-flow-handover-decision__chain > i {
+  align-self: center;
+  color: #f5bf4f;
+  font-size: 1.35rem;
+  font-style: normal;
+}
+
+.golden-flow-angle-power-ee__formula {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  padding: 9px 11px;
+  border: 1px solid rgba(245, 191, 79, .25);
+  border-radius: 8px;
+  background: rgba(41, 31, 7, .36);
+}
+
+.golden-flow-angle-power-ee__formula > span {
+  min-width: 0;
+  color: #dceae6;
+  font: 650 1rem/1.35 "Cascadia Mono", "Noto Sans TC", monospace;
+  white-space: normal;
+}
+
+.golden-flow-angle-power-ee__formula b { color: #ffe797; }
+.golden-flow-angle-power-ee__formula small { color: #9fbab2; font-size: 1rem; }
+
+.golden-flow-handover-decision {
+  display: grid;
+  gap: 8px;
+}
+
+.golden-flow-handover-decision__links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.golden-flow-handover-decision__links > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border-left: 3px solid #f5bf4f;
+  border-radius: 6px;
+  background: rgba(50, 39, 9, .42);
+}
+
+.golden-flow-handover-decision__links > div.is-candidate {
+  border-left-color: #5fe7ff;
+  background: rgba(7, 44, 52, .42);
+}
+
+.golden-flow-handover-decision__links strong {
+  overflow: hidden;
+  color: #edf7f4;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.golden-flow-handover-decision__links b {
+  color: #fff4c2;
+  font: 750 1.05rem/1 "Cascadia Mono", monospace;
+}
+
+.golden-flow-handover-decision__links .is-candidate b { color: #b9f4ff; }
+
+.golden-flow-handover-decision__source-boundary {
+  padding: 5px 9px;
+  border-left: 2px solid rgba(95, 231, 255, .56);
+  color: #b4ccc5 !important;
+  background: rgba(6, 35, 37, .5);
+  line-height: 1.35;
+}
+
+.golden-flow-candidate-comparison {
+  display: grid;
+  gap: 7px;
+}
+
+.golden-flow-candidate-comparison > header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.golden-flow-candidate-comparison > header strong {
+  color: #f2faf7;
+  font-size: 1.12rem;
+}
+
+.golden-flow-candidate-comparison > header span {
+  color: #ffe6a0;
+  font: 750 1.05rem/1.2 "Cascadia Mono", "Noto Sans TC", monospace;
+}
+
+.golden-flow-candidate-comparison > header small {
+  margin-left: auto;
+  color: #8eaaa3;
+  font-size: .92rem;
+}
+
+.golden-flow-candidate-comparison > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.golden-flow-candidate-comparison article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(95, 174, 186, .28);
+  border-radius: 7px;
+  background: rgba(5, 31, 34, .64);
+}
+
+.golden-flow-candidate-comparison article.is-selected {
+  border-color: rgba(95, 231, 255, .78);
+  background: linear-gradient(135deg, rgba(6, 55, 62, .76), rgba(5, 36, 37, .72));
+}
+
+.golden-flow-candidate-comparison article em {
+  grid-row: 1 / 3;
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: #aeeef7;
+  font: 800 1rem/1 "Cascadia Mono", monospace;
+  font-style: normal;
+}
+
+.golden-flow-candidate-comparison article.is-selected em { color: #d6faff; }
+.golden-flow-candidate-comparison article > span { overflow: hidden; color: #e8f5f1; font-size: 1.03rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.golden-flow-candidate-comparison article > strong { color: #d0f8ff; font: 800 1.12rem/1 "Cascadia Mono", monospace; white-space: nowrap; }
+.golden-flow-candidate-comparison article > small { color: #9dbbb4; font-size: .98rem; }
+.golden-flow-candidate-comparison article > b { justify-self: end; color: #91afa8; font-size: 1.05rem; }
+.golden-flow-candidate-comparison article.is-selected > b { color: #9ff3ff; }
+
+.golden-flow-handover-decision__chain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.2fr);
+  align-items: stretch;
+  gap: 8px;
+}
+
+.golden-flow-handover-decision__chain > div {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding: 9px 10px 11px;
+  overflow: hidden;
+  border: 1px solid rgba(112, 158, 147, .24);
+  border-radius: 7px;
+  background: rgba(8, 26, 23, .72);
+}
+
+.golden-flow-handover-decision__chain > div.is-running {
+  border-color: rgba(245, 191, 79, .62);
+}
+
+.golden-flow-handover-decision__chain > div.is-passed {
+  border-color: rgba(91, 225, 198, .7);
+  background: rgba(11, 51, 43, .76);
+}
+
+.golden-flow-handover-decision__chain strong {
+  color: #f5fbf8;
+  font: 750 1.05rem/1.15 "Cascadia Mono", "Noto Sans TC", monospace;
+}
+
+.golden-flow-handover-decision__chain > div > b {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  max-width: 100%;
+  background: #5be1c6;
+}
+
+.golden-flow[data-course-segment="act4"] .golden-flow-handover-decision span,
+.golden-flow[data-course-segment="act4"] .golden-flow-handover-decision small {
+  font-size: 1.05rem;
+}
+
+.golden-flow[data-course-segment="act4"] .golden-flow-handover-decision__links strong {
+  font-size: 1.16rem;
+}
+
+.golden-flow[data-course-segment="act4"] .golden-flow-handover-decision__links b,
+.golden-flow[data-course-segment="act4"] .golden-flow-handover-decision__chain strong {
+  font-size: 1.2rem;
+}
+
+.golden-flow[data-course-segment="act4"] .golden-flow-legacy-scene-key span {
+  font-size: 1.28rem;
+}
+
+@media (min-width: 1180px) {
+  .golden-flow-legacy-shell {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+    padding: 16px 76px 90px 20px;
+    background:
+      linear-gradient(rgba(64, 148, 130, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(64, 148, 130, 0.035) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .golden-flow-legacy-header {
+    min-height: 86px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 28px;
+  }
+
+  .golden-flow-legacy-header > div > p,
+  .golden-flow-legacy-panel-heading > span,
+  .golden-flow-legacy-narrative > p {
+    margin: 0 0 7px;
+    color: var(--aqua);
+    font: 700 1rem/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+    letter-spacing: 0.15em;
+  }
+
+  .golden-flow-legacy-header h1 {
+    margin: 0;
+    font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+    font-size: clamp(2rem, 2.2vw, 2.7rem);
+    font-weight: 520;
+    line-height: 1.08;
+    letter-spacing: 0.02em;
+  }
+
+  .golden-flow-legacy-header > div > span {
+    display: block;
+    margin-top: 8px;
+    color: #aac6bf;
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .golden-flow-legacy-header > aside {
+    min-width: 230px;
+    padding: 12px 15px;
+    border: 1px solid rgba(245, 191, 79, 0.62);
+    border-radius: 13px;
+    background: linear-gradient(135deg, rgba(67, 45, 11, 0.74), rgba(24, 19, 8, 0.82));
+  }
+
+  .golden-flow-legacy-header > aside strong,
+  .golden-flow-legacy-header > aside span,
+  .golden-flow-legacy-header > aside small {
+    display: block;
+  }
+
+  .golden-flow-legacy-header > aside strong {
+    color: var(--gold-bright);
+    font: 700 0.9rem/1.2 "IBM Plex Mono", monospace;
+    letter-spacing: 0.12em;
+  }
+
+  .golden-flow-legacy-header > aside span {
+    margin-top: 4px;
+    color: #fff2c7;
+    font-size: 1.08rem;
+    font-weight: 750;
+  }
+
+  .golden-flow-legacy-header > aside small {
+    margin-top: 3px;
+    color: #c4b783;
+    font-size: 0.95rem;
+  }
+
+  .golden-flow-legacy-stepper {
+    width: min(760px, 62vw);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .golden-flow-legacy-stepper button {
+    min-height: 46px;
+    padding: 0 12px;
+    border: 1px solid rgba(105, 181, 165, 0.24);
+    border-radius: 10px;
+    color: #9fc1b9;
+    background: rgba(5, 21, 18, 0.76);
+    font: 650 1.08rem/1 "IBM Plex Sans", "Noto Sans TC", sans-serif;
+    cursor: pointer;
+  }
+
+  .golden-flow-legacy-stepper button span {
+    margin-right: 9px;
+    color: #76a097;
+    font: 700 0.9rem/1 "IBM Plex Mono", monospace;
+  }
+
+  .golden-flow-legacy-stepper button:hover {
+    border-color: rgba(115, 230, 211, 0.52);
+    color: #d9eee9;
+  }
+
+  .golden-flow-legacy-stepper button.is-active {
+    border-color: rgba(245, 191, 79, 0.86);
+    color: #fff0bd;
+    background: linear-gradient(180deg, rgba(77, 54, 15, 0.76), rgba(35, 27, 11, 0.74));
+    box-shadow: inset 0 -3px 0 var(--gold);
+  }
+
+  .golden-flow-legacy-stepper button.is-active span { color: var(--gold); }
+
+  .golden-flow-legacy-workspace {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: clamp(248px, 15vw, 290px) minmax(620px, 1fr) clamp(270px, 16vw, 310px);
+    gap: 12px;
+  }
+
+  .golden-flow-legacy-panel,
+  .golden-flow-stage {
+    min-height: 0;
+    border: 1px solid rgba(105, 181, 165, 0.24);
+    border-radius: 17px;
+    background: rgba(5, 20, 18, 0.88);
+    box-shadow: inset 0 1px rgba(171, 238, 225, 0.025), 0 22px 80px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+  }
+
+  .golden-flow-legacy-panel {
+    padding: 19px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(93, 151, 139, 0.55) transparent;
+  }
+
+  .golden-flow-legacy-panel-heading {
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(105, 181, 165, 0.22);
+  }
+
+  .golden-flow-legacy-panel-heading h2,
+  .golden-flow-legacy-narrative h2 {
+    margin: 0;
+    font-family: "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+    font-weight: 550;
+    letter-spacing: 0.015em;
+  }
+
+  .golden-flow-legacy-panel-heading h2 { font-size: 1.45rem; }
+
+  .golden-flow-legacy-panel-heading p {
+    margin: 7px 0 0;
+    color: #91afa7;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .golden-flow-legacy-ledger {
+    display: grid;
+    gap: 9px;
+    margin: 14px 0 0;
+  }
+
+  .golden-flow-legacy-ledger > div {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(93, 151, 139, 0.24);
+    border-radius: 11px;
+    background: rgba(7, 26, 23, 0.64);
+  }
+
+  .golden-flow-legacy-ledger > div.is-emphasized {
+    border-color: rgba(245, 191, 79, 0.66);
+    background: linear-gradient(135deg, rgba(74, 52, 14, 0.58), rgba(15, 38, 32, 0.58));
+  }
+
+  .golden-flow-legacy-ledger dt {
+    color: #94b5ad;
+    font-size: 1rem;
+    font-weight: 650;
+  }
+
+  .golden-flow-legacy-ledger dd {
+    margin: 5px 0 0;
+    overflow-wrap: anywhere;
+    color: #f4fbf8;
+    font: 700 1.25rem/1.25 "Cascadia Mono", "Noto Sans TC", monospace;
+  }
+
+  .golden-flow-legacy-ledger small {
+    display: block;
+    margin-top: 7px;
+    color: #a5bdb6;
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .golden-flow-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #04100f;
+  }
+
+  .golden-flow-stage::after {
+    background:
+      linear-gradient(180deg, rgba(2, 9, 8, 0.82), transparent 23%, transparent 76%, rgba(2, 9, 8, 0.82)),
+      radial-gradient(circle at 50% 52%, transparent 44%, rgba(0, 0, 0, 0.2));
+  }
+
+  .golden-flow-legacy-narrative {
+    position: relative;
+    z-index: auto;
+    width: 100%;
+    margin-top: 16px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(105, 181, 165, 0.22);
+    pointer-events: none;
+  }
+
+  .golden-flow-legacy-narrative h2 {
+    color: #f1f8f5;
+    font-size: clamp(1.35rem, 1.25vw, 1.65rem);
+    line-height: 1.28;
+    text-shadow: none;
+  }
+
+  .golden-flow-legacy-narrative > span {
+    display: block;
+    margin-top: 8px;
+    color: #aec7c0;
+    font-size: 1.05rem;
+    line-height: 1.48;
+    text-shadow: none;
+  }
+
+  .golden-flow-legacy-scene-key {
+    position: absolute;
+    z-index: 8;
+    top: 18px;
+    right: 18px;
+    display: grid;
+    gap: 9px;
+    padding: 12px 15px;
+    border: 1px solid rgba(98, 171, 156, 0.22);
+    border-radius: 9px;
+    background: rgba(2, 11, 10, 0.7);
+    pointer-events: none;
+  }
+
+  .golden-flow-legacy-scene-key span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #aec1bc;
+    font-size: 1.15rem;
+  }
+
+  .golden-flow-legacy-scene-key i {
+    width: 20px;
+    height: 3px;
+    border-radius: 3px;
+    background: #fff;
+  }
+
+  .golden-flow-legacy-scene-key i.is-source,
+  .golden-flow-legacy-scene-key i.is-off-axis { background: var(--gold); }
+  .golden-flow-legacy-scene-key i.is-target {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--cyan);
+  }
+  .golden-flow-legacy-scene-key i.is-elevation { background: var(--aqua); }
+  .golden-flow-legacy-scene-key i.is-boresight {
+    background: repeating-linear-gradient(90deg, #ffe27d 0 5px, transparent 5px 8px);
+  }
+
+  .golden-flow-caption {
+    position: relative;
+    inset: auto;
+    left: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: none;
+    min-height: 52px;
+    transform: none;
+    padding: 8px 18px;
+    border: 1px solid rgba(105, 181, 165, 0.24);
+    border-radius: 12px;
+    background: rgba(3, 17, 15, 0.94);
+    transition: opacity 240ms ease, border-color 240ms ease, background 240ms ease;
+  }
+
+  .golden-flow-caption.is-phase-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .golden-flow-caption.is-phase-yielded {
+    min-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .golden-flow-caption p {
+    max-height: none;
+    font-size: clamp(1.2rem, 1.25vw, 1.5rem);
+    line-height: 1.3;
+    text-shadow: none;
+    animation: golden-flow-caption-arrive 360ms ease-out both;
+  }
+
+  .golden-flow-legacy-results .golden-flow-primary-cue,
+  .golden-flow-legacy-results .golden-flow-angle-readout {
+    position: relative;
+    inset: auto;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 14px 0 0;
+    transform: none;
+  }
+
+  .golden-flow-legacy-results .golden-flow-primary-cue {
+    min-height: 0;
+    padding: 12px;
+    border: 1px solid rgba(93, 151, 139, 0.28);
+    border-radius: 11px;
+    background: rgba(7, 26, 23, 0.68);
+    text-align: left;
+  }
+
+  .golden-flow-legacy-results .golden-flow-scene-cue,
+  .golden-flow-legacy-results .golden-flow-commit,
+  .golden-flow-legacy-results .golden-flow-finale {
+    display: grid;
+    justify-items: start;
+    gap: 7px;
+  }
+
+  .golden-flow-legacy-results .golden-flow-scene-cue strong,
+  .golden-flow-legacy-results .golden-flow-commit strong {
+    font-size: 1.45rem;
+  }
+
+  .golden-flow-legacy-results .golden-flow-pair {
+    display: grid;
+    gap: 10px;
+  }
+
+  .golden-flow-legacy-results .golden-flow-pair > b { justify-self: center; }
+  .golden-flow-legacy-results .golden-flow-threshold strong { font-size: 2rem; }
+  .golden-flow-legacy-results .golden-flow-ttt { justify-items: center; }
+  .golden-flow-legacy-results .golden-flow-ttt p { font-size: 1rem; line-height: 1.45; text-align: center; }
+  .golden-flow-legacy-results .golden-flow-trace { width: 100%; padding: 0; border: 0; background: transparent; }
+  .golden-flow-legacy-results .golden-flow-trace svg { width: 100%; height: auto; }
+  .golden-flow-legacy-results .golden-flow-receipt { padding: 12px; }
+  .golden-flow-legacy-results .golden-flow-finale { align-items: stretch; }
+  .golden-flow-legacy-results .golden-flow-finale button,
+  .golden-flow-legacy-results .golden-flow-finale a { width: 100%; }
+  .golden-flow-legacy-results .golden-flow-angle-key { display: grid; gap: 9px; }
+  .golden-flow-legacy-results .golden-flow-angle-key > div { grid-template-columns: 20px minmax(0, 1fr) auto; }
+  .golden-flow-legacy-results .golden-flow-angle-key strong { font-size: 1.25rem; }
+  .golden-flow-legacy-results .golden-flow-angle-key > div > small { font-size: 1.2rem; }
+  .golden-flow-legacy-results .golden-flow-axis-guide__header,
+  .golden-flow-legacy-results .golden-flow-axis-control__footer { display: grid; gap: 7px; }
+  .golden-flow-legacy-results .golden-flow-axis-guide__header strong { font-size: 1.35rem; white-space: normal; }
+  .golden-flow-legacy-results .golden-flow-axis-control__footer output { font-size: 1.08rem; }
+  .golden-flow-legacy-results .golden-flow-consequence { text-align: left; }
+  .golden-flow-legacy-results .golden-flow-consequence__bars { justify-content: flex-start; }
+  .golden-flow-legacy-results .golden-flow-restore-marker { text-align: left; }
+
+  .golden-flow-legacy-results .golden-flow-angle-readout {
+    display: grid;
+    gap: 7px;
+    padding: 10px 12px;
+    border: 1px solid rgba(114, 234, 212, 0.3);
+    border-left: 3px solid rgba(114, 234, 212, 0.76);
+    background: rgba(7, 26, 23, 0.68);
+  }
+
+  .golden-flow-legacy-results .golden-flow-angle-readout > span {
+    font-size: 1rem;
+  }
+
+  .golden-flow-legacy-results .golden-flow-angle-readout b { font-size: 1.18rem; }
+  .golden-flow-legacy-results .golden-flow-angle-magnifier {
+    display: block;
+    width: 100%;
+    margin: 12px 0 0;
+    padding: 11px 12px 10px;
+    border: 1px solid rgba(245, 191, 79, 0.42);
+    border-radius: 11px;
+    background: linear-gradient(145deg, rgba(47, 35, 10, 0.55), rgba(6, 25, 22, 0.74));
+  }
+
+  .golden-flow-angle-magnifier figcaption {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .golden-flow-angle-magnifier figcaption span {
+    color: #a8c8c0;
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .golden-flow-angle-magnifier figcaption strong {
+    color: var(--gold-bright);
+    font: 750 1.12rem/1.2 "Cascadia Mono", monospace;
+  }
+
+  .golden-flow-angle-magnifier svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 4px;
+    overflow: visible;
+  }
+
+  .golden-flow-angle-magnifier svg line,
+  .golden-flow-angle-magnifier svg path {
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .golden-flow-angle-magnifier svg .is-terminal-ray {
+    stroke: var(--aqua);
+    stroke-width: 2.5;
+  }
+
+  .golden-flow-angle-magnifier svg .is-axis-ray {
+    stroke: var(--gold);
+    stroke-width: 2.5;
+    stroke-dasharray: 7 5;
+  }
+
+  .golden-flow-angle-magnifier svg path {
+    stroke: #fff0ad;
+    stroke-width: 2.2;
+  }
+
+  .golden-flow-angle-magnifier svg circle { fill: #fff0ad; }
+  .golden-flow-angle-magnifier svg text {
+    fill: #c4d9d3;
+    font: 650 10px "Noto Sans TC", sans-serif;
+  }
+
+  .golden-flow-angle-magnifier > small {
+    display: block;
+    margin-top: 2px;
+    color: #aabfb9;
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+  .golden-flow-legacy-results-ledger { margin-top: 14px; }
+}
+
+/*
+ * Event-driven legacy carrier.
+ *
+ * The legacy route remains the visual reference for the ground/GLB/beam stage,
+ * but the course no longer keeps its header, chapter tabs and two information
+ * rails mounted together.  One current-event dock sits outside the 3D stage;
+ * when the beat changes, the dock is replaced instead of accumulating cards.
+ */
+@media (min-width: 1180px) {
+  .golden-flow-legacy-shell {
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0;
+    padding: 16px 76px 90px 20px;
+  }
+
+  .golden-flow-legacy-workspace {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .golden-flow-event-dock {
+    min-height: 150px;
+    max-height: 230px;
+    display: grid;
+    grid-template-columns: minmax(430px, .82fr) minmax(560px, 1.18fr);
+    align-items: center;
+    gap: 20px;
+    padding: 12px 18px;
+    overflow: hidden;
+    border: 1px solid rgba(105, 181, 165, .3);
+    border-radius: 13px;
+    background: rgba(3, 17, 15, .96);
+    box-shadow: 0 16px 50px rgba(0, 0, 0, .22);
+  }
+
+  .golden-flow[data-beat="candidate"] .golden-flow-event-dock {
+    min-height: 205px;
+    max-height: 275px;
+  }
+
+  .golden-flow[data-beat="consequence"] .golden-flow-event-dock {
+    min-height: 190px;
+    max-height: 230px;
+  }
+
+  .golden-flow-event-dock__copy {
+    min-width: 0;
+    padding-right: 18px;
+    border-right: 1px solid rgba(105, 181, 165, .22);
+  }
+
+  .golden-flow-event-dock__copy > span {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--aqua);
+    font: 750 1rem/1.2 "IBM Plex Mono", "Cascadia Mono", monospace;
+    letter-spacing: .12em;
+  }
+
+  .golden-flow-event-dock__copy h2 {
+    margin: 0;
+    color: #f5fbf8;
+    font: 570 clamp(1.7rem, 1.65vw, 2.1rem)/1.2 "Iowan Old Style", "Noto Serif TC", Georgia, serif;
+  }
+
+  .golden-flow-event-dock__copy p {
+    margin: 6px 0 0;
+    color: #afc9c2;
+    font-size: 1.18rem;
+    line-height: 1.48;
+  }
+
+  .golden-flow-event-dock__readout {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    align-items: center;
+    gap: 12px;
+  }
+
+  .golden-flow-event-dock__readout.has-angle-power-ee {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .golden-flow-event-dock .golden-flow-primary-cue,
+  .golden-flow-event-dock .golden-flow-angle-magnifier {
+    position: relative;
+    inset: auto;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    transform: none;
+  }
+
+  .golden-flow-event-dock .golden-flow-primary-cue {
+    min-height: 0;
+    padding: 12px 15px;
+    border: 0;
+    border-left: 3px solid rgba(245, 191, 79, .7);
+    border-radius: 7px;
+    background: rgba(7, 27, 23, .7);
+    box-shadow: none;
+    text-align: left;
+  }
+
+  .golden-flow-event-dock .golden-flow-handover-decision {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .golden-flow-event-dock .golden-flow-scene-cue,
+  .golden-flow-event-dock .golden-flow-commit,
+  .golden-flow-event-dock .golden-flow-finale {
+    display: grid;
+    justify-items: start;
+    gap: 5px;
+  }
+
+  .golden-flow-event-dock .golden-flow-scene-cue strong,
+  .golden-flow-event-dock .golden-flow-commit strong {
+    font-size: 1.55rem;
+  }
+
+  .golden-flow-event-dock .golden-flow-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .golden-flow-event-dock .golden-flow-pair > div {
+    min-width: 0;
+  }
+
+  .golden-flow-event-dock .golden-flow-pair strong {
+    overflow-wrap: anywhere;
+    font-size: 1.45rem;
+  }
+
+  .golden-flow-event-dock .golden-flow-pair span {
+    font-size: 1.12rem;
+  }
+
+  .golden-flow-event-dock .golden-flow-threshold span,
+  .golden-flow-event-dock .golden-flow-threshold i,
+  .golden-flow-event-dock .golden-flow-ttt p,
+  .golden-flow-event-dock .golden-flow-receipt dt,
+  .golden-flow-event-dock .golden-flow-receipt dd {
+    font-size: 1.15rem;
+  }
+
+  .golden-flow-event-dock .golden-flow-angle-key {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px 16px;
+  }
+
+  .golden-flow-event-dock .golden-flow-angle-key > small {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+
+  .golden-flow-event-dock .golden-flow-axis-guide__header,
+  .golden-flow-event-dock .golden-flow-axis-control__footer {
+    display: grid;
+    gap: 5px;
+  }
+
+  .golden-flow-event-dock .golden-flow-axis-guide__header strong {
+    font-size: 1.35rem;
+    white-space: normal;
+  }
+
+  .golden-flow-event-dock .golden-flow-axis-control__footer output {
+    font-size: 1.08rem;
+  }
+
+  .golden-flow-event-dock .golden-flow-consequence {
+    text-align: left;
+  }
+
+  .golden-flow-event-dock .golden-flow-consequence__bars {
+    justify-content: flex-start;
+  }
+
+  .golden-flow-event-dock .golden-flow-ttt {
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+  }
+
+  .golden-flow-event-dock .golden-flow-ttt__ring {
+    width: 92px;
+    height: 92px;
+  }
+
+  .golden-flow-event-dock .golden-flow-trace {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .golden-flow-event-dock .golden-flow-trace svg {
+    width: 100%;
+    height: auto;
+    max-height: 116px;
+  }
+
+  .golden-flow-event-dock .golden-flow-receipt {
+    padding: 8px 12px;
+  }
+
+  .golden-flow-event-dock .golden-flow-angle-magnifier {
+    display: block;
+    padding: 7px 10px;
+  }
+
+  .golden-flow-event-dock .golden-flow-angle-magnifier svg {
+    max-height: 70px;
+  }
+
+  .golden-flow-event-dock .golden-flow-segment-finale {
+    position: relative;
+    inset: auto;
+    display: flex;
+    margin-top: 5px;
+  }
+
+  /*
+   * Act 3's interaction readout has two independent teaching surfaces: the
+   * drag instruction and the angle/power/EE chain. Keep them on one readable
+   * row so the current-event dock does not clip either surface at its fixed
+   * 230px desktop height. Consequence has no drag instruction, so its metrics,
+   * disclaimer, and formula can use the full readout width in a compact stack.
+   */
+  .golden-flow[data-course-segment="act3"] .golden-flow-event-dock__readout.has-angle-power-ee {
+    grid-template-columns: minmax(235px, .34fr) minmax(0, .66fr);
+    column-gap: 10px;
+    align-items: center;
+  }
+
+  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-event-dock__readout.has-angle-power-ee {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .golden-flow[data-course-segment="act3"] .golden-flow-angle-power-ee {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .golden-flow[data-course-segment="act3"] .golden-flow-angle-power-ee__values > div {
+    padding: 4px 6px;
+    gap: 2px;
+  }
+
+  .golden-flow[data-course-segment="act3"] .golden-flow-angle-power-ee__values > i {
+    font-size: 1rem;
+  }
+
+  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-angle-power-ee {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-angle-power-ee__conditions {
+    grid-column: auto;
+  }
+
+  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-angle-power-ee__values,
+  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-angle-power-ee__note {
+    grid-column: auto;
+  }
+
+  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-angle-power-ee__formula {
+    grid-column: auto;
+    grid-row: auto;
+    align-self: auto;
+    padding: 4px 7px;
+    gap: 2px 7px;
+  }
+
+  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-angle-power-ee__formula > span {
+    line-height: 1.1;
+  }
+
+}
+
+@media (max-width: 1179px) {
+  .golden-flow-angle-teaching-rail,
+  .golden-flow-handover-transfer-banner {
+    display: none;
+  }
+
+  .golden-flow-legacy-shell,
+  .golden-flow-legacy-workspace,
+  .golden-flow-legacy-results {
+    display: contents;
+  }
+
+  .golden-flow-legacy-header,
+  .golden-flow-legacy-stepper,
+  .golden-flow-legacy-inputs,
+  .golden-flow-legacy-results > .golden-flow-legacy-panel-heading,
+  .golden-flow-legacy-results-ledger,
+  .golden-flow-legacy-narrative,
+  .golden-flow-legacy-scene-key {
+    display: none;
+  }
+
+  .golden-flow-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .golden-flow-event-dock {
+    position: fixed;
+    z-index: 24;
+    top: 10px;
+    right: 70px;
+    left: 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+    max-height: 36svh;
+    padding: 10px 12px;
+    overflow: auto;
+    border: 1px solid rgba(105, 181, 165, .32);
+    border-radius: 11px;
+    background: rgba(3, 17, 15, .94);
+  }
+
+  .golden-flow-event-dock__copy > span {
+    display: block;
+    color: var(--aqua);
+    font: 750 1rem/1.2 "IBM Plex Mono", monospace;
+  }
+
+  .golden-flow-event-dock__copy h2 {
+    margin: 3px 0 0;
+    font: 600 clamp(1.3rem, 6vw, 1.7rem)/1.2 "Noto Serif TC", Georgia, serif;
+  }
+
+  .golden-flow-event-dock__copy p {
+    margin: 4px 0 0;
+    color: #aec7c0;
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .golden-flow-event-dock__readout {
+    min-width: 0;
+  }
+
+  .golden-flow-angle-power-ee__values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .golden-flow-angle-power-ee__values > i { display: none; }
+  .golden-flow-angle-power-ee__values > div { padding: 7px 8px; }
+  .golden-flow-angle-power-ee span { font-size: 1rem; }
+  .golden-flow-angle-power-ee strong { font-size: 1.05rem; }
+  .golden-flow-angle-power-ee__formula { grid-template-columns: minmax(0, 1fr); }
+
+  .golden-flow-handover-decision__links { display: none; }
+  .golden-flow-handover-decision__chain {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .golden-flow-handover-decision__chain > i { display: none; }
+  .golden-flow-handover-decision__chain > div { padding: 7px 6px 9px; }
+  .golden-flow-handover-decision__chain strong { font-size: 1rem; }
+  .golden-flow-handover-decision__chain span { font-size: 1rem; }
+  .golden-flow-handover-decision__chain small { display: none; }
+
+  .golden-flow-event-dock .golden-flow-primary-cue,
+  .golden-flow-event-dock .golden-flow-angle-magnifier {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    transform: none;
+  }
+
+  .golden-flow-event-dock .golden-flow-primary-cue {
+    padding: 7px 9px;
+    border-radius: 7px;
+    background: rgba(7, 27, 23, .72);
+  }
+
+  .golden-flow-event-dock .golden-flow-angle-magnifier {
+    display: none;
+  }
+
+  .golden-flow-event-dock .golden-flow-segment-finale {
+    position: relative;
+    inset: auto;
+    margin-top: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .golden-flow *,
+  .golden-flow *::before,
+  .golden-flow *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

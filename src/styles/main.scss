@@ -90,6 +90,25 @@ canvas {
   padding-right: 112px;
 }
 
+// Explicit homepage producer switch. It reuses the existing segmented-control
+// tokens but stays a compact, bounded item beside the global quick controls.
+.leo-simulation-source-toggle {
+  flex: 0 1 360px;
+  max-width: 360px;
+  min-width: 260px;
+}
+
+@media (max-width: 980px) {
+  .leo-global-top-row {
+    flex-wrap: wrap;
+  }
+
+  .leo-simulation-source-toggle {
+    order: 2;
+    flex-basis: min(100%, 360px);
+  }
+}
+
 .leo-shell-chrome-controls {
   position: absolute;
   z-index: 120;
@@ -290,6 +309,25 @@ canvas {
     opacity var(--leo-motion-fast) ease,
     transform var(--leo-motion-standard) ease,
     visibility 0s linear var(--leo-motion-standard);
+}
+
+.leo-archived-tle-boundary-note {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(118, 234, 215, 0.22);
+  border-radius: 8px;
+  background: rgba(8, 30, 38, 0.72);
+  color: rgba(229, 244, 251, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.leo-archived-tle-boundary-note > strong {
+  color: #76ead7;
+  font-size: 12px;
+  letter-spacing: 0.04em;
 }
 
 .leo-shell-left[data-left-sidebar-state="collapsed"] .leo-left-sidebar-content {
@@ -1001,6 +1039,317 @@ canvas {
   white-space: nowrap;
 }
 
+// Homepage-only source-backed teaching-window entry.  It stays visually close
+// to the existing handover controls but has its own selector/telemetry seam so
+// the shared `/walker` controls are unchanged.
+.leo-homepage-demo-window {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 2px;
+}
+
+.leo-homepage-demo-window__button {
+  min-height: 30px;
+  padding: 4px 11px;
+  border: 1px solid rgba(118, 234, 215, 0.62);
+  border-radius: 6px;
+  background: rgba(118, 234, 215, 0.16);
+  color: #bffaf0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.leo-homepage-demo-window__button:hover:not(:disabled) {
+  background: rgba(118, 234, 215, 0.28);
+  border-color: rgba(118, 234, 215, 0.9);
+}
+
+.leo-homepage-demo-window__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.leo-homepage-demo-window__status {
+  color: rgba(229, 244, 251, 0.58);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+// Homepage teaching mode stays in the existing top control band. It is a
+// compact mode selector, never a scene overlay or a central teaching card.
+.leo-homepage-teaching-controls {
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 3px 5px;
+  border: 1px solid rgba(218, 244, 255, 0.16);
+  border-radius: 7px;
+  background: rgba(3, 13, 20, 0.56);
+  color: rgba(240, 250, 255, 0.9);
+  font-size: 14px;
+}
+
+.leo-homepage-teaching-controls__label {
+  padding: 0 4px;
+  color: rgba(229, 244, 251, 0.62);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.leo-homepage-teaching-controls__modes {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.leo-homepage-teaching-controls__mode,
+.leo-homepage-teaching-controls__action {
+  min-height: 28px;
+  padding: 3px 9px;
+  border: 1px solid rgba(218, 244, 255, 0.2);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(240, 250, 255, 0.9);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.leo-homepage-teaching-controls__mode[aria-pressed="true"] {
+  border-color: rgba(118, 234, 215, 0.72);
+  background: rgba(118, 234, 215, 0.18);
+  color: #d9fff7;
+}
+
+.leo-homepage-teaching-controls__action--start,
+.leo-homepage-teaching-controls__action--next {
+  border-color: rgba(118, 234, 215, 0.5);
+  color: #c7fff4;
+}
+
+.leo-homepage-teaching-controls__action--end {
+  border-color: rgba(255, 179, 107, 0.46);
+  color: #ffd5a8;
+}
+
+.leo-homepage-teaching-controls__mode:hover:not(:disabled),
+.leo-homepage-teaching-controls__action:hover:not(:disabled) {
+  border-color: rgba(118, 234, 215, 0.76);
+  background: rgba(118, 234, 215, 0.14);
+}
+
+.leo-homepage-teaching-controls__mode:disabled,
+.leo-homepage-teaching-controls__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.leo-homepage-teaching-controls__status {
+  max-width: 190px;
+  overflow: hidden;
+  color: rgba(229, 244, 251, 0.7);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// The active teaching timeline occupies the same bottom dock footprint as the
+// ordinary timeline, but is intentionally left aligned so the 3D story stays
+// visible in the centre of the viewport. Text is larger than the engineering
+// timeline because this is the lecturer's control surface.
+.leo-homepage-teaching-timeline {
+  position: static;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  padding: 11px 14px 12px;
+  border: 1px solid rgba(118, 234, 215, 0.5);
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, rgba(8, 24, 32, 0.96), rgba(3, 11, 17, 0.94)),
+    rgba(3, 13, 20, 0.94);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.46), inset 0 0 24px rgba(118, 234, 215, 0.06);
+  color: #f1fbff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  pointer-events: auto;
+}
+
+.leo-homepage-teaching-timeline__header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  font-size: 16px;
+}
+
+.leo-homepage-teaching-timeline__mode {
+  color: #d9fff7;
+  font-weight: 900;
+}
+
+.leo-homepage-teaching-timeline__stop {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(229, 244, 251, 0.78);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-homepage-teaching-timeline__clock {
+  margin-left: auto;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.leo-homepage-teaching-timeline__story-link {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(118, 234, 215, 0.28);
+  border-radius: 6px;
+  background: rgba(118, 234, 215, 0.07);
+}
+
+.leo-homepage-teaching-timeline__story-kind {
+  color: #76ead7;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.leo-homepage-teaching-timeline__story-phase {
+  color: rgba(241, 251, 255, 0.86);
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leo-homepage-teaching-timeline__story-endpoint {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(241, 251, 255, 0.88);
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-homepage-teaching-timeline__story-endpoint strong {
+  display: block;
+  overflow: hidden;
+  color: #d9fff7;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-homepage-teaching-timeline__story-arrow {
+  color: #76ead7;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.leo-homepage-teaching-timeline__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.leo-homepage-teaching-timeline__button {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid rgba(218, 244, 255, 0.24);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.065);
+  color: rgba(245, 252, 255, 0.94);
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.leo-homepage-teaching-timeline__button--play {
+  border-color: rgba(118, 234, 215, 0.62);
+  background: rgba(118, 234, 215, 0.14);
+  color: #d9fff7;
+}
+
+.leo-homepage-teaching-timeline__button--end {
+  border-color: rgba(255, 179, 107, 0.5);
+  color: #ffd5a8;
+}
+
+.leo-homepage-teaching-timeline__button:hover:not(:disabled) {
+  border-color: rgba(118, 234, 215, 0.8);
+  background: rgba(118, 234, 215, 0.18);
+}
+
+.leo-homepage-teaching-timeline__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.leo-homepage-teaching-timeline__slider {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  accent-color: #76ead7;
+  cursor: pointer;
+}
+
+.leo-homepage-teaching-timeline__speed {
+  align-self: center;
+  color: rgba(229, 244, 251, 0.72);
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 820px) {
+  .leo-homepage-teaching-timeline {
+    width: calc(100% - 24px);
+    margin: 0 12px;
+  }
+
+  .leo-homepage-teaching-timeline__story-link {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .leo-homepage-teaching-timeline__story-endpoint:last-child {
+    grid-column: 2 / -1;
+  }
+
+  .leo-homepage-teaching-timeline__header {
+    flex-wrap: wrap;
+  }
+
+  .leo-homepage-teaching-timeline__clock {
+    margin-left: 0;
+  }
+}
+
 // HO-Slow feedback: a live "Scene N.N×" readout + a Resume button beside the HO
 // Slow checkbox. Idle = muted; while the auto-slow is applied it goes alert amber
 // (data-auto-slow-applied="1") so the user can SEE the scene slowed and skip it.
@@ -1158,6 +1507,7 @@ canvas {
   max-width: min(520px, calc(100vw - 48px));
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "label path progress";
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
@@ -1193,12 +1543,14 @@ canvas {
 }
 
 .leo-handover-toast__label {
+  grid-area: label;
   color: #ffffff;
   font-weight: 800;
   white-space: nowrap;
 }
 
 .leo-handover-toast__path {
+  grid-area: path;
   min-width: 0;
   overflow: hidden;
   color: rgba(229, 244, 251, 0.78);
@@ -1208,9 +1560,208 @@ canvas {
 }
 
 .leo-handover-toast__progress {
+  grid-area: progress;
+  min-width: 0;
   color: rgba(182, 244, 255, 0.86);
   font-weight: 800;
   white-space: nowrap;
+}
+
+.leo-handover-toast[data-handover-toast-has-reason="true"] {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "label path"
+    "progress progress";
+}
+
+.leo-handover-toast[data-handover-toast-has-reason="true"] .leo-handover-toast__progress {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+// Homepage-only teaching comparison. It is part of the right-rail evidence
+// surface, not a screen-centred overlay, so the 3D handover carrier remains
+// unobstructed.
+.leo-homepage-handover-comparison {
+  position: static;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px 11px;
+  border: 1px solid rgba(118, 234, 215, 0.38);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(5, 22, 31, 0.96), rgba(2, 10, 16, 0.92)),
+    rgba(3, 14, 21, 0.94);
+  color: rgba(241, 251, 255, 0.96);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.36),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 0 24px rgba(118, 234, 215, 0.08);
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.leo-homepage-handover-comparison[data-comparison-kind="intra"] {
+  border-color: rgba(88, 191, 240, 0.5);
+}
+
+.leo-homepage-handover-comparison[data-comparison-kind="inter"] {
+  border-color: rgba(118, 234, 215, 0.5);
+}
+
+.leo-homepage-handover-comparison__header,
+.leo-homepage-handover-comparison__meta,
+.leo-homepage-handover-comparison__row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.leo-homepage-handover-comparison__header > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.leo-homepage-handover-comparison__header strong {
+  overflow: hidden;
+  color: #f8fdff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-homepage-handover-comparison__header span,
+.leo-homepage-handover-comparison__meta {
+  color: rgba(199, 229, 238, 0.72);
+  font-size: 11px;
+}
+
+.leo-homepage-handover-comparison__cell-badge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid rgba(218, 244, 255, 0.22);
+  border-radius: 999px;
+  color: rgba(241, 251, 255, 0.9) !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+
+.leo-homepage-handover-comparison__meta {
+  justify-content: flex-start;
+  gap: 16px;
+  min-height: 16px;
+}
+
+.leo-homepage-handover-comparison__meta span:first-child {
+  color: #76ead7;
+  font-weight: 700;
+}
+
+.leo-homepage-handover-comparison__bars {
+  display: grid;
+  gap: 7px;
+}
+
+.leo-homepage-handover-comparison__row {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px 0;
+}
+
+.leo-homepage-handover-comparison__row[data-comparison-selected="true"] {
+  margin-inline: -7px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: rgba(118, 234, 215, 0.1);
+  box-shadow: inset 2px 0 0 #76ead7;
+}
+
+.leo-homepage-handover-comparison__identity {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+  overflow: hidden;
+  color: rgba(239, 250, 255, 0.9);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leo-homepage-handover-comparison__swatch {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.leo-homepage-handover-comparison__value {
+  flex: 0 0 auto;
+  color: #f8fdff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leo-homepage-handover-comparison__track {
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(218, 244, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(218, 244, 255, 0.08);
+}
+
+.leo-homepage-handover-comparison__fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 10px currentColor;
+  opacity: 0.88;
+  transition: width 180ms ease, opacity 180ms ease;
+}
+
+.leo-homepage-handover-comparison__row[data-comparison-reference="true"] .leo-homepage-handover-comparison__fill {
+  opacity: 0.58;
+}
+
+.leo-homepage-handover-comparison__transition {
+  justify-self: end;
+  color: rgba(199, 229, 238, 0.7);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.leo-homepage-handover-comparison__transition span {
+  padding-inline: 5px;
+  color: #f8fdff;
+  font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .leo-homepage-handover-comparison {
+    padding: 10px 11px 9px;
+  }
+
+  .leo-homepage-handover-comparison__header strong {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leo-homepage-handover-comparison__fill {
+    transition: none;
+  }
 }
 
 .leo-cell-ue-count-badge {
@@ -2199,6 +2750,12 @@ canvas {
   .leo-global-top-row {
     gap: 8px;
     padding-right: 96px;
+  }
+
+  .leo-simulation-source-toggle {
+    flex-basis: 100%;
+    min-width: 0;
+    max-width: none;
   }
 
   .leo-shell-chrome-controls {

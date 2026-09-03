@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import {
@@ -207,6 +208,16 @@ function acceptedSnapshot(
 }
 
 const decisionSnapshot = acceptedSnapshot(decision);
+const infoPanelStyles = readFileSync(new URL('../../styles/_info-panel.scss', import.meta.url), 'utf8');
+const comparisonBoardStyleStart = infoPanelStyles.indexOf('.leo-handover-comparison-board {');
+const comparisonBoardStyleEnd = infoPanelStyles.indexOf('.leo-handover-comparison-board__empty');
+assert.ok(comparisonBoardStyleStart >= 0 && comparisonBoardStyleEnd > comparisonBoardStyleStart);
+const comparisonBoardStyles = infoPanelStyles.slice(comparisonBoardStyleStart, comparisonBoardStyleEnd);
+assert.doesNotMatch(
+  comparisonBoardStyles,
+  /text-overflow\s*:\s*ellipsis/,
+  'the primary service/candidate board must never hide identifiers behind an ellipsis',
+);
 
 const zhMarkup = renderToStaticMarkup(
   <LocaleProvider initialLocale="zh-TW">
@@ -221,15 +232,25 @@ assert.match(zhMarkup, /候選連線/);
 assert.match(zhMarkup, /STARLINK-101/);
 assert.match(zhMarkup, /STARLINK-202/);
 assert.match(zhMarkup, /同衛星波束候選/);
+assert.match(zhMarkup, /中央標記 S＝目前唯一作用中鏈路/);
+assert.match(zhMarkup, /data-central-marker="S"/);
+assert.match(zhMarkup, /data-central-marker="C1"/);
 assert.match(zhMarkup, /跨衛星候選/);
 assert.match(zhMarkup, /暫列第一/);
 assert.match(zhMarkup, /預測能源效率尚未啟用/);
-assert.match(zhMarkup, /模擬星座同時刻額定功率量測/);
+assert.match(zhMarkup, /模擬星座，同一時刻的候選鏈路量測（額定功率）/);
+assert.match(zhMarkup, /目前決策依據：候選 SINR、換手偏移量與 TTT/);
+assert.match(zhMarkup, /服務資格與 TTT 均已通過/);
+assert.match(zhMarkup, /服務資格已通過；TTT 計時中/);
 assert.doesNotMatch(zhMarkup, />[^<]*Walker[^<]*</);
 assert.match(zhMarkup, /STARLINK-101 \/ B1 \/ C1/);
 assert.match(zhMarkup, /STARLINK-101 \/ B2 \/ C2/);
 assert.match(zhMarkup, /資格 SINR/);
 assert.match(zhMarkup, /並非實體衛星波束識別碼/);
+assert.match(zhMarkup, /服務鏈路維持/);
+assert.match(zhMarkup, /data-testid="handover-comparison-decision-note"/);
+assert.match(zhMarkup, /class="leo-handover-candidate-set__context"/);
+assert.match(zhMarkup, /class="leo-handover-comparison-board__notes"/);
 assert.match(zhMarkup, /data-active-data-link-count="1"/);
 assert.match(zhMarkup, /data-pair-key="STARLINK-101\|1"/);
 assert.match(zhMarkup, /data-scene-join-key="homepage-handover\/1\/link\/STARLINK-101%7C1"/);
@@ -240,11 +261,22 @@ assert.match(zhMarkup, /data-scientific-candidate-count="6"/);
 assert.match(zhMarkup, /data-displayed-hard-eligible-candidate-count="/);
 assert.match(zhMarkup, /data-overflow-hard-eligible-candidate-count="/);
 assert.match(zhMarkup, /顯示 \d+ \/ \d+/);
-assert.match(zhMarkup, /檢視其餘 2 組/);
+assert.match(zhMarkup, /展開其餘 1 組候選/);
+assert.doesNotMatch(
+  zhMarkup,
+  /data-testid="handover-overflow-comparison"/,
+  'collapsed overflow rows must not remain mounted and re-render on every live frame',
+);
+assert.match(zhMarkup, /data-testid="handover-selection-explanation"/);
+assert.match(zhMarkup, /已通過服務資格與 3\.5 s TTT/);
+assert.match(zhMarkup, /比目前服務高 4\.4 dB/);
+assert.match(zhMarkup, /排名第 1/);
+assert.match(zhMarkup, /保持完成後才執行切換/);
+assert.doesNotMatch(zhMarkup, /檢視其餘/);
 assert.doesNotMatch(zhMarkup, />0 bit\/J</);
 assert.ok(
-  zhMarkup.indexOf('leo-handover-selection') < zhMarkup.indexOf('leo-handover-candidate-set'),
-  'event-state summary must remain visible before the long candidate list',
+  zhMarkup.indexOf('leo-handover-candidate-set') < zhMarkup.indexOf('leo-handover-counts'),
+  'same-frame candidate comparison must be visible before secondary counts',
 );
 
 const enMarkup = renderToStaticMarkup(
@@ -290,9 +322,15 @@ const receiptMarkup = renderToStaticMarkup(
   </LocaleProvider>,
 );
 assert.match(receiptMarkup, /跨衛星換手完成/);
+assert.match(receiptMarkup, /data-testid="handover-receipt-explanation"/);
+assert.match(receiptMarkup, /接手波束已通過服務資格與 3\.5 s TTT/);
+assert.match(receiptMarkup, /資格 SINR 13\.8 dB/);
+assert.match(receiptMarkup, /比原服務高 4\.4 dB/);
+assert.match(receiptMarkup, /排名第 1/);
+assert.match(receiptMarkup, /因此由此波束接手服務/);
 assert.ok(
-  receiptMarkup.indexOf('leo-handover-receipt') < receiptMarkup.indexOf('leo-handover-candidate-set'),
-  'commit receipt must remain visible before the long candidate list',
+  receiptMarkup.indexOf('leo-handover-candidate-set') < receiptMarkup.indexOf('leo-handover-receipt'),
+  'the same-frame comparison remains the primary rail surface before the receipt detail',
 );
 
 const pinnedKey = candidateLinkKey('STARLINK-202', 1);
@@ -314,11 +352,15 @@ assert.doesNotMatch(pinnedMarkup, /維持目前連線基準/);
 assert.doesNotMatch(pinnedMarkup, /相對基準變化/);
 assert.doesNotMatch(pinnedMarkup, /模型版本/);
 assert.doesNotMatch(pinnedMarkup, /證據識別/);
-assert.doesNotMatch(pinnedMarkup, new RegExp(SOURCE_FRAME_ID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+assert.match(pinnedMarkup, new RegExp(`data-source-frame-id="${SOURCE_FRAME_ID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
 assert.doesNotMatch(pinnedMarkup, /預測能源效率增益/);
+assert.doesNotMatch(pinnedMarkup, /預測 EE/);
 assert.match(pinnedMarkup, /量測/);
 assert.match(pinnedMarkup, /門檻/);
 assert.match(pinnedMarkup, /資格 SINR/);
+assert.match(pinnedMarkup, /class="leo-handover-satellite-group__roster"/);
+assert.match(pinnedMarkup, /class="leo-handover-satellite-group__roster-summary"/);
+assert.match(pinnedMarkup, /波束狀態/);
 assert.doesNotMatch(pinnedMarkup, /尚未計算/);
 const controlledDetailsId = pinnedMarkup.match(/aria-controls="([^"]+)"/)?.[1];
 assert.ok(controlledDetailsId);
@@ -343,6 +385,12 @@ assert.match(eeModePinnedMarkup, /維持目前連線基準/);
 assert.match(eeModePinnedMarkup, /相對基準變化/);
 assert.match(eeModePinnedMarkup, /尚未計算/);
 assert.match(eeModePinnedMarkup, /預測能源效率增益/);
+assert.match(eeModePinnedMarkup, /展開其餘/);
+assert.doesNotMatch(
+  eeModePinnedMarkup,
+  /data-testid="handover-overflow-comparison"/,
+  'the large overflow table must stay unmounted until the user expands it',
+);
 
 const profile = loadProfile('hobs-2024-candidate-rich');
 const integratedMarkup = renderToStaticMarkup(

@@ -65,6 +65,23 @@ export const SINR_LIVE_BEAM_DISPLAY_CELL_COUNT = 19;
 export const SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT = 37;
 
 /**
+ * Keep the homepage's Walker ground-cell presentation on the established
+ * Starlink scale.  The synthetic OneWeb preset intentionally keeps a higher
+ * shell altitude for satellite motion and visibility, but reusing that
+ * altitude in the fixed seven-cell ground lattice would scale every hex from
+ * about 16 km to 35 km and cover the whole teaching floor.  This is a
+ * presentation substrate bound; it does not change the profile shell altitude,
+ * antenna beamwidth, UE inputs, or link-budget calculations.
+ */
+export const SINR_LIVE_WALKER_PRESENTATION_CELL_ALTITUDE_KM = 550;
+
+export function resolveSinrLiveCellLayoutAltitudeKm(profile: Pick<Profile, 'orbit'>): number {
+  const shell = profile.orbit.shells[0];
+  if (shell?.id.startsWith('oneweb-')) return SINR_LIVE_WALKER_PRESENTATION_CELL_ALTITUDE_KM;
+  return shell?.altitudeKm ?? SINR_LIVE_WALKER_PRESENTATION_CELL_ALTITUDE_KM;
+}
+
+/**
  * The serving-satellite layout control also selects the live scene cell field:
  * one serving beam exposes one cell, the default seven exposes seven, and the
  * 19-beam presentation exposes the complete 19-cell layout. Invalid or absent
@@ -327,10 +344,10 @@ export function buildSinrLiveCellLayout(
   const layout = buildCellLayout({
     centerLatDeg: profile.orbit.observerLatDeg,
     centerLonDeg: profile.orbit.observerLonDeg,
-    altitudeKm: profile.orbit.shells[0]?.altitudeKm ?? 550,
-    // Cell SIZE and link-budget gain both read the same profile-backed antenna
-    // width, so changing the left beamwidth control moves the UE/cell geometry
-    // and the selected-link formula together.
+    altitudeKm: resolveSinrLiveCellLayoutAltitudeKm(profile),
+    // The antenna beamwidth remains profile-backed.  OneWeb's higher shell is
+    // retained by the Walker trajectory/model; only this homepage ground-cell
+    // presentation substrate stays on the established compact scale.
     beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
     cellCount,
     // Phase the lattice off the ENU origin so the protagonist UE is off-centre

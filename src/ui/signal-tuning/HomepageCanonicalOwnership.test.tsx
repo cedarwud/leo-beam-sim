@@ -136,8 +136,13 @@ const comparisonMarkup = renderToStaticMarkup(
 );
 
 assert.match(scenarioControlsMarkup, /data-testid="scenario-data-page"/);
-assert.match(scenarioControlsMarkup, /data-testid="scenario-data-hour"[^>]*aria-label="Hour \(24-hour\)"/);
-assert.match(scenarioControlsMarkup, /data-testid="scenario-data-minute"[^>]*aria-label="Minute"/);
+assert.match(scenarioControlsMarkup, /data-testid="homepage-tle-scenario-disclosure"/);
+assert.match(scenarioControlsMarkup, /data-testid="homepage-tle-scenario-toggle"/);
+assert.match(scenarioControlsMarkup, /id="scenario-data-serving-beam-layout-7"[^>]*checked=""/);
+assert.match(scenarioControlsMarkup, /id="scenario-data-candidate-beam-layout-7"[^>]*checked=""/);
+assert.doesNotMatch(scenarioControlsMarkup, /scenario-data-(?:serving|candidate)-beam-layout-(?:1|19)/);
+assert.doesNotMatch(scenarioControlsMarkup, /data-testid="scenario-data-constellation-control"/);
+assert.doesNotMatch(scenarioControlsMarkup, /data-testid="scenario-data-time-controls"/);
 assert.doesNotMatch(scenarioControlsMarkup, /AM|PM|上午|下午/);
 assert.match(sourceControlsMarkup, /id="homepage-constellation-oneweb"/);
 assert.match(sourceControlsMarkup, /id="homepage-constellation-starlink"/);
@@ -167,21 +172,23 @@ const topFormulaStart = sinrMarkup.indexOf('data-testid="homepage-sinr-top-formu
 assert.notEqual(topFormulaStart, -1);
 const topFormula = sinrMarkup.slice(topFormulaStart, sinrMarkup.indexOf('</div>', topFormulaStart));
 assert.match(topFormula, /γ<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\)/);
-assert.match(topFormula, /<i>p<\/i><sub>u,s,v<\/sub>\(t, θ<sub>u,s,v<\/sub>\)/);
+assert.match(topFormula, /<i>p<\/i><sub>u,s,v<\/sub>\(t, θ<sub>u,s,v<\/sub>[\s\S]*θ<sub>3dB<\/sub>[\s\S]*\)/);
+// H is the effective channel term H_{u,s,v}(t); θ_{3dB} belongs to the
+// explicit transmit-gain term G^T and must not be duplicated inside H.
 assert.match(topFormula, /H<sub>u,s,v<\/sub>\(t\)/);
-assert.match(topFormula, /G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>\)/);
+assert.match(topFormula, /G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>[\s\S]*θ<sub>3dB<\/sub>[\s\S]*\)/);
 assert.match(topFormula, /I<sub>u,s,v<\/sub>\(t,[\s\S]*θ[\s\S]*\) \+ σ²/);
 assert.doesNotMatch(topFormula, /<i>p<\/i><sup>r<\/sup>|h<sub>|G<sup>(?:R|LS)<\/sup>|SINR =/);
 assert.match(sinrMarkup, /id="canonical-sinr-section-tab-power"[^>]*aria-selected="true"/);
 assert.match(sinrMarkup, /data-testid="canonical-sinr-power-chain"/);
-assert.match(sinrBeamMarkup, /data-testid="canonical-sinr-formula-beam"[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>\)/);
+assert.match(sinrBeamMarkup, /data-testid="canonical-sinr-formula-beam"[\s\S]*G<sup>T<\/sup>\(θ<sub>u,s,v<\/sub>[\s\S]*θ<sub>3dB<\/sub>/);
 assert.match(sinrChannelMarkup, /data-testid="canonical-sinr-formula-channel"[\s\S]*H<sub>u,s,v<\/sub>\(t\)/);
 assert.match(sinrChannelMarkup, /data-testid="sinr-tab-carrier-frequency-control"/);
 assert.match(sinrInterferenceMarkup, /data-testid="canonical-sinr-formula-interference"[\s\S]*I<sub>u,s,v<\/sub>/);
 assert.match(sinrInterferenceMarkup, /data-testid="sinr-tab-frequency-reuse-control"/);
 assert.doesNotMatch(sinrInterferenceMarkup, /canonical-sinr-interference-full-formula|I<sup>[ab]<\/sup>/);
 assert.match(sinrNoiseMarkup, /σ²\s*=\s*B<sup>w<\/sup>\s*·\s*N<sub>0<\/sub>/);
-assert.doesNotMatch(`${sinrMarkup}${sinrBeamMarkup}${sinrChannelMarkup}`, /G<sup>(?:R|LS)<\/sup>|L<sub>|θ<sub>3dB<\/sub>|H<sub>u,b<\/sub>/);
+assert.doesNotMatch(`${sinrMarkup}${sinrBeamMarkup}${sinrChannelMarkup}`, /G<sup>(?:LS)<\/sup>|L<sub>|H<sub>u,b<\/sub>/);
 
 // The right rail is result-only and keeps one accepted frame as its source.
 assert.match(rightRailMarkup, /data-testid="homepage-right-rail"/);

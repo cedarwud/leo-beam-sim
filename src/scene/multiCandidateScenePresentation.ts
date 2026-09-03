@@ -15,6 +15,12 @@ import type {
   HandoverBeamVisualIdentity,
   HandoverSatelliteVisualIdentity,
 } from '../constants/handoverVisualIdentity';
+import {
+  resolveHandoverAuthorityJoin,
+  type HandoverAuthorityJoin,
+} from './handoverAuthorityJoin';
+
+export type MultiCandidateSceneTransitionRole = 'source' | 'target' | null;
 
 /**
  * Renderer-neutral identity tokens for one displayed satellite-beam pair.
@@ -56,6 +62,7 @@ export interface MultiCandidateSceneLinkInstruction {
   /** Canonical pair identity; satellite-only joins are not permitted. */
   readonly pairKey: string;
   readonly key: CandidateLinkKey;
+  readonly sourceFrameId: string;
   readonly satelliteId: string;
   readonly beamId: number;
   readonly displayKey: string;
@@ -63,6 +70,8 @@ export interface MultiCandidateSceneLinkInstruction {
   readonly isServing: boolean;
   readonly isCandidate: boolean;
   readonly isPinned: boolean;
+  /** Exact accepted transition endpoint; satellite-only matches are invalid. */
+  readonly transitionRole: MultiCandidateSceneTransitionRole;
   readonly satelliteIdentity: HandoverSatelliteVisualIdentity;
   readonly beamIdentity: HandoverBeamVisualIdentity | null;
   readonly identity: MultiCandidateSceneIdentity;
@@ -98,7 +107,7 @@ function assertNonEmpty(value: string, label: string): string {
   return value;
 }
 
-function assertPairJoin(link: CandidatePresentationLink): string {
+function assertPairJoin(link: CandidatePresentationLink, expectedSourceFrameId: string): string {
   if (link.key.satelliteId !== link.satelliteId || link.key.beamId !== link.beamId) {
     fail(`displayed link identity mismatch for ${link.joinKey}`);
   }
@@ -106,6 +115,14 @@ function assertPairJoin(link: CandidatePresentationLink): string {
   assertNonEmpty(link.joinKey, 'joinKey');
   assertNonEmpty(link.sceneJoinKey, 'sceneJoinKey');
   assertNonEmpty(link.railJoinKey, 'railJoinKey');
+  assertNonEmpty(link.sourceFrameId, 'sourceFrameId');
+  if (link.sourceFrameId !== expectedSourceFrameId) {
+    fail(`source-frame mismatch for ${candidateLinkKeyString(link.key)}`);
+  }
+  if (link.sourceFrameId !== link.opportunity?.sourceFrameId
+    && link.opportunity !== null) {
+    fail(`source-frame mismatch for ${candidateLinkKeyString(link.key)}`);
+  }
   return pairKey;
 }
 
@@ -144,11 +161,67 @@ function assertRoleAndLinkContract(link: CandidatePresentationLink): boolean {
   return isSolidData;
 }
 
-function mapLink(link: CandidatePresentationLink): {
+function samePair(left: CandidateLinkKey, right: CandidateLinkKey): boolean {
+  return left.satelliteId === right.satelliteId && left.beamId === right.beamId;
+}
+
+function sameOptionalPair(
+  left: CandidateLinkKey | null,
+  right: CandidateLinkKey | null,
+): boolean {
+  return left === null ? right === null : right !== null && samePair(left, right);
+}
+
+/**
+ * An explicit join is accepted only when it belongs to this accepted plan.
+ * Stale joins fail closed so a previous episode cannot relabel a current
+ * serving/candidate pair.  The plan remains the source of serving truth.
+ */
+function acceptedAuthorityJoin(
+  plan: CandidatePresentationPlan,
+  authorityJoin: HandoverAuthorityJoin | null,
+): HandoverAuthorityJoin | null {
+  if (authorityJoin === null) return null;
+  const decision = plan.decision;
+  if (authorityJoin.phase !== decision.phase
+    || !sameOptionalPair(authorityJoin.serving, decision.serving)
+    || !sameOptionalPair(authorityJoin.solidDataLinkKey, decision.serving)
+    || authorityJoin.solidDataLinkCount !== (decision.serving === null ? 0 : 1)) {
+    return null;
+  }
+  const transition = authorityJoin.transition;
+  if (transition === null) return authorityJoin;
+  if (
+    authorityJoin.showTransitionCue !== true
+    || decision.phase !== 'switching'
+    || transition.episodeId !== decision.episodeId
+    || transition.sourceFrameId !== decision.sourceFrameId
+    || transition.simTimeMs !== decision.simTimeMs
+    || samePair(transition.from, transition.to)
+    || transition.kind !== (transition.from.satelliteId === transition.to.satelliteId ? 'intra' : 'inter')
+  ) return null;
+  return authorityJoin;
+}
+
+function resolveTransitionRole(
+  key: CandidateLinkKey,
+  authorityJoin: HandoverAuthorityJoin | null,
+): MultiCandidateSceneTransitionRole {
+  const transition = authorityJoin?.transition ?? null;
+  if (authorityJoin?.showTransitionCue !== true || transition === null) return null;
+  if (samePair(key, transition.from)) return 'source';
+  if (samePair(key, transition.to)) return 'target';
+  return null;
+}
+
+function mapLink(
+  link: CandidatePresentationLink,
+  pairKey: string,
+  transitionRole: MultiCandidateSceneTransitionRole,
+): {
   readonly instruction: MultiCandidateSceneLinkInstruction;
   readonly isSolidData: boolean;
 } {
-  const pairKey = assertPairJoin(link);
   assertIdentity(link);
   const isSolidData = assertRoleAndLinkContract(link);
   const coneVisible = link.visual.coneStyle !== 'hidden';
@@ -158,6 +231,7 @@ function mapLink(link: CandidatePresentationLink): {
     railJoinKey: link.railJoinKey,
     pairKey,
     key: copyKey(link.key),
+    sourceFrameId: link.sourceFrameId,
     satelliteId: link.satelliteId,
     beamId: link.beamId,
     displayKey: link.displayKey,
@@ -165,6 +239,7 @@ function mapLink(link: CandidatePresentationLink): {
     isServing: link.isServing,
     isCandidate: link.isCandidate,
     isPinned: link.isPinned,
+    transitionRole,
     satelliteIdentity: link.satelliteIdentity,
     beamIdentity: link.beamIdentity,
     identity: Object.freeze({
@@ -180,6 +255,10 @@ function mapLink(link: CandidatePresentationLink): {
         }),
     }),
     cone: Object.freeze({
+      // The accepted plan owns role treatment. In particular, do not turn an
+      // intra target into the serving cone: its target treatment must remain
+      // visibly distinct while its copied identity stays in the same hue
+      // family as the source satellite.
       style: link.visual.coneStyle,
       visible: coneVisible,
       volume: coneVisible ? 1 : 0,
@@ -201,27 +280,41 @@ function mapLink(link: CandidatePresentationLink): {
  * Adapt a bounded CandidatePresentationPlan into renderer-neutral scene
  * instructions.
  *
- * This module deliberately consumes only `displayedLinks`.  It does not read
- * opportunity metrics, calculate EE, rank candidates, or alter the scientific
- * decision frame.  Display invariants are checked at this seam so a renderer
- * cannot accidentally turn a candidate into simultaneous service or exceed
- * the plan's cone-volume budget.
+ * This module deliberately consumes only `displayedLinks` and the accepted
+ * authority join. It does not read opportunity metrics, calculate EE, rank
+ * candidates, or alter the scientific decision frame. Display invariants are
+ * checked at this seam so a renderer cannot accidentally turn a candidate into
+ * simultaneous service or exceed the plan's cone-volume budget.
  */
 export function buildMultiCandidateScenePresentation(
   plan: CandidatePresentationPlan,
+  authorityJoin?: HandoverAuthorityJoin | null,
 ): MultiCandidateScenePresentation {
   if (plan === null || typeof plan !== 'object') fail('plan must be an object');
+  const sourceFrameId = assertNonEmpty(plan.decision.sourceFrameId, 'plan sourceFrameId');
   if (!Number.isInteger(plan.budget.maxConeVolumes) || plan.budget.maxConeVolumes < 0) {
     fail('budget.maxConeVolumes must be a non-negative integer');
   }
   if (!Array.isArray(plan.displayedLinks)) fail('displayedLinks must be an array');
 
+  // The decision frame is the accepted scene input. An explicit join is
+  // accepted for callers that already performed the authority join; the
+  // fallback keeps this pure adapter usable at existing call sites.
+  const acceptedJoin = acceptedAuthorityJoin(
+    plan,
+    authorityJoin === undefined ? resolveHandoverAuthorityJoin(plan.decision) : authorityJoin,
+  );
+
   const seenPairs = new Set<string>();
   const mapped = plan.displayedLinks.map(link => {
-    const pairKey = assertPairJoin(link);
+    const pairKey = assertPairJoin(link, sourceFrameId);
     if (seenPairs.has(pairKey)) fail(`duplicate displayed pair ${pairKey}`);
     seenPairs.add(pairKey);
-    return mapLink(link);
+    return mapLink(
+      link,
+      pairKey,
+      resolveTransitionRole(link.key, acceptedJoin),
+    );
   });
   const instructions = mapped.map(value => value.instruction);
   const serving = instructions.find(instruction => instruction.isServing) ?? null;
@@ -248,7 +341,7 @@ export function buildMultiCandidateScenePresentation(
 
   return Object.freeze({
     episodeId: plan.decision.episodeId,
-    sourceFrameId: plan.decision.sourceFrameId,
+    sourceFrameId,
     budget: plan.budget,
     instructions: Object.freeze(instructions),
     serving,

@@ -4,6 +4,10 @@
 
 **Accepted by owner direction**
 
+The 2026-08-12 homepage archived-TLE source and centre-lane amendments are
+superseded by ADR-013. The dedicated TLE simulator, archive, SGP4 provenance,
+and canonical EE portions of this ADR remain active.
+
 Date: 2026-08-11
 
 Decision identifier: `LEO-SIM-TLE-EE-1`

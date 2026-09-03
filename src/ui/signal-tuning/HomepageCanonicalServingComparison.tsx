@@ -4,7 +4,7 @@ import { useLocale } from '../../i18n';
 import type { CanonicalLinkResult, SimulationAnalysisFrame } from '../../simulator/types';
 import { DuelCard } from '../info-panel/DuelCard';
 import { txBi } from './labels';
-import { SystemAngleState } from './FormulaSymbols';
+import { LinkEnergyEfficiency, LinkRate } from './FormulaSymbols';
 import { formatEnergyEfficiency, formatPower, formatRate } from './formatters';
 
 function CanonicalLinkPowerComparison({
@@ -31,13 +31,13 @@ function CanonicalLinkPowerComparison({
     },
     {
       id: 'rate',
-      label: <>R<sub>u,s,v</sub></>,
+      label: <LinkRate />,
       servingValue: formatRate(serving?.rateBps),
       candidateValue: formatRate(candidate?.rateBps),
     },
     {
       id: 'instantaneous-ee',
-      label: <>η<sub>u,s,v</sub>(t, <SystemAngleState />)</>,
+      label: <LinkEnergyEfficiency />,
       servingValue: formatEnergyEfficiency(serving?.instantaneousEeBitsPerJ),
       candidateValue: formatEnergyEfficiency(candidate?.instantaneousEeBitsPerJ),
     },
@@ -176,6 +176,18 @@ export function HomepageCanonicalServingComparison({ frame }: { readonly frame: 
         handoverCount={handover?.cumulativeCount ?? null}
         decisionUnavailableReason={handover === undefined ? handoverUnavailable : undefined}
       />
+      {handover !== undefined && (
+        <section
+          className="leo-replay-truth-summary"
+          data-testid="canonical-tle-handover-reason"
+          data-handover-event={handover.event}
+        >
+          <strong>{handover.event === 'forced-continuity'
+            ? say('homepage.canonicalComparison.forcedReason', '服務可見性中斷切換', 'Forced continuity switch')
+            : say('homepage.canonicalComparison.traceReason', 'Canonical 換手 trace', 'Canonical handover trace')}</strong>
+          <span>{handover.reason}</span>
+        </section>
+      )}
       <CanonicalLinkPowerComparison serving={serving} candidate={candidate} />
     </div>
   );

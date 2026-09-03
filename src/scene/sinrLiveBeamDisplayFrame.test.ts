@@ -18,8 +18,8 @@ const frame = createSinrLiveBeamDisplayFrame({
 });
 
 assert.equal(frame.schemaVersion, 'sinr-live-beam-display-frame-v1');
-assert.equal(frame.globalSatelliteCount, 2928);
-assert.equal(frame.globalBeamCount, 20508);
+assert.equal(frame.globalSatelliteCount, 3432);
+assert.equal(frame.globalBeamCount, 24036, 'global beam count includes the serving satellite runtime override');
 assert.equal(frame.beamHoppingEnabled, false);
 assert.deepEqual(frame.serving, { satelliteId: 'sat-serving', configuredBeamCount: 1 });
 assert.deepEqual(frame.candidate, { satelliteId: 'sat-candidate', configuredBeamCount: 7 });
@@ -43,7 +43,7 @@ const nineteenFrame = createSinrLiveBeamDisplayFrame({
   servingSatelliteId: 'sat-serving',
   candidateSatelliteId: 'sat-candidate',
 });
-assert.equal(nineteenFrame.globalBeamCount, 55632, 'global 19-beam configuration reaches the homepage display frame');
+assert.equal(nineteenFrame.globalBeamCount, 65208, 'global 19-beam configuration reaches the homepage display frame');
 assert.equal(nineteenFrame.serving.configuredBeamCount, 19);
 assert.equal(nineteenFrame.candidate.configuredBeamCount, 19);
 

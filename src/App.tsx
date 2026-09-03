@@ -78,11 +78,13 @@ import { useHandoverCinema } from './app/useHandoverCinema';
 import { shouldSuppressInterSeekFade } from './scene/handoverDisplayIsolation';
 import { createSinrLiveBeamDisplayFrame } from './scene/sinrLiveBeamDisplayFrame';
 import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
-import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
+import { TimelineBar, type TimelineEventMarker, type TimelineSpeedPreset } from './ui/TimelineBar';
 import {
   HandoverEventRail,
   type HandoverRailEvent,
 } from './ui/HandoverEventRail';
+import { selectHomepageTeachingTimelineMarkers } from './homepage/controller/teachingTimelineMarkers';
+import { HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM } from './homepage/controller/homepageStoryScenario';
 import { InfoPanel } from './ui/InfoPanel';
 import { SidebarTabShell } from './ui/SidebarTabShell';
 import { HomepageCanonicalControls } from './ui/signal-tuning/HomepageCanonicalControls';
@@ -159,6 +161,7 @@ import {
   getDefaultLeftSidebarTabForSceneLane,
   getDefaultLeftSidebarTabForMode,
   getDefaultRightSidebarTabForSceneLane,
+  getHomepageRightSidebarTabsForSceneLane,
   getLeftSidebarTabsForSceneLane,
   getRightSidebarTabsForSceneLane,
   isKnownProfileId,
@@ -175,17 +178,25 @@ import {
   seedTripletFromTrainingRunMetadata,
 } from './app/trainingEnvAxesProfileAdapter';
 import {
-  APP_EPOCH_MS,
   LIVE_SIM_TIMELINE_DURATION_SEC,
   buildAppRuntimeConfig,
 } from './app/appRuntimeConfig';
+import {
+  DEFAULT_WALKER_SCENARIO_DATE,
+  DEFAULT_WALKER_SCENARIO_EPOCH_UTC_MS,
+  DEFAULT_WALKER_SCENARIO_TIME,
+  taipeiScenarioTimeToUtcMs,
+} from './app/walkerScenarioTime';
 import {
   clampTimelineTime,
   createArchivedTleRunTimelineDescriptor,
   getModqnProducerTraceRange,
   resolveTimelineRailDescriptor,
 } from './app/timelineRailAuthority';
-import { advanceArchivedTlePlaybackCursor } from './app/archivedTlePlayback';
+import {
+  advanceArchivedTlePlaybackCursor,
+  resolveArchivedTlePlaybackStart,
+} from './app/archivedTlePlayback';
 import {
   liveWalkerHandoverEventIndexToRailEvents,
   selectDirectorHandoverEvents,
@@ -208,6 +219,12 @@ import {
   type SceneSourceMode,
 } from './app/appPersistence';
 import {
+  HOMEPAGE_SIMULATION_SOURCE_SWITCH_VISIBLE,
+  persistSimulationSourceMode,
+  readHomepageSimulationSourceMode,
+  type SimulationSourceMode,
+} from './app/simulationSourceMode';
+import {
   resolveSceneLane,
   type SceneLane,
 } from './app/sceneLane';
@@ -225,6 +242,11 @@ import {
   type SinrLiveCellHandoverEventIndexBuilder,
 } from './scene/sinrLiveCellHandoverEventIndex';
 import {
+  createSinrLiveCellHandoverEventIndexWorkerTransport,
+  type SinrLiveCellHandoverEventIndexWorkerTransport,
+} from './scene/sinrLiveCellHandoverEventIndexWorkerTransport';
+import { resolveSinrLiveCellLayoutAltitudeKm } from './scene/sinrLiveCellRuntime';
+import {
   DEFAULT_MODQN_VISUAL_LAYER_PRESET,
   type ModqnVisualLayerPreset,
 } from './scene/modqnVisualLayers';
@@ -233,7 +255,34 @@ import {
   selectReplayDisplayUes,
 } from './app/showcaseReplayState';
 import { usePlaybackControls } from './usePlaybackControls';
+import { useHomepagePlaybackTransport } from './homepage/controller/useHomepagePlaybackTransport';
+import {
+  projectHomepageRail,
+  type HomepageCandidateRosterContinuity,
+} from './homepage/controller/railProjection';
+import { buildHomepageSatelliteDisplayNameMap } from './homepage/controller/homepageSatelliteDisplayName';
+import {
+  resolveHomepageQuickJumpSourceSec,
+  selectHomepageDemoWindow,
+} from './homepage/controller/homepageDemoWindow';
+import {
+  createHomepageHandoverJumpIntent,
+  resolveHomepageHandoverJumpIntent,
+  type HomepageHandoverJumpIntent,
+} from './homepage/controller/handoverJumpIntent';
+import { HomepageBeamRail } from './ui/homepage/HomepageBeamRail';
+import { HomepageDemoWindowButton } from './ui/homepage/HomepageDemoWindowButton';
+import { HomepageTeachingTimeline } from './ui/homepage/HomepageTeachingTimeline';
+import type {
+  HomepageAcceptedSnapshot,
+  HomepageBeamMetricsProjection,
+  HomepageHandoverPresentation,
+  HomepageHandoverStoryProjection,
+} from './homepage/controller/contracts';
 import type { HandoverPresentationSnapshot } from './scene/handoverPresentationOwner';
+import {
+  isMultiCandidatePlaybackSlowDecisionFrame,
+} from './scene/multiCandidateWarmStart';
 import { useCameraControls } from './useCameraControls';
 import {
   readSixActsTeachingModeFromSearch,
@@ -262,6 +311,7 @@ import {
   SixActsTeachingOverlay,
   type SixActsTeachingReceipt,
 } from './ui/SixActsTeachingOverlay';
+import { SimulationSourceToggle } from './ui/SimulationSourceToggle';
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -271,7 +321,6 @@ interface HandoverPolicyRuntimeState {
 }
 
 const MODQN_REPLAY_VISUAL_TICK_MS = 100;
-
 // Generic artifact-replay lane source (dev middleware serves the pinned producer
 // baseline; see vite.config.ts).
 const SHOWCASE_ARTIFACT_URL = '/showcase-artifacts/visual-showcase-v1.json';
@@ -287,21 +336,24 @@ const REPLAY_ARM_WINDOWS: Readonly<Record<ReplayArm, string>> = {
   b1: '/modqn-bundles/h2-scene-b1-t0_9000-w117_213/visual-showcase-v1.json',
 };
 const REPLAY_ARM_DEFAULT: ReplayArm = 'a2';
+// Restore the engineering homepage while keeping the dedicated six-act entry.
+// The teaching routes and reusable dock remain available for a later reopen.
+const HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE = false;
 
 export function App() {
-  // `/` is the original public Walker surface. `/legacy` and `/walker` remain
-  // explicit aliases so old bookmarks and comparison screenshots keep working;
-  // `/simulator` now serves the unified Visual Lab route.
-  // This restores the pre-canonical Walker scene and its formula/tuning shell
-  // without forking the renderer or the simulation engine.
-  // Keep this as a route-level presentation choice; it must not fork the renderer
-  // or duplicate the simulation engine.
+  // `/` and `/legacy` mount this shell; `/walker` is routed to the isolated
+  // AppWalkerSandbox by main.tsx. Route identity still owns the historical
+  // sceneSource default, while the persisted Walker/TLE choice below explicitly
+  // owns which scientific producer feeds the SINR homepage.
   const isLegacyWalkerRoute = typeof window !== 'undefined'
     && (
       window.location.pathname === '/'
       || window.location.pathname === '/legacy'
       || window.location.pathname === '/walker'
     );
+  const [simulationSource, setSimulationSource] = useState<SimulationSourceMode>(
+    readHomepageSimulationSourceMode,
+  );
   const [sceneSource, setSceneSource] = useState<SceneSourceMode>(() => (
     isLegacyWalkerRoute ? 'live-sim' : readSceneSourceFromUrl()
   ));
@@ -313,6 +365,13 @@ export function App() {
   const [ueDisplayCount, setUeDisplayCount] = useState<number>(100);
   const [elevatedUeId, setElevatedUeId] = useState<string | null>(null);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
+  // The homepage Demo action owns one bounded source window. This is only an
+  // integration stop marker; it does not advance time or decide a handover.
+  const [homepageDemoRunEndSec, setHomepageDemoRunEndSec] = useState<number | null>(null);
+  // The homepage teaching timeline is presentation-only. The live simulator
+  // remains the sole clock; every action uses this one bounded source window.
+  const [homepageTeachingActive, setHomepageTeachingActive] = useState(false);
+  const [homepageTeachingDetailsVisible, setHomepageTeachingDetailsVisible] = useState(false);
   const [liveTimelineSeekRequest, setLiveTimelineSeekRequest] =
     useState<LiveTimelineSeekRequest | null>(null);
   const manualHandoverRequestSeqRef = useRef(0);
@@ -338,6 +397,7 @@ export function App() {
   // next handover event + the seek direction. The deferred-focus state machine
   // itself lives in the hook (P3 extraction).
   const liveSimTimeSecRef = useRef(0);
+  const walkerRuntimeHasPublishedRef = useRef(false);
   const initialRuntimeRef = useRef<InitialRuntimeState | null>(null);
   if (initialRuntimeRef.current === null) {
     initialRuntimeRef.current = resolveHomepageInitialRuntimeState(readInitialRuntimeState());
@@ -371,6 +431,12 @@ export function App() {
     }),
     [appMode, modqnReplayProofRequestActive, sceneSource],
   );
+  // The archived source is applicable only to the SINR homepage. Other lanes
+  // keep their existing Walker/artifact ownership even if the persisted
+  // homepage preference is TLE.
+  const isArchivedTleSceneActive = sceneLane === 'sinr-live'
+    && simulationSource === 'archived-tle';
+  const isWalkerSceneActive = !isArchivedTleSceneActive;
   // P2 replay stage: the modqn-replay-proof lane plays the RECORDED dense-Q window
   // (an artifact-backed frame via showcaseArtifactToScene) — the same loader +
   // ShowcaseReplayController path the artifact-replay lane uses, just pointed at the
@@ -413,9 +479,15 @@ export function App() {
   );
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
+  // The live homepage keeps the Scenario tab selected while a topology edit
+  // rebuilds the Walker source/index. Without this small UI-only handoff, the
+  // tuning panel can remount on the rebuild bridge and fall back to SINR,
+  // hiding the service/candidate beam controls exactly when the user needs to
+  // verify the new topology.
+  const [homepageSignalTuningMainTab, setHomepageSignalTuningMainTab] = useState<MainTabKey>('sinr');
   const [homepageCanonicalTab, setHomepageCanonicalTab] = useState<MainTabKey>('sinr');
   const [teachingMode, setTeachingMode] = useState<SixActsTeachingMode>(() => (
-    typeof window === 'undefined'
+    !HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE || typeof window === 'undefined'
       ? 'engineering'
       : readSixActsTeachingModeFromSearch(window.location.search) === 'teaching'
         || readSixActsTeachingPresetFromSearch(window.location.search) === SIX_ACTS_HANDOVER_PRESET
@@ -440,7 +512,15 @@ export function App() {
       sceneOverlay: false,
     });
   }, []);
-  const homepageCanonicalAnalysis = useHomepageCanonicalAnalysis();
+  const homepageCanonicalAnalysis = useHomepageCanonicalAnalysis({
+    enabled: isArchivedTleSceneActive,
+  });
+  const homepageSatelliteNameById = useMemo(
+    () => buildHomepageSatelliteDisplayNameMap(
+      homepageCanonicalAnalysis.frame?.tleState.propagationFrame.satellites,
+    ),
+    [homepageCanonicalAnalysis.frame],
+  );
   const [selectedUserTrainedJobId, setSelectedUserTrainedJobId] = useState<string | null>(null);
   const [bundleProvenanceKind, setBundleProvenanceKind] = useState<'paper-faithful' | 'user-trained'>('paper-faithful');
   const [userTrainedLoadError, setUserTrainedLoadError] = useState<string | null>(null);
@@ -471,9 +551,12 @@ export function App() {
   const activeLeftSidebarTab = visibleLeftSidebarTabs.some(tab => tab.key === leftSidebarTab)
     ? leftSidebarTab
     : getDefaultLeftSidebarTabForSceneLane(sceneLane, handoverMode);
+  const isRootHomepage = typeof window !== 'undefined' && window.location.pathname === '/';
   const visibleRightSidebarTabs = useMemo(
-    () => getRightSidebarTabsForSceneLane(sceneLane, handoverMode),
-    [handoverMode, sceneLane],
+    () => isRootHomepage
+      ? getHomepageRightSidebarTabsForSceneLane(sceneLane, handoverMode)
+      : getRightSidebarTabsForSceneLane(sceneLane, handoverMode),
+    [handoverMode, isRootHomepage, sceneLane],
   );
   const activeRightSidebarTab = visibleRightSidebarTabs.some(tab => tab.key === rightSidebarTab)
     ? rightSidebarTab
@@ -489,7 +572,13 @@ export function App() {
   const [campusVisible, setCampusVisible] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(() => readPrefersReducedMotion());
   const [viewport, setViewport] = useState(() => readRuntimeViewport());
-  const camera = useCameraControls();
+  // The homepage Director seeks to a real pre-handover lead-in so the viewer
+  // can follow candidate qualification and TTT before the indexed commit.
+  // Keep the longer display budget route-local; legacy aliases and the Walker
+  // sandbox retain their existing camera timing.
+  const camera = useCameraControls({
+    focusAutoExitMs: isRootHomepage ? 45_000 : undefined,
+  });
   // Phase H §4.8 + Phase I: modqn-demo defaults to the oblique camera so the
   // user opens into a pulled-back view framing the Earth-fixed cell field +
   // 4 satellites + beam cones (the closeup preset sat too tight on the
@@ -507,6 +596,8 @@ export function App() {
   const baseProfile = useMemo(() => loadProfile(selectedProfileId), [selectedProfileId]);
   const [signalTuning, setSignalTuning] = useState<SignalTuningState>(() => createSignalTuningState(baseProfile));
   const [sceneTopology, setSceneTopology] = useState<SceneTopologyState>(() => readSceneTopologyOverrides());
+  const [walkerScenarioDate, setWalkerScenarioDate] = useState(DEFAULT_WALKER_SCENARIO_DATE);
+  const [walkerScenarioTime, setWalkerScenarioTime] = useState(DEFAULT_WALKER_SCENARIO_TIME);
   const [sceneVisualScale, setSceneVisualScale] = useState<SceneVisualScaleState>(() => readSceneVisualScaleOverrides());
   const [handoverPolicyState, setHandoverPolicyState] = useState<HandoverPolicyRuntimeState>(() => {
     const initialPolicy = createHandoverPolicyTuningState(baseProfile);
@@ -648,6 +739,11 @@ export function App() {
     () => getSceneVisualScaleResetKey(sceneVisualScale),
     [sceneVisualScale],
   );
+  const walkerScenarioEpochUtcMs = useMemo(
+    () => taipeiScenarioTimeToUtcMs(walkerScenarioDate, walkerScenarioTime)
+      ?? DEFAULT_WALKER_SCENARIO_EPOCH_UTC_MS,
+    [walkerScenarioDate, walkerScenarioTime],
+  );
   // Both keys read the SAME `activeSceneTopology` the profile does — otherwise a
   // field that is allowed through to the profile (beamCountPerSatellite) could
   // change the sim without restarting it / without re-stamping the evidence key.
@@ -655,8 +751,9 @@ export function App() {
     () => [
       getSignalTuningResetKey(signalTuning),
       getSceneTopologyResetKey(activeSceneTopology),
+      `epoch:${walkerScenarioEpochUtcMs}`,
     ].join('|'),
-    [activeSceneTopology, signalTuning],
+    [activeSceneTopology, signalTuning, walkerScenarioEpochUtcMs],
   );
   // EVIDENCE key — deliberately NOT the same shape as the reset key above. It has
   // exactly one consumer: `handleSimUpdate` clears `staleFormulaEvidenceKey` when
@@ -680,8 +777,8 @@ export function App() {
   // but this still runs during the first render. 
   // Given we have localStorage cache now, it will be instant after the first run.
   const demoStartOffset = useMemo(
-    () => recommendDemoReplayStartOffsetSec(baseProfile, APP_EPOCH_MS),
-    [baseProfile],
+    () => recommendDemoReplayStartOffsetSec(effectiveProfile, walkerScenarioEpochUtcMs),
+    [effectiveProfile.orbit, walkerScenarioEpochUtcMs],
   );
 
   const runtimeVisualSettings = useMemo(
@@ -705,7 +802,16 @@ export function App() {
   // the dedicated Intra-HO TRIGGER button (NOT the cinematic Focus button): the jog must
   // run WITHOUT a seek, because the seek's rebase() clears prevUeServing (cold-attach →
   // no HO) and wipes recentHandovers (no pulse). Decoupling the two is the Bug B fix (C1).
-  const [primaryUeJogKm, setPrimaryUeJogKm] = useState<{ east: number; north: number }>({ east: 0, north: 0 });
+  const [primaryUeJogKm, setPrimaryUeJogKm] = useState<{ east: number; north: number }>(() => (
+    isRootHomepage && sceneLane === 'sinr-live'
+      ? { ...HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM }
+      : { east: 0, north: 0 }
+  ));
+  // A jog may need one published cell frame before the model exposes its
+  // measured same-satellite alternate. This ref is only an input intent for
+  // the existing manual presentation request; it is not a second animation or
+  // handover authority.
+  const intraDemoAwaitingMeasuredFrameRef = useRef(false);
   // Generic analysis-window reset. Timeline seeks invalidate accumulated
   // canonical EE evidence even though the retired classroom ledger is gone.
   const [measurementResetEpoch, setMeasurementResetEpoch] = useState(0);
@@ -713,8 +819,10 @@ export function App() {
     appMode,
     effectiveProfile,
     demoStartOffsetSec: demoStartOffset,
+    liveEpochUtcMs: walkerScenarioEpochUtcMs,
     liveTimelineSeekTargetSec: liveTimelineSeekRequest?.targetSec,
     liveTimelineSeekRequestKey: liveTimelineSeekRequest?.requestKey,
+    liveTimelineSeekSourceHistoryReplay: liveTimelineSeekRequest?.sourceHistoryReplay,
     measurementResetEpoch,
     signalResetKey,
     handoverResetKey,
@@ -773,7 +881,7 @@ export function App() {
   const sixActsAutoCameraKeyRef = useRef<string | null>(null);
   const [sixActsSubtitle, setSixActsSubtitle] = useState<SixActsSubtitleState | null>(null);
   const [sixActsTeachingReceipt, setSixActsTeachingReceipt] = useState<SixActsTeachingReceipt | null>(null);
-  const teachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
+  const walkerTeachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
     const formulaFrame = simState.angleAwareFormulaFrame;
     const terms = formulaFrame?.terms;
     return {
@@ -789,6 +897,40 @@ export function App() {
       energyEfficiencyBitsPerJoule: terms?.energyEfficiencyBitsPerJoule ?? null,
     };
   }, [simState]);
+  const canonicalTeachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
+    const frame = homepageCanonicalAnalysis.frame;
+    const link = frame?.links[0] ?? null;
+    if (frame === null || link === null) {
+      return {
+        ueId: null,
+        servingSatelliteId: null,
+        candidateSatelliteId: null,
+        timeSec: null,
+        thetaDeg: null,
+        transmitGainLinear: null,
+        sinrDb: null,
+        throughputMbps: null,
+        systemPowerW: null,
+        energyEfficiencyBitsPerJoule: null,
+      };
+    }
+    return {
+      ueId: link.userId,
+      servingSatelliteId: link.satelliteId,
+      candidateSatelliteId: frame.candidateLink?.satelliteId ?? null,
+      timeSec: frame.runAnchor?.elapsedSec ?? null,
+      thetaDeg: link.offAxisAngleRad * (180 / Math.PI),
+      transmitGainLinear:
+        frame.canonical.transmitGainUb[link.userIndex]?.[link.beamId] ?? null,
+      sinrDb: link.sinrDb,
+      throughputMbps: link.rateBps / 1e6,
+      systemPowerW: frame.power.systemPowerW,
+      energyEfficiencyBitsPerJoule: frame.ee.instantaneousBitsPerJ,
+    };
+  }, [homepageCanonicalAnalysis.frame]);
+  const teachingLinkSnapshot = isArchivedTleSceneActive
+    ? canonicalTeachingLinkSnapshot
+    : walkerTeachingLinkSnapshot;
   const walkerBeamDisplayFrame = useMemo(() => createSinrLiveBeamDisplayFrame({
     profile: effectiveProfile,
     runtime,
@@ -825,6 +967,19 @@ export function App() {
   const [liveObservedHandoverRailEvents, setLiveObservedHandoverRailEvents] = useState<HandoverRailEvent[]>([]);
   const [liveWalkerHandoverEventIndex, setLiveWalkerHandoverEventIndex] =
     useState<LiveWalkerHandoverEventIndex | null>(null);
+  const [liveWalkerHandoverEventIndexBuilding, setLiveWalkerHandoverEventIndexBuilding] = useState(false);
+  // A button click during an index rebuild is a user command, not a second
+  // event source. Keep at most one command and replay it through the freshly
+  // rebuilt source index after the existing Director hook becomes actionable.
+  const pendingDirectorJumpKindRef = useRef<HomepageHandoverJumpIntent | null>(null);
+  // A topology edit starts a new source/index epoch.  Keep the previous epoch's
+  // presentation and Director claim from disabling the new epoch's controls.
+  // The ref is seeded so the first mount is not treated as a reset.
+  const sceneTopologyResetKey = useMemo(
+    () => getSceneTopologyResetKey(activeSceneTopology),
+    [activeSceneTopology],
+  );
+  const previousSceneTopologyResetKeyRef = useRef(sceneTopologyResetKey);
   const modqnReplaySlotOffset = modqnReplayDisplayState?.slotOffset ?? 0;
   const modqnBundleOmega = useMemo(
     () => normalizeRuntimeOmega(
@@ -857,8 +1012,79 @@ export function App() {
     readonly source: 'walker' | 'tle' | 'manual' | 'cinema' | null;
     readonly mode: 'idle' | 'presenting' | 'cooldown';
     readonly cooldownUntilMs: number;
-  }>({ active: false, kind: null, source: null, mode: 'idle', cooldownUntilMs: 0 });
+    readonly presentation: HomepageHandoverPresentation | null;
+  }>({ active: false, kind: null, source: null, mode: 'idle', cooldownUntilMs: 0, presentation: null });
   const visibleHandoverActive = visibleHandover.active;
+  // The accepted snapshot remains the only homepage truth. This tiny continuity
+  // register only carries the immediately previous accepted publication into the
+  // pure rail projection, so a commit/guard frame that temporarily omits its
+  // candidate pair cannot erase the already-explained winner. It is reset by the
+  // projection's own episode/epoch/policy checks; it does not own a clock,
+  // decision, or presentation flag.
+  const homepageRailContinuityRef = useRef<{
+    readonly snapshot: HomepageAcceptedSnapshot;
+    readonly beamMetrics: HomepageBeamMetricsProjection | null;
+    readonly story: HomepageHandoverStoryProjection | null;
+    readonly candidateRoster: HomepageCandidateRosterContinuity | null;
+  } | null>(null);
+  // The decision frame and the scene projection share one authority. On the
+  // homepage, the readable HO Slow interval starts when the accepted decision
+  // enters the real candidate/switching window and stays under the same
+  // transport while the visible handover owner carries the source -> target
+  // story. Other routes retain their legacy owner below.
+  const multiCandidateDecision = simState.acceptedHandoverPresentation?.decision ?? null;
+  const homepageRailProjection = useMemo(() => {
+    const snapshot = simState.acceptedHandoverPresentation;
+    if (typeof window === 'undefined' || window.location.pathname !== '/') return null;
+    if (sceneLane !== 'sinr-live' || !isWalkerSceneActive || !snapshot) return null;
+    const previous = homepageRailContinuityRef.current;
+    const projection = projectHomepageRail(snapshot, {
+      beamMetrics: simState.homepageBeamMetrics ?? null,
+      configuredCellCount: runtime.servingBeamCount,
+      previousSnapshot: previous?.snapshot ?? null,
+      previousBeamMetrics: previous?.beamMetrics ?? null,
+      previousStory: previous?.story ?? null,
+      previousCandidateRoster: previous?.candidateRoster ?? null,
+    });
+    const story = projection.handoverStory ?? null;
+    const candidateRoster = story === null || projection.visibleCandidates === undefined
+      || projection.visibleCandidates.length === 0
+      ? projection.candidateRosterRetained
+        ? previous?.candidateRoster ?? null
+        : null
+      : {
+        episodeId: snapshot.episodeId,
+        epochToken: snapshot.epochToken,
+        policyConfigHash: snapshot.policyConfigHash,
+        sourceFrameId: projection.candidateRosterSourceFrameId ?? snapshot.sourceFrameId,
+        source: story.source,
+        target: story.target,
+        links: projection.visibleCandidates,
+      };
+    homepageRailContinuityRef.current = {
+      snapshot,
+      beamMetrics: projection.beamMetrics ?? null,
+      story,
+      candidateRoster,
+    };
+    return projection;
+  }, [
+    isWalkerSceneActive,
+    sceneLane,
+    simState.acceptedHandoverPresentation,
+    simState.homepageBeamMetrics,
+    runtime.servingBeamCount,
+  ]);
+  const homepageCandidateComparisonActive = isRootHomepage
+    && sceneLane === 'sinr-live'
+    && isWalkerSceneActive
+    && isMultiCandidatePlaybackSlowDecisionFrame(multiCandidateDecision);
+  const multiCandidateComparisonActive = isRootHomepage
+    ? homepageCandidateComparisonActive
+    : visibleHandoverActive
+      && sceneLane === 'sinr-live'
+      && isWalkerSceneActive
+      && isMultiCandidatePlaybackSlowDecisionFrame(multiCandidateDecision);
   const visibleHandoverBusy = visibleHandover.mode === 'presenting'
     || (visibleHandover.mode === 'cooldown'
       && (typeof performance === 'undefined' ? Date.now() : performance.now()) < visibleHandover.cooldownUntilMs);
@@ -866,6 +1092,27 @@ export function App() {
   const handleHandoverPresentationChange = useCallback((snapshot: HandoverPresentationSnapshot) => {
     setVisibleHandover(current => {
       const { view } = snapshot;
+      const event = view.event;
+      const presentation: HomepageHandoverPresentation | null = view.active && event !== null
+        ? Object.freeze({
+          eventId: event.eventId,
+          kind: event.kind,
+          source: event.source,
+          phase: view.phase ?? 'serving',
+          progress01: view.progress01,
+          from: Object.freeze({
+            satelliteId: event.from.satId,
+            beamId: event.from.beamId ?? event.from.cellId + 1,
+            sinrDb: event.fromSinrDb ?? null,
+          }),
+          to: Object.freeze({
+            satelliteId: event.to.satId,
+            beamId: event.to.beamId ?? event.to.cellId + 1,
+            sinrDb: event.toSinrDb ?? null,
+          }),
+          deltaDb: event.deltaDb ?? null,
+        })
+        : null;
       const next = {
         // Keep the full owner envelope active through the settled tail. HO
         // Slow and the control lock must not release while the story is still
@@ -875,12 +1122,17 @@ export function App() {
         source: view.event?.source ?? null,
         mode: snapshot.mode,
         cooldownUntilMs: snapshot.cooldownUntilMs,
+        presentation,
       } as const;
       return current.active === next.active
         && current.kind === next.kind
         && current.source === next.source
         && current.mode === next.mode
         && current.cooldownUntilMs === next.cooldownUntilMs
+        && current.presentation?.eventId === next.presentation?.eventId
+        && current.presentation?.phase === next.presentation?.phase
+        && current.presentation?.from.beamId === next.presentation?.from.beamId
+        && current.presentation?.to.beamId === next.presentation?.to.beamId
         ? current
       : next;
     });
@@ -892,11 +1144,26 @@ export function App() {
     handoverPresentationBusyRef.current = busy;
     handoverBusyRef.current = busy || handoverControlBusyRef.current;
   }, []);
-  const playback = usePlaybackControls(
+  const legacyPlayback = usePlaybackControls(
     simState,
     camera.directorFocusActive,
     visibleHandoverActive,
+    multiCandidateComparisonActive,
+    // The homepage must start in motion. Event-index construction and other
+    // background readiness work are display/quick-jump concerns, not a reason
+    // to hold the live simulation at its first frame.
+    false,
   );
+  // `/` consumes the extracted PlaybackTransport boundary. The legacy hook
+  // remains the owner for the other lanes, while this branch is the only
+  // transport forwarded to the homepage scene, timeline, and rail.
+  const homepagePlayback = useHomepagePlaybackTransport({
+    directorFocusActive: camera.directorFocusActive,
+    visibleHandoverActive,
+    candidateComparisonActive: multiCandidateComparisonActive,
+    startPaused: false,
+  });
+  const playback = isRootHomepage ? homepagePlayback : legacyPlayback;
   const resetAnalysisWindow = useCallback(() => {
     setMeasurementResetEpoch(epoch => epoch + 1);
   }, []);
@@ -916,10 +1183,8 @@ export function App() {
     // The display-only fallback must keep the source timeline running so the
     // source satellite and its beam apex continue to move during the cue.
     playback.setPaused(false);
-    setBeamDisplaySpec(current => current.beamCalloutsEnabled
-      ? { ...current, beamCalloutsEnabled: false }
-      : current);
     manualHandoverRequestSeqRef.current += 1;
+    intraDemoAwaitingMeasuredFrameRef.current = false;
     setManualHandoverRequest({
       id: manualHandoverRequestSeqRef.current,
       kind: 'intra',
@@ -929,6 +1194,17 @@ export function App() {
     });
     return true;
   }, [manualHandoverRequest, playback, simState.intraHandoverPresentation, visibleHandover.active]);
+
+  // The live fallback jog is deliberately seek-free. Once that real model
+  // update publishes a measured alternate beam, promote the same frame into
+  // the existing manual presentation owner so the button always has a visible
+  // two-beam story instead of relying on a one-frame natural pulse.
+  useEffect(() => {
+    if (!intraDemoAwaitingMeasuredFrameRef.current) return;
+    if (requestMovingIntraDemo('button')) {
+      intraDemoAwaitingMeasuredFrameRef.current = false;
+    }
+  }, [requestMovingIntraDemo, simState.intraHandoverPresentation]);
 
   // The fallback is a display-only same-satellite beam-switch cue. It runs on the
   // moving source timeline, then returns to the exact pre-click playback state
@@ -947,6 +1223,7 @@ export function App() {
     // ITEM #C: mirror the absolute live sim cursor into a ref so the Director
     // focus resolver can read "now" without recreating its callback every frame.
     liveSimTimeSecRef.current = state.simTimeSec;
+    walkerRuntimeHasPublishedRef.current = true;
     setSimState(state);
     if (teachingMode === 'teaching' && sceneLane === 'sinr-live') {
       const facts = adaptHomepageSixActsFrameFacts(state);
@@ -1442,10 +1719,19 @@ export function App() {
       || (sceneLane !== 'sinr-live' && sceneLane !== 'modqn-live-cell-preview')
     ) {
       setLiveWalkerHandoverEventIndex(null);
+      setLiveWalkerHandoverEventIndexBuilding(false);
       return;
     }
+    // Keep an already-built Walker index resident while the TLE source is
+    // selected. It is display state for the dormant Walker producer and must
+    // neither leak into TLE nor be destroyed by a reversible source switch.
+    if (!isWalkerSceneActive) return;
 
     let cancelled = false;
+    // Keep the previous rail snapshot visible while its replacement is built,
+    // but gate Director controls so a parameter change can never seek an event
+    // from the previous source snapshot.
+    setLiveWalkerHandoverEventIndexBuilding(true);
     // The cinema handover-event index is an OFFLINE scan (~hundreds of steps x
     // ueCount UEs) consumed ONLY by the handover rail / Director focus — NOT by
     // the live scene render. Building it synchronously here blocked the first
@@ -1467,6 +1753,8 @@ export function App() {
       : undefined;
     let idleHandle: number | null = null;
     let timeoutHandle: number | null = null;
+    let indexWorker: SinrLiveCellHandoverEventIndexWorkerTransport | null = null;
+    let workerAbortController: AbortController | null = null;
     const scheduleIdle = (cb: (deadline?: IdleDeadlineLike) => void): void => {
       if (typeof ric === 'function') {
         idleHandle = ric(cb, { timeout: 2000 });
@@ -1476,40 +1764,57 @@ export function App() {
     };
 
     if (sceneLane === 'sinr-live') {
-      // One sim step is ~30ms for 100 UEs and can't be split without entering the
-      // truth-locked step path. Each macrotask yield lets the heavy 100-UE scene
-      // render a full (~0.3s) frame, so total build wall ≈ 7s + (240/batch)×0.3s:
-      // a bigger batch fills the rail sooner but stutters the scene in coarser
-      // steps. batch=12 (~0.36s blocks) keeps the scene visibly live while landing
-      // the rail in ~27s. (A Web Worker would erase this trade entirely — see the
-      // load-time handoff follow-up.)
+      // The acceptance controls need a cadence fine enough to retain short
+      // same-satellite intra transitions. Thirty-second samples can skip a real
+      // engine commit; 2 seconds matches the checked multi-candidate diagnostic
+      // cadence while the incremental batches still yield to the live canvas.
       const STEP_BATCH = 12;
       let builder: SinrLiveCellHandoverEventIndexBuilder | null = null;
+      const buildInput = {
+        profile: effectiveProfile,
+        epochUtcMs: runtime.replay.epochUtcMs,
+        // D4 S3a: match the live multi-candidate authority's fine source
+        // cadence so short intra commits are present in the index.
+        simStepSec: 2,
+        ueCount: runtime.ueCount,
+        ueDistributionMode: runtime.ueDistributionMode,
+        uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
+        ueDistributionScope: runtime.ueDistributionScope,
+        ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
+        ueMobilityMode: runtime.ueMobilityMode,
+        ueMobilityParams: runtime.ueMobilityParams,
+        // Teaching navigation follows the same live cell truth but records
+        // only the protagonist. The rendered homepage can keep its full UE
+        // population; this scope prevents unrelated secondary-UE history
+        // from delaying the 1/7-cell teaching controls.
+        eventUeScope: runtime.focusCellId === null || runtime.focusCellId === undefined
+          ? 'primary-ue-only' as const
+          : 'cell-truth-ue-events' as const,
+        focusCellId: runtime.focusCellId ?? null,
+        beamCountBySatellite: runtime.beamCountBySatellite,
+        servingBeamCount: runtime.servingBeamCount,
+        candidateBeamCount: runtime.candidateBeamCount,
+        beamHoppingEnabled: runtime.beamHoppingEnabled,
+        // The acceptance buttons must resolve against the same steering and
+        // multi-candidate authority path that renders the live scene.
+        beamPointingMode: 'sampled-steering' as const,
+        multiCandidateDecisionEnabled: true,
+        // The event index must use the exact primary-UE source geometry that
+        // the live scene receives through `runtime`, otherwise its natural
+        // intra/inter timeline is a different simulation.
+        primaryJogEastKm: runtime.primaryJogEastKm,
+        primaryJogNorthKm: runtime.primaryJogNorthKm,
+      };
       const runBatch = (): void => {
         if (cancelled) return;
         if (builder === null) {
-          builder = createSinrLiveCellHandoverEventIndexBuilder({
-            profile: effectiveProfile,
-            epochUtcMs: APP_EPOCH_MS,
-            // D4 S3a: keep the offline cell-truth scan bounded while preserving a
-            // source-time trajectory. The browser/runtime still consumes the same
-            // `sinrLiveCells` model for each focused event.
-            simStepSec: 30,
-            ueCount: runtime.ueCount,
-            ueDistributionMode: runtime.ueDistributionMode,
-            uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
-            ueDistributionScope: runtime.ueDistributionScope,
-            ueDistributionRadiusKm: runtime.ueDistributionRadiusKm,
-            ueMobilityMode: runtime.ueMobilityMode,
-            ueMobilityParams: runtime.ueMobilityParams,
-            beamCountBySatellite: runtime.beamCountBySatellite,
-            servingBeamCount: runtime.servingBeamCount,
-            candidateBeamCount: runtime.candidateBeamCount,
-            beamHoppingEnabled: runtime.beamHoppingEnabled,
-          });
+          builder = createSinrLiveCellHandoverEventIndexBuilder(buildInput);
         }
         if (builder.runSlice(STEP_BATCH)) {
-          if (!cancelled) setLiveWalkerHandoverEventIndex(builder.finalize());
+          if (!cancelled) {
+            setLiveWalkerHandoverEventIndex(builder.finalize());
+            setLiveWalkerHandoverEventIndexBuilding(false);
+          }
           return;
         }
         // Continue on a MACROTASK, not requestIdleCallback: the live scene's
@@ -1519,15 +1824,49 @@ export function App() {
         // batches (macrotasks run after rendering in the event loop).
         timeoutHandle = window.setTimeout(runBatch, 0);
       };
-      // Kick the first (trajectory-building, heavier) batch off idle so the live
-      // scene paints first; the macrotask chain then drives the rest.
-      scheduleIdle(runBatch);
+      // The complete 100-UE index is an offline scan. Keep it off the UI thread
+      // when module Workers are available so the live carrier can continue to
+      // render and the acceptance buttons become usable without a multi-minute
+      // main-thread stall. The chunked builder remains the deterministic fallback
+      // for SSR/test environments and browsers that do not expose Worker.
+      try {
+        indexWorker = createSinrLiveCellHandoverEventIndexWorkerTransport();
+      } catch {
+        // A browser may expose Worker while refusing module construction (for
+        // example under a restrictive CSP). Treat that as an unavailable
+        // accelerator and retain the deterministic chunked path below.
+        indexWorker = null;
+      }
+      if (indexWorker !== null) {
+        workerAbortController = new AbortController();
+        indexWorker.build(buildInput, { signal: workerAbortController.signal })
+          .then(index => {
+            if (cancelled) return;
+            setLiveWalkerHandoverEventIndex(index);
+            setLiveWalkerHandoverEventIndexBuilding(false);
+          })
+          .catch(error => {
+            // Abort/supersede is expected during parameter changes. A genuine
+            // Worker failure falls back to the same byte-identical chunked
+            // builder rather than leaving the rail without an index.
+            if (cancelled) return;
+            if (error instanceof Error && error.name === 'SinrLiveCellHandoverEventIndexWorkerError'
+              && 'code' in error && (error as { code?: string }).code === 'CANCELLED') {
+              return;
+            }
+            runBatch();
+          });
+      } else {
+        // Kick the first (trajectory-building, heavier) batch off idle so the
+        // live scene paints first; the macrotask chain then drives the rest.
+        scheduleIdle(runBatch);
+      }
     } else {
       const buildModqnIndex = (): void => {
         if (cancelled) return;
         const index = buildLiveWalkerHandoverEventIndex({
           profile: effectiveProfile,
-          epochUtcMs: APP_EPOCH_MS,
+          epochUtcMs: runtime.replay.epochUtcMs,
           claimKind: 'overlay-demo',
           ueDistributionMode: runtime.ueDistributionMode,
           uePrimaryAnchorMode: runtime.uePrimaryAnchorMode,
@@ -1536,13 +1875,18 @@ export function App() {
           ueMobilityMode: runtime.ueMobilityMode,
           ueMobilityParams: runtime.ueMobilityParams,
         });
-        if (!cancelled) setLiveWalkerHandoverEventIndex(index);
+        if (!cancelled) {
+          setLiveWalkerHandoverEventIndex(index);
+          setLiveWalkerHandoverEventIndexBuilding(false);
+        }
       };
       scheduleIdle(buildModqnIndex);
     }
 
     return () => {
       cancelled = true;
+      workerAbortController?.abort();
+      indexWorker?.dispose();
       if (idleHandle !== null) {
         (window as Window & { cancelIdleCallback?: (handle: number) => void }).cancelIdleCallback?.(idleHandle);
       }
@@ -1557,10 +1901,15 @@ export function App() {
     runtime.ueMobilityMode,
     runtime.ueMobilityParams,
     runtime.uePrimaryAnchorMode,
+    runtime.focusCellId,
     runtime.beamCountBySatellite,
     runtime.servingBeamCount,
     runtime.candidateBeamCount,
     runtime.beamHoppingEnabled,
+    runtime.primaryJogEastKm,
+    runtime.primaryJogNorthKm,
+    runtime.replay.epochUtcMs,
+    isWalkerSceneActive,
     sceneLane,
     sceneSource,
   ]);
@@ -1799,10 +2148,11 @@ export function App() {
   }, [liveWalkerHandoverEventIndex, simState.primaryUeId]);
   const automaticIntraPresentationSlots = useMemo(() => {
     if (
-      !isLegacyWalkerRoute
+      !isWalkerSceneActive
       || sceneSource !== 'live-sim'
       || sceneLane !== 'sinr-live'
       || liveWalkerHandoverEventIndex === null
+      || (isRootHomepage && liveWalkerDirectorHandoverRailEvents.some(event => event.kind === 'intra'))
     ) return [];
     return buildNonOverlappingIntraPresentationSlots({
       interEventTimesSec: liveWalkerDirectorHandoverRailEvents
@@ -1815,7 +2165,8 @@ export function App() {
     });
   }, [
     demoStartOffset,
-    isLegacyWalkerRoute,
+    isRootHomepage,
+    isWalkerSceneActive,
     liveWalkerDirectorHandoverRailEvents,
     liveWalkerHandoverEventIndex,
     sceneLane,
@@ -1867,13 +2218,22 @@ export function App() {
   const liveWalkerHandoverEventIndexSourceGapReasons = useMemo(() => {
     if (
       sceneSource === 'live-sim'
+      && isWalkerSceneActive
+      && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
+      && liveWalkerHandoverEventIndexBuilding
+    ) {
+      return ['Source gap: rebuilding the live handover index for the current parameters.'] as const;
+    }
+    if (
+      sceneSource === 'live-sim'
+      && isWalkerSceneActive
       && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
       && liveWalkerHandoverEventIndex === null
     ) {
       return ['Source gap: live-scene handover event index is not ready.'] as const;
     }
     return liveWalkerHandoverEventIndex?.sourceGapReasons ?? [];
-  }, [liveWalkerHandoverEventIndex, sceneLane, sceneSource]);
+  }, [isWalkerSceneActive, liveWalkerHandoverEventIndex, liveWalkerHandoverEventIndexBuilding, sceneLane, sceneSource]);
   const timelineRailDescriptor = useMemo(() => resolveTimelineRailDescriptor({
     sceneLane,
     sceneSource,
@@ -1917,7 +2277,7 @@ export function App() {
   );
   // The homepage's visible timeline is a fully materialized archived-TLE run.
   // Other lanes retain the existing Walker/artifact/proof authority unchanged.
-  const activeTimelineDescriptor = sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+  const activeTimelineDescriptor = isArchivedTleSceneActive
     ? archivedTleTimelineDescriptor
     : timelineRailDescriptor.timeline;
   const timelineDurationSec = activeTimelineDescriptor.durationSec;
@@ -1928,8 +2288,14 @@ export function App() {
     homepageCanonicalAnalysis.selectTimelineTimeSec,
   );
   archivedTleSelectTimelineTimeRef.current = homepageCanonicalAnalysis.selectTimelineTimeSec;
-  const timelineDisabled = manualHandoverRequest !== null
-    || (sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+  // The event index is an acceptance/quick-jump aid, not a prerequisite for
+  // the live Walker simulation.  It is built in a Worker (or yielded slices)
+  // after the first paint; blocking the transport here made the homepage look
+  // frozen behind `Updating event index…` even though the scene itself was
+  // already drawable.  Keep the two jump buttons gated by their own index
+  // readiness, but let play/seek and the live satellite field start at once.
+  const timelineDisabled = (isWalkerSceneActive && manualHandoverRequest !== null)
+    || (isArchivedTleSceneActive
       ? !(homepageCanonicalAnalysis.runReady ?? false)
       : sceneSource === 'artifact-replay'
       ? replayController === null || showcaseLoading || showcaseError !== null
@@ -1942,7 +2308,7 @@ export function App() {
   useEffect(() => {
     if (
       sceneLane !== 'sinr-live'
-      || isLegacyWalkerRoute
+      || !isArchivedTleSceneActive
       || !(homepageCanonicalAnalysis.runReady ?? false)
       || playback.paused
       || timelineDurationSec <= 0
@@ -1952,17 +2318,21 @@ export function App() {
     }
 
     const initialTimeSec = archivedTleTimelineCurrentTimeRef.current;
-    if (initialTimeSec >= timelineDurationSec) {
-      playback.setPaused(true);
-      return;
+    const playbackStart = resolveArchivedTlePlaybackStart(initialTimeSec, timelineDurationSec);
+    if (playbackStart.restarted) {
+      // Play after the final anchor is an explicit replay request. Update both
+      // refs before the first RAF so the effect cannot immediately observe the
+      // stale end cursor and pause itself again.
+      archivedTleTimelineCurrentTimeRef.current = playbackStart.currentTimeSec;
+      archivedTleSelectTimelineTimeRef.current?.(playbackStart.currentTimeSec);
     }
 
     let lastTimeMs = performance.now();
     // React may batch the anchor-state update for several RAF callbacks. Keep
     // a local source-time cursor so playback still advances between commits;
     // the ref is consulted only to detect an external scrub/anchor jump.
-    let playbackCursorSec = initialTimeSec;
-    let lastRequestedTimeSec = initialTimeSec;
+    let playbackCursorSec = playbackStart.currentTimeSec;
+    let lastRequestedTimeSec = playbackStart.currentTimeSec;
     let lastPublishedAtMs = lastTimeMs;
     let frameId = 0;
     const tick = (nowMs: number): void => {
@@ -2006,18 +2376,20 @@ export function App() {
     playback.speed,
     playback.paused,
     playback.setPaused,
-    isLegacyWalkerRoute,
+    isArchivedTleSceneActive,
     sceneLane,
     timelineDurationSec,
   ]);
 
   const handoverRailEvents = useMemo(() => {
     if (sceneSource === 'artifact-replay') return artifactHandoverRailEvents;
+    if (isArchivedTleSceneActive) return [];
     if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;
     if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;
     return liveObservedHandoverRailEvents;
   }, [
     artifactHandoverRailEvents,
+    isArchivedTleSceneActive,
     liveObservedHandoverRailEvents,
     liveWalkerHandoverRailEvents,
     modqnHandoverRailEvents,
@@ -2025,11 +2397,105 @@ export function App() {
     sceneSource,
   ]);
 
+  // The bottom timeline exposes only a small, deterministic teaching slice of
+  // the same natural event index. Marker clicks seek through the existing
+  // transport; they do not trigger a second handover decision or presentation.
+  const homepageTimelineEventMarkers = useMemo<readonly TimelineEventMarker[]>(() => {
+    if (!isRootHomepage || sceneSource !== 'live-sim' || !isWalkerSceneActive || sceneLane !== 'sinr-live') {
+      return [];
+    }
+    return selectHomepageTeachingTimelineMarkers(liveWalkerDirectorHandoverRailEvents, {
+      durationSec: timelineDurationSec,
+      teachingWindowSec: 60,
+      maxMarkersPerKind: 1,
+    });
+  }, [
+    isRootHomepage,
+    isWalkerSceneActive,
+    liveWalkerDirectorHandoverRailEvents,
+    sceneLane,
+    sceneSource,
+    timelineDurationSec,
+  ]);
+
+  // One-button teaching navigation is deliberately a selector over the same
+  // source-backed event index used by the rail/Next controls. It filters to
+  // the protagonist for cell-truth indexes, then asks the pure window selector
+  // for the first complete natural Intra -> later Inter pair. The window is
+  // anchored from source time zero so the three homepage actions keep using
+  // the same pair even after the first action has moved the live cursor. It
+  // creates no event, decision, phase, snapshot, or clock.
+  const homepageDemoWindow = useMemo(() => {
+    if (
+      !isRootHomepage
+      || sceneSource !== 'live-sim'
+      || !isWalkerSceneActive
+      || sceneLane !== 'sinr-live'
+      || liveWalkerHandoverEventIndexBuilding
+      || liveWalkerHandoverEventIndex === null
+    ) return null;
+    const protagonistEvents = selectDirectorHandoverEvents(
+      liveWalkerHandoverEventIndex,
+      liveWalkerHandoverEventIndex.events,
+      simState.primaryUeId,
+    );
+    return selectHomepageDemoWindow(
+      protagonistEvents,
+      0,
+      liveWalkerHandoverEventIndex.durationSec,
+    );
+  }, [
+    isRootHomepage,
+    isWalkerSceneActive,
+    liveWalkerHandoverEventIndex,
+    liveWalkerHandoverEventIndexBuilding,
+    sceneLane,
+    sceneSource,
+    simState.primaryUeId,
+  ]);
+  // The two Next buttons and Demo must address the same source-backed teaching
+  // pair. Passing only these two existing event records to the Director's
+  // selector removes the old ambiguity where "Next Inter" could jump to an
+  // unrelated inter event after an intra focus. No new event or decision is
+  // created; this is a bounded view of the already-built index.
+  const homepageDirectorHandoverRailEvents = useMemo<readonly HandoverRailEvent[]>(() => {
+    if (
+      !isRootHomepage
+      || homepageDemoWindow === null
+      || liveWalkerHandoverEventIndex === null
+    ) return liveWalkerDirectorHandoverRailEvents;
+    // Adapt the exact raw pair instead of filtering a separately memoized rail.
+    // This keeps the Director's event identity and the button's event identity
+    // joined even while the focused-UE projection is being rebuilt.
+    return liveWalkerHandoverEventIndexToRailEvents({
+      ...liveWalkerHandoverEventIndex,
+      events: homepageDemoWindow.events,
+    });
+  }, [homepageDemoWindow, isRootHomepage, liveWalkerDirectorHandoverRailEvents, liveWalkerHandoverEventIndex]);
+  // On the homepage a quick button is valid only when the complete, aligned
+  // intra -> inter pair exists. During index construction the button may queue
+  // the command, but it must not fall back to the old moving-UE trigger; that
+  // fallback was the source of apparently random beams and unrelated inter
+  // events. Other routes retain their existing full Director event list.
+  const homepageIndexedStoryRoute = isRootHomepage
+    && sceneSource === 'live-sim'
+    && isWalkerSceneActive
+    && sceneLane === 'sinr-live';
+  const liveWalkerDirectorHandoverEventsForButtons = homepageIndexedStoryRoute
+    ? homepageDemoWindow?.events ?? []
+    : liveWalkerHandoverEventIndex === null
+      ? []
+      : selectDirectorHandoverEvents(
+        liveWalkerHandoverEventIndex,
+        liveWalkerHandoverEventIndex.events,
+        simState.primaryUeId,
+      );
+
   const requestLiveTimelineSeek = useCallback((request: LiveTimelineSeekRequest) => {
     // The archived-TLE homepage has no live Walker seek path. Keep every
     // caller (including the legacy Director wrapper) on the same published
     // anchor selector so it cannot accidentally rebase the live simulator.
-    if (sceneLane === 'sinr-live' && !isLegacyWalkerRoute) {
+    if (isArchivedTleSceneActive) {
       if (homepageCanonicalAnalysis.runReady ?? false) {
         homepageCanonicalAnalysis.selectTimelineTimeSec?.(request.targetSec);
       }
@@ -2037,36 +2503,48 @@ export function App() {
     }
     resetAnalysisWindow();
     setLiveTimelineSeekRequest(request);
-  }, [homepageCanonicalAnalysis, isLegacyWalkerRoute, resetAnalysisWindow, sceneLane]);
+  }, [homepageCanonicalAnalysis, isArchivedTleSceneActive, resetAnalysisWindow]);
 
-  const handleTimelineSeek = useCallback((targetSec: number) => {
+  const handleTimelineSeek = useCallback((
+    targetSec: number,
+    options: { readonly sourceHistoryReplay?: boolean } = {},
+  ) => {
+    // A manual seek starts a new navigation intent. The Demo handler sets its
+    // bounded end marker again after this canonical transport request.
+    setHomepageDemoRunEndSec(null);
     const target = clampTimelineTime(targetSec, timelineDurationSec);
+    // PlaybackTransport acknowledges the homepage command but never owns the
+    // source cursor. The canonical source-specific seek paths below remain the
+    // only writers of simulation time.
+    const transportTarget = isRootHomepage
+      ? homepagePlayback.requestSeek(target)
+      : target;
     // Archived-TLE homepage: the hook owns the published anchor and the
     // canonical frame. Never route this surface through Walker rebase/seek or
     // reset the live analysis window; a seek selects only an already-computed
     // 30-second anchor from the immutable run.
-    if (sceneLane === 'sinr-live' && !isLegacyWalkerRoute) {
+    if (isArchivedTleSceneActive) {
       if (homepageCanonicalAnalysis.runReady ?? false) {
-        homepageCanonicalAnalysis.selectTimelineTimeSec?.(target);
+        homepageCanonicalAnalysis.selectTimelineTimeSec?.(transportTarget);
       }
       return;
     }
     if (sceneSource === 'artifact-replay') {
       resetAnalysisWindow();
-      replayController?.seek(target);
+      replayController?.seek(transportTarget);
       return;
     }
     if (timelineRailDescriptor.timeline.axisKind === 'display-stretched') {
       resetAnalysisWindow();
-      setModqnReplayVisualElapsedSec(clampTimelineTime(target, timelineRailDescriptor.timeline.axisDurationSec));
+      setModqnReplayVisualElapsedSec(clampTimelineTime(transportTarget, timelineRailDescriptor.timeline.axisDurationSec));
       return;
     }
     if (sceneLane === 'modqn-replay-proof') {
       resetAnalysisWindow();
       const railAxisDurationSec = timelineRailDescriptor.rail.axisDurationSec;
       const visualTargetSec = timelineDurationSec > 0 && railAxisDurationSec > 0
-        ? (target / timelineDurationSec) * railAxisDurationSec
-        : target;
+        ? (transportTarget / timelineDurationSec) * railAxisDurationSec
+        : transportTarget;
       setModqnReplayVisualElapsedSec(clampTimelineTime(visualTargetSec, railAxisDurationSec));
       return;
     }
@@ -2076,19 +2554,22 @@ export function App() {
     // this clamp, the rightmost jump sends `startOffset + duration` into the
     // loop normalizer, which wraps it back to the demo start.
     const absoluteTargetSec = Math.min(
-      liveTimelineWindowStartSec + target,
+      liveTimelineWindowStartSec + transportTarget,
       LIVE_SIM_TIMELINE_DURATION_SEC,
     );
     requestLiveTimelineSeek({
       targetSec: absoluteTargetSec,
       requestKey: `${absoluteTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
+      ...(options.sourceHistoryReplay === true ? { sourceHistoryReplay: true } : {}),
     });
     setLiveObservedHandoverRailEvents([]);
-    setModqnReplayVisualElapsedSec(target);
+    setModqnReplayVisualElapsedSec(transportTarget);
   }, [
+    homepagePlayback.requestSeek,
+    isRootHomepage,
     resetAnalysisWindow,
     homepageCanonicalAnalysis,
-    isLegacyWalkerRoute,
+    isArchivedTleSceneActive,
     liveTimelineWindowStartSec,
     replayController,
     requestLiveTimelineSeek,
@@ -2103,6 +2584,7 @@ export function App() {
   const directorFocusEnabled = useMemo(
     () =>
       sceneSource === 'live-sim'
+      && isWalkerSceneActive
       && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
       && (
         timelineRailDescriptor.rail.sourceOwner === 'live-walker'
@@ -2111,6 +2593,7 @@ export function App() {
       && timelineRailDescriptor.rail.horizonKind === 'live-walker-window',
     [
       sceneSource,
+      isWalkerSceneActive,
       sceneLane,
       timelineRailDescriptor.rail.sourceOwner,
       timelineRailDescriptor.rail.horizonKind,
@@ -2118,15 +2601,15 @@ export function App() {
   );
 
   // G1 / Rule#8: a focus button is offered only when the source-backed rail
-  // actually carries a handover event of that kind. Otherwise the lane gate
-  // alone could let a user trigger slow-mo + camera tour with no underlying
-  // event (e.g. a MODQN cell-preview profile that emits zero live-walker HO
-  // events), which would be motion without a source.
+  // actually carries a handover event of that kind. While a left-side control
+  // is rebuilding the index, the old snapshot stays visible but is not
+  // actionable; this keeps the scene/rail/button source identity atomic.
   const directorInterEnabled = useMemo(
     () => directorFocusEnabled
+      && !liveWalkerHandoverEventIndexBuilding
       && handoverRailEvents.some(event => event.kind === 'inter')
-      && liveWalkerDirectorHandoverRailEvents.some(event => event.kind === 'inter'),
-    [directorFocusEnabled, handoverRailEvents, liveWalkerDirectorHandoverRailEvents],
+      && liveWalkerDirectorHandoverEventsForButtons.some(event => event.kind === 'inter'),
+    [directorFocusEnabled, handoverRailEvents, liveWalkerDirectorHandoverEventsForButtons, liveWalkerHandoverEventIndexBuilding],
   );
   // ITEM #C honesty: since the cell-truth cinema migration (e7a08dc) the sinr-live
   // Director focus is real live SINR cell-truth (`live-truth`) — the SINR values ARE
@@ -2152,23 +2635,43 @@ export function App() {
     [sceneSource, replayController, showcaseLoading, showcaseError],
   );
   const directorCinematicInterEnabled = useMemo(
-    () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'inter'),
-    [directorCinematicEnabled, artifactHandoverRailEvents],
+    () => directorCinematicEnabled
+      && replayController !== null
+      && artifactHandoverRailEvents.some(event => event.kind === 'inter'),
+    [artifactHandoverRailEvents, directorCinematicEnabled, replayController],
   );
   const directorCinematicIntraEnabled = useMemo(
-    () => directorCinematicEnabled && artifactHandoverRailEvents.some(event => event.kind === 'intra'),
-    [directorCinematicEnabled, artifactHandoverRailEvents],
+    () => directorCinematicEnabled
+      && replayController !== null
+      && artifactHandoverRailEvents.some(event => event.kind === 'intra'),
+    [artifactHandoverRailEvents, directorCinematicEnabled, replayController],
   );
-  // The next-event buttons are source-gated when an indexed event exists. The live
-  // sinr lane keeps Show Intra actionable when its static cell-truth index has zero
-  // intra rows: the DirectorControls trigger remains the real UE-jog path, while the
-  // top-bar fallback is a moving, display-only same-satellite beam-switch cue.
-  const directorInterButtonEnabled = directorInterEnabled || directorCinematicInterEnabled;
+  // The next-event buttons prefer the source-backed index. If the current
+  // parameter set has no indexed same-satellite row, keep Next Intra
+  // actionable through the existing real UE-jog path rather than leaving a
+  // dead button in the top bar. During a rebuild, the homepage still has a
+  // valid live fallback: it must win command admission before the queue path,
+  // otherwise a click becomes invisible until a long index build completes.
+  const directorIntraQueueable = directorFocusEnabled
+    && liveWalkerHandoverEventIndexBuilding;
+  const directorInterQueueable = directorFocusEnabled
+    && liveWalkerHandoverEventIndexBuilding;
+  const directorInterButtonEnabled = directorInterEnabled
+    || directorCinematicInterEnabled
+    || directorInterQueueable;
   const directorIntraIndexedEnabled =
     directorCinematicIntraEnabled
-    || (directorFocusEnabled && liveWalkerDirectorHandoverRailEvents.some(event => event.kind === 'intra'));
-  const directorNextIntraEnabled = directorIntraIndexedEnabled || sceneSource === 'live-sim';
-  const directorIntraTriggerEnabled = sceneSource === 'live-sim';
+    || (directorFocusEnabled
+      && !liveWalkerHandoverEventIndexBuilding
+      && liveWalkerDirectorHandoverEventsForButtons.some(event => event.kind === 'intra'));
+  const liveIntraFallbackEnabled = sceneSource === 'live-sim' && isWalkerSceneActive;
+  const directorNextIntraEnabled = homepageIndexedStoryRoute
+    ? directorIntraIndexedEnabled || directorIntraQueueable
+    : directorIntraIndexedEnabled || liveIntraFallbackEnabled;
+  const directorIntraTriggerEnabled = liveIntraFallbackEnabled;
+  const directorNextIntraMode: 'indexed' | 'real-trigger' = homepageIndexedStoryRoute
+    ? 'indexed'
+    : liveIntraFallbackEnabled && !directorIntraIndexedEnabled ? 'real-trigger' : 'indexed';
 
   const {
     handleDirectorIntraFocus,
@@ -2186,7 +2689,7 @@ export function App() {
     directorCinematicEnabled,
     directorFocusEnabled,
     artifactHandoverRailEvents,
-    liveWalkerHandoverRailEvents: liveWalkerDirectorHandoverRailEvents,
+    liveWalkerHandoverRailEvents: homepageDirectorHandoverRailEvents,
     liveDirectorFocusClaimKind,
     liveDirectorRailDurationSec: timelineRailDescriptor.rail.durationSec,
     timelineDurationSec,
@@ -2215,6 +2718,93 @@ export function App() {
     || camera.directorPhase !== 'idle'
     || liveDirectorFocusEventId !== null
     || liveDirectorFocusEventSec !== null;
+  // A topology edit can leave the old presentation owner busy for the one
+  // React commit in which the replacement event index is already rebuilding.
+  // On the homepage that state is a valid command queue window, not a reason
+  // to make Next Intra/Inter silently inert. The queued intent still waits for
+  // the current source index and the existing cinema owner; this only changes
+  // command admission at the integration boundary.
+  const homepageHandoverQueueOpen = isRootHomepage
+    && (directorIntraQueueable || directorInterQueueable);
+  const handoverCommandBusy = handoverControlBusy && !homepageHandoverQueueOpen;
+
+  const homepageDemoWindowButtonEnabled = isRootHomepage
+    && sceneSource === 'live-sim'
+    && isWalkerSceneActive
+    && sceneLane === 'sinr-live'
+    && homepageDemoWindow !== null
+    && !liveWalkerHandoverEventIndexBuilding
+    && !timelineDisabled;
+  const homepageDemoWindowReason = liveWalkerHandoverEventIndexBuilding
+    ? undefined
+    : homepageDemoWindow === null
+      ? 'No natural Intra → Inter window is available for the current parameters'
+      : undefined;
+  const handleHomepageTeachingRevealDetails = useCallback(() => {
+    setHomepageTeachingDetailsVisible(true);
+  }, []);
+  const handleHomepageTeachingSeekSource = useCallback((sourceTimeSec: number, pause: boolean) => {
+    const targetSourceSec = homepageDemoWindow === null
+      ? Math.max(0, sourceTimeSec)
+      : Math.min(
+        Math.max(sourceTimeSec, homepageDemoWindow.leadInSec),
+        homepageDemoWindow.endSec,
+      );
+    const visibleTargetSec = clampTimelineTime(
+      targetSourceSec - liveTimelineWindowStartSec,
+      timelineDurationSec,
+    );
+    handleTimelineSeek(visibleTargetSec, { sourceHistoryReplay: true });
+    if (pause) playback.setPaused(true);
+  }, [
+    handleTimelineSeek,
+    homepageDemoWindow,
+    liveTimelineWindowStartSec,
+    playback,
+    timelineDurationSec,
+  ]);
+  const handleHomepageTeachingEnd = useCallback(() => {
+    if (homepageDemoWindow !== null) {
+      handleHomepageTeachingSeekSource(homepageDemoWindow.endSec, true);
+    }
+    setHomepageDemoRunEndSec(null);
+    setHomepageTeachingActive(false);
+    setHomepageTeachingDetailsVisible(false);
+    playback.setPaused(true);
+  }, [handleHomepageTeachingSeekSource, homepageDemoWindow, playback]);
+  const handleHomepageDemoWindow = useCallback(() => {
+    if (!homepageDemoWindowButtonEnabled || homepageDemoWindow === null) return;
+    setHomepageTeachingActive(true);
+    setHomepageTeachingDetailsVisible(true);
+    // The selector returns an absolute source-time. The visible timeline is
+    // offset by the existing demo start, so convert only at this integration
+    // seam and let handleTimelineSeek issue the canonical transport/source
+    // request. Do not call either Next button or the manual jog path here.
+    const quickDemoStartSec = resolveHomepageQuickJumpSourceSec(homepageDemoWindow.events[0])
+      ?? homepageDemoWindow.leadInSec;
+    const visibleTargetSec = clampTimelineTime(
+      quickDemoStartSec - liveTimelineWindowStartSec,
+      timelineDurationSec,
+    );
+    handleTimelineSeek(visibleTargetSec, { sourceHistoryReplay: true });
+    setHomepageDemoRunEndSec(homepageDemoWindow.endSec);
+    if (playback.paused) playback.setPaused(false);
+  }, [
+    handleTimelineSeek,
+    homepageDemoWindow,
+    homepageDemoWindowButtonEnabled,
+    liveTimelineWindowStartSec,
+    playback,
+    timelineDurationSec,
+  ]);
+  useEffect(() => {
+    if (!isRootHomepage || homepageDemoRunEndSec === null) return;
+    if (!Number.isFinite(simState.simTimeSec) || simState.simTimeSec < homepageDemoRunEndSec) return;
+    setHomepageDemoRunEndSec(null);
+    setHomepageTeachingActive(false);
+    setHomepageTeachingDetailsVisible(false);
+    if (!playback.paused) playback.setPaused(true);
+  }, [homepageDemoRunEndSec, isRootHomepage, playback.paused, playback.setPaused, simState.simTimeSec]);
   const handoverCinema = useHandoverCinema({
     sceneLane,
     handoverEventIndex: liveWalkerHandoverEventIndex,
@@ -2228,6 +2818,25 @@ export function App() {
       camera.exitDirectorFocus();
     }, [cancelPendingLiveFocus, camera]),
   });
+  // Scene configuration changes rebuild the Walker source/index under a new
+  // topology reset key. Release every presentation-only claim from the old
+  // epoch before the replacement index can publish: otherwise a stale camera
+  // phase, manual cue, or busy ref makes Next Intra/Inter look disabled even
+  // though the new configuration is ready to accept a command. This effect
+  // owns no clock, candidate ranking, or handover truth; it only performs the
+  // existing cancellation/exit handoff at the integration boundary.
+  useEffect(() => {
+    const previousKey = previousSceneTopologyResetKeyRef.current;
+    if (previousKey === sceneTopologyResetKey) return;
+    previousSceneTopologyResetKeyRef.current = sceneTopologyResetKey;
+    pendingDirectorJumpKindRef.current = null;
+    cancelPendingLiveFocus();
+    handoverCinema.exit();
+    setManualHandoverRequest(null);
+    handoverPresentationBusyRef.current = false;
+    handoverControlBusyRef.current = false;
+    handoverBusyRef.current = false;
+  }, [cancelPendingLiveFocus, handoverCinema.exit, sceneTopologyResetKey]);
   // `requestMovingIntraDemo` is declared before the Director hook so the
   // automatic timeline effect can use it. Merge the App-owned control lock with
   // the MainScene render-time presentation lock; do not overwrite one with the
@@ -2235,59 +2844,188 @@ export function App() {
   handoverControlBusyRef.current = handoverControlBusy;
   handoverBusyRef.current = handoverControlBusy || handoverPresentationBusyRef.current;
 
-  const hideBeamInfoForHandover = useCallback(() => {
-    setBeamDisplaySpec(current => current.beamCalloutsEnabled
-      ? { ...current, beamCalloutsEnabled: false }
-      : current);
-  }, []);
-
   const triggerPrimaryIntra = useCallback(() => {
     if (handoverBusyRef.current) return;
     // Keep the real jog seek-free. A timeline seek rebases the model before it can
     // compare the old/new serving cells, which removes the very pulse this button
     // exists to make visible.
-    setPrimaryUeJogKm(prev => (prev.east === 0 ? { east: 28, north: 0 } : { east: 0, north: 0 }));
-  }, []);
+    intraDemoAwaitingMeasuredFrameRef.current = true;
+    const fallbackJogEastKm = isRootHomepage && sceneLane === 'sinr-live'
+      ? HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM.east
+      : 28;
+    setPrimaryUeJogKm(prev => (prev.east === 0
+      ? { east: fallbackJogEastKm, north: 0 }
+      : { east: 0, north: 0 }));
+  }, [isRootHomepage, sceneLane]);
+
+  /**
+   * Homepage Phase 1 control path: jump into the already-indexed source event
+   * and let the existing scene/presentation owner render it.  The old root
+   * path additionally armed camera cinema, which forced a 10-second lead-in at
+   * 0.25x before the same source story became visible.  This route-local shortcut
+   * keeps the canonical transport/source seek and removes only that optional
+   * camera wrapper; it does not select a candidate or create a presentation.
+   */
+  const jumpHomepageToIndexedEvent = useCallback((kind: 'intra' | 'inter'): boolean => {
+    if (
+      !homepageIndexedStoryRoute
+      || homepageDemoWindow === null
+      || liveWalkerHandoverEventIndexBuilding
+      || camera.directorPhase !== 'idle'
+      || manualHandoverRequest !== null
+    ) return false;
+    const event = homepageDemoWindow.events.find(candidate => candidate.kind === kind);
+    if (event === undefined) return false;
+    const sourceTargetSec = resolveHomepageQuickJumpSourceSec(event);
+    if (sourceTargetSec === null) return false;
+    pendingDirectorJumpKindRef.current = null;
+    cancelPendingLiveFocus();
+    camera.exitDirectorFocus();
+    setHomepageTeachingActive(true);
+    setHomepageTeachingDetailsVisible(true);
+    const visibleTargetSec = clampTimelineTime(
+      sourceTargetSec - liveTimelineWindowStartSec,
+      timelineDurationSec,
+    );
+    handleTimelineSeek(visibleTargetSec, { sourceHistoryReplay: true });
+    if (playback.paused) playback.setPaused(false);
+    return true;
+  }, [
+    camera,
+    cancelPendingLiveFocus,
+    handleTimelineSeek,
+    homepageDemoWindow,
+    homepageIndexedStoryRoute,
+    liveTimelineWindowStartSec,
+    liveWalkerHandoverEventIndexBuilding,
+    manualHandoverRequest,
+    playback,
+    timelineDurationSec,
+  ]);
+
   const handleDirectorNextIntra = useCallback(() => {
-    if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
+    if (handoverBusyRef.current && !homepageHandoverQueueOpen) return;
+    if (homepageIndexedStoryRoute && directorIntraQueueable) {
+      pendingDirectorJumpKindRef.current = createHomepageHandoverJumpIntent('intra');
+      return;
+    }
     if (directorIntraIndexedEnabled) {
+      if (homepageIndexedStoryRoute) {
+        jumpHomepageToIndexedEvent('intra');
+        return;
+      }
       handoverCinema.armIntra();
       return;
     }
-    // Current static cell-truth has no natural intra rows. The fallback is still a
-    // real engine event, not a fabricated rail marker, and the scene's wall-clock
-    // latch keeps its yellow -> blue handover flash visible.
-    if (sceneSource === 'live-sim') triggerPrimaryIntra();
-  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, sceneSource, triggerPrimaryIntra]);
+    if (!homepageIndexedStoryRoute && liveIntraFallbackEnabled && !handoverBusyRef.current) {
+      // The jog remains the real engine fallback, but when the current source
+      // frame already exposes a measured same-satellite alternate beam, route
+      // the click through the existing manual presentation owner immediately.
+      // This prevents a valid intra cue from becoming a silent UE movement while
+      // keeping the cell model and decision engine as the only truth sources.
+      if (!requestMovingIntraDemo('button')) triggerPrimaryIntra();
+      return;
+    }
+    if (directorIntraQueueable) {
+      pendingDirectorJumpKindRef.current = createHomepageHandoverJumpIntent('intra');
+    }
+  }, [directorIntraIndexedEnabled, directorIntraQueueable, handoverCinema.armIntra, homepageIndexedStoryRoute, homepageHandoverQueueOpen, jumpHomepageToIndexedEvent, liveIntraFallbackEnabled, requestMovingIntraDemo, triggerPrimaryIntra]);
   const handleQuickIntra = useCallback(() => {
-    if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
-    // Act on the cell that is being SERVED RIGHT NOW, not on a precomputed one.
-    //
-    // `requestMovingIntraDemo` reads `simState.intraHandoverPresentation`, which
-    // is derived from the focused UE's current serving cell and its best
-    // same-satellite neighbour — exactly what this button means. The indexed
-    // path instead seeks to an event recorded elsewhere on the timeline, and the
-    // index is built around one fixed UE, so taking it first pinned the button
-    // to that UE's cell no matter which cell the panels were focused on.
-    //
-    // The indexed seek stays as the fallback for when the focused UE has no
-    // same-satellite neighbour to switch to (returns false), so the control is
-    // never inert.
-    if (sceneSource === 'live-sim' && requestMovingIntraDemo()) return;
-    if (directorIntraIndexedEnabled) handoverCinema.armIntra();
-  }, [directorIntraIndexedEnabled, handoverCinema.armIntra, hideBeamInfoForHandover, requestMovingIntraDemo, sceneSource]);
+    if (handoverBusyRef.current && !homepageHandoverQueueOpen) return;
+    if (homepageIndexedStoryRoute && directorIntraQueueable) {
+      pendingDirectorJumpKindRef.current = createHomepageHandoverJumpIntent('intra');
+      return;
+    }
+    if (directorIntraIndexedEnabled) {
+      if (homepageIndexedStoryRoute) {
+        jumpHomepageToIndexedEvent('intra');
+        return;
+      }
+      handoverCinema.armIntra();
+      return;
+    }
+    if (!homepageIndexedStoryRoute && liveIntraFallbackEnabled && !handoverBusyRef.current) {
+      if (!requestMovingIntraDemo('button')) triggerPrimaryIntra();
+      return;
+    }
+    if (directorIntraQueueable) {
+      pendingDirectorJumpKindRef.current = createHomepageHandoverJumpIntent('intra');
+    }
+  }, [directorIntraIndexedEnabled, directorIntraQueueable, handoverCinema.armIntra, homepageIndexedStoryRoute, homepageHandoverQueueOpen, jumpHomepageToIndexedEvent, liveIntraFallbackEnabled, requestMovingIntraDemo, triggerPrimaryIntra]);
   const handleDirectorNextInter = useCallback(() => {
-    if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
+    if (handoverBusyRef.current && !homepageHandoverQueueOpen) return;
+    if (directorInterQueueable) {
+      pendingDirectorJumpKindRef.current = createHomepageHandoverJumpIntent('inter');
+      return;
+    }
+    if (homepageIndexedStoryRoute) {
+      jumpHomepageToIndexedEvent('inter');
+      return;
+    }
+    if (!directorInterButtonEnabled) return;
     handoverCinema.armInter();
-  }, [handoverCinema.armInter, hideBeamInfoForHandover]);
+  }, [directorInterButtonEnabled, directorInterQueueable, handoverCinema.armInter, homepageHandoverQueueOpen, homepageIndexedStoryRoute, jumpHomepageToIndexedEvent]);
   const handleQuickInter = useCallback(() => {
-    if (handoverBusyRef.current) return;
-    hideBeamInfoForHandover();
+    if (handoverBusyRef.current && !homepageHandoverQueueOpen) return;
+    if (directorInterQueueable) {
+      pendingDirectorJumpKindRef.current = createHomepageHandoverJumpIntent('inter');
+      return;
+    }
+    if (homepageIndexedStoryRoute) {
+      jumpHomepageToIndexedEvent('inter');
+      return;
+    }
+    if (!directorInterButtonEnabled) return;
     handoverCinema.armInter();
-  }, [handoverCinema.armInter, hideBeamInfoForHandover]);
+  }, [directorInterButtonEnabled, directorInterQueueable, handoverCinema.armInter, homepageHandoverQueueOpen, homepageIndexedStoryRoute, jumpHomepageToIndexedEvent]);
+
+  // Complete a queued click only after the current parameter index is ready.
+  // The matching event still comes from the existing rail projection, and the
+  // actual focus still goes through useHandoverCinema. This effect owns no
+  // timing, candidate ranking, or presentation state.
+  useEffect(() => {
+    const intent = pendingDirectorJumpKindRef.current;
+    if (intent === null || liveWalkerHandoverEventIndexBuilding || handoverControlBusy) return;
+    if (homepageIndexedStoryRoute && homepageDemoWindow === null) return;
+    // Resolve against the source-backed event object, not the display rail
+    // row. The rail is a projection and does not carry the complete event
+    // identity required by the queued-intent contract.
+    const matchingEvent = liveWalkerDirectorHandoverEventsForButtons.find(
+      event => event.kind === intent.kind,
+    ) ?? null;
+    const queuedSelection = resolveHomepageHandoverJumpIntent(
+      intent,
+      {
+        indexBuilding: liveWalkerHandoverEventIndexBuilding,
+        matchingEvent,
+      },
+    );
+    // This command belongs to the completed rebuild. Never replay it against a
+    // later, unrelated index if no matching event was produced.
+    pendingDirectorJumpKindRef.current = null;
+    if (queuedSelection?.kind === 'intra') {
+      if (homepageIndexedStoryRoute) jumpHomepageToIndexedEvent('intra');
+      else handoverCinema.armIntra();
+    }
+    if (queuedSelection?.kind === 'inter') {
+      if (homepageIndexedStoryRoute) jumpHomepageToIndexedEvent('inter');
+      else handoverCinema.armInter();
+    }
+  }, [
+    handoverControlBusy,
+    handoverCinema.armInter,
+    handoverCinema.armIntra,
+    homepageDemoWindow,
+    homepageIndexedStoryRoute,
+    jumpHomepageToIndexedEvent,
+    liveWalkerHandoverEventIndex,
+    liveWalkerDirectorHandoverEventsForButtons,
+    liveWalkerHandoverEventIndexBuilding,
+  ]);
+
+  const directorButtonCountEvents = homepageIndexedStoryRoute
+    ? liveWalkerDirectorHandoverEventsForButtons
+    : liveWalkerDirectorHandoverRailEvents;
 
   // While the explicit intra story is visible, latch the two measured links in
   // the right rail as well. The scene keeps moving, so reading the live frame
@@ -2388,7 +3126,13 @@ export function App() {
 
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
     if (sceneLane === 'sinr-live') {
-      handleTimelineSeek(targetSec);
+      // Homepage marker jumps must rebuild the source-backed decision history,
+      // just like Demo/Next.  Otherwise the seek cold-starts at the landing
+      // frame and the rail reaches a handover without the candidate lead-in.
+      handleTimelineSeek(
+        targetSec,
+        isRootHomepage ? { sourceHistoryReplay: true } : undefined,
+      );
       return;
     }
     if (directorFocusEnabled) {
@@ -2408,6 +3152,7 @@ export function App() {
   }, [
     directorFocusEnabled,
     handleTimelineSeek,
+    isRootHomepage,
     liveTimelineWindowStartSec,
     requestLiveTimelineSeek,
     sceneLane,
@@ -2444,19 +3189,29 @@ export function App() {
         axisPlaybackRate={playback.effectiveSpeed}
         directorFocusedEventId={liveDirectorFocusEventId}
       />
-      {/* Source-compatibility witness: the trigger remains seek-free and owns
-          setPrimaryUeJogKm; the next-intra wrapper only chooses indexed focus vs
-          that same real trigger fallback. The old direct onIntraFocus wiring is
-          intentionally wrapped so a zero-intra static window cannot do camera-only focus. */}
+      {/* The explicit Trigger Intra action remains seek-free and owns
+          setPrimaryUeJogKm. Next Intra prefers a source-indexed event and falls
+          back to that same real engine jog only when the current index has no
+          intra row, so the acceptance control never becomes inert. */}
       {/* onIntraTrigger={() => setPrimaryUeJogKm(...)} */}
       {/* onIntraFocus={handoverCinema.armIntra} */}
       <DirectorControls
         intraEnabled={directorNextIntraEnabled}
         interEnabled={directorInterButtonEnabled}
         intraTriggerEnabled={directorIntraTriggerEnabled}
-        nextIntraMode={directorIntraIndexedEnabled ? 'indexed' : 'real-trigger'}
-        nextIntraCount={handoverRailEvents.filter(event => event.kind === 'intra').length}
-        nextInterCount={handoverRailEvents.filter(event => event.kind === 'inter').length}
+        nextIntraMode={directorNextIntraMode}
+        handoverIndexBuilding={liveWalkerHandoverEventIndexBuilding}
+        // The event count is an internal index diagnostic, not a teaching
+        // control.  Keep it available to non-homepage compatibility lanes, but
+        // do not put a misleading quantity beside the homepage actions.
+        nextIntraCount={isRootHomepage ? undefined : directorIntraIndexedEnabled
+          ? directorFocusEnabled
+            ? directorButtonCountEvents.filter(event => event.kind === 'intra').length
+            : handoverRailEvents.filter(event => event.kind === 'intra').length
+          : undefined}
+        nextInterCount={isRootHomepage ? undefined : directorFocusEnabled
+          ? directorButtonCountEvents.filter(event => event.kind === 'inter').length
+          : handoverRailEvents.filter(event => event.kind === 'inter').length}
         phase={camera.directorPhase}
         onIntraTrigger={triggerPrimaryIntra}
         onIntraFocus={handleDirectorNextIntra}
@@ -2477,16 +3232,45 @@ export function App() {
       onTogglePause={playback.togglePause}
       onSeek={handleTimelineSeek}
       onSpeedChange={handleTimelineSpeedChange}
-      stepSec={sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? (homepageCanonicalAnalysis.timelineStepSec ?? 30) : undefined}
-      scrubStepSec={sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? 1 : undefined}
+      stepSec={isArchivedTleSceneActive ? (homepageCanonicalAnalysis.timelineStepSec ?? 30) : undefined}
+      scrubStepSec={isArchivedTleSceneActive ? 1 : undefined}
       disabled={timelineDisabled}
       sourceOwner={activeTimelineDescriptor.sourceOwner}
       horizonKind={activeTimelineDescriptor.horizonKind}
       horizonLabel={activeTimelineDescriptor.horizonLabel}
       horizonSec={activeTimelineDescriptor.horizonSec}
       claimKind={activeTimelineDescriptor.claimKind}
+      eventMarkers={homepageTimelineEventMarkers}
+      onSelect={handleTimelineSeek}
     />
   );
+  const homepageHandoverStory = homepageRailProjection?.handoverStory ?? null;
+  // Temporary homepage-only review mode requested by the owner: expose every
+  // currently implemented right-rail surface at once.  It is a visibility
+  // switch only; the accepted snapshot remains the sole source of evidence.
+  const homepageRailShowAllSurfaces = isRootHomepage
+    && sceneLane === 'sinr-live'
+    && isWalkerSceneActive;
+  // The teaching timeline is an event readout, not a permanent playback
+  // banner in normal mode. Review mode deliberately keeps its shell visible so
+  // the owner can inspect and remove redundant surfaces before the next pass.
+  const homepageTeachingTimeline = homepageRailShowAllSurfaces
+    ? (
+      <HomepageTeachingTimeline
+        currentSourceTimeSec={simState.simTimeSec}
+        startSourceTimeSec={homepageDemoWindow?.leadInSec ?? Math.max(0, simState.simTimeSec - 30)}
+        endSourceTimeSec={homepageDemoWindow?.endSec ?? Math.max(simState.simTimeSec + 30, Math.max(0, simState.simTimeSec - 30) + 60)}
+        paused={playback.paused}
+        speed={playback.effectiveSpeed}
+        handoverStory={homepageHandoverStory}
+        satelliteNameById={homepageSatelliteNameById}
+        onRevealDetails={handleHomepageTeachingRevealDetails}
+        onSeekSource={handleHomepageTeachingSeekSource}
+        onTogglePause={playback.togglePause}
+        onEnd={handleHomepageTeachingEnd}
+      />
+    )
+    : null;
 
   // World-space lerp adapter binding (SDD §9 P3): interpolation occurs strictly
   // after coordToWorld; raw positionEcefKm is never re-interpolated.
@@ -2602,9 +3386,95 @@ export function App() {
       };
     });
     setSimState(createInitialSimState(baseProfile));
+    liveSimTimeSecRef.current = 0;
+    walkerRuntimeHasPublishedRef.current = false;
     setStaleFormulaEvidenceKey(null);
     resetAutoSlowDismissedRef.current();
   }, [baseProfile]);
+
+  const handleSimulationSourceChange = (nextSource: SimulationSourceMode): void => {
+    if (nextSource === simulationSource) return;
+
+    // Source changes release presentation-only ownership. Walker is fully
+    // unmounted while TLE owns the scene; on return, one deterministic seek
+    // reconstructs its last published timeline/serving state without a hidden
+    // background Walker or handover runtime.
+    cancelPendingLiveFocus();
+    camera.exitDirectorFocus();
+    handoverCinema.exit();
+    setManualHandoverRequest(null);
+    if (nextSource === 'walker' && walkerRuntimeHasPublishedRef.current) {
+      const restoreTargetSec = Math.max(
+        0,
+        Math.min(LIVE_SIM_TIMELINE_DURATION_SEC, liveSimTimeSecRef.current),
+      );
+      setLiveTimelineSeekRequest({
+        targetSec: restoreTargetSec,
+        requestKey: `source-restore:${restoreTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
+      });
+    } else {
+      setLiveTimelineSeekRequest(null);
+    }
+    setSixActsSubtitle(null);
+    handoverPresentationBusyRef.current = false;
+    handoverControlBusyRef.current = false;
+    handoverBusyRef.current = false;
+    persistSimulationSourceMode(nextSource);
+    setSimulationSource(nextSource);
+  };
+
+  // The root SINR homepage has one right-rail surface: the accepted snapshot
+  // beam projection. Palette/live-status tabs were competing presentation
+  // surfaces, so the palette moved to `/beam-colors` and this rail is mounted
+  // directly for the homepage only.
+  const homepageRailPanel = homepageRailShowAllSurfaces
+    ? (
+      <section
+        className="leo-live-status-stack"
+        aria-label="Homepage service and candidate beams"
+        data-testid="homepage-beam-rail-panel"
+        data-homepage-rail-snapshot-id={homepageRailProjection?.snapshotId ?? ''}
+        data-homepage-rail-source-frame-id={homepageRailProjection?.sourceFrameId ?? ''}
+        data-homepage-rail-phase={homepageRailProjection?.phase ?? ''}
+      >
+        {homepageRailProjection ? (
+          <HomepageBeamRail
+            projection={homepageRailProjection}
+            acceptedSnapshotMetadata={simState.acceptedHandoverPresentation}
+            satelliteNameById={homepageSatelliteNameById}
+            teachingTimeline={homepageTeachingTimeline}
+            // Keep one homepage rail: the teaching timeline and the accepted
+            // story section are both projections of this same snapshot. Do
+            // not pass null here — HomepageBeamRail treats an explicit null as
+            // "suppress the story", which hid the source/target EE evidence.
+            playback={{
+              paused: playback.paused,
+              selectedSpeed: playback.speed,
+              effectiveSpeed: playback.effectiveSpeed,
+            }}
+            // Root homepage handover rows/story must come from the accepted
+            // snapshot projection. `visibleHandover` remains a compatibility
+            // owner for non-homepage lanes, but passing it here created a
+            // second homepage rail presentation authority.
+            handoverPresentation={homepageRailShowAllSurfaces
+              ? visibleHandover.presentation
+              : isRootHomepage ? null : visibleHandover.presentation}
+            showAllSurfaces={homepageRailShowAllSurfaces}
+          />
+        ) : (
+          <div
+            role="status"
+            data-testid="homepage-beam-rail-waiting"
+            data-homepage-rail-snapshot-id=""
+            data-homepage-rail-source-frame-id=""
+            data-homepage-rail-phase=""
+          >
+            Waiting for the first accepted homepage snapshot.
+          </div>
+        )}
+      </section>
+    )
+    : null;
 
   return (
     // One global locale state for the whole shell: the left tuners, the centre
@@ -2628,6 +3498,18 @@ export function App() {
     <div
       data-app-mode={appMode}
       data-scene-lane={sceneLane}
+      data-simulation-source={simulationSource}
+      data-active-simulation-source={isArchivedTleSceneActive ? 'archived-tle' : 'walker'}
+      data-walker-source-kind="synthetic-walker"
+      data-walker-constellation={activeSceneTopology.constellation}
+      data-walker-scenario-local={`${walkerScenarioDate}T${walkerScenarioTime}`}
+      data-walker-epoch-utc-ms={walkerScenarioEpochUtcMs.toString()}
+      data-walker-primary-shell-altitude-km={effectiveProfile.orbit.shells[0]?.altitudeKm?.toString() ?? ''}
+      data-walker-satellite-count={effectiveProfile.orbit.shells.reduce(
+        (total, shell) => total + shell.planes * shell.satsPerPlane,
+        0,
+      ).toString()}
+      data-walker-cell-presentation-altitude-km={resolveSinrLiveCellLayoutAltitudeKm(effectiveProfile).toString()}
       data-legacy-walker-route={isLegacyWalkerRoute ? 'true' : undefined}
       data-artifact-source={
         sceneSource === 'artifact-replay' ? (showcaseArtifactSource ?? 'pending') : undefined
@@ -2638,6 +3520,9 @@ export function App() {
       data-live-director-focus-source-owner={directorFocusEnabled ? timelineRailDescriptor.rail.sourceOwner : undefined}
       data-live-director-focus-event-id={liveDirectorFocusEventId ?? undefined}
       data-live-director-focus-event-sec={liveDirectorFocusEventSec !== null ? liveDirectorFocusEventSec.toFixed(3) : undefined}
+      data-live-handover-index-building={liveWalkerHandoverEventIndexBuilding ? '1' : '0'}
+      data-handover-control-busy={handoverCommandBusy ? '1' : '0'}
+      data-selected-speed={playback.speed.toFixed(3)}
       data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}
       data-timeline-duration-sec={timelineDurationSec.toFixed(3)}
       data-timeline-disabled={timelineDisabled ? 'true' : 'false'}
@@ -2646,6 +3531,25 @@ export function App() {
       data-timeline-claim-kind={activeTimelineDescriptor.claimKind}
       data-live-timeline-seek-target={liveTimelineSeekRequest?.targetSec.toFixed(3) ?? ''}
       data-live-timeline-seek-key={liveTimelineSeekRequest?.requestKey ?? ''}
+      data-homepage-demo-window-ready={homepageDemoWindow !== null ? '1' : '0'}
+      data-homepage-demo-window-enabled={homepageDemoWindowButtonEnabled ? '1' : '0'}
+      data-homepage-demo-window-lead-in-sec={homepageDemoWindow?.leadInSec.toFixed(3) ?? ''}
+      data-homepage-demo-window-end-sec={homepageDemoWindow?.endSec.toFixed(3) ?? ''}
+      data-homepage-demo-window-first-event-id={homepageDemoWindow?.firstEventId ?? ''}
+      data-homepage-demo-window-last-event-id={homepageDemoWindow?.lastEventId ?? ''}
+      data-homepage-demo-window-alignment={homepageDemoWindow?.alignment.aligned === true ? 'aligned' : ''}
+      data-homepage-demo-window-intra-from-sat-id={homepageDemoWindow?.events[0]?.fromSatId ?? ''}
+      data-homepage-demo-window-intra-to-sat-id={homepageDemoWindow?.events[0]?.toSatId ?? ''}
+      data-homepage-demo-window-intra-from-cell-id={homepageDemoWindow?.events[0]?.fromCellId?.toString() ?? ''}
+      data-homepage-demo-window-intra-to-cell-id={homepageDemoWindow?.events[0]?.toCellId?.toString() ?? ''}
+      data-homepage-demo-window-intra-from-beam-id={homepageDemoWindow?.events[0]?.fromBeamId?.toString() ?? ''}
+      data-homepage-demo-window-intra-to-beam-id={homepageDemoWindow?.events[0]?.toBeamId?.toString() ?? ''}
+      data-homepage-demo-window-inter-from-sat-id={homepageDemoWindow?.events[1]?.fromSatId ?? ''}
+      data-homepage-demo-window-inter-to-sat-id={homepageDemoWindow?.events[1]?.toSatId ?? ''}
+      data-homepage-demo-window-inter-from-cell-id={homepageDemoWindow?.events[1]?.fromCellId?.toString() ?? ''}
+      data-homepage-demo-window-inter-to-cell-id={homepageDemoWindow?.events[1]?.toCellId?.toString() ?? ''}
+      data-homepage-demo-window-inter-from-beam-id={homepageDemoWindow?.events[1]?.fromBeamId?.toString() ?? ''}
+      data-homepage-demo-window-inter-to-beam-id={homepageDemoWindow?.events[1]?.toBeamId?.toString() ?? ''}
       data-manual-handover-request-id={manualHandoverRequest?.id?.toString() ?? ''}
       data-manual-handover-kind={manualHandoverRequest?.kind ?? ''}
       data-topology-overrides-active={hasTopologyOverrides ? 'true' : 'false'}
@@ -2706,7 +3610,13 @@ export function App() {
           textDecoration: 'none',
           whiteSpace: 'nowrap',
         }}
-      >◎ 六幕教學</a>
+      >◎ 教學實驗</a>
+      {HOMEPAGE_SIMULATION_SOURCE_SWITCH_VISIBLE && sceneLane === 'sinr-live' && (
+        <SimulationSourceToggle
+          value={simulationSource}
+          onChange={handleSimulationSourceChange}
+        />
+      )}
       <div style={{ flex: '1 1 auto', minWidth: 0 }}>
       {/* Global display controls remain available on the SINR/TLE homepage as
           well as the replay lanes. The current scene still consumes
@@ -2719,6 +3629,7 @@ export function App() {
         cinematicMode={effectiveCinematicMode}
         autoSlowEnabled={playback.autoSlowEnabled}
         effectiveSpeed={playback.effectiveSpeed}
+        requestedSpeed={playback.speed}
         autoSlowActive={playback.autoSlowActive}
         autoSlowApplied={playback.autoSlowApplied}
         onToggleBeamCallouts={() => setBeamDisplaySpec(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
@@ -2728,29 +3639,53 @@ export function App() {
         onToggleAutoSlow={playback.toggleAutoSlow}
         onDismissAutoSlow={playback.dismissAutoSlow}
         showHandoverJumpButtons={sceneSource === 'live-sim'
+          && isWalkerSceneActive
           && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')}
+        handoverIndexBuilding={liveWalkerHandoverEventIndexBuilding}
         nextIntraEnabled={manualHandoverRequest === null
           && directorNextIntraEnabled
           && camera.directorPhase === 'idle'
-          && !handoverControlBusy}
+          && !handoverCommandBusy}
         nextInterEnabled={manualHandoverRequest === null
           && directorInterButtonEnabled
           && camera.directorPhase === 'idle'
-          && !handoverControlBusy}
-        nextIntraCount={sceneSource === 'live-sim'
-          ? undefined
-          : handoverRailEvents.filter(event => event.kind === 'intra').length}
-        nextInterCount={sceneSource === 'live-sim'
-          ? undefined
+          && !handoverCommandBusy}
+        // Homepage actions are always actionable teaching jumps; the number of
+        // indexed rows is not user-facing evidence and only made the controls
+        // look like a time selector.
+        nextIntraCount={isRootHomepage ? undefined : directorIntraIndexedEnabled
+          ? sceneSource === 'live-sim' && isWalkerSceneActive
+            ? directorButtonCountEvents.filter(event => event.kind === 'intra').length
+            : handoverRailEvents.filter(event => event.kind === 'intra').length
+          : undefined}
+        nextInterCount={isRootHomepage ? undefined : sceneSource === 'live-sim' && isWalkerSceneActive
+          ? directorButtonCountEvents.filter(event => event.kind === 'inter').length
           : handoverRailEvents.filter(event => event.kind === 'inter').length}
-        nextIntraMode={sceneSource === 'live-sim'
-          ? (directorIntraIndexedEnabled ? 'indexed' : 'moving-beam-demo')
-          : (directorIntraIndexedEnabled ? 'indexed' : 'real-trigger')}
-        manualHandoverKind={sceneSource === 'live-sim' ? manualHandoverRequest?.kind ?? null : null}
+        nextIntraMode={directorNextIntraMode}
+        manualHandoverKind={sceneSource === 'live-sim' && isWalkerSceneActive
+          ? manualHandoverRequest?.kind ?? null
+          : null}
         onNextIntra={handleQuickIntra}
         onNextInter={handleQuickInter}
       />
       </div>
+      {isRootHomepage
+        && sceneSource === 'live-sim'
+        && isWalkerSceneActive
+        && sceneLane === 'sinr-live' && (
+          <>
+            <HomepageDemoWindowButton
+              enabled={homepageDemoWindowButtonEnabled}
+              building={liveWalkerHandoverEventIndexBuilding}
+              leadInSec={homepageDemoWindow?.leadInSec}
+              endSec={homepageDemoWindow?.endSec}
+              firstEventId={homepageDemoWindow?.firstEventId}
+              lastEventId={homepageDemoWindow?.lastEventId}
+              reason={homepageDemoWindowReason}
+              onClick={handleHomepageDemoWindow}
+            />
+          </>
+        )}
       <div
         data-testid="global-locale-toggle-slot"
         style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}
@@ -2886,12 +3821,13 @@ export function App() {
               in the right rail. */}
           {sceneLane === 'sinr-live' && (
             <SinrLiveDisplayDrawer
+              showTeachingAuxiliaryUi={HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE}
               campusVisible={campusVisible}
               onCampusVisibleChange={() => setCampusVisible(current => !current)}
               teachingMode={teachingMode}
               onTeachingModeChange={handleTeachingModeChange}
               teachingLinkSnapshot={teachingLinkSnapshot}
-              teachingPolicySection={(
+              teachingPolicySection={isWalkerSceneActive ? (
                 <HandoverPolicyControls
                   draft={handoverPolicyDraft}
                   applied={appliedHandoverPolicy}
@@ -2901,9 +3837,23 @@ export function App() {
                   onApply={handleApplyHandoverPolicy}
                   onReset={handleResetHandoverPolicy}
                 />
+              ) : (
+                <section
+                  className="leo-replay-truth-summary leo-archived-tle-boundary-note"
+                  data-testid="archived-tle-handover-policy-boundary"
+                  aria-label="Archived TLE handover policy"
+                >
+                  <strong>Canonical archived-TLE handover</strong>
+                  <span>
+                    Fixed 3 dB / 30 s trace; Walker policy controls are not applicable.
+                    {homepageCanonicalAnalysis.frame?.handover?.reason
+                      ? ` Current trace: ${homepageCanonicalAnalysis.frame.handover.reason}`
+                      : ' Trace unavailable until an accepted frame is published.'}
+                  </span>
+                </section>
               )}
               parameterSection={
-                isLegacyWalkerRoute ? (
+                isWalkerSceneActive ? (
                   <SignalTuningPanel
                     baseProfile={baseProfile}
                     tuning={signalTuning}
@@ -2913,20 +3863,39 @@ export function App() {
                     appMode={appMode}
                     formulaBudget={simState.physicalServingBudget}
                     isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                    activeMainTab={isRootHomepage ? homepageSignalTuningMainTab : undefined}
+                    onActiveMainTabChange={isRootHomepage ? setHomepageSignalTuningMainTab : undefined}
                     onTuningChange={handleSignalTuningChange}
                     onTopologyChange={handleSceneTopologyChange}
                     servingSatelliteId={simState.servingSatId}
                     candidateSatelliteId={simState.pendingTargetSatId ?? simState.comparisonSatId}
                     formulaFrame={simState.angleAwareFormulaFrame}
+                    walkerScenarioDate={walkerScenarioDate}
+                    walkerScenarioTime={walkerScenarioTime}
+                    onWalkerScenarioDateChange={setWalkerScenarioDate}
+                    onWalkerScenarioTimeChange={setWalkerScenarioTime}
                     onSceneVisualScaleChange={setSceneVisualScale}
                     onReset={handleResetSignalTuning}
+                    handoverPolicySection={(
+                      <HandoverPolicyControls
+                        draft={handoverPolicyDraft}
+                        applied={appliedHandoverPolicy}
+                        hasDraftChanges={hasHandoverPolicyDraftChanges}
+                        hasOverrides={hasHandoverPolicyOverrides}
+                        onDraftChange={handleHandoverPolicyDraftChange}
+                        onApply={handleApplyHandoverPolicy}
+                        onReset={handleResetHandoverPolicy}
+                      />
+                    )}
                   />
                 ) : (
-                  <HomepageCanonicalControls
-                    analysis={homepageCanonicalAnalysis}
-                    activeTab={homepageCanonicalTab}
-                    onActiveTabChange={setHomepageCanonicalTab}
-                  />
+                  <>
+                    <HomepageCanonicalControls
+                      analysis={homepageCanonicalAnalysis}
+                      activeTab={homepageCanonicalTab}
+                      onActiveTabChange={setHomepageCanonicalTab}
+                    />
+                  </>
                 )
               }
             />
@@ -2938,7 +3907,11 @@ export function App() {
           data-testid="leo-shell-canvas"
           data-timeline-visibility={shellChromeVisibility.timeline ? 'visible' : 'hidden'}
           data-handover-criterion={
-            handoverMode === 'decision-overlay-on-live-sinr' ? 'decision-overlay-on-live-sinr' : 'sinr-offset'
+            isArchivedTleSceneActive
+              ? 'canonical-tle-3db-30s'
+              : handoverMode === 'decision-overlay-on-live-sinr'
+                ? 'decision-overlay-on-live-sinr'
+                : 'sinr-offset'
           }
           data-scene-lane={sceneLane}
           onPointerDownCapture={() => {
@@ -2967,18 +3940,27 @@ export function App() {
               runtime={runtime}
               visualScaleMultipliers={visualScaleMultipliers}
               sceneLane={sceneLane}
+              homepageVisualIdentity={typeof window !== 'undefined' && window.location.pathname === '/'}
+              homepageSatelliteNameById={homepageSatelliteNameById}
+              homepageBeamMetrics={simState.homepageBeamMetrics ?? null}
+              simulationSource={isArchivedTleSceneActive ? 'archived-tle' : 'walker'}
               campusVisible={campusVisible}
               onSimUpdate={handleSimUpdate}
-              acceptedHandoverPresentation={simState.acceptedHandoverPresentation ?? null}
+              acceptedHandoverPresentation={isWalkerSceneActive
+                ? simState.acceptedHandoverPresentation ?? null
+                : null}
               onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}
-              canonicalAnalysisFrame={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+              canonicalAnalysisFrame={isArchivedTleSceneActive
                 ? homepageCanonicalAnalysis.frame
-                : undefined}
-              canonicalAnalysisNextFrame={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+                : null}
+              canonicalAnalysisNextFrame={isArchivedTleSceneActive
                 ? homepageCanonicalAnalysis.visualNextFrame
-                : undefined}
-              canonicalVisualOffsetSec={sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+                : null}
+              canonicalAnalysisError={isArchivedTleSceneActive
+                ? homepageCanonicalAnalysis.error
+                : null}
+              canonicalVisualOffsetSec={isArchivedTleSceneActive
                 ? Math.max(
                   0,
                   timelineCurrentTimeSec
@@ -2987,9 +3969,11 @@ export function App() {
                 : undefined}
               beamDisplaySpec={beamDisplaySpec}
               showSceneOverlays={shellChromeVisibility.sceneOverlay}
-              handoverCinemaCandidate={sceneLane === 'sinr-live' ? handoverCinema.focusedCandidate : null}
-              handoverCinemaArmed={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.cinemaActive}
-              handoverCinemaKind={sceneLane === 'sinr-live' && isLegacyWalkerRoute && handoverCinema.armFilter !== 'off'
+              handoverCinemaCandidate={sceneLane === 'sinr-live' && isWalkerSceneActive
+                ? handoverCinema.focusedCandidate
+                : null}
+              handoverCinemaArmed={sceneLane === 'sinr-live' && isWalkerSceneActive && handoverCinema.cinemaActive}
+              handoverCinemaKind={sceneLane === 'sinr-live' && isWalkerSceneActive && handoverCinema.armFilter !== 'off'
                 ? handoverCinema.armFilter
                 : null}
               onHandoverPresentationChange={handleHandoverPresentationChange}
@@ -3019,7 +4003,7 @@ export function App() {
           )}
           {shellChromeVisibility.sceneOverlay && (
             <>
-              {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
+              {HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE && teachingMode === 'teaching' && sceneLane === 'sinr-live' && isWalkerSceneActive && sixActsSubtitle !== null && (
                 sixActsTeachingFactsRef.current === null ? null : (
                   <SixActsTeachingOverlay
                     beat={sixActsSubtitle.beat}
@@ -3031,7 +4015,7 @@ export function App() {
                   />
                 )
               )}
-              {teachingMode === 'teaching' && sceneLane === 'sinr-live' && sixActsSubtitle !== null && (
+              {HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE && teachingMode === 'teaching' && sceneLane === 'sinr-live' && isWalkerSceneActive && sixActsSubtitle !== null && (
                 <div
                   className="leo-six-acts-subtitle-overlay"
                   data-testid="six-acts-subtitle-overlay"
@@ -3049,7 +4033,7 @@ export function App() {
               )}
             </>
           )}
-          {shellChromeVisibility.timeline ? timelineBar : null}
+          {shellChromeVisibility.timeline && homepageTeachingTimeline === null ? timelineBar : null}
         </main>
         <aside
           className="leo-shell-right"
@@ -3057,22 +4041,25 @@ export function App() {
           aria-label="Calculated values panel"
           aria-hidden={!shellChromeVisibility.rightSidebar}
         >
-          {sceneLane === 'sinr-live' && !isLegacyWalkerRoute ? (
+          {isArchivedTleSceneActive ? (
             <HomepageRightRail
               analysis={homepageCanonicalAnalysis}
             >
               <HomepageCanonicalServingComparison frame={homepageCanonicalAnalysis.frame} />
             </HomepageRightRail>
+          ) : homepageRailPanel !== null ? (
+            homepageRailPanel
           ) : (
             <>
               {sceneLane === 'modqn-live-cell-preview' && <ServiceStatusBanner appMode={appMode} />}
-              <SidebarTabShell
-                label="Simulation status sidebar"
-                side="right"
-                tabs={visibleRightSidebarTabs}
-                activeKey={activeRightSidebarTab}
-                onChange={setRightSidebarTab}
-              >
+              {visibleRightSidebarTabs.length > 0 ? (
+                <SidebarTabShell
+                  label="Simulation status sidebar"
+                  side="right"
+                  tabs={visibleRightSidebarTabs}
+                  activeKey={activeRightSidebarTab}
+                  onChange={setRightSidebarTab}
+                >
             {activeRightSidebarTab === 'artifact' ? (
               <section
                 className="leo-sidebar-content-stack"
@@ -3104,27 +4091,33 @@ export function App() {
                 />
               </section>
             ) : activeRightSidebarTab === 'live' ? (
-              <section className="leo-live-status-stack" aria-label="Live status for current scene">
-                {sceneLane === 'sinr-live' && isLegacyWalkerRoute ? (
+              <section
+                className="leo-live-status-stack"
+                aria-label="Live status for current scene"
+                data-homepage-rail-snapshot-id={homepageRailProjection?.snapshotId ?? ''}
+                data-homepage-rail-source-frame-id={homepageRailProjection?.sourceFrameId ?? ''}
+                data-homepage-rail-phase={homepageRailProjection?.phase ?? ''}
+              >
+                {sceneLane === 'sinr-live' && isWalkerSceneActive ? (
                   <WalkerResultsRail
-                    profile={effectiveProfile}
-                    physicalServing={simState.physicalServing}
-                    physicalServingBudget={simState.physicalServingBudget}
-                    servingCellId={simState.servingCellId}
-                    pendingTargetSatId={simState.pendingTargetSatId}
-                    angleAwareFormulaFrame={simState.angleAwareFormulaFrame}
-                    simTimeSec={simState.simTimeSec}
-                    beamHopEnabled={walkerBeamDisplayFrame.beamHoppingEnabled}
-                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                  >
-                    <InfoPanel
-                      {...intraTeachingDisplayState}
                       profile={effectiveProfile}
-                      handoverMode={handoverMode}
-                      comparisonCellId={intraTeachingComparisonCellId}
+                      physicalServing={simState.physicalServing}
+                      physicalServingBudget={simState.physicalServingBudget}
+                      servingCellId={simState.servingCellId}
+                      pendingTargetSatId={simState.pendingTargetSatId}
+                      angleAwareFormulaFrame={simState.angleAwareFormulaFrame}
+                      simTimeSec={simState.simTimeSec}
+                      beamHopEnabled={walkerBeamDisplayFrame.beamHoppingEnabled}
                       isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                      channelMetricKind={activeSceneFrame?.channelMetricKind}
-                    />
+                    >
+                      <InfoPanel
+                        {...intraTeachingDisplayState}
+                        profile={effectiveProfile}
+                        handoverMode={handoverMode}
+                        comparisonCellId={intraTeachingComparisonCellId}
+                        isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                        channelMetricKind={activeSceneFrame?.channelMetricKind}
+                      />
                   </WalkerResultsRail>
                 ) : (
                   <InfoPanel
@@ -3220,7 +4213,8 @@ export function App() {
                 />
               </section>
             )}
-              </SidebarTabShell>
+                </SidebarTabShell>
+              ) : null}
             </>
           )}
         </aside>

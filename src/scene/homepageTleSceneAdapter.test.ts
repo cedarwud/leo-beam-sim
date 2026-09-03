@@ -89,6 +89,33 @@ const noContext = adaptSimulationAnalysisFrameToHomepageTleScene(frameA, { conte
 assert.equal(noContext.contextSatellites.length, 0);
 assert.equal(noContext.satellites.length, sceneA.candidate === null ? 1 : 2);
 
+const retainedSource = stateA.propagationFrame.satellites.find(
+  satellite => satellite.satelliteId !== stateA.selectedSatelliteId
+    && satellite.satelliteId !== stateA.candidateSatellite?.satelliteId,
+);
+assert.ok(retainedSource, 'the propagation frame should contain a context identity for retention');
+const retainedScene = adaptSimulationAnalysisFrameToHomepageTleScene(frameA, {
+  contextLimit: 0,
+  retainSatelliteIds: [retainedSource.satelliteId],
+});
+assert.equal(
+  retainedScene.contextSatellites.some(satellite => satellite.satelliteId === retainedSource.satelliteId),
+  true,
+  'an explicit event endpoint remains in the bounded scene projection',
+);
+assert.equal(
+  retainedScene.satellites.some(satellite => satellite.satelliteId === retainedSource.satelliteId),
+  true,
+);
+assert.equal(
+  adaptSimulationAnalysisFrameToHomepageTleScene(frameA, {
+    contextLimit: 0,
+    retainSatelliteIds: [retainedSource.satelliteId],
+  }),
+  retainedScene,
+  'retention identities participate in the immutable projection cache key',
+);
+
 const instantB = '2026-08-08T12:05:00.000Z';
 const selectionB = await loadTleSnapshotSelection(catalog, instantB, fetchFromPublic);
 const stateB = createSimulatorTleState(selectionB, instantB);

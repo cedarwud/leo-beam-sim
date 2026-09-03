@@ -75,6 +75,12 @@ export interface CellScheduleViz {
 }
 
 export interface UseCellScheduleInput {
+  /**
+   * False at source boundaries that must not start the legacy cell scheduler.
+   * The hook still returns a shape-stable empty visualization for the shared
+   * renderer, but never calls computeSlotSchedule.
+   */
+  readonly enabled?: boolean;
   readonly simTimeSec: number;
   readonly altitudeKm: number;
   readonly beamwidth3dBRad: number;
@@ -115,6 +121,9 @@ export function computeCellScheduleViz(input: UseCellScheduleInput): CellSchedul
     beamwidth3dBRad: input.beamwidth3dBRad,
   });
 
+  if (input.enabled === false) {
+    return buildDisabledCellScheduleViz(input, layout, slotIndex);
+  }
   return computeCellScheduleVizFromLayout({ ...input, layout, slotIndex });
 }
 
@@ -148,8 +157,11 @@ export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
   const servingCount = resolveServingCount(input.servingCount);
 
   return useMemo(
-    () => computeCellScheduleVizFromLayout({ ...input, layout, slotIndex }),
+    () => input.enabled === false
+      ? buildDisabledCellScheduleViz(input, layout, slotIndex)
+      : computeCellScheduleVizFromLayout({ ...input, layout, slotIndex }),
     [
+      input.enabled,
       input.beamsPerSatellite,
       input.centerLatDeg,
       input.centerLonDeg,
@@ -164,17 +176,43 @@ export function useCellSchedule(input: UseCellScheduleInput): CellScheduleViz {
   );
 }
 
-function computeCellScheduleVizFromLayout(input: ComputeCellScheduleVizFromLayoutInput): CellScheduleViz {
-  const placements = input.layout.centers.map((center): CellWorldPlacement => ({
+function buildCellPlacements(
+  layout: CellLayout,
+  worldUnitsPerKm: number,
+): readonly CellWorldPlacement[] {
+  return layout.centers.map((center): CellWorldPlacement => ({
     cellId: center.cellId,
     center,
-    worldX: center.localXKm * input.worldUnitsPerKm,
+    worldX: center.localXKm * worldUnitsPerKm,
     // UE projection convention: east -> +X, north -> -Z. This keeps the
     // Phase I viz mock aligned with live UE markers while real-orbit scheduler
     // positions remain deferred to Phase III per SDD §7.
-    worldZ: -center.localYKm * input.worldUnitsPerKm,
-    radiusWorld: input.layout.cellRadiusKm * input.worldUnitsPerKm,
+    worldZ: -center.localYKm * worldUnitsPerKm,
+    radiusWorld: layout.cellRadiusKm * worldUnitsPerKm,
   }));
+}
+
+function buildDisabledCellScheduleViz(
+  input: UseCellScheduleInput,
+  layout: CellLayout,
+  slotIndex: number,
+): CellScheduleViz {
+  const slot = emptyCellScheduleSlot(layout, slotIndex);
+  const previousSlot = emptyCellScheduleSlot(layout, Math.max(0, slotIndex - 1));
+  const nextSlot = emptyCellScheduleSlot(layout, slotIndex + 1);
+  return buildVizResult(
+    layout,
+    slotIndex,
+    slot,
+    previousSlot,
+    nextSlot,
+    buildCellPlacements(layout, input.worldUnitsPerKm),
+    { servingCount: 0, visibleCount: 0 },
+  );
+}
+
+function computeCellScheduleVizFromLayout(input: ComputeCellScheduleVizFromLayoutInput): CellScheduleViz {
+  const placements = buildCellPlacements(input.layout, input.worldUnitsPerKm);
 
   const selection = buildSchedulerSatelliteSelection(input);
   if (selection.satellites.length === 0) {

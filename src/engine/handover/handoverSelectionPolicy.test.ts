@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   ForecastEePolicy,
+  InstantaneousEePolicy,
   SINR_OFFSET_REQUIRED_GATES,
   SinrOffsetPolicy,
   type HandoverSelectionPolicyInput,
@@ -125,6 +126,7 @@ function opportunity(
     readonly throughputBps?: number | null;
     readonly remainingSec?: number | null;
     readonly eeBitPerJ?: number | null;
+    readonly instantaneousEeBitPerJ?: number | null;
     readonly eeGate?: CandidateGateResult['result'];
     readonly scheduled?: CandidateGateResult['result'];
   } = {},
@@ -150,6 +152,13 @@ function opportunity(
     remainingServiceTime: remainingAvailable
       ? metric(options.remainingSec ?? 180, 's')
       : metric(null, 's', 'unavailable'),
+    ...(options.instantaneousEeBitPerJ === undefined
+      ? {}
+      : {
+        instantaneousEe: options.instantaneousEeBitPerJ === null
+          ? metric(null, 'bit/J', 'unavailable')
+          : metric(options.instantaneousEeBitPerJ, 'bit/J'),
+      }),
     forecastEe: forecastEvidence,
     gates: [
       gate('elevation'),
@@ -278,6 +287,76 @@ test('SINR policy returns deterministic best-first ordering with stable-key tie-
     'SAT-Z|2',
     'SAT-M|1',
   ]);
+});
+
+test('instantaneous EE policy selects the largest same-frame EE before SINR ranking', () => {
+  const result = new InstantaneousEePolicy({
+    initialTttSec: 0,
+    interTttSec: 3.5,
+    intraTttSec: 0.75,
+    eeToleranceRelative: 0,
+  }).evaluate({
+    serving: opportunity(SERVING, { sinrDb: 25, instantaneousEeBitPerJ: 20 }),
+    alternatives: [
+      opportunity(candidateLinkKey('SAT-LOW-SINR', 1), {
+        sinrDb: 4,
+        instantaneousEeBitPerJ: 90,
+      }),
+      opportunity(candidateLinkKey('SAT-HIGH-SINR', 1), {
+        sinrDb: 30,
+        instantaneousEeBitPerJ: 60,
+      }),
+    ],
+  });
+
+  assert.equal(result.mode, 'ee-optimization');
+  assert.deepEqual(result.assessments.map(item => candidateLinkKeyString(item.key)), [
+    'SAT-LOW-SINR|1',
+    'SAT-HIGH-SINR|1',
+  ]);
+  assert.equal(result.assessments[0]?.triggerStatus, 'satisfied');
+  assert.equal(result.assessments[1]?.triggerStatus, 'satisfied');
+});
+
+test('instantaneous EE policy only qualifies a candidate when its EE is greater than serving EE', () => {
+  const result = new InstantaneousEePolicy({
+    initialTttSec: 0,
+    interTttSec: 3.5,
+    intraTttSec: 0.75,
+    eeToleranceRelative: 0,
+  }).evaluate({
+    serving: opportunity(SERVING, { instantaneousEeBitPerJ: 100 }),
+    alternatives: [
+      opportunity(candidateLinkKey('SAT-BELOW', 1), { instantaneousEeBitPerJ: 99 }),
+      opportunity(candidateLinkKey('SAT-WINNER', 1), { instantaneousEeBitPerJ: 101 }),
+    ],
+  });
+
+  const byKey = new Map(result.assessments.map(item => [candidateLinkKeyString(item.key), item]));
+  assert.equal(byKey.get('SAT-WINNER|1')?.triggerStatus, 'satisfied');
+  assert.equal(byKey.get('SAT-BELOW|1')?.triggerStatus, 'not-satisfied');
+  assert.deepEqual(result.assessments.map(item => candidateLinkKeyString(item.key)), [
+    'SAT-WINNER|1',
+    'SAT-BELOW|1',
+  ]);
+});
+
+test('instantaneous EE policy fails closed when same-frame EE is unavailable', () => {
+  const result = new InstantaneousEePolicy({
+    initialTttSec: 0,
+    interTttSec: 3.5,
+    intraTttSec: 0.75,
+    eeToleranceRelative: 0,
+  }).evaluate({
+    serving: opportunity(SERVING, { instantaneousEeBitPerJ: 50 }),
+    alternatives: [opportunity(candidateLinkKey('SAT-MISSING-EE', 1), {
+      instantaneousEeBitPerJ: null,
+    })],
+  });
+
+  assert.equal(result.assessments[0]?.hardEligibility, 'eligible');
+  assert.equal(result.assessments[0]?.triggerStatus, 'unavailable');
+  assert.deepEqual(result.assessments[0]?.rejectionCodes, ['ee-advantage']);
 });
 
 test('EE policy fails closed when forecast evidence or EE trigger is missing', () => {

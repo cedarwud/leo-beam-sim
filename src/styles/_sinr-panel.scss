@@ -95,7 +95,8 @@
 // whose override neutralized that so the tab panel owned the single scroll. Inside
 // the Advanced drawer it is no longer that direct child, so re-neutralize here:
 // the drawer body's 62vh scroll is the SOLE scroll owner (no nested inner scrollbar).
-.leo-sinr-advanced-body > .leo-signal-tuning-panel {
+.leo-sinr-advanced-body > .leo-signal-tuning-panel,
+.leo-sinr-advanced-body > .leo-engineering-dock > .leo-signal-tuning-panel {
   max-height: none !important;
   overflow-y: visible !important;
 }
@@ -105,4 +106,3 @@
   min-width: 0;
   width: 100%;
 }
-

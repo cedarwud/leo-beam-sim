@@ -29,6 +29,8 @@ export interface CandidateLinkMeasurement {
   readonly sinr: MetricEvidence;
   readonly predictedThroughput: MetricEvidence;
   readonly remainingServiceTime: MetricEvidence;
+  /** Same-frame angle-aware EE used by the active homepage decision policy. */
+  readonly instantaneousEe?: MetricEvidence;
   readonly scheduledIllumination: CandidateGateResult;
 }
 
@@ -157,6 +159,15 @@ function copyMeasurementEvidence(
     throw new Error('scheduledIllumination measured value must be 0 or 1');
   }
   createCandidateGateResult(measurement.scheduledIllumination);
+  const instantaneousEe = measurement.instantaneousEe === undefined
+    ? createMetricEvidence({
+      status: 'unavailable',
+      value: null,
+      unit: 'bit/J',
+      sourceFrameId: expectedSourceFrameId,
+      reason: 'instantaneous-ee evidence is unavailable for this source frame',
+    })
+    : normalizeMetric(measurement.instantaneousEe, 'instantaneous-ee');
   return {
     ...measurement,
     elevation: normalizeMetric(measurement.elevation, 'elevation'),
@@ -165,6 +176,7 @@ function copyMeasurementEvidence(
     sinr: normalizeMetric(measurement.sinr, 'sinr'),
     predictedThroughput: normalizeMetric(measurement.predictedThroughput, 'predicted-throughput'),
     remainingServiceTime: normalizeMetric(measurement.remainingServiceTime, 'remaining-service-time'),
+    instantaneousEe,
   };
 }
 
@@ -233,6 +245,7 @@ function produceOpportunity(
     sinr: measurement.sinr,
     predictedThroughput: measurement.predictedThroughput,
     remainingServiceTime: measurement.remainingServiceTime,
+    instantaneousEe: measurement.instantaneousEe,
     forecastEe: null,
     gates,
   });

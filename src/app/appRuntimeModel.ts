@@ -28,7 +28,7 @@ export const DEFAULT_PROFILE_ID = APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 // relocated the MODQN training / jobs / ω-weight power tools into the opt-in
 // AdvancedSetupDrawer.
 export type LeftSidebarTab = 'summary' | 'evidence';
-export type RightSidebarTab = 'modqn' | 'live' | 'artifact';
+export type RightSidebarTab = 'modqn' | 'live' | 'artifact' | 'palette';
 
 export interface AppSidebarTabItem<T extends string> {
   key: T;
@@ -65,6 +65,11 @@ const RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
 const SINR_RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [
   RIGHT_SIDEBAR_TABS[0],
 ];
+
+// The root homepage renders its accepted-snapshot beam rail directly.  It no
+// longer exposes a competing live-status/palette tab shell; the colour
+// catalogue lives on the dedicated `/beam-colors` route instead.
+const HOMEPAGE_SINR_RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = [];
 
 const MODQN_RIGHT_SIDEBAR_TABS: readonly AppSidebarTabItem<RightSidebarTab>[] = RIGHT_SIDEBAR_TABS;
 
@@ -194,6 +199,19 @@ export function getRightSidebarTabsForSceneLane(
   // dedicated replay-proof lane. 'live' stays the default; 'modqn' is opt-in.
   if (lane === 'modqn-live-cell-preview') return MODQN_RIGHT_SIDEBAR_TABS;
   return getRightSidebarTabsForMode(mode);
+}
+
+/**
+ * Root-only extension point for the homepage sidebar. The root SINR lane has
+ * no tab list: the integration owner mounts its single accepted-snapshot rail
+ * directly. This helper never broadens the tab set for other scene lanes.
+ */
+export function getHomepageRightSidebarTabsForSceneLane(
+  lane: SceneLane,
+  mode: RuntimeHandoverMode,
+): readonly AppSidebarTabItem<RightSidebarTab>[] {
+  if (lane === 'sinr-live') return HOMEPAGE_SINR_RIGHT_SIDEBAR_TABS;
+  return getRightSidebarTabsForSceneLane(lane, mode);
 }
 
 export function getDefaultRightSidebarTabForSceneLane(
