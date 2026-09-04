@@ -14,6 +14,10 @@ import { servingIdentityPaletteIndex } from '../../constants/servingColour';
 
 export const HOMEPAGE_SATELLITE_COLOR_COUNT = 6 as const;
 
+/** Fixed EE scale shared by the homepage rail and the 3-D beam colours. */
+export const HOMEPAGE_EE_COLOR_SCALE_MIN_BITS_PER_JOULE = 80_000;
+export const HOMEPAGE_EE_COLOR_SCALE_MAX_BITS_PER_JOULE = 180_000;
+
 /**
  * Six restrained hue families are enough for the compact homepage stage. A
  * satellite may share a family with another satellite; its ID/glyph remains
@@ -158,6 +162,29 @@ function finiteEeBucket(eeNormalized: number | null | undefined): number | null 
   return normalizedEeBucket(eeNormalized);
 }
 
+/** Map the bounded homepage EE value to one fixed visual scale. */
+export function homepageEeColorNormalized(
+  eeBitsPerJoule: number | null | undefined,
+): number | null {
+  if (typeof eeBitsPerJoule !== 'number' || !Number.isFinite(eeBitsPerJoule)) return null;
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      (eeBitsPerJoule - HOMEPAGE_EE_COLOR_SCALE_MIN_BITS_PER_JOULE)
+        / (HOMEPAGE_EE_COLOR_SCALE_MAX_BITS_PER_JOULE - HOMEPAGE_EE_COLOR_SCALE_MIN_BITS_PER_JOULE),
+    ),
+  );
+}
+
+/** Lower EE is visibly quieter while the beam remains on the same hue family. */
+export function homepageEeVisualOpacity(
+  eeNormalized: number | null | undefined,
+): number {
+  if (typeof eeNormalized !== 'number' || !Number.isFinite(eeNormalized)) return 1;
+  return 0.30 + 0.70 * Math.max(0, Math.min(1, eeNormalized));
+}
+
 /** Stable compact palette slot derived from the existing identity allocator. */
 export function homepageSatellitePaletteIndex(
   satelliteId: string,
@@ -204,12 +231,20 @@ export function homepageSatelliteColorForBeam(
   const shadeIndex = eeBucket
     ?? normalizedBeamSlot(beamId) % HOMEPAGE_SATELLITE_BEAM_LIGHTNESS_LEVELS.length;
   const isServing = options?.isServing === true;
+  // Keep the four-level `shadeIndex` API for existing consumers, but interpolate
+  // the actual token when EE is finite.  This makes the beam fade every frame
+  // instead of waiting for a bucket boundary, which is the visual cue used by
+  // the homepage handover story.
+  const intensity01 = eeBucket === null
+    ? shadeIndex / Math.max(1, HOMEPAGE_SATELLITE_BEAM_LIGHTNESS_LEVELS.length - 1)
+    : Math.max(0, Math.min(1, options?.eeNormalized ?? 0));
+  const mix = (low: number, high: number): number => low + (high - low) * intensity01;
   const saturation = isServing
-    ? HOMEPAGE_SATELLITE_SERVING_SATURATION_LEVELS[shadeIndex]!
-    : HOMEPAGE_SATELLITE_CONTEXT_SATURATION_LEVELS[shadeIndex]!;
+    ? mix(0.70, 0.88)
+    : mix(0.40, 0.56);
   const lightness = isServing
-    ? HOMEPAGE_SATELLITE_SERVING_LIGHTNESS_LEVELS[shadeIndex]!
-    : HOMEPAGE_SATELLITE_BEAM_LIGHTNESS_LEVELS[shadeIndex]!;
+    ? mix(0.72, 0.48)
+    : mix(0.74, 0.52);
   const color = hslToHex(family.hueDegrees, saturation, lightness);
   return Object.freeze({
     satelliteId,

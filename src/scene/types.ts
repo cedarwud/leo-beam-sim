@@ -177,6 +177,14 @@ export interface RuntimeConfig {
   /** Role budgets follow whichever identities currently serve/contend. */
   servingBeamCount?: number;
   candidateBeamCount?: number;
+  /** Homepage-only absolute candidate EE floor, expressed in Kbit/J in the UI. */
+  eeThresholdKbitPerJoule?: number;
+  /**
+   * The handover lecture currently running, or null. While a lecture is armed
+   * the scene may only paint that lecture's own transition: a live event
+   * intruding mid-lecture shows the viewer a handover of the wrong kind.
+   */
+  teachingLectureKind?: 'intra' | 'inter' | null;
   /** Presentation-scene scheduling switch; false keeps each sat's cell window fixed. */
   beamHoppingEnabled?: boolean;
   /**
@@ -222,6 +230,7 @@ export interface RuntimeConfig {
   manualHandoverStartedAtMs?: number;
   manualHandoverSourceSatId?: string;
   manualHandoverSourceCellId?: number;
+  manualHandoverTargetSatId?: string;
   manualHandoverTargetCellId?: number;
   manualHandoverServingSinrDb?: number;
   manualHandoverCandidateSinrDb?: number;

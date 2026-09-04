@@ -30,11 +30,14 @@ interface TimedEvent {
 
 /**
  * The homepage buttons are a teaching shortcut, not a cinema shot.  Keep the
- * seek inside the event's existing source window, but start close enough to the
- * indexed event that the first candidate/TTT state becomes visible quickly.
+ * seek inside the event's existing source window, and start at its beginning so
+ * a lecturer sees the whole EE decline -> threshold crossing -> TTT chain rather
+ * than only its last seconds.  The indexed source window is `sourceTimeSec - 10`
+ * (`liveWalkerHandoverEventIndex`), so this is the largest lead-in the window
+ * can supply; a larger value would silently clamp back to the window start.
  * This is a source-window calculation only; it creates no event or decision.
  */
-export const HOMEPAGE_QUICK_JUMP_LEAD_IN_SEC = 3;
+export const HOMEPAGE_QUICK_JUMP_LEAD_IN_SEC = 10;
 
 export function resolveHomepageQuickJumpSourceSec(
   event: Pick<LiveWalkerHandoverEvent, 'sourceTimeSec' | 'sourceStartSec' | 'sourceEndSec'>,

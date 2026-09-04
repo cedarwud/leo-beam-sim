@@ -54,6 +54,8 @@ export interface AngleAwareLinkTerms {
   readonly segmentStartPowerW: number;
   readonly thetaRad: number;
   readonly distanceM: number;
+  /** Same UE-to-satellite link elevation used by path loss and LOS. */
+  readonly elevationDeg?: number;
   readonly powerW: number;
   /** G^T(θ, θ_3dB) = G_0 · F(θ, θ_3dB), including boresight gain. */
   readonly transmitGainLinear: number;
@@ -76,6 +78,8 @@ export interface AngleAwareLinkTerms {
   readonly fixedPowerW: number;
   readonly systemPowerW: number;
   readonly energyEfficiencyBitsPerJoule: number;
+  /** Homepage `/` teaching value; raw formula terms remain authoritative. */
+  readonly homepageDemoEeBitsPerJoule?: number;
 }
 
 /** Selected-link view used by the left rail, right rail and scene publisher. */
@@ -110,15 +114,19 @@ export interface SatelliteSnapshot {
   /** Ground-projected beam cell centers in km offset from observer */
   beamCellsKm: {
     beamId: number;
+    /** Optional explicit reuse-group identity for physical beam variants. */
+    frequencyIndex?: number;
     offsetEastKm: number;
     offsetNorthKm: number;
     scanAngleDeg: number;
     /** Optional resolved ground boresight identity for exact moving-sat θ. */
     beamCenterLatDeg?: number;
     beamCenterLonDeg?: number;
-    /** Optional sampled boresight direction in the current ECEF frame. */
-    beamAxisEcefKm?: readonly [number, number, number];
-  }[];
+      /** Optional sampled boresight direction in the current ECEF frame. */
+      beamAxisEcefKm?: readonly [number, number, number];
+      /** Optional correlated propagation group for physically co-located beams. */
+      propagationGroupKey?: string;
+    }[];
 }
 
 export interface UEPosition {

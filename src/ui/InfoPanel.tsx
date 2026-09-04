@@ -94,7 +94,7 @@ export function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusMode
     duelDetail: 'Serving link and handover decisions are fully driven by the traditional live SINR-offset protocol.',
     servingCaption: 'live serving link',
     pendingCaption: 'handover timer',
-    candidateCaption: 'best candidate link',
+    candidateCaption: 'best option link',
     deltaLabel: 'signal delta Δ SINR',
     offsetLabel: 'hysteresis margin threshold',
     triggerLabel: 'time-to-trigger timer',
@@ -172,10 +172,10 @@ export function InfoPanel({
   const comparisonTitle =
     panelComparison.role === 'pending'
       ? 'PENDING TARGET'
-      : panelComparison.role === 'ho-target'
+        : panelComparison.role === 'ho-target'
         ? 'HO TARGET'
         : panelComparison.role === 'candidate'
-          ? 'BEST CANDIDATE'
+          ? 'BEST OPTION'
           : 'COMPARISON';
   const comparisonFriendlyTitle =
     panelComparison.role === 'pending'

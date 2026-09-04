@@ -249,7 +249,7 @@ function SinrTrace({ trace, offsetDb }: { readonly trace: readonly SixActsFrameF
       </svg>
       <div className="leo-six-acts-trace__legend" aria-hidden="true">
         <span><i className="is-serving" /> serving</span>
-        <span><i className="is-candidate" /> candidate</span>
+        <span><i className="is-candidate" /> beam option</span>
         <span><i className="is-band" /> offset</span>
       </div>
     </div>
@@ -298,7 +298,7 @@ export function SixActsTeachingOverlay({
     >
       <section className="leo-six-acts-decision" data-testid="six-acts-candidate-overlay">
         <div className="leo-six-acts-cinema-card__heading">
-          <span>④ CANDIDATE ELIMINATION</span>
+          <span>④ BEAM OPTION REVIEW</span>
           <em className={toneForDecision(decision)}>{candidateDecisionLabel(decision)}</em>
         </div>
         <div className="leo-six-acts-decision__pair">
@@ -309,7 +309,7 @@ export function SixActsTeachingOverlay({
           </div>
           <div className="leo-six-acts-decision__operator" aria-hidden="true">vs</div>
           <div>
-            <small>CANDIDATE</small>
+            <small>BEAM OPTION</small>
             <strong>{formatSatellite(facts.candidateSatelliteId)}</strong>
             <span>{formatDb(facts.candidateSinrDb)}</span>
           </div>

@@ -63,7 +63,7 @@ export function createHomepageTeachingStops(
   });
   addStop(stops, {
     id: 'intra-commit',
-    label: 'Intra · Beam 切換',
+    label: 'Intra · Beam 換手',
     sourceTimeSec: intraCommitSec,
     eventId: intra.id,
   });
@@ -75,7 +75,7 @@ export function createHomepageTeachingStops(
   });
   addStop(stops, {
     id: 'inter-commit',
-    label: 'Inter · Satellite 切換',
+    label: 'Inter · Satellite 換手',
     sourceTimeSec: interCommitSec,
     eventId: inter.id,
   });

@@ -341,6 +341,40 @@ test('instantaneous EE policy only qualifies a candidate when its EE is greater 
   ]);
 });
 
+test('instantaneous EE policy enforces the configured absolute candidate floor', () => {
+  const result = new InstantaneousEePolicy({
+    initialTttSec: 0,
+    interTttSec: 3.5,
+    intraTttSec: 0.75,
+    eeToleranceRelative: 0,
+    minimumEeBitsPerJoule: 100_000,
+  }).evaluate({
+    serving: opportunity(SERVING, { instantaneousEeBitPerJ: 90_000 }),
+    alternatives: [
+      opportunity(candidateLinkKey('SAT-BELOW-FLOOR', 1), { instantaneousEeBitPerJ: 99_999 }),
+      opportunity(candidateLinkKey('SAT-ABOVE-FLOOR', 1), { instantaneousEeBitPerJ: 100_001 }),
+    ],
+  });
+
+  const byKey = new Map(result.assessments.map(item => [candidateLinkKeyString(item.key), item]));
+  assert.equal(byKey.get('SAT-BELOW-FLOOR|1')?.triggerStatus, 'not-satisfied');
+  assert.equal(byKey.get('SAT-ABOVE-FLOOR|1')?.triggerStatus, 'satisfied');
+
+  const initialAttach = new InstantaneousEePolicy({
+    initialTttSec: 0,
+    interTttSec: 3.5,
+    intraTttSec: 0.75,
+    eeToleranceRelative: 0,
+    minimumEeBitsPerJoule: 100_000,
+  }).evaluate({
+    serving: null,
+    alternatives: [opportunity(candidateLinkKey('SAT-INITIAL-BELOW-FLOOR', 1), {
+      instantaneousEeBitPerJ: 99_999,
+    })],
+  });
+  assert.equal(initialAttach.assessments[0]?.triggerStatus, 'not-satisfied');
+});
+
 test('instantaneous EE policy fails closed when same-frame EE is unavailable', () => {
   const result = new InstantaneousEePolicy({
     initialTttSec: 0,

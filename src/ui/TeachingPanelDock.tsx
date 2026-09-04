@@ -57,7 +57,7 @@ function TeachingSnapshot({ snapshot }: { readonly snapshot: TeachingLinkSnapsho
         <dd>{formatId(snapshot.servingSatelliteId)}</dd>
       </div>
       <div>
-        <dt>Candidate</dt>
+        <dt>Option</dt>
         <dd>{formatId(snapshot.candidateSatelliteId)}</dd>
       </div>
       <div>

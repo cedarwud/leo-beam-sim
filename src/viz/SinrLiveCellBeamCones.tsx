@@ -52,6 +52,7 @@ import {
 import { colorForServingBeam } from '../constants/servingColour';
 import {
   homepageSatelliteColorForBeam,
+  homepageEeVisualOpacity,
   HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
 import {
@@ -252,6 +253,8 @@ export function resolveSinrLiveConeRole(input: {
   readonly itemRole?: SinrLiveConeRole;
   readonly heroSatId?: string | null;
   readonly heroCellId?: number | null;
+  readonly heroBeamId?: number | null;
+  readonly beamId?: number | null;
 }): SinrLiveConeRole {
   if (input.itemRole !== undefined) return input.itemRole;
   switch (input.layer) {
@@ -265,7 +268,11 @@ export function resolveSinrLiveConeRole(input: {
       return 'candidatePrimary';
     case 'serving': {
       if (input.heroSatId == null || input.satId !== input.heroSatId) return 'background';
-      return input.heroCellId != null && input.cellId === input.heroCellId ? 'hero' : 'servingFan';
+      return input.heroCellId != null
+        && input.cellId === input.heroCellId
+        && (input.heroBeamId == null || input.beamId == null || input.beamId === input.heroBeamId)
+        ? 'hero'
+        : 'servingFan';
     }
   }
 }
@@ -600,6 +607,8 @@ export function resolveBudgetedSinrLiveBeamConeItems(input: {
   readonly role: 'servingFan' | 'candidateFan';
   readonly renderKeyPrefix: string;
   readonly preferredCellId?: number | null;
+  /** Exact focused physical beam; keeps an intra-selected B2..B7 ahead of B1. */
+  readonly preferredBeamId?: number | null;
 }): readonly SinrLiveCellBeamConeRenderItem[] {
   const maxCones = Number.isFinite(input.maxCones)
     ? Math.max(0, Math.floor(input.maxCones))
@@ -607,12 +616,18 @@ export function resolveBudgetedSinrLiveBeamConeItems(input: {
   if (input.satId === null || input.satId === undefined || maxCones === 0) return [];
 
   const existing = dedupeRenderItemsByIdentity(input.existingItems);
-  const ordered = input.preferredCellId === null || input.preferredCellId === undefined
-    ? existing
-    : [
-      ...existing.filter(item => item.cellId === input.preferredCellId),
-      ...existing.filter(item => item.cellId !== input.preferredCellId),
-    ];
+  const preferred = input.preferredBeamId === null || input.preferredBeamId === undefined
+    ? []
+    : existing.filter(item => renderItemBeamId(item) === input.preferredBeamId);
+  const ordered = [
+    ...preferred,
+    ...(input.preferredCellId === null || input.preferredCellId === undefined
+      ? existing
+      : [
+        ...existing.filter(item => item.cellId === input.preferredCellId),
+        ...existing.filter(item => item.cellId !== input.preferredCellId),
+      ]),
+  ].filter((item, index, items) => items.findIndex(candidate => renderItemIdentityKey(candidate) === renderItemIdentityKey(item)) === index);
   const items = ordered.slice(0, maxCones);
   if (items.length >= maxCones) return items;
 
@@ -1255,6 +1270,7 @@ export interface SinrLiveCellBeamConesRenderProps {
    */
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
+  readonly primaryServingBeamId?: number | null;
   readonly telemetryCountDatasetKey?: string;
 }
 
@@ -1392,6 +1408,8 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           itemRole: cone.role,
           heroSatId: props.primaryServingSatId,
           heroCellId: props.primaryServingCellId,
+          heroBeamId: props.primaryServingBeamId,
+          beamId: renderItemBeamId(cone),
         });
         const style = resolveSinrLiveConeDisplayStyle(
           role,
@@ -1403,7 +1421,10 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           && props.colorAuthority === 'item-identity';
         const beamId = renderItemBeamId(cone);
         const isPrimaryServing = cone.satId === props.primaryServingSatId
-          && cone.cellId === props.primaryServingCellId;
+          && cone.cellId === props.primaryServingCellId
+          && (props.primaryServingBeamId === null
+            || props.primaryServingBeamId === undefined
+            || beamId === props.primaryServingBeamId);
         const isPrimaryIdentityBeam = isPrimaryServing
           || role === 'candidatePrimary'
           || role === 'handoverSource'
@@ -1421,9 +1442,14 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             ),
           }).color
           : style.color;
+        const homepageEeOpacity = homepageIdentity
+          ? homepageEeVisualOpacity(props.homepageBeamEeByKey?.get(
+            homepageBeamEeKey(cone.satId, beamId),
+          ))
+          : 1;
         const renderOpacity = homepageIdentity && !isPrimaryIdentityBeam
-          ? style.opacity * HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR
-          : style.opacity;
+          ? style.opacity * HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR * homepageEeOpacity
+          : style.opacity * homepageEeOpacity;
         const fog = resolveSinrLiveConeFog(role);
         return (
           <ObliqueConeMesh

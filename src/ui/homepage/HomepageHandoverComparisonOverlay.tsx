@@ -231,15 +231,15 @@ export function HomepageHandoverComparisonOverlay({
   const maxEe = Math.max(0, ...rows.map(row => row.ee ?? 0));
   const kind = story.kind === 'intra' ? 'intra' : 'inter';
   const title = story.kind === 'intra'
-    ? (isEnglish ? 'Intra-cell beam transition' : '同一 Cell 內的 Beam 切換')
+    ? (isEnglish ? 'Intra-cell beam handover' : '同一 Cell 內的 Beam 換手')
     : (isEnglish ? 'Inter-cell satellite selection' : '跨 Cell 的衛星選擇');
   const subtitle = story.kind === 'intra'
     ? (isEnglish ? 'Same cell · source beam → target beam' : '同一 Cell · 來源 Beam → 目標 Beam')
     : (isEnglish ? 'Qualified candidate satellites · common EE scale' : '合格候選衛星 · 共用 EE 尺度');
   const status = story.targetIsWinner
-    ? (isEnglish ? 'Selected by instantaneous EE ordering' : '依瞬時 EE 排序選定')
-    : story.selectionStatus === 'committed'
-      ? (isEnglish ? 'Committed transition' : '換手已提交')
+      ? (isEnglish ? 'Selected by instantaneous EE ordering' : '依瞬時 EE 排序選定')
+      : story.selectionStatus === 'committed'
+        ? (isEnglish ? 'Committed transition' : '換手已提交')
       : (isEnglish ? 'Candidate comparison' : '候選比較');
 
   return (
@@ -273,7 +273,7 @@ export function HomepageHandoverComparisonOverlay({
         <span>{status}</span>
         <span>EE · Kbit/J</span>
         {story.kind === 'inter' && (
-          <span>{isEnglish ? 'Qualified' : '合格'} {story.qualifiedCandidateSatelliteCount}</span>
+          <span>{isEnglish ? 'Qualified candidates' : '合格候選'} {story.qualifiedCandidateSatelliteCount}</span>
         )}
       </div>
       <div className="leo-homepage-handover-comparison__bars">

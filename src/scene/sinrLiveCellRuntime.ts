@@ -39,6 +39,7 @@ import {
   type CellCenter,
   type CellLayout,
 } from '../engine/cells/cellLayout';
+import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../engine/handover/eeThreshold';
 import {
   isSupportedBeamLayoutCount,
   type SupportedBeamLayoutCount,
@@ -52,6 +53,10 @@ import {
   type SinrLiveCellFrame,
   type UeInput,
 } from './sinrLiveCellModel';
+import {
+  resolveSinrLivePhysicalRoleBeamCount,
+  SINR_LIVE_FOCUSED_CELL_PHYSICAL_BEAM_COUNT,
+} from './sinrLiveBeamBudget';
 
 /**
  * Default number of earth-fixed cells the SINR-live lane tiles. The serving
@@ -93,6 +98,23 @@ export function resolveSinrLiveSceneCellCount(
   return typeof servingBeamCount === 'number' && isSupportedBeamLayoutCount(servingBeamCount)
     ? servingBeamCount
     : SINR_LIVE_CELL_COUNT;
+}
+
+/**
+ * Resolve the physical beam budget behind the homepage's focused-cell control.
+ * The role count remains 1 for cell-layout/focus semantics, while the physical
+ * satellite continues to expose seven beams for intra-cell alternatives.
+ */
+export function resolveSinrLivePhysicalBeamBudget(
+  profile: Profile,
+  sceneCellCount?: number,
+): number {
+  const normalizedSceneCellCount = typeof sceneCellCount === 'number'
+    && isSupportedBeamLayoutCount(sceneCellCount)
+    ? sceneCellCount
+    : undefined;
+  if (normalizedSceneCellCount === 1) return SINR_LIVE_FOCUSED_CELL_PHYSICAL_BEAM_COUNT;
+  return normalizedSceneCellCount ?? resolveSinrLiveBeamsPerSat(profile);
 }
 
 /**
@@ -389,6 +411,7 @@ export function createSinrLiveCellModel(
   beamHoppingEnabled = true,
   beamPointingMode: SinrLiveBeamPointingMode = 'earth-fixed-cell',
   multiCandidateDecisionEnabled = false,
+  eeThresholdKbitPerJoule = DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
 ): SinrLiveCellModel | null {
   if (!useEarthFixedCellTruth) return null;
   const sceneCellCount = resolveSinrLiveSceneCellCount(servingBeamCount);
@@ -404,7 +427,15 @@ export function createSinrLiveCellModel(
   // the historical profile fallback.
   const fallbackBeamsPerSat = servingBeamCount === undefined
     ? resolveSinrLiveBeamsPerSat(profile)
-    : sceneCellCount;
+    : multiCandidateDecisionEnabled
+      ? resolveSinrLivePhysicalBeamBudget(profile, sceneCellCount)
+      : sceneCellCount;
+  const physicalServingBeamCount = multiCandidateDecisionEnabled
+    ? resolveSinrLivePhysicalRoleBeamCount(servingBeamCount)
+    : servingBeamCount;
+  const physicalCandidateBeamCount = multiCandidateDecisionEnabled
+    ? resolveSinrLivePhysicalRoleBeamCount(candidateBeamCount)
+    : candidateBeamCount;
   return new SinrLiveCellModel({
     profile,
     cellLayout,
@@ -420,8 +451,9 @@ export function createSinrLiveCellModel(
     // which is what every shipped profile carries.
     beamsPerSat: fallbackBeamsPerSat,
     beamsPerSatById: beamCountBySatellite,
-    servingBeamsPerSat: servingBeamCount,
-    candidateBeamsPerSat: candidateBeamCount,
+    servingBeamsPerSat: physicalServingBeamCount,
+    candidateBeamsPerSat: physicalCandidateBeamCount,
+    eeThresholdKbitPerJoule,
     beamHoppingEnabled,
     hopSlotSec: SINR_LIVE_HOP_SLOT_SEC,
     beamPointingMode,

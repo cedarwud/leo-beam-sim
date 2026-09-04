@@ -8,6 +8,7 @@ import { buildAppRuntimeConfig, type AppRuntimeConfigInput } from './appRuntimeC
 function buildRuntime(
   sceneTopology: AppRuntimeConfigInput['sceneTopology'],
   liveEpochUtcMs?: number,
+  eeThresholdKbitPerJoule?: number,
 ) {
   return buildAppRuntimeConfig({
     appMode: 'sinr-experiment',
@@ -35,6 +36,7 @@ function buildRuntime(
     cameraCommand: undefined,
     viewport: { width: 1280, height: 720 },
     sceneTopology,
+    eeThresholdKbitPerJoule,
     selectedTrainingEnvAxes: undefined,
   });
 }
@@ -47,6 +49,17 @@ assert.equal(runtime.signalResetKey, 'signal-1');
 assert.equal(runtime.handoverResetKey, 'handover-1');
 assert.equal(runtime.viewport.width, 1280);
 assert.equal(runtime.replay.startOffsetSec, 12);
+
+assert.equal(
+  buildRuntime(createSceneTopologyState(), undefined, 125).eeThresholdKbitPerJoule,
+  125,
+  'homepage EE threshold must reach the runtime in Kbit/J',
+);
+assert.equal(
+  buildRuntime(createSceneTopologyState(), undefined, 2_000).eeThresholdKbitPerJoule,
+  220,
+  'homepage EE threshold must be bounded to the sidebar range',
+);
 
 const selectedEpochUtcMs = Date.parse('2026-08-12T12:00:00.000Z');
 assert.equal(

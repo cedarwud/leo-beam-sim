@@ -62,7 +62,7 @@ function CanonicalLinkPowerComparison({
           {say('homepage.canonicalComparison.servingShort', '服務', 'Serving')}
         </strong>
         <strong style={{ color: UI_TOKENS.color.semantic.candidate.title, fontSize: UI_TOKENS.type.size.tiny, textAlign: 'right' }}>
-          {say('homepage.canonicalComparison.candidateShort', '候選', 'Candidate')}
+          {say('homepage.canonicalComparison.candidateShort', '候選', 'Beam option')}
         </strong>
         {rows.map(row => (
           <div key={row.id} style={{ display: 'contents' }}>
@@ -105,7 +105,7 @@ export function HomepageCanonicalServingComparison({ frame }: { readonly frame: 
       : handoverState === 'forced-continuity'
         ? say('homepage.canonicalComparison.state.forced', '服務切換', 'continuity switch')
         : handoverState === 'monitoring'
-          ? say('homepage.canonicalComparison.state.monitoring', '監測候選', 'monitoring candidate')
+          ? say('homepage.canonicalComparison.state.monitoring', '監測候選', 'monitoring beam option')
           : handoverState === 'attached'
             ? say('homepage.canonicalComparison.state.attached', '服務中', 'attached')
             : say('homepage.canonicalComparison.state', '鏈路比較', 'link comparison');
@@ -148,10 +148,10 @@ export function HomepageCanonicalServingComparison({ frame }: { readonly frame: 
         servingElevationDeg={serving?.elevationDeg ?? null}
         servingRangeKm={serving?.distanceKm ?? null}
         servingTone={serving === null ? 'neutral' : 'serving'}
-        comparisonTitle={say('homepage.canonicalComparison.candidateTitle', '候選鏈路', 'Candidate link')}
-        comparisonFriendlyTitle={say('homepage.canonicalComparison.candidate', '候選衛星', 'Candidate satellite')}
-        comparisonCaption={say('homepage.canonicalComparison.candidateCaption', '候選衛星的單鏈路結果', 'Single-link result for the candidate satellite')}
-        comparisonBadgeText={candidate === null ? say('homepage.canonicalComparison.none', '無可用候選', 'no candidate') : say('homepage.canonicalComparison.candidateBadge', '候選', 'candidate')}
+        comparisonTitle={say('homepage.canonicalComparison.candidateTitle', '候選鏈路', 'Beam option link')}
+        comparisonFriendlyTitle={say('homepage.canonicalComparison.candidate', '候選衛星', 'Beam option satellite')}
+        comparisonCaption={say('homepage.canonicalComparison.candidateCaption', '候選衛星的單鏈路結果', 'Single-link result for the beam option satellite')}
+        comparisonBadgeText={candidate === null ? say('homepage.canonicalComparison.none', '無可用候選', 'no beam option') : say('homepage.canonicalComparison.candidateBadge', '候選', 'beam option')}
         comparisonBadgeTone="candidate"
         comparisonIdentity={candidate === null ? '—' : `NORAD ${candidate.satelliteId}`}
         hasComparisonSignal={candidate !== null}
@@ -169,7 +169,7 @@ export function HomepageCanonicalServingComparison({ frame }: { readonly frame: 
         stateTone={stateTone}
         contextBadgeText=""
         contextBadgeTone="neutral"
-        deltaLabel={say('homepage.canonicalComparison.delta', '候選 − 服務', 'candidate − serving')}
+        deltaLabel={say('homepage.canonicalComparison.delta', '候選 − 服務', 'beam option − serving')}
         offsetLabel={say('homepage.canonicalComparison.offset', '切換門檻', 'switching offset')}
         triggerLabel={say('homepage.canonicalComparison.ttt', '切換計時', 'switching timer')}
         triggerAriaLabel={say('homepage.canonicalComparison.tttAria', '換手倒數進度', 'Handover TTT progress')}

@@ -48,10 +48,22 @@ function mwToDbm(mw: number): number {
   return 10 * Math.log10(mw);
 }
 
+function resolveBeamFrequencyIndex(
+  beam: SatelliteSnapshot['beamCellsKm'][number],
+  reuseGroups: number,
+): number {
+  const groups = Math.max(1, Math.floor(reuseGroups));
+  if (Number.isFinite(beam.frequencyIndex)) {
+    return ((Math.floor(beam.frequencyIndex!) % groups) + groups) % groups;
+  }
+  return getBeamFrequencyIndex(beam.beamId, groups);
+}
+
 interface BeamEntry {
   sample: LinkSample;
   signalMw: number;
   interferenceMw: number;
+  frequencyIndex: number;
   angleAwareDraft?: {
     state: AngleAwarePowerState;
     previousState: AngleAwarePowerState | null;
@@ -60,6 +72,7 @@ interface BeamEntry {
     channelGainLinear: number;
     powerW: number;
     distanceM: number;
+    elevationDeg: number;
   };
 }
 
@@ -78,6 +91,12 @@ export interface AngleAwareLinkBudgetConfig {
   backoffDb?: number;
   /** xi_max for the active beam-efficiency curve. */
   maxEfficiency?: number;
+  /** Homepage-only physical clamp for the angle-aware power recurrence. */
+  enforcePowerCap?: boolean;
+  /** Optional per-frame relative limit for angle-aware RF power changes. */
+  powerSlewRatio?: number;
+  /** Optional slow LOS/NLOS sample cadence for a temporally coherent live lane. */
+  losCorrelationSec?: number;
   /**
    * Accepted-frame RF maxima for active physical (s,v) beams.  When present,
    * these values are used only for co-channel interference and beam-level
@@ -149,6 +168,7 @@ export function computeLinkBudget(
 
   const beamwidth3dBDeg = (antenna.beamwidth3dBRad * 180) / Math.PI;
   const entries: BeamEntry[] = [];
+  const reuseGroups = Math.max(1, Math.floor(beamConfig.frequencyReuse));
   const activeBeamKeys = new Set(
     activeAssignments.map(assignment => `${assignment.satId}:${assignment.beamId}`),
   );
@@ -196,7 +216,18 @@ export function computeLinkBudget(
         antenna.maxSteeringAngleDeg,
         antenna.scanLossAtMaxSteeringDb,
       );
-      const losSeedKey = `${sat.id}|${beam.beamId}|${Math.floor(simTimeSec)}`;
+      // Physical beams covering the same focused cell share the slow channel
+      // state. Without this group key every intra-cell beam drew an unrelated
+      // LOS/NLOS outcome at every second, creating artificial EE jumps between
+      // B1..B7 even though their geometry was nearly identical.
+      const propagationKey = beam.propagationGroupKey ?? `${sat.id}:${beam.beamId}`;
+      const losCorrelationSec = angleAware !== undefined
+        && Number.isFinite(angleAware.losCorrelationSec)
+        && angleAware.losCorrelationSec! > 0
+        ? angleAware.losCorrelationSec!
+        : 1;
+      const losTimeBucket = Math.floor(simTimeSec / losCorrelationSec);
+      const losSeedKey = `${sat.id}|${propagationKey}|${losTimeBucket}`;
       const isLos = usesTr38811Path
         ? sampleLosStateTr38811(
           geometricLink?.elevationDeg ?? sat.elevationDeg,
@@ -249,6 +280,8 @@ export function computeLinkBudget(
           simTimeSec,
           thetaRad,
           transmitGainLinear,
+          angleAware.enforcePowerCap ? angleAware.beamPowerCapW : undefined,
+          angleAware.powerSlewRatio,
         );
       const angleAwarePowerW = angleAwareState === null
         ? null
@@ -281,6 +314,7 @@ export function computeLinkBudget(
           receiverGainDbi,
         },
         signalMw: effectiveSignalW * 1e3,
+        frequencyIndex: resolveBeamFrequencyIndex(beam, reuseGroups),
         // Interference is received power in the same linear receiver domain as
         // the wanted link.  The public formula exposes only the total I; the
         // legacy intra/inter dB partition is filled after the same sum.
@@ -300,6 +334,7 @@ export function computeLinkBudget(
             channelGainLinear: dbToLinear(effectiveHDb),
             powerW: angleAwarePowerW,
             distanceM: Math.max(linkRangeKm, 0) * 1e3,
+            elevationDeg: linkElevationDeg,
           },
       });
     }
@@ -310,8 +345,6 @@ export function computeLinkBudget(
   // Compute SINR: signal / (co-frequency interference + noise).
   // Beam colors and interference use the same F1..Fn reuse index:
   // B1 -> F1, B2 -> F2, ..., wrapping after the configured reuse count.
-  const reuseGroups = beamConfig.frequencyReuse;
-
   const beamPowerByKey = new Map<string, number>();
   if (angleAware !== undefined) {
     for (const [key, value] of angleAware.beamPowerByKey ?? []) {
@@ -364,13 +397,13 @@ export function computeLinkBudget(
     const servingSignalMw = entry.signalMw;
     let intraSatInterferenceMw = 0;
     let interSatInterferenceMw = 0;
-    const entryFrequencyIndex = getBeamFrequencyIndex(entry.sample.beamId, reuseGroups);
+    const entryFrequencyIndex = entry.frequencyIndex;
 
     for (let j = 0; j < entries.length; j++) {
       if (j === idx) continue;
       const otherKey = `${entries[j].sample.satId}:${entries[j].sample.beamId}`;
       if (!activeBeamKeys.has(otherKey)) continue;
-      const otherFrequencyIndex = getBeamFrequencyIndex(entries[j].sample.beamId, reuseGroups);
+      const otherFrequencyIndex = entries[j].frequencyIndex;
       // Same frequency reuse group -> interfering.
       if (reuseGroups <= 1 || otherFrequencyIndex === entryFrequencyIndex) {
         if (entries[j].sample.satId === entry.sample.satId) {
@@ -429,6 +462,7 @@ export function computeLinkBudget(
         segmentStartTransmitGainLinear: draft.state.segmentStartTransmitGainLinear,
         thetaRad: draft.thetaRad,
         distanceM: draft.distanceM,
+        elevationDeg: draft.elevationDeg,
         powerW: draft.powerW,
         transmitGainLinear: draft.transmitGainLinear,
         channelGainLinear: draft.channelGainLinear,

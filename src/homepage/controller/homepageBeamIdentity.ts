@@ -4,18 +4,16 @@ import { decodeCellLinkBudgetBeamId } from '../../scene/sinrLiveCellModel';
  * Homepage display labels for the SINR-live link-budget identity.
  *
  * The numeric beam id remains an internal join key. In particular, the
- * deterministic same-cell alternate is encoded as 421 for geographic cell 0;
- * exposing that raw number made it look like the model had hundreds of
- * ordinary beams. Keep the raw id in data attributes, but explain the public
- * identity as B1′ / C1.
+ * deterministic same-cell physical beams are encoded in a reserved internal
+ * range (421..2521 for geographic cell 0). Exposing those raw numbers made it
+ * look like the model had hundreds of ordinary beams. Keep the raw id in data
+ * attributes, but explain the public identity as B1..B7. The geographic cell
+ * remains an internal join identity and is not repeated beside every beam.
  */
 export function formatHomepageBeamLabel(beamId: number): string {
   if (!Number.isFinite(beamId)) return 'B—';
   const decoded = decodeCellLinkBudgetBeamId(beamId);
-  const base = 'B' + (decoded.cellId + 1);
-  return decoded.variantIndex === 0
-    ? base
-    : base + '′';
+  return `B${decoded.cellId + decoded.variantIndex + 1}`;
 }
 
 export function formatHomepageCellLabel(beamId: number): string {
@@ -24,5 +22,5 @@ export function formatHomepageCellLabel(beamId: number): string {
 }
 
 export function formatHomepageBeamCellLabel(beamId: number): string {
-  return formatHomepageBeamLabel(beamId) + ' / ' + formatHomepageCellLabel(beamId);
+  return formatHomepageBeamLabel(beamId);
 }

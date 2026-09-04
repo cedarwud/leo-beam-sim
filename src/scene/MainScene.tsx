@@ -21,6 +21,11 @@ import type {
 } from './types';
 import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import type { HomepageBeamMetricsProjection } from '../homepage/controller/contracts';
+import type { TeachingFrame } from '../homepage/teaching/handoverTeachingScript';
+import {
+  HandoverTeachingBeamCones,
+  type HandoverTeachingSceneStory,
+} from '../viz/HandoverTeachingBeamCones';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
@@ -57,6 +62,7 @@ import {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
   homepageSatelliteBaseColor,
   homepageSatelliteColorForBeam,
+  homepageEeColorNormalized,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
 import {
   HOMEPAGE_PRIMARY_UE_MARKER_COLOR,
@@ -126,12 +132,17 @@ import {
 } from './beamDisplaySpec';
 import {
   SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
+  cellFrequencyIndex,
   cellLinkBudgetBeamId,
   cellIdFromLinkBudgetBeamId,
   resolvePrimaryCellServingRecord,
   type SinrLiveCellHandoverEvent,
 } from './sinrLiveCellModel';
 import { MANUAL_HANDOVER_DISPLAY_MS, resolveManualHandoverDemoEvent } from './manualHandoverDemo';
+import {
+  HOMEPAGE_INTER_HANDOVER_DISPLAY_MS,
+  HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
+} from '../homepage/controller/homepageHandoverTiming';
 import {
   resolveHandoverCinemaDisplayMs,
   resolveHandoverCinemaReady,
@@ -328,6 +339,7 @@ function resolveAcceptedCellIdentityColor(
 function homepageBeamIdentityFromCell(
   satelliteId: string | null | undefined,
   cellId: number | null | undefined,
+  beamId: number | null | undefined = null,
 ): HomepageBeamIdentity | null {
   if (
     typeof satelliteId !== 'string'
@@ -336,7 +348,7 @@ function homepageBeamIdentityFromCell(
     || cellId === undefined
     || !Number.isInteger(cellId)
   ) return null;
-  return { satelliteId, cellId };
+  return { satelliteId, cellId, beamId };
 }
 
 function ScenePresentationCanvasTelemetry({
@@ -392,6 +404,14 @@ interface SceneContentProps {
   onHandoverPresentationBusyChange?: (busy: boolean) => void;
   /** Display-only switch for HTML/callout information over the stage. */
   showSceneOverlays?: boolean;
+  /**
+   * The homepage handover lecture's two live endpoints, or null when no lecture
+   * is open. Display-only: it never enters a decision, a snapshot, or the event
+   * index.
+   */
+  teachingSceneStory?: HandoverTeachingSceneStory | null;
+  /** The lecture frame the rail and caption already render, handed over by reference. */
+  teachingLectureFrameRef?: MutableRefObject<TeachingFrame | null>;
 }
 
 interface SceneRenderContentProps extends SceneContentProps {
@@ -1106,6 +1126,7 @@ function SceneContent(props: SceneContentProps) {
     runtime,
     visualScaleMultipliers,
     sceneLane,
+    homepageVisualIdentity,
     onLiveSeekLanded,
   } = props;
   const [liveSeekLandedKey, setLiveSeekLandedKey] = useState<string | null>(null);
@@ -1150,6 +1171,8 @@ function SceneContent(props: SceneContentProps) {
     sceneLane === 'sinr-live' ? 'sampled-steering' : 'earth-fixed-cell',
     runtime.focusCellId ?? null,
     shouldEnableHomepageMultiCandidateAuthority(sceneLane),
+    runtime.eeThresholdKbitPerJoule,
+    homepageVisualIdentity && sceneLane === 'sinr-live',
   );
 
   return <SceneRenderContent {...props} sim={sim} simSource="live" liveSeekLandedKey={liveSeekLandedKey} />;
@@ -1296,13 +1319,15 @@ function SceneRenderContent({
   constellation = DEFAULT_SATELLITE_CONSTELLATION,
   presentationPlan,
   campusVisible,
+  teachingSceneStory = null,
+  teachingLectureFrameRef,
 }: SceneRenderContentProps) {
   const homepageBeamEeByKey = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
     return new Map(
       homepageBeamMetrics.metrics.map(metric => [
         `${metric.satelliteId}:${metric.beamId}`,
-        metric.eeNormalized,
+        homepageEeColorNormalized(metric.energyEfficiencyBitsPerJoule),
       ] as const),
     );
   }, [homepageBeamMetrics, homepageVisualIdentity]);
@@ -1319,7 +1344,7 @@ function SceneRenderContent({
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
     const bySatellite = new Map<string, number | null>();
     for (const metric of homepageBeamMetrics.metrics) {
-      const value = metric.eeNormalized;
+      const value = homepageEeColorNormalized(metric.energyEfficiencyBitsPerJoule);
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         if (!bySatellite.has(metric.satelliteId)) bySatellite.set(metric.satelliteId, null);
         continue;
@@ -1898,6 +1923,7 @@ function SceneRenderContent({
     ? null
     : {
       servingSatId: primaryServingRecord.servingSatId,
+      beamId: primaryServingRecord.servingBeamId ?? null,
       cellId: primaryServingRecord.servingBeamId === null
         || primaryServingRecord.servingBeamId === undefined
         ? primaryServingRecord.cellId
@@ -1911,7 +1937,11 @@ function SceneRenderContent({
         && sinrLiveCellPlacementById.has(beam.cellId)
         && viz.coneApexWorldById.has(beam.satId)
       ))
-      .map(beam => ({ servingSatId: beam.satId, cellId: beam.cellId })),
+      .map(beam => ({
+        servingSatId: beam.satId,
+        cellId: beam.cellId,
+        beamId: beam.beamId ?? null,
+      })),
   ), [
     displayHeroPrimary,
     sim.sinrLiveCells,
@@ -2604,8 +2634,10 @@ function SceneRenderContent({
     runtime,
     servingSatelliteId: displayHeroRecord?.servingSatId,
     candidateSatelliteId: renderedCandidateSatelliteId,
+    roleCountsRepresentFocusedCells: homepageVisualIdentity,
   }), [
     displayHeroRecord?.servingSatId,
+    homepageVisualIdentity,
     profile,
     renderedCandidateSatelliteId,
     runtime,
@@ -2643,6 +2675,7 @@ function SceneRenderContent({
         {
           sourceSatId: runtime.manualHandoverSourceSatId,
           sourceCellId: runtime.manualHandoverSourceCellId,
+          targetSatId: runtime.manualHandoverTargetSatId,
           targetCellId: runtime.manualHandoverTargetCellId,
           servingSinrDb: runtime.manualHandoverServingSinrDb,
           candidateSinrDb: runtime.manualHandoverCandidateSinrDb,
@@ -2653,6 +2686,7 @@ function SceneRenderContent({
       runtime.manualHandoverKind,
       runtime.manualHandoverSourceSatId,
       runtime.manualHandoverSourceCellId,
+      runtime.manualHandoverTargetSatId,
       runtime.manualHandoverTargetCellId,
       runtime.manualHandoverServingSinrDb,
       runtime.manualHandoverCandidateSinrDb,
@@ -2661,6 +2695,14 @@ function SceneRenderContent({
       viz.coneApexWorldById,
     ],
   );
+  const manualHandoverDisplayMs = homepageVisualIdentity
+    ? runtime.manualHandoverKind === 'inter'
+      ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+      : HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+    : MANUAL_HANDOVER_DISPLAY_MS;
+  const manualHandoverBeamRecord = manualHandoverEvent?.kind === 'intra' && sim.sinrLiveCells !== undefined
+    ? resolvePrimaryCellServingRecord(sim.sinrLiveCells, sim.perUePositions)
+    : null;
   // The demonstration's wall CLOCK. It must be state, not a bare `performance.now()` read:
   // the component body only re-evaluates on a render, and the button PAUSES the sim before
   // arming the request, so no frame publish ever comes to trigger one. Driven by the
@@ -2684,7 +2726,7 @@ function SceneRenderContent({
       requestId: runtime.manualHandoverRequestId,
       startedAtMs: runtime.manualHandoverStartedAtMs,
       nowMs,
-      displayMs: MANUAL_HANDOVER_DISPLAY_MS,
+      displayMs: manualHandoverDisplayMs,
       previous: manualHandoverTickRef.current,
     });
     manualHandoverTickRef.current = next;
@@ -2718,7 +2760,13 @@ function SceneRenderContent({
     } else if (!cinemaHandoverReady) {
       // The candidate is known during the fade/seek arm window, but its story
       // clock must remain at phase 0 until useSimulation reports this exact seek.
-    } else if (!previousCinema.settled && nowMs - previousCinema.startedAtMs > resolveHandoverCinemaDisplayMs(handoverCinemaCandidate?.kind ?? null)) {
+    } else if (!previousCinema.settled && nowMs - previousCinema.startedAtMs > (
+      homepageVisualIdentity
+        ? handoverCinemaCandidate?.kind === 'inter'
+          ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+          : HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+        : resolveHandoverCinemaDisplayMs(handoverCinemaCandidate?.kind ?? null)
+    )) {
       cinemaHandoverTickRef.current = { ...previousCinema, publishedAtMs: nowMs, settled: true };
       setCinemaHandoverNowMs(nowMs);
     } else if (!previousCinema.settled && nowMs - previousCinema.publishedAtMs >= MANUAL_HANDOVER_TICK_INTERVAL_MS) {
@@ -2731,7 +2779,7 @@ function SceneRenderContent({
     // Before the first tick lands (the very frame the button arms the request) fall back to
     // a direct clock read, so frame 1 is age ≈ 0 rather than a stale value from a prior run.
     nowMs: manualHandoverNowMs ?? (typeof performance === 'undefined' ? Date.now() : performance.now()),
-    displayMs: MANUAL_HANDOVER_DISPLAY_MS,
+    displayMs: manualHandoverDisplayMs,
   });
   const manualHandoverAgeMs = manualHandoverProgress.ageMs;
   // F1 (2026-08-06): `manualHandoverEvent !== null` is part of the ACTIVE condition,
@@ -2742,7 +2790,7 @@ function SceneRenderContent({
   // `manualHandoverEvent` (above) does not read this flag.
   const manualHandoverRequested = runtime.manualHandoverRequestId !== undefined
     && runtime.manualHandoverKind !== undefined
-    && manualHandoverAgeMs <= MANUAL_HANDOVER_DISPLAY_MS;
+    && manualHandoverAgeMs <= manualHandoverDisplayMs;
   const manualHandoverActive = manualHandoverRequested
     && manualHandoverEvent !== null;
   const manualHandoverProgressSec = manualHandoverProgress.progressSec;
@@ -2814,19 +2862,32 @@ function SceneRenderContent({
   }, [cinemaInterPairAnchor, handoverCinemaCandidate]);
 
   const authorityHandoverPresentationCandidate = useMemo(
-    () => multiCandidateAuthorityActive
-      ? resolveAuthorityHandoverPresentationEvent(handoverAuthorityJoin, {
+    () => {
+      if (!multiCandidateAuthorityActive) return null;
+      // `selected` means the target is armed, not that the service has
+      // switched. The homepage keeps the source visible until the atomic
+      // commit receipt, so a healthy source value cannot look like a threshold
+      // crossing just because the selection hold finished.
+      if (homepageVisualIdentity && handoverAuthorityJoin?.transition?.boundary === 'selected') {
+        return null;
+      }
+      return resolveAuthorityHandoverPresentationEvent(handoverAuthorityJoin, {
         source: simSource === 'archived-tle' ? 'tle' : 'walker',
         hasCellPlacement: cellId => sinrLiveCellPlacementById.has(cellId),
         hasSatelliteWorld: satelliteId => viz.coneApexWorldById.has(satelliteId),
         durationMs: {
-          intra: resolveHandoverCinemaDisplayMs('intra'),
-          inter: resolveHandoverCinemaDisplayMs('inter'),
+          intra: homepageVisualIdentity
+            ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+            : resolveHandoverCinemaDisplayMs('intra'),
+          inter: homepageVisualIdentity
+            ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+            : resolveHandoverCinemaDisplayMs('inter'),
         },
-      })
-      : null,
+      });
+    },
     [
       handoverAuthorityJoin,
+      homepageVisualIdentity,
       multiCandidateAuthorityActive,
       simSource,
       sinrLiveCellPlacementById,
@@ -2896,6 +2957,46 @@ function SceneRenderContent({
         drawable: sinrLiveCellPlacementById.has(cellId) && satelliteWorldById.has(satId),
       };
 
+    const manualCandidate = (): HandoverPresentationEvent | null => {
+      if (!manualHandoverActive || manualHandoverEvent === null) return null;
+      const fromBeamId = manualHandoverBeamRecord?.servingLinkSample?.beamId ?? null;
+      const toBeamId = manualHandoverBeamRecord?.intraCandidateLinkSample?.beamId ?? null;
+      const from = endpoint(
+        manualHandoverEvent.fromSatId,
+        manualHandoverEvent.fromCellId,
+        viz.coneApexWorldById,
+        fromBeamId,
+      );
+      const to = endpoint(
+        manualHandoverEvent.toSatId,
+        manualHandoverEvent.toCellId,
+        viz.coneApexWorldById,
+        toBeamId,
+      );
+      if (from === null || to === null) return null;
+      return {
+        eventId: `manual:${runtime.manualHandoverRequestId ?? 'unknown'}`,
+        source: 'manual',
+        kind: manualHandoverEvent.kind,
+        ueId: manualHandoverEvent.ueId,
+        sourceTimeSec: manualHandoverEvent.sourceTimeSec,
+        from,
+        to,
+        durationMs: manualHandoverDisplayMs,
+        fromSinrDb: manualHandoverEvent.fromSinrDb,
+        toSinrDb: manualHandoverEvent.toSinrDb,
+        deltaDb: manualHandoverEvent.deltaDb,
+      };
+    };
+
+    // A lecture owns the viewport for its whole run, and it paints its own two
+    // cones from its own layer. NOTHING may be admitted here: not a live
+    // authority switch, not a forced-continuity replacement when the serving
+    // spacecraft sets, not an armed cinema pair -- and not the manual cue
+    // either, whose satellite-identity colours would fight the lecture's
+    // role colours on the same two links.
+    if (runtime.teachingLectureKind != null) return null;
+
     // When candidate authority has an actual switching event, it takes precedence.
     if (authorityHandoverPresentationCandidate !== null) {
       return authorityHandoverPresentationCandidate;
@@ -2945,8 +3046,12 @@ function SceneRenderContent({
           // live Walker story and the explicit cinema story. This keeps the
           // source beam visible until the candidate actually arrives.
           durationMs: recentPrimaryHandoverEvent.kind === 'inter'
-            ? resolveHandoverCinemaDisplayMs('inter')
-            : beamDisplaySpec.triggeredIntraSustainMs,
+            ? homepageVisualIdentity
+              ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+              : resolveHandoverCinemaDisplayMs('inter')
+            : homepageVisualIdentity
+              ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+              : beamDisplaySpec.triggeredIntraSustainMs,
         } satisfies HandoverPresentationEvent;
       })();
 
@@ -2959,25 +3064,8 @@ function SceneRenderContent({
       && naturalCandidate?.kind === 'inter'
     ) return naturalCandidate;
 
-    if (manualHandoverActive && manualHandoverEvent !== null) {
-      const from = endpoint(manualHandoverEvent.fromSatId, manualHandoverEvent.fromCellId, viz.coneApexWorldById);
-      const to = endpoint(manualHandoverEvent.toSatId, manualHandoverEvent.toCellId, viz.coneApexWorldById);
-      if (from !== null && to !== null) {
-        return {
-          eventId: `manual:${runtime.manualHandoverRequestId ?? 'unknown'}`,
-          source: 'manual',
-          kind: manualHandoverEvent.kind,
-          ueId: manualHandoverEvent.ueId,
-          sourceTimeSec: manualHandoverEvent.sourceTimeSec,
-          from,
-          to,
-          durationMs: MANUAL_HANDOVER_DISPLAY_MS,
-          fromSinrDb: manualHandoverEvent.fromSinrDb,
-          toSinrDb: manualHandoverEvent.toSinrDb,
-          deltaDb: manualHandoverEvent.deltaDb,
-        };
-      }
-    }
+    const manual = manualCandidate();
+    if (manual !== null) return manual;
 
     // A manual request owns the viewport even if its endpoints fail the
     // drawable check. Fail closed: suppress natural visual events instead of
@@ -3006,7 +3094,11 @@ function SceneRenderContent({
           sourceTimeSec: cinemaPairCandidate.sourceTimeSec,
           from,
           to,
-          durationMs: resolveHandoverCinemaDisplayMs(cinemaPairCandidate.kind),
+          durationMs: homepageVisualIdentity
+            ? cinemaPairCandidate.kind === 'inter'
+              ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+              : HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+            : resolveHandoverCinemaDisplayMs(cinemaPairCandidate.kind),
         };
       }
     }
@@ -3031,15 +3123,21 @@ function SceneRenderContent({
     cinemaInterSatelliteWorldById,
     cinemaPairCandidate,
     handoverCinemaArmed,
+    homepageVisualIdentity,
     manualHandoverRequested,
     manualHandoverActive,
     manualHandoverEvent,
+    manualHandoverBeamRecord,
+    manualHandoverDisplayMs,
     multiCandidateAuthorityActive,
     multiCandidateDecisionAuthorityPresent,
     acceptedHandoverPresentation,
     multiCandidateCentralOverlayActive,
     recentPrimaryHandoverEvent,
     runtime.manualHandoverRequestId,
+    runtime.teachingLectureKind,
+    sim.perUePositions,
+    sim.sinrLiveCells,
     simSource,
     sinrLiveCellPlacementById,
     viz.coneApexWorldById,
@@ -3132,7 +3230,21 @@ function SceneRenderContent({
     naturalInterCandidatePending,
     presentationKind: handoverPresentation.event?.kind ?? null,
     presentationMode: handoverPresentationMode,
+    teachingLectureActive: runtime.teachingLectureKind != null,
   });
+  // A lecture's story replaces the field rather than adding to it, so it also
+  // overrides the accepted-comparison escape hatch that normally keeps the
+  // configured fan mounted through a candidate review.
+  const teachingLectureFieldCleared = runtime.teachingLectureKind != null
+    && handoverDisplayIsolation.hideNormalBeamField;
+  // Null off a lecture, so every other route keeps its existing label policy.
+  const teachingLabelSatelliteIds = useMemo<ReadonlySet<string> | null>(() => {
+    if (teachingSceneStory === null) return null;
+    return new Set([
+      teachingSceneStory.sourceSatelliteId,
+      teachingSceneStory.targetSatelliteId ?? teachingSceneStory.sourceSatelliteId,
+    ]);
+  }, [teachingSceneStory]);
 
   const presentedHandoverPairCandidate = useMemo<SinrLiveCinemaHandoverCandidate | null>(() => {
     const event = handoverPresentation.event;
@@ -3207,10 +3319,14 @@ function SceneRenderContent({
       servingBeam: homepageBeamIdentityFromCell(
         displayHeroRecord?.servingSatId ?? primaryServingRecord?.servingSatId,
         displayHeroRecord?.cellId ?? primaryServingRecord?.cellId,
+        displayHeroRecord?.beamId ?? primaryServingRecord?.servingBeamId,
       ),
       preparedCandidateBeam: homepageBeamIdentityFromCell(
         renderedCandidateSatelliteId ?? primaryServingRecord?.pendingTargetSatId,
         displayHeroRecord?.cellId ?? primaryServingRecord?.cellId,
+        handoverPresentationCandidate?.to.beamId
+          ?? primaryServingRecord?.intraCandidateLinkSample?.beamId
+          ?? null,
       ),
       presentationFromBeam: homepageBeamIdentityFromCell(
         presentedHandoverPairCandidate?.fromSatId
@@ -3221,6 +3337,10 @@ function SceneRenderContent({
           ?? (handoverAuthorityJoin?.transition?.from.beamId === undefined
             ? null
             : cellIdFromLinkBudgetBeamId(handoverAuthorityJoin.transition.from.beamId)),
+        presentedHandoverPairCandidate?.fromBeamId
+          ?? handoverPresentationCandidate?.from.beamId
+          ?? handoverAuthorityJoin?.transition?.from.beamId
+          ?? null,
       ),
       presentationToBeam: homepageBeamIdentityFromCell(
         presentedHandoverPairCandidate?.toSatId
@@ -3231,34 +3351,45 @@ function SceneRenderContent({
           ?? (handoverAuthorityJoin?.transition?.to.beamId === undefined
             ? null
             : cellIdFromLinkBudgetBeamId(handoverAuthorityJoin.transition.to.beamId)),
+        presentedHandoverPairCandidate?.toBeamId
+          ?? handoverPresentationCandidate?.to.beamId
+          ?? handoverAuthorityJoin?.transition?.to.beamId
+          ?? null,
       ),
       cinemaFromBeam: homepageBeamIdentityFromCell(
         cinemaPairCandidate?.fromSatId,
         cinemaPairCandidate?.fromCellId,
+        cinemaPairCandidate?.fromBeamId,
       ),
       cinemaToBeam: homepageBeamIdentityFromCell(
         cinemaPairCandidate?.toSatId,
         cinemaPairCandidate?.toCellId,
+        cinemaPairCandidate?.toBeamId,
       ),
       recentFromBeam: homepageBeamIdentityFromCell(
         recentPrimaryHandoverEvent?.fromSatId,
         recentPrimaryHandoverEvent?.fromCellId,
+        recentPrimaryHandoverEvent?.fromBeamId,
       ),
       recentToBeam: homepageBeamIdentityFromCell(
         recentPrimaryHandoverEvent?.toSatId,
         recentPrimaryHandoverEvent?.toCellId,
+        recentPrimaryHandoverEvent?.toBeamId,
       ),
     }),
     [
       cinemaPairCandidate,
       displayHeroRecord?.cellId,
+      displayHeroRecord?.beamId,
       displayHeroRecord?.servingSatId,
       handoverAuthorityJoin,
       handoverPresentationCandidate,
       presentedHandoverPairCandidate,
       primaryServingRecord?.pendingTargetSatId,
+      primaryServingRecord?.intraCandidateLinkSample?.beamId,
       primaryServingRecord?.cellId,
       primaryServingRecord?.servingSatId,
+      primaryServingRecord?.servingBeamId,
       recentPrimaryHandoverEvent,
       renderedCandidateSatelliteId,
     ],
@@ -3458,7 +3589,7 @@ function SceneRenderContent({
       if (homepageVisualIdentity && !homepageSceneGeometryPolicy.renderServingField) return [];
       if (
         handoverDisplayIsolation.hideNormalBeamField
-        && !multiCandidateCentralOverlayActive
+        && (teachingLectureFieldCleared || !multiCandidateCentralOverlayActive)
         && !handoverDisplayIsolation.preserveConfiguredServingFan
       ) return [];
       // The homepage owns a bounded serving-satellite fan: it must show the
@@ -3483,15 +3614,51 @@ function SceneRenderContent({
           ? sinrLiveTargetSatIds
           : beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
       });
+      // The accepted serving identity can survive one publication where the
+      // model's illuminated-beam list is temporarily empty (or its exact pair
+      // is not yet drawable). Keep one homepage cone mounted from that same
+      // identity so the scene cannot degrade to a connection line with no
+      // beam. This is render-only and never enters decisions.
+      const servingFallbackFrame = rawItems.length === 0
+        && homepageVisualIdentity
+        && sim.sinrLiveCells !== undefined
+        && displayHeroRecord?.servingSatId !== undefined
+        && displayHeroRecord?.servingSatId !== null
+        && displayHeroRecord.cellId !== undefined
+        && displayHeroRecord.cellId !== null
+        ? {
+          ...sim.sinrLiveCells,
+          illuminatedBeams: [{
+            satId: displayHeroRecord.servingSatId,
+            cellId: displayHeroRecord.cellId,
+            beamId: displayHeroRecord.beamId
+              ?? cellLinkBudgetBeamId(displayHeroRecord.cellId),
+            frequencyIndex: cellFrequencyIndex(
+              displayHeroRecord.cellId,
+              profile.beams.frequencyReuse,
+            ),
+            serving: true as const,
+          }],
+        }
+        : null;
+      const drawableItems = rawItems.length > 0 || servingFallbackFrame === null
+        ? rawItems
+        : resolveSinrLiveCellBeamConeItems({
+          cellFrame: servingFallbackFrame,
+          placementByCellId: sinrLiveCellPlacementById,
+          satelliteWorldById: viz.coneApexWorldById,
+          focusSatIds: sinrLiveTargetSatIds,
+        });
       const servingBeamBudget = resolveSinrLiveConfiguredBeamCount({
         profile,
         runtime,
         satelliteId: displayHeroRecord?.servingSatId,
         role: 'serving',
+        roleCountsRepresentFocusedCells: homepageVisualIdentity,
       });
       const items = homepageVisualIdentity || !beamDisplaySpec.showNonServingCones
         ? resolveBudgetedSinrLiveBeamConeItems({
-          existingItems: rawItems,
+          existingItems: drawableItems,
           satId: displayHeroRecord?.servingSatId,
           maxCones: servingBeamBudget,
           placementByCellId: sinrLiveCellPlacementById,
@@ -3500,8 +3667,9 @@ function SceneRenderContent({
           role: 'servingFan',
           renderKeyPrefix: 'serving-display-fan',
           preferredCellId: displayHeroRecord?.cellId,
+          preferredBeamId: displayHeroRecord?.beamId,
         })
-        : rawItems;
+        : drawableItems;
       const identityItems = items.map(item => ({
         ...item,
         // Keep the accepted candidate snapshot as the single colour authority
@@ -3509,17 +3677,18 @@ function SceneRenderContent({
         // cones could fall back to a direct hash while the rail/transition used
         // a collision-resolved identity slot, making one spacecraft appear to
         // change colour at the handover boundary.
-        color: resolveAcceptedCellIdentityColor(
-          acceptedHandoverPresentation,
+        color: resolveSceneAcceptedBeamColor(
           item.satId,
-          item.cellId,
+          item.beamId ?? cellLinkBudgetBeamId(item.cellId),
           item.color,
+          item.serving === true,
         ),
       }));
       if (
         !handoverDisplayIsolation.hidePrimaryServingBeam
         || handoverDisplayIsolation.preserveConfiguredServingFan
         || multiCandidateCentralOverlayActive
+        || homepageVisualIdentity
         || displayHeroRecord?.servingSatId == null
         || displayHeroRecord.cellId == null
       ) {
@@ -3557,9 +3726,11 @@ function SceneRenderContent({
       handoverDisplayIsolation.hideNormalBeamField,
       handoverDisplayIsolation.hidePrimaryServingBeam,
       handoverDisplayIsolation.preserveConfiguredServingFan,
+      teachingLectureFieldCleared,
       multiCandidateCentralOverlayActive,
       displayHeroRecord,
       acceptedHandoverPresentation,
+      resolveSceneAcceptedBeamColor,
       homepageBeamFanSatelliteIds,
       homepageBeamVisibility,
       homepageSceneGeometryPolicy.renderServingField,
@@ -3637,6 +3808,7 @@ function SceneRenderContent({
         runtime,
         satelliteId: pendingTargetSatId,
         role: 'candidate',
+        roleCountsRepresentFocusedCells: homepageVisualIdentity,
       });
       const rawItems = resolveCandidateBeamConeItems({
         pendingTargetSatId,
@@ -3763,6 +3935,7 @@ function SceneRenderContent({
       runtime,
       satelliteId: presentedHandoverPairCandidate.fromSatId,
       role: 'serving',
+      roleCountsRepresentFocusedCells: homepageVisualIdentity,
     });
     const sourceFanOpacity = beamDisplaySpec.servingConeOpacity * presentationHandoverEnvelope.fromOpacity;
     const rawItems = resolveCinemaInterServingFanConeItems({
@@ -3935,23 +4108,22 @@ function SceneRenderContent({
         // pulse.  The steady-state identity allocation remains untouched.
         color: item.kind === 'intra'
           ? emphasizeIntraHandoverColor(
-            resolveAcceptedCellIdentityColor(
-              acceptedHandoverPresentation,
+            resolveSceneAcceptedBeamColor(
               item.satId,
-              item.cellId,
+              item.beamId ?? cellLinkBudgetBeamId(item.cellId),
               item.color,
+              true,
             ),
             item.role === 'handoverSource' ? 'source' : 'target',
           )
-          : resolveAcceptedCellIdentityColor(
-            acceptedHandoverPresentation,
+          : resolveSceneAcceptedBeamColor(
             item.satId,
-            item.cellId,
+            item.beamId ?? cellLinkBudgetBeamId(item.cellId),
             item.color,
           ),
       })));
     },
-    [handoverDisplayIsolation.hideTimelinePulse, handoverDisplayIsolation.suppressNaturalHandoverLayers, concurrentIntraVisualSuppressed, showSinrLiveHandoverPulse, sim.sinrLiveCells, naturalHandoverProtagonistUeId, homepageVisualIdentity, homepageIntraCellAnchor, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope, beamDisplaySpec.showOtherHandoverUes, acceptedHandoverPresentation, restrictHomepageBeamItems, homepageSceneGeometryPolicy.renderNaturalPulse],
+    [handoverDisplayIsolation.hideTimelinePulse, handoverDisplayIsolation.suppressNaturalHandoverLayers, concurrentIntraVisualSuppressed, showSinrLiveHandoverPulse, sim.sinrLiveCells, naturalHandoverProtagonistUeId, homepageVisualIdentity, homepageIntraCellAnchor, sinrLiveCellPlacementById, viz.coneApexWorldById, profile.beams.frequencyReuse, sinrLiveTargetSatIds, beamDisplaySpec.pulseFocusFollowsScope, beamDisplaySpec.showOtherHandoverUes, acceptedHandoverPresentation, resolveSceneAcceptedBeamColor, restrictHomepageBeamItems, homepageSceneGeometryPolicy.renderNaturalPulse],
   );
   // Manual and naturally observed Walker/TLE events share the coordinator's
   // single latched pair. Incoming events cannot restart this envelope; they are
@@ -3968,14 +4140,20 @@ function SceneRenderContent({
       || presentedHandoverPairCandidate.fromCellId === null
       || presentedHandoverPairCandidate.toCellId === null
     ) return [];
+    const fromSatId = presentedHandoverPairCandidate.fromSatId;
+    const fromCellId = presentedHandoverPairCandidate.fromCellId;
+    const toCellId = presentedHandoverPairCandidate.toCellId;
+    if (fromSatId === null || fromCellId === null || toCellId === null) return [];
     const event: SinrLiveCellHandoverEvent = {
       ueId: presentedHandoverPairCandidate.ueId ?? sceneFrame.ues[0]?.id ?? 'ue-0',
       kind: presentedHandoverPairCandidate.kind,
       sourceTimeSec: presentedHandoverPairCandidate.sourceTimeSec,
-      fromSatId: presentedHandoverPairCandidate.fromSatId,
-      fromCellId: presentedHandoverPairCandidate.fromCellId,
+      fromSatId,
+      fromCellId,
+      fromBeamId: presentedHandoverPairCandidate.fromBeamId ?? null,
       toSatId: presentedHandoverPairCandidate.toSatId,
-      toCellId: presentedHandoverPairCandidate.toCellId,
+      toCellId,
+      toBeamId: presentedHandoverPairCandidate.toBeamId ?? null,
     };
     const isManual = handoverPresentation.event?.source === 'manual';
     return restrictHomepageBeamItems(resolveTriggeredIntraConeItems({
@@ -3988,26 +4166,24 @@ function SceneRenderContent({
       // identity hue family as the ambient cone.  For intra this naturally
       // produces two shades of one satellite colour.
       fromColor: emphasizeIntraHandoverColor(
-        resolveAcceptedCellIdentityColor(
-          acceptedHandoverPresentation,
-          event.fromSatId,
-          event.fromCellId,
+        resolveSceneAcceptedBeamColor(
+          fromSatId,
+          event.fromBeamId ?? cellLinkBudgetBeamId(fromCellId),
           resolveServingIdentityColor(
-            event.fromSatId,
-            event.fromCellId,
+            fromSatId,
+            fromCellId,
             HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
           ),
         ),
         'source',
       ),
       toColor: emphasizeIntraHandoverColor(
-        resolveAcceptedCellIdentityColor(
-          acceptedHandoverPresentation,
+        resolveSceneAcceptedBeamColor(
           event.toSatId,
-          event.toCellId,
+          event.toBeamId ?? cellLinkBudgetBeamId(toCellId),
           resolveServingIdentityColor(
             event.toSatId,
-            event.toCellId,
+            toCellId,
             HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
           ),
         ),
@@ -4030,6 +4206,7 @@ function SceneRenderContent({
     presentedCinemaHandoverActive,
     presentedHandoverPairCandidate,
     acceptedHandoverPresentation,
+    resolveSceneAcceptedBeamColor,
     presentationSatelliteWorldById,
     profile.beams.frequencyReuse,
     showSinrLiveCellBeams,
@@ -4055,6 +4232,13 @@ function SceneRenderContent({
       || presentedHandoverPairCandidate === null
       || (homepageVisualIdentity && !homepageSceneGeometryPolicy.renderCinemaPair)
     ) return [];
+    const fromCellId = presentedHandoverPairCandidate.fromCellId;
+    const toCellId = presentedHandoverPairCandidate.toCellId;
+    if (fromCellId === null || fromCellId === undefined || toCellId === null || toCellId === undefined) return [];
+    const fromBeamId = presentedHandoverPairCandidate.fromBeamId
+      ?? cellLinkBudgetBeamId(fromCellId);
+    const toBeamId = presentedHandoverPairCandidate.toBeamId
+      ?? cellLinkBudgetBeamId(toCellId);
     return restrictHomepageBeamItems(resolveCinemaHandoverPairConeItems({
       candidate: presentedHandoverPairCandidate,
       fromOpacity: presentationHandoverEnvelope.fromOpacity,
@@ -4065,10 +4249,9 @@ function SceneRenderContent({
       // authority changes to the resolved satellite/beam identities.
       fromColor: presentedHandoverPairCandidate.kind === 'intra'
         ? emphasizeIntraHandoverColor(
-          resolveAcceptedCellIdentityColor(
-            acceptedHandoverPresentation,
+          resolveSceneAcceptedBeamColor(
             presentedHandoverPairCandidate.fromSatId,
-            presentedHandoverPairCandidate.fromCellId,
+            fromBeamId,
             resolveServingIdentityColor(
               presentedHandoverPairCandidate.fromSatId,
               presentedHandoverPairCandidate.fromCellId,
@@ -4077,10 +4260,9 @@ function SceneRenderContent({
           ),
           'source',
         )
-        : resolveAcceptedCellIdentityColor(
-          acceptedHandoverPresentation,
+        : resolveSceneAcceptedBeamColor(
           presentedHandoverPairCandidate.fromSatId,
-          presentedHandoverPairCandidate.fromCellId,
+          fromBeamId,
           resolveServingIdentityColor(
             presentedHandoverPairCandidate.fromSatId,
             presentedHandoverPairCandidate.fromCellId,
@@ -4089,10 +4271,9 @@ function SceneRenderContent({
         ),
       toColor: presentedHandoverPairCandidate.kind === 'intra'
         ? emphasizeIntraHandoverColor(
-          resolveAcceptedCellIdentityColor(
-            acceptedHandoverPresentation,
+          resolveSceneAcceptedBeamColor(
             presentedHandoverPairCandidate.toSatId,
-            presentedHandoverPairCandidate.toCellId,
+            toBeamId,
             resolveServingIdentityColor(
               presentedHandoverPairCandidate.toSatId,
               presentedHandoverPairCandidate.toCellId,
@@ -4101,10 +4282,9 @@ function SceneRenderContent({
           ),
           'target',
         )
-        : resolveAcceptedCellIdentityColor(
-          acceptedHandoverPresentation,
+        : resolveSceneAcceptedBeamColor(
           presentedHandoverPairCandidate.toSatId,
-          presentedHandoverPairCandidate.toCellId,
+          toBeamId,
           resolveServingIdentityColor(
             presentedHandoverPairCandidate.toSatId,
             presentedHandoverPairCandidate.toCellId,
@@ -4143,6 +4323,7 @@ function SceneRenderContent({
     handoverPresentation.targetRole,
     beamDisplaySpec.triggeredIntraPeakOpacity,
     acceptedHandoverPresentation,
+    resolveSceneAcceptedBeamColor,
     sinrLiveCellPlacementById,
     presentationSatelliteWorldById,
     profile.beams.frequencyReuse,
@@ -4167,6 +4348,7 @@ function SceneRenderContent({
     // lightness change, while inter is a stable family-to-family transition.
     const fromCellId = presentedHandoverPairCandidate.fromCellId;
     const toCellId = presentedHandoverPairCandidate.toCellId;
+    if (fromCellId === null || fromCellId === undefined || toCellId === null || toCellId === undefined) return [];
     const fromFallback = resolveServingIdentityColor(
       presentedHandoverPairCandidate.fromSatId,
       fromCellId,
@@ -4177,27 +4359,31 @@ function SceneRenderContent({
       toCellId,
       HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
     );
+    const fromBeamId = presentedHandoverPairCandidate.fromBeamId
+      ?? cellLinkBudgetBeamId(fromCellId);
+    const toBeamId = presentedHandoverPairCandidate.toBeamId
+      ?? cellLinkBudgetBeamId(toCellId);
     const fromColor = (multiCandidateCentralOverlayActive
-      ? multiCandidateBeamColorBySatelliteCell.get(
-        `${presentedHandoverPairCandidate.fromSatId}/${fromCellId}`,
+      ? multiCandidateBeamColorBySatelliteBeam.get(
+        `${presentedHandoverPairCandidate.fromSatId}/${fromBeamId}`,
       )
       : undefined)
-      ?? resolveAcceptedCellIdentityColor(
-        acceptedHandoverPresentation,
+      ?? resolveSceneAcceptedBeamColor(
         presentedHandoverPairCandidate.fromSatId,
-        fromCellId,
+        fromBeamId,
         fromFallback,
+        presentedHandoverPairCandidate.kind === 'intra',
       );
     const toColor = (multiCandidateCentralOverlayActive
-      ? multiCandidateBeamColorBySatelliteCell.get(
-        `${presentedHandoverPairCandidate.toSatId}/${toCellId}`,
+      ? multiCandidateBeamColorBySatelliteBeam.get(
+        `${presentedHandoverPairCandidate.toSatId}/${toBeamId}`,
       )
       : undefined)
-      ?? resolveAcceptedCellIdentityColor(
-        acceptedHandoverPresentation,
+      ?? resolveSceneAcceptedBeamColor(
         presentedHandoverPairCandidate.toSatId,
-        toCellId,
+        toBeamId,
         toFallback,
+        presentedHandoverPairCandidate.kind === 'intra',
       );
 
     // Reuse the established source/target cone envelope for both intra- and
@@ -4248,6 +4434,8 @@ function SceneRenderContent({
   }, [
     authorityPresentationCommitObserved,
     acceptedHandoverPresentation,
+    multiCandidateBeamColorBySatelliteBeam,
+    resolveSceneAcceptedBeamColor,
     handoverPresentation.active,
     homepageIntraCellAnchor,
     manualHandoverGroundTarget,
@@ -5051,7 +5239,7 @@ function SceneRenderContent({
             key={sat.id}
             position={sat.world}
             label={satelliteCandidateLabelActive && candidateComparisonOrdinalBySatelliteId.has(sat.id)
-              ? `Candidate C${candidateComparisonOrdinalBySatelliteId.get(sat.id)} · ${resolveHomepageSatelliteDisplayName(sat.id, homepageSatelliteNameById)}`
+              ? `Option R${candidateComparisonOrdinalBySatelliteId.get(sat.id)} · ${resolveHomepageSatelliteDisplayName(sat.id, homepageSatelliteNameById)}`
               : satelliteCandidateLabelActive
                 && satelliteCandidateLabelVisibleSatelliteIds?.has(sat.id) === true
                 ? `Serving · ${resolveHomepageSatelliteDisplayName(sat.id, homepageSatelliteNameById)}`
@@ -5066,9 +5254,14 @@ function SceneRenderContent({
               ? multiCandidateSatelliteColorById.get(sat.id) ?? sat.satelliteTintColor
               : sat.satelliteTintColor}
             constellation={constellation}
-            showLabel={satelliteCandidateLabelActive
-              ? satelliteCandidateLabelVisibleSatelliteIds?.has(sat.id) === true
-              : !multiCandidateSceneVisualActive}
+            // A lecture names exactly two spacecraft. Every other label in the
+            // sky is a live identity the narration never mentions, and the
+            // viewer reads the nearest large name as the one being discussed.
+            showLabel={teachingLabelSatelliteIds !== null
+              ? teachingLabelSatelliteIds.has(sat.id)
+              : satelliteCandidateLabelActive
+                ? satelliteCandidateLabelVisibleSatelliteIds?.has(sat.id) === true
+                : !multiCandidateSceneVisualActive}
             // Make the existing satellite-following label the clear scene
             // identity. It stays attached to the GLB and therefore does not
             // create a second floating window that drifts over the viewport.
@@ -5276,6 +5469,7 @@ function SceneRenderContent({
           heroExemptFromElevationDim={beamDisplaySpec.heroExemptFromElevationDim}
           primaryServingSatId={displayHeroRecord?.servingSatId ?? null}
           primaryServingCellId={displayHeroRecord?.cellId ?? null}
+          primaryServingBeamId={displayHeroRecord?.beamId ?? null}
           telemetryCountDatasetKey="sinrLiveCellBeamConeRenderedCount"
         />
       )}
@@ -5353,6 +5547,7 @@ function SceneRenderContent({
           widthScale={beamDisplaySpec.coneWidthScale}
           primaryServingSatId={displayHeroRecord?.servingSatId ?? null}
           primaryServingCellId={displayHeroRecord?.cellId ?? null}
+          primaryServingBeamId={displayHeroRecord?.beamId ?? null}
           telemetryCountDatasetKey="sinrLiveCellFootprintRingRenderedCount"
         />
       )}
@@ -5378,7 +5573,11 @@ function SceneRenderContent({
           rendered serving cones, gated by the Beam Info toggle (showBeamCallouts). The
           old BeamCalloutContent only mounted inside the retired steered SatelliteBeams;
           this cell-cone callout layer reads the same cell-truth items + per-cell SINR. */}
+      {/* A lecture argues in its own authored EE. Leaving the live per-beam
+          readout mounted puts a different number on the same link at the same
+          instant, so the scene would be contradicting the rail on screen. */}
       {(showBeamCallouts || homepageHandoverBeamInfoActive)
+        && runtime.teachingLectureKind == null
         && beamInfoItems.length > 0 && (
         <SinrLiveCellBeamCallouts
           // Beam Info is an explicit top-left display control.  It must remain
@@ -5457,6 +5656,22 @@ function SceneRenderContent({
           ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
         />
       )}
+      {/* The handover lecture's own two cones. Separate layer on purpose: the live
+          presentation pipeline is fail-closed so the scene can never claim a
+          handover the model did not select, and an authored lecture has no such
+          evidence to offer. Display-only; it writes nothing back. */}
+      {presentationPlan.visible['event-effects']
+        && teachingSceneStory !== null
+        && teachingLectureFrameRef !== undefined && (
+        <HandoverTeachingBeamCones
+          story={teachingSceneStory}
+          frameRef={teachingLectureFrameRef}
+          placementByCellId={sinrLiveCellPlacementById}
+          satelliteWorldById={viz.coneApexWorldById}
+          widthScale={beamDisplaySpec.coneWidthScale}
+          ellipseTiltExaggeration={sinrLiveEllipseTiltExaggeration}
+        />
+      )}
       {presentationPlan.visible['event-effects'] && authorityHandoverPairConeItems.length > 0 && (
         <SinrLiveCellBeamCones
           items={authorityHandoverPairConeItems}
@@ -5512,7 +5727,7 @@ function SceneRenderContent({
           eventLabel={(multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
             && handoverPresentation.event !== null
             ? handoverPresentation.event.kind === 'intra'
-              ? '同衛星波束切換'
+              ? '同衛星波束換手'
               : '跨衛星換手'
             : canonicalHandoverEvent?.event === 'forced-continuity'
               ? 'Forced continuity'
@@ -5555,13 +5770,15 @@ function SceneRenderContent({
               sourceSatId: manualHandoverEvent.fromSatId,
               sourceBeamId: manualHandoverEvent.fromCellId === null
                 ? null
-                : cellLinkBudgetBeamId(manualHandoverEvent.fromCellId),
+                : manualHandoverBeamRecord?.servingLinkSample?.beamId
+                  ?? cellLinkBudgetBeamId(manualHandoverEvent.fromCellId),
               targetSatId: manualHandoverEvent.toSatId,
               targetBeamId: manualHandoverEvent.toCellId === null
                 ? null
-                : cellLinkBudgetBeamId(manualHandoverEvent.toCellId),
+                : manualHandoverBeamRecord?.intraCandidateLinkSample?.beamId
+                  ?? cellLinkBudgetBeamId(manualHandoverEvent.toCellId),
               progressSec: manualHandoverProgressSec,
-              targetSec: MANUAL_HANDOVER_DISPLAY_MS / 1000,
+              targetSec: manualHandoverDisplayMs / 1000,
             }
             : null}
         />
@@ -5627,6 +5844,9 @@ interface MainSceneProps {
   onHandoverPresentationBusyChange?: (busy: boolean) => void;
   /** Display-only switch for HTML/callout information over the stage. */
   showSceneOverlays?: boolean;
+  /** Homepage handover lecture endpoints; see SceneContentProps. */
+  teachingSceneStory?: HandoverTeachingSceneStory | null;
+  teachingLectureFrameRef?: MutableRefObject<TeachingFrame | null>;
 }
 
 export const MainScene = memo(function MainScene({
@@ -5656,6 +5876,8 @@ export const MainScene = memo(function MainScene({
   handoverCinemaKind = null,
   onHandoverPresentationChange,
   onHandoverPresentationBusyChange,
+  teachingSceneStory = null,
+  teachingLectureFrameRef,
   constellation = DEFAULT_SATELLITE_CONSTELLATION,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
@@ -5714,6 +5936,12 @@ export const MainScene = memo(function MainScene({
         data-live-timeline-seek-target={runtime.replay.seekTargetSec?.toFixed(3) ?? ''}
         data-manual-handover-request-id={runtime.manualHandoverRequestId?.toString() ?? ''}
         data-manual-handover-kind={runtime.manualHandoverKind ?? ''}
+        data-teaching-lecture-kind={runtime.teachingLectureKind ?? ''}
+        data-teaching-scene-story={teachingSceneStory === null
+          ? ''
+          : `${teachingSceneStory.kind}:${teachingSceneStory.sourceSatelliteId}#${teachingSceneStory.sourceCellId}`
+            + `>${teachingSceneStory.targetSatelliteId ?? teachingSceneStory.sourceSatelliteId}`
+            + `#${teachingSceneStory.targetCellId ?? teachingSceneStory.sourceCellId}`}
         data-scene-source={homepageTleSceneActive
           ? 'archived-tle'
           : (sceneFrame?.sceneSource ?? 'live-simulation')}
@@ -5825,6 +6053,8 @@ export const MainScene = memo(function MainScene({
                 handoverCinemaKind={handoverCinemaKind}
                 onHandoverPresentationChange={onHandoverPresentationChange}
                 onHandoverPresentationBusyChange={onHandoverPresentationBusyChange}
+                teachingSceneStory={teachingSceneStory}
+                teachingLectureFrameRef={teachingLectureFrameRef}
                 constellation={constellation}
                 presentationPlan={presentationPlan}
               />
@@ -5851,6 +6081,8 @@ export const MainScene = memo(function MainScene({
                 handoverCinemaKind={handoverCinemaKind}
                 onHandoverPresentationChange={onHandoverPresentationChange}
                 onHandoverPresentationBusyChange={onHandoverPresentationBusyChange}
+                teachingSceneStory={teachingSceneStory}
+                teachingLectureFrameRef={teachingLectureFrameRef}
                 constellation={constellation}
                 presentationPlan={presentationPlan}
               />

@@ -12,6 +12,15 @@ export const ANGLE_AWARE_BACKOFF_DB = 5;
 export const ANGLE_AWARE_FIXED_RF_CHAIN_POWER_W = 0.338;
 export const ANGLE_AWARE_FIXED_BASEBAND_POWER_W = 0.2;
 export const ANGLE_AWARE_SEGMENT_START_POWER_W = ANGLE_AWARE_BEAM_POWER_CAP_W / 2;
+/**
+ * Homepage live-lane slew limit for the inverse-gain power recurrence.
+ *
+ * The teaching surface advances in discrete frames.  Without a finite
+ * actuator response, one sampled antenna-gain change can make p(t) jump from
+ * the cap to a small value (or back again), which makes EE look like random
+ * noise even though the geometry is moving continuously.
+ */
+export const ANGLE_AWARE_HOMEPAGE_POWER_SLEW_RATIO = 0.12;
 export const ANGLE_AWARE_EE_CONTRACT_VERSION = 'single-sinr-previous-step-power-v2';
 
 /** Class-B RF-to-supply efficiency for one physical beam. */
@@ -68,6 +77,8 @@ export function resolveAngleAwarePowerState(
   timeSec: number,
   thetaRad: number,
   transmitGainLinear: number,
+  powerCapW?: number,
+  powerSlewRatio?: number,
 ): AngleAwarePowerState {
   const safeTimeSec = Number.isFinite(timeSec) ? timeSec : 0;
   const safeThetaRad = Number.isFinite(thetaRad) ? thetaRad : 0;
@@ -77,6 +88,14 @@ export function resolveAngleAwarePowerState(
       : MIN_POSITIVE,
     MIN_POSITIVE,
   );
+  // The homepage passes its physical P_beam,max here. Keep this optional so
+  // legacy/direct consumers retain their historical recurrence.
+  const safePowerCapW = Number.isFinite(powerCapW) && powerCapW! > 0
+    ? powerCapW!
+    : Number.POSITIVE_INFINITY;
+  const segmentStartPowerW = Number.isFinite(safePowerCapW)
+    ? Math.min(ANGLE_AWARE_SEGMENT_START_POWER_W, safePowerCapW)
+    : ANGLE_AWARE_SEGMENT_START_POWER_W;
   const sameFrameToleranceSec = 1e-9;
   const canContinue = previous !== undefined
     && Number.isFinite(previous.timeSec)
@@ -88,11 +107,24 @@ export function resolveAngleAwarePowerState(
     && Number.isFinite(previous.transmitGainLinear)
     && previous.transmitGainLinear > 0;
   const isSameFrame = canContinue && Math.abs(previous.timeSec - safeTimeSec) <= sameFrameToleranceSec;
-  const powerW = canContinue
+  const rawPowerW = canContinue
     ? (isSameFrame
       ? previous.powerW
       : previous.powerW * previous.transmitGainLinear / safeGain)
-    : ANGLE_AWARE_SEGMENT_START_POWER_W;
+    : segmentStartPowerW;
+  const safePowerSlewRatio = Number.isFinite(powerSlewRatio) && powerSlewRatio! >= 0
+    ? Math.min(powerSlewRatio!, 1)
+    : null;
+  const slewLimitedPowerW = canContinue && !isSameFrame && safePowerSlewRatio !== null
+    ? Math.min(
+      Math.max(
+        rawPowerW,
+        previous.powerW * (1 - safePowerSlewRatio),
+      ),
+      previous.powerW * (1 + safePowerSlewRatio),
+    )
+    : rawPowerW;
+  const powerW = Math.min(slewLimitedPowerW, safePowerCapW);
 
   return {
     timeSec: safeTimeSec,
@@ -104,7 +136,7 @@ export function resolveAngleAwarePowerState(
     segmentStartTransmitGainLinear: canContinue
       ? previous.segmentStartTransmitGainLinear
       : safeGain,
-    segmentStartPowerW: ANGLE_AWARE_SEGMENT_START_POWER_W,
+    segmentStartPowerW: canContinue ? previous.segmentStartPowerW : segmentStartPowerW,
   };
 }
 

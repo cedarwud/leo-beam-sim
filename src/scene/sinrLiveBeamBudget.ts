@@ -16,9 +16,24 @@ export interface SinrLiveBeamBudgetInput {
   readonly beamCountBySatellite?: Readonly<Record<string, number>>;
 }
 
+/**
+ * Homepage semantics: a role value of 1 selects one focused geographic cell;
+ * it does not reduce the physical satellite beam-forming budget. The live
+ * homepage substrate uses the shipped seven-beam satellite layout.
+ */
+export const SINR_LIVE_FOCUSED_CELL_PHYSICAL_BEAM_COUNT = 7;
+
 function normalizeBeamCount(value: number | undefined): number | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
   return Math.max(1, Math.floor(value));
+}
+
+export function resolveSinrLivePhysicalRoleBeamCount(value: number | undefined): number | undefined {
+  const normalized = normalizeBeamCount(value);
+  if (normalized === undefined) return undefined;
+  return normalized === 1
+    ? SINR_LIVE_FOCUSED_CELL_PHYSICAL_BEAM_COUNT
+    : normalized;
 }
 
 export function resolveSinrLiveBeamBudget(input: SinrLiveBeamBudgetInput): number {

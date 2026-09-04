@@ -115,6 +115,10 @@ interface SignalTuningPanelProps {
   readonly candidateSatelliteId?: string | null;
   /** Shared C1-C9 selected-link frame from the live cell truth. */
   readonly formulaFrame?: AngleAwareFormulaFrame | null;
+  /** Homepage-only absolute candidate EE floor control, expressed in Kbit/J. */
+  readonly showHomepageEeThreshold?: boolean;
+  readonly homepageEeThresholdKbitPerJoule?: number;
+  readonly onHomepageEeThresholdKbitPerJouleChange?: (next: number) => void;
   /** Controlled Walker simulation epoch shown in the Scenario page. */
   readonly walkerScenarioDate?: string;
   readonly walkerScenarioTime?: string;
@@ -149,6 +153,9 @@ export function SignalTuningPanel({
   servingSatelliteId,
   candidateSatelliteId,
   formulaFrame = null,
+  showHomepageEeThreshold = false,
+  homepageEeThresholdKbitPerJoule,
+  onHomepageEeThresholdKbitPerJouleChange,
   walkerScenarioDate,
   walkerScenarioTime,
   onWalkerScenarioDateChange,
@@ -239,7 +246,11 @@ export function SignalTuningPanel({
             servingBeamLayoutCount={topology.servingBeamCount ?? scenarioBeamLayoutCount}
             onServingBeamLayoutCountChange={(servingBeamCount: SupportedBeamLayoutCount) => onTopologyChange({
               ...topology,
-              beamCountPerSatellite: servingBeamCount,
+              // A homepage value of 1 means one focused cell, while the
+              // physical satellite still carries the seven-beam layout.
+              beamCountPerSatellite: servingBeamCount === 1
+                ? DEFAULT_BEAM_LAYOUT_COUNT
+                : servingBeamCount,
               servingBeamCount,
               focusCellId: null,
             })}
@@ -248,10 +259,9 @@ export function SignalTuningPanel({
               ...topology,
               candidateBeamCount,
             })}
-            onCandidateBeamLayoutReset={() => onTopologyChange({
-              ...topology,
-              candidateBeamCount: null,
-            })}
+            showEeThreshold={showHomepageEeThreshold}
+            eeThresholdKbitPerJoule={homepageEeThresholdKbitPerJoule}
+            onEeThresholdKbitPerJouleChange={onHomepageEeThresholdKbitPerJouleChange}
             focusCellId={topology.focusCellId}
             focusCellCount={topology.servingBeamCount ?? scenarioBeamLayoutCount}
             onFocusCellChange={(focusCellId: number | null) => onTopologyChange({

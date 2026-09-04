@@ -1,4 +1,5 @@
 import { HandoverManager } from '../engine/handover/handover-manager';
+import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../engine/handover/eeThreshold';
 import {
   DEFAULT_UE_MOBILITY_PARAMS,
   createMobilityStates,
@@ -71,6 +72,8 @@ export interface BuildSinrLiveCellHandoverEventIndexInput {
   readonly beamPointingMode?: 'earth-fixed-cell' | 'sampled-steering';
   /** Must match the live homepage authority gate; omitted keeps the historical default. */
   readonly multiCandidateDecisionEnabled?: boolean;
+  /** Must match the live homepage candidate EE floor, in Kbit/J. */
+  readonly eeThresholdKbitPerJoule?: number;
   /** Must match the live primary UE source geometry; omitted keeps the zero-jog default. */
   readonly primaryJogEastKm?: number;
   readonly primaryJogNorthKm?: number;
@@ -201,6 +204,7 @@ function buildCellTruthTopologyKey(input: {
   readonly beamHoppingEnabled?: boolean;
   readonly beamPointingMode?: 'earth-fixed-cell' | 'sampled-steering';
   readonly multiCandidateDecisionEnabled?: boolean;
+  readonly eeThresholdKbitPerJoule?: number;
   readonly primaryJogEastKm?: number;
   readonly primaryJogNorthKm?: number;
 }): string {
@@ -224,6 +228,7 @@ function buildCellTruthTopologyKey(input: {
     `beamHoppingEnabled=${input.beamHoppingEnabled ?? 'unset'}`,
     `beamPointingMode=${input.beamPointingMode ?? 'unset'}`,
     `multiCandidateDecisionEnabled=${input.multiCandidateDecisionEnabled ?? 'unset'}`,
+    `eeThresholdKbitPerJoule=${formatScalar(input.eeThresholdKbitPerJoule)}`,
     `primaryJogEastKm=${formatScalar(input.primaryJogEastKm)}`,
     `primaryJogNorthKm=${formatScalar(input.primaryJogNorthKm)}`,
   ].join('|');
@@ -278,6 +283,7 @@ function createEmptySinrLiveCellIndex(
         beamHoppingEnabled: input.beamHoppingEnabled,
         beamPointingMode: input.beamPointingMode,
         multiCandidateDecisionEnabled: input.multiCandidateDecisionEnabled,
+        eeThresholdKbitPerJoule: input.eeThresholdKbitPerJoule,
         primaryJogEastKm: input.primaryJogEastKm,
         primaryJogNorthKm: input.primaryJogNorthKm,
       }),
@@ -499,6 +505,7 @@ export function createSinrLiveCellHandoverEventIndexBuilder(
     input.beamHoppingEnabled,
     input.beamPointingMode ?? 'earth-fixed-cell',
     input.multiCandidateDecisionEnabled ?? false,
+    input.eeThresholdKbitPerJoule ?? DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
   );
   if (sinrLiveCellModel === null) {
     return terminalSinrLiveCellHandoverEventIndexBuilder({

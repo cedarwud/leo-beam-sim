@@ -1,7 +1,10 @@
 import type { Profile } from '../profiles/types';
 import type { RuntimeConfig } from './types';
 import { resolveSinrLiveBeamCapacityPerSat } from './sinrLiveCellRuntime';
-import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
+import {
+  resolveSinrLiveBeamBudget,
+  resolveSinrLivePhysicalRoleBeamCount,
+} from './sinrLiveBeamBudget';
 
 export interface SinrLiveBeamDisplayLane {
   readonly satelliteId: string | null;
@@ -59,16 +62,21 @@ export function resolveSinrLiveConfiguredBeamCount(input: {
   readonly runtime: SinrLiveBeamDisplayRuntime;
   readonly satelliteId?: string | null;
   readonly role?: 'serving' | 'candidate';
+  /** Homepage role controls describe focused cells; resolve them to physical beams. */
+  readonly roleCountsRepresentFocusedCells?: boolean;
 }): number {
   const globalBeamCount = resolveSinrLiveBeamCapacityPerSat(input.profile);
+  const rawRoleBeamCount = input.role === 'serving'
+    ? input.runtime.servingBeamCount
+    : input.role === 'candidate'
+      ? input.runtime.candidateBeamCount
+      : undefined;
   return resolveSinrLiveBeamBudget({
     fallbackBeamCount: globalBeamCount,
     satelliteId: input.satelliteId,
-    roleBeamCount: input.role === 'serving'
-      ? input.runtime.servingBeamCount
-      : input.role === 'candidate'
-        ? input.runtime.candidateBeamCount
-        : undefined,
+    roleBeamCount: input.roleCountsRepresentFocusedCells
+      ? resolveSinrLivePhysicalRoleBeamCount(rawRoleBeamCount)
+      : rawRoleBeamCount,
     beamCountBySatellite: input.runtime.beamCountBySatellite,
   });
 }
@@ -78,6 +86,7 @@ export function createSinrLiveBeamDisplayFrame(input: {
   readonly runtime: SinrLiveBeamDisplayRuntime;
   readonly servingSatelliteId?: string | null;
   readonly candidateSatelliteId?: string | null;
+  readonly roleCountsRepresentFocusedCells?: boolean;
 }): SinrLiveBeamDisplayFrame {
   const globalSatelliteCount = resolveSinrLiveSatelliteCount(input.profile);
   const globalBeamCount = resolveSinrLiveGlobalBeamCount({
@@ -98,6 +107,7 @@ export function createSinrLiveBeamDisplayFrame(input: {
         runtime: input.runtime,
         satelliteId: servingSatelliteId,
         role: 'serving',
+        roleCountsRepresentFocusedCells: input.roleCountsRepresentFocusedCells,
       }),
     }),
     candidate: Object.freeze({
@@ -107,6 +117,7 @@ export function createSinrLiveBeamDisplayFrame(input: {
         runtime: input.runtime,
         satelliteId: candidateSatelliteId,
         role: 'candidate',
+        roleCountsRepresentFocusedCells: input.roleCountsRepresentFocusedCells,
       }),
     }),
   });

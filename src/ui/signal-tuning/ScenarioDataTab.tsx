@@ -5,6 +5,12 @@ import {
   SUPPORTED_BEAM_LAYOUT_COUNTS,
   type SupportedBeamLayoutCount,
 } from '../../core/beam/completeHexPresets';
+import {
+  DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
+  EE_THRESHOLD_MAX_KBIT_PER_JOULE,
+  EE_THRESHOLD_MIN_KBIT_PER_JOULE,
+  EE_THRESHOLD_STEP_KBIT_PER_JOULE,
+} from '../../engine/handover/eeThreshold';
 import { SINR_LIVE_CELL_COUNT } from '../../scene/sinrLiveCellRuntime';
 import { useLocale } from '../../i18n';
 import { SIMULATOR_CONSTELLATIONS, SIMULATOR_TIME_ZONE, type SimulatorConstellation } from '../../simulator/types';
@@ -13,6 +19,7 @@ import {
   DEFAULT_WALKER_SCENARIO_TIME,
 } from '../../app/walkerScenarioTime';
 import { txBi } from './labels';
+import { NumericControl } from './Controls';
 import { captionTextStyle, groupTitleStyle, pagePanelStyle, srOnlyStyle } from './styles';
 
 const SCENARIO_HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
@@ -45,8 +52,6 @@ export interface ScenarioDataTabProps {
   /** Optional controlled candidate-satellite override for the canonical frame surface. */
   readonly candidateBeamLayoutCount?: BeamLayoutCount;
   readonly onCandidateBeamLayoutCountChange?: (next: BeamLayoutCount) => void;
-  /** Clears the candidate override so it follows the serving-satellite setting. */
-  readonly onCandidateBeamLayoutReset?: () => void;
   /** Which scene cell's UE the left formula panel and right readout follow. */
   readonly focusCellId?: number | null;
   readonly onFocusCellChange?: (next: number | null) => void;
@@ -54,6 +59,10 @@ export interface ScenarioDataTabProps {
   readonly focusCellCount?: number;
   /** Identifies which existing scene/frame owner receives the beam-layout edits. */
   readonly connection?: 'display-only' | 'canonical-analysis' | 'live-scene';
+  /** Homepage-only EE floor control; other routes leave this unset. */
+  readonly showEeThreshold?: boolean;
+  readonly eeThresholdKbitPerJoule?: number;
+  readonly onEeThresholdKbitPerJouleChange?: (next: number) => void;
 }
 
 const fieldStyle = {
@@ -96,11 +105,13 @@ export function ScenarioDataTab({
   onServingBeamLayoutCountChange,
   candidateBeamLayoutCount: controlledCandidateBeamLayoutCount,
   onCandidateBeamLayoutCountChange,
-  onCandidateBeamLayoutReset,
   focusCellId = null,
   onFocusCellChange,
   focusCellCount = SINR_LIVE_CELL_COUNT,
   connection = 'display-only',
+  showEeThreshold = false,
+  eeThresholdKbitPerJoule = DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
+  onEeThresholdKbitPerJouleChange,
 }: ScenarioDataTabProps = {}) {
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
@@ -140,14 +151,12 @@ export function ScenarioDataTab({
       title: say('scenarioData.candidateSatellite', '候選衛星', 'Candidate satellite'),
       value: candidateBeamLayoutCount,
       onChange: setCandidateBeamLayoutCount,
-      onReset: onCandidateBeamLayoutReset,
     },
   ] satisfies ReadonlyArray<{
     key: 'serving' | 'candidate';
     title: string;
     value: BeamLayoutCount;
     onChange: (value: BeamLayoutCount) => void;
-    onReset?: () => void;
   }>;
 
   return (
@@ -413,29 +422,42 @@ export function ScenarioDataTab({
                   );
                 })}
               </div>
-              {configuration.key === 'candidate' && configuration.onReset !== undefined && (
-                <button
-                  type="button"
-                  data-testid="scenario-data-candidate-follow-serving"
-                  onClick={configuration.onReset}
-                  style={{
-                    justifySelf: 'start',
-                    minHeight: 30,
-                    padding: '5px 8px',
-                    borderRadius: UI_TOKENS.radius.md,
-                    border: `1px solid ${UI_TOKENS.color.border.subtle}`,
-                    background: UI_TOKENS.color.surface.cardFaint,
-                    color: UI_TOKENS.color.text.secondary,
-                    cursor: 'pointer',
-                    fontSize: UI_TOKENS.type.size.caption,
-                  }}
-                >
-                  {say('scenarioData.candidate.followServing', '候選跟隨服務', 'Follow serving')}
-                </button>
-              )}
             </div>
           ))}
         </div>
+        {showEeThreshold && onEeThresholdKbitPerJouleChange !== undefined && (
+          <NumericControl
+            testId="scenario-data-ee-threshold-control"
+            visualVariant="legacy"
+            symbol={<>η</>}
+            label={say('scenarioData.eeThreshold.label', 'EE 閾值', 'EE threshold')}
+            unit="Kbit/J"
+            value={eeThresholdKbitPerJoule}
+            min={EE_THRESHOLD_MIN_KBIT_PER_JOULE}
+            max={EE_THRESHOLD_MAX_KBIT_PER_JOULE}
+            step={EE_THRESHOLD_STEP_KBIT_PER_JOULE}
+            description={say(
+              'scenarioData.eeThreshold.description',
+              '首頁展示只在服務 EE 低於此值後進入 EE handover TTT；候選只需高於目前服務波束即可，不以此值作第二個觸發條件。',
+              'The homepage starts EE handover TTT only after serving EE falls below this floor; a candidate only needs to improve on the current serving beam.',
+            )}
+            effect={say(
+              'scenarioData.eeThreshold.effect',
+              '首頁 EE 使用 bounded demo trajectory，會緩慢變化，避免 active-beam 分母造成瞬間跳動；原始公式仍保留在診斷資料。',
+              'Homepage EE uses a bounded demo trajectory to prevent active-beam denominator jumps; the raw formula remains available for diagnostics.',
+            )}
+            source={say(
+              'scenarioData.eeThreshold.source',
+              '首頁 instantaneous angle-aware EE candidate gate；引擎比較單位為 bit/J。',
+              'Homepage instantaneous angle-aware EE candidate gate; the engine compares in bit/J.',
+            )}
+            resetValue={`${DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE} Kbit/J`}
+            helpId="param.scenario.eeThreshold"
+            accentColor={UI_TOKENS.color.semantic.warning.accent}
+            formatValue={value => `${value.toLocaleString('en-US')} Kbit/J`}
+            onChange={onEeThresholdKbitPerJouleChange}
+          />
+        )}
       </fieldset>
 
       {onFocusCellChange !== undefined && (

@@ -184,12 +184,14 @@ export type HomepageBeamMetricEeBasis =
   | 'active-assignment'
   | 'primary-beam-display'
   | 'candidate-probe'
+  | 'homepage-demo-stable'
   | 'homepage-handover-hierarchy-display'
   | 'not-available';
 export type HomepageBeamMetricProvenance =
   | 'active-assignment-angle-aware'
   | 'primary-ue-same-frame-angle-aware-display-only'
   | 'primary-ue-same-frame-angle-aware-beam-metric-display-only'
+  | 'homepage-demo-ee-display-only'
   | 'homepage-ee-hierarchy-display-only'
   | 'not-available';
 

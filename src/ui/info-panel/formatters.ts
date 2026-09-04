@@ -223,7 +223,9 @@ export function resolveDuelStateLabel(input: {
     return { label: 'recent HO', tone: 'warning' };
   }
   if (input.comparisonRole === 'candidate') {
-    return { label: 'candidate', tone: 'candidate' };
+    // StatusBadge renders its label in uppercase. Keep the internal role name
+    // as `candidate`, but use the user-facing term agreed for the homepage.
+    return { label: 'option', tone: 'candidate' };
   }
   return { label: 'idle', tone: 'neutral' };
 }

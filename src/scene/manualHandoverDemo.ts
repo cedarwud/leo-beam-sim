@@ -26,6 +26,12 @@ export interface ManualHandoverDemoOptions {
   /** Snapshot captured when the teaching cue is armed; prevents target drift. */
   readonly sourceSatId?: string | null;
   readonly sourceCellId?: number | null;
+  /**
+   * Caller-chosen inter target. A lecture names its own winner spacecraft, so
+   * without this the inter branch can only ever draw what the live model
+   * happened to measure — which during a scripted run is usually nothing.
+   */
+  readonly targetSatId?: string | null;
   readonly targetCellId?: number | null;
   readonly servingSinrDb?: number | null;
   readonly candidateSinrDb?: number | null;
@@ -62,16 +68,17 @@ export function resolveManualHandoverDemoEvent(
 
   if (kind === 'inter') {
     // Inter-satellite handover keeps the earth-fixed serving cell: only the
-    // apex satellite changes. Prefer the model's real pending / best candidate,
-    // then an actually illuminated same-cell satellite. Never fall back to an
-    // arbitrary visible satellite: that would make the display claim a link
-    // the model never selected.
+    // apex satellite changes. Prefer the caller's own snapshot, then the
+    // model's real pending / best candidate, then an actually illuminated
+    // same-cell satellite. Never fall back to an arbitrary visible satellite:
+    // that would make the display claim a link nobody selected.
     const sameCellCandidate = cellFrame.illuminatedBeams.find(beam => (
       beam.cellId === sourceCellId
       && beam.satId !== sourceSatId
     ));
     const visibleSatelliteIdSet = new Set(visibleSatelliteIds);
     const targetSatId = [
+      options.targetSatId,
       primary?.pendingTargetSatId,
       primary?.comparisonSatId,
       sameCellCandidate?.satId,

@@ -65,6 +65,12 @@ export interface ForecastEePolicyConfig extends HandoverTttConfig {
 export interface InstantaneousEePolicyConfig extends HandoverTttConfig {
   /** Relative EE difference treated as equal; homepage uses zero by default. */
   readonly eeToleranceRelative: number;
+  /** Absolute lower floor for a candidate's instantaneous EE, in bit/J. */
+  readonly minimumEeBitsPerJoule?: number;
+  /** Service-only trigger floor; candidates may be below it when they still improve the source. */
+  readonly servingEeThresholdBitsPerJoule?: number;
+  /** Optional lane-specific hard gates; the focused-cell homepage keeps EE as the trigger. */
+  readonly requiredGates?: readonly GateCode[];
 }
 
 export const SINR_OFFSET_REQUIRED_GATES: readonly GateCode[] = Object.freeze([
@@ -110,6 +116,13 @@ function validateSinrConfig(config: SinrOffsetPolicyConfig): void {
 function validateEeConfig(config: ForecastEePolicyConfig): void {
   validateTttConfig(config);
   finiteNonNegative(config.eeToleranceRelative, 'eeToleranceRelative');
+}
+
+function validateInstantaneousEeConfig(config: InstantaneousEePolicyConfig): void {
+  validateTttConfig(config);
+  finiteNonNegative(config.eeToleranceRelative, 'eeToleranceRelative');
+  finiteNonNegative(config.minimumEeBitsPerJoule ?? 0, 'minimumEeBitsPerJoule');
+  finiteNonNegative(config.servingEeThresholdBitsPerJoule ?? config.minimumEeBitsPerJoule ?? 0, 'servingEeThresholdBitsPerJoule');
 }
 
 function gateMap(opportunity: CandidateOpportunity): ReadonlyMap<GateCode, CandidateOpportunity['gates'][number]> {
@@ -272,6 +285,8 @@ function instantaneousEeTriggerStatus(
   candidate: CandidateOpportunity,
   hardEligibility: CandidateEligibility,
   tolerance: number,
+  minimumEeBitsPerJoule: number,
+  servingEeThresholdBitsPerJoule: number,
 ): CandidateTriggerStatus {
   if (hardEligibility === 'unavailable') return 'unavailable';
   if (hardEligibility === 'ineligible') return 'not-satisfied';
@@ -279,10 +294,19 @@ function instantaneousEeTriggerStatus(
 
   const candidateEe = instantaneousEeValue(candidate);
   if (candidateEe === null) return 'unavailable';
+  if (candidateEe < minimumEeBitsPerJoule) return 'not-satisfied';
   if (serving === null) return 'satisfied';
 
   const servingEe = instantaneousEeValue(serving);
   if (servingEe === null) return 'unavailable';
+  // The homepage threshold is a service-health trigger, not a candidate
+  // admission floor. Keep the current service until it actually drops below
+  // the configured floor; once it does, rank every usable alternative and
+  // allow the best one to start its normal TTT even if it is also below that
+  // floor. The candidate still must improve the current service.
+  if (servingEeThresholdBitsPerJoule > 0 && servingEe >= servingEeThresholdBitsPerJoule) {
+    return 'not-satisfied';
+  }
   const requiredEe = servingEe + Math.abs(servingEe) * tolerance;
   // The active homepage decision is an EE maximisation: equality is not a
   // handover opportunity, and the configured tolerance is applied only as a
@@ -562,7 +586,7 @@ export class InstantaneousEePolicy implements HandoverSelectionPolicy {
   private readonly config: InstantaneousEePolicyConfig;
 
   constructor(config: InstantaneousEePolicyConfig) {
-    validateEeConfig(config);
+    validateInstantaneousEeConfig(config);
     this.config = Object.freeze({ ...config });
   }
 
@@ -570,7 +594,7 @@ export class InstantaneousEePolicy implements HandoverSelectionPolicy {
     return evaluatePolicy(
       'ee-optimization',
       input,
-      SINR_OFFSET_REQUIRED_GATES,
+      this.config.requiredGates ?? SINR_OFFSET_REQUIRED_GATES,
       this.config,
       'ee-advantage',
       (candidate, hard) => instantaneousEeTriggerStatus(
@@ -578,6 +602,8 @@ export class InstantaneousEePolicy implements HandoverSelectionPolicy {
         candidate,
         hard.hardEligibility,
         this.config.eeToleranceRelative,
+        this.config.minimumEeBitsPerJoule ?? 0,
+        this.config.servingEeThresholdBitsPerJoule ?? this.config.minimumEeBitsPerJoule ?? 0,
       ),
       values => [...values].sort(compareInstantaneousEePrepared),
     );

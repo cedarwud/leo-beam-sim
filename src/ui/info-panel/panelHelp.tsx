@@ -120,7 +120,7 @@ const LOCAL_EN: Record<string, string> = {
   'panel.role.hoSource': 'Previous link',
   'panel.role.pendingTarget': 'Pending target',
   'panel.role.hoTarget': 'Handover target',
-  'panel.role.bestCandidate': 'Best candidate',
+  'panel.role.bestCandidate': 'Best option',
   'panel.role.comparison': 'Comparison',
 
   'panel.caption.serving': 'The link currently providing service.',

@@ -139,28 +139,6 @@ const roleControlledMarkup = renderToStaticMarkup(
 assert.match(roleControlledMarkup, /id="scenario-data-serving-beam-layout-1"[^>]*checked=""/);
 assert.match(roleControlledMarkup, /id="scenario-data-candidate-beam-layout-19"[^>]*checked=""/);
 
-const roleFollowMarkup = renderToStaticMarkup(
-  <LocaleProvider initialLocale="en">
-    <SignalTuningPanel
-      baseProfile={profile}
-      tuning={createSignalTuningState(profile)}
-      topology={{ ...createSceneTopologyState(), servingBeamCount: 19 }}
-      sceneVisualScale={createSceneVisualScaleState()}
-      hasOverrides
-      appMode="sinr-experiment"
-      formulaBudget={null}
-      initialMainTab="scenario"
-      servingSatelliteId="sat-serving"
-      candidateSatelliteId="sat-candidate"
-      onTuningChange={() => {}}
-      onTopologyChange={() => {}}
-      onSceneVisualScaleChange={() => {}}
-      onReset={() => {}}
-    />
-  </LocaleProvider>,
-);
-assert.match(roleFollowMarkup, /id="scenario-data-serving-beam-layout-19"[^>]*checked=""/);
-assert.match(roleFollowMarkup, /id="scenario-data-candidate-beam-layout-19"[^>]*checked=""/);
-assert.match(roleFollowMarkup, /data-testid="scenario-data-candidate-follow-serving"/);
+assert.doesNotMatch(roleControlledMarkup, /scenario-data-candidate-follow-serving/);
 
 console.log('SignalTuningPanel keeps the five active SINR groups and maps channel internals into H without retired symbols.');

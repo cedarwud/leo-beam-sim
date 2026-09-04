@@ -81,7 +81,7 @@ function stateFor(
       tone: 'serving',
       rows: Object.freeze([
         ...baseRows(facts),
-        { label: 'Candidate', value: candidate },
+        { label: 'Option', value: candidate },
       ]),
       startedAtSimTimeSec,
       lastCommitTimeMs,
@@ -91,12 +91,12 @@ function stateFor(
   if (beat === 'candidate') {
     return Object.freeze({
       beat,
-      eyebrow: '③ CANDIDATE',
+      eyebrow: '③ BEAM OPTION',
       text: '候選連線出現。接下來比較的是同一個 frame 裡的 serving、candidate 與它們的 SINR 差值。',
       tone: 'candidate',
       rows: Object.freeze([
         ...baseRows(facts),
-        { label: 'Candidate', value: candidate },
+        { label: 'Option', value: candidate },
         { label: 'ΔSINR', value: deltaText },
       ]),
       startedAtSimTimeSec,
@@ -111,7 +111,7 @@ function stateFor(
       text: `候選尚未跨過 ${policy.offsetDb.toFixed(1)} dB offset；它被保留為比較對象，但不會被宣告為換手。`,
       tone: 'warn',
       rows: Object.freeze([
-        { label: 'Candidate', value: candidate },
+        { label: 'Option', value: candidate },
         { label: 'ΔSINR', value: deltaText },
         { label: 'Offset', value: formatNumber(policy.offsetDb, 1, ' dB') },
       ]),
@@ -127,7 +127,7 @@ function stateFor(
       text: `候選已跨過 ${policy.offsetDb.toFixed(1)} dB offset；優勢必須持續到 TTT 完成，才會提交跨衛星換手。`,
       tone: 'source',
       rows: Object.freeze([
-        { label: 'Candidate', value: candidate },
+        { label: 'Option', value: candidate },
         { label: 'ΔSINR', value: deltaText },
         { label: 'TTT', value: tttText },
       ]),

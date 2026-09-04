@@ -32,7 +32,10 @@ import {
   resolvePrimaryCellServingRecord,
   type UeCellServingRecord,
 } from './sinrLiveCellModel';
-import { resolveSinrLiveBeamBudget } from './sinrLiveBeamBudget';
+import {
+  resolveSinrLiveBeamBudget,
+  resolveSinrLivePhysicalRoleBeamCount,
+} from './sinrLiveBeamBudget';
 import { resolveSinrLiveBeamCapacityPerSat } from './sinrLiveCellRuntime';
 import { computePaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
 import { useLatchedSignals } from './useLatchedSignals';
@@ -597,6 +600,9 @@ export function buildPublishedPrimaryServing(
   // W6: real elevation/range for the cell serving sat (display-only); null when the
   // caller provides no lookup (the pure unit gate) — never fabricated.
   const geo = resolveServingGeo?.(servingSatId) ?? { elevationDeg: null, rangeKm: null };
+  const linkElevationDeg = recordJoinsDecision
+    ? record.servingLinkSample?.angleAware?.elevationDeg ?? geo.elevationDeg
+    : geo.elevationDeg;
   // W7: the comparison contender = this UE's serving-cell best NON-serving candidate
   // (carried on the record from the cell model), in the SAME cell-truth model as serving —
   // so the Δ is single-model (NOT the steered candidate, which would recreate the W1
@@ -627,14 +633,14 @@ export function buildPublishedPrimaryServing(
     servingBeamId,
     servingCellId: record.cellId,
     servingSinrDb: sinrDb,
-    servingElevationDeg: geo.elevationDeg,
+    servingElevationDeg: linkElevationDeg,
     servingRangeKm: geo.rangeKm,
     panelPrimary: {
       role: 'serving',
       satId: servingSatId,
       beamId: servingBeamId,
       sinrDb,
-      elevationDeg: geo.elevationDeg,
+      elevationDeg: linkElevationDeg,
       rangeKm: geo.rangeKm,
       status,
     },
@@ -908,22 +914,28 @@ export function useSimStatePublisher({
       policyConfigHash,
       pinnedKey: candidateInspectionPinnedKey,
       previousSnapshot: previousAcceptedSnapshotForCurrentPolicy,
-      // The accepted decision is the sole candidate authority. The homepage
-      // rail shows only alternatives that pass both the hard service gates and
-      // the active decision trigger. Hard-eligible-but-not-trigger-satisfied
-      // rows remain in the immutable decision/overflow for diagnostics but are
-      // not presented as actual next-handover candidates. This keeps the rail
-      // aligned with the candidates that can really advance the handover.
+      // The accepted decision is the sole candidate authority. Keep hard-eligible
+      // alternatives visible while they are being monitored; the EE trigger is
+      // still enforced by the decision engine and is the only condition that can
+      // advance a handover. Binding visibility to that instantaneous trigger made
+      // the rail jump from zero rows to a whole replacement set at the threshold.
       // Each selected satellite still carries its configured 1/7/19 beam roster
       // in the rail, while the scene projection bounds carrier geometry to the
       // serving beam and the existing winner.
-      displayAllHardEligibleCandidates: true,
-      displayOnlyTriggerSatisfiedCandidates: true,
+      // Keep the homepage in its compact story budget. Expanding every
+      // hard-eligible Walker satellite made a one-cell demo flash a large
+      // 0→N→0 candidate cloud whenever a boundary frame changed eligibility.
+      // The decision still retains the complete scientific set; only the
+      // accepted scene/rail presentation is bounded here.
+      displayAllHardEligibleCandidates: false,
+      displayOnlyTriggerSatisfiedCandidates: false,
       // The homepage scenario controls are the source of the rendered 1/7/19
       // beam roster. Do not fall back to the profile's default here: doing so
       // made the accepted snapshot/rail silently disagree with the scene when
       // the serving layout was changed by the left control panel.
-      configuredBeamCount: servingBeamCount ?? profile.beams.perSatellite,
+      configuredBeamCount: resolveSinrLivePhysicalRoleBeamCount(
+        servingBeamCount ?? profile.beams.perSatellite,
+      ) ?? profile.beams.perSatellite,
     });
     if (session === null) return null;
     previousAcceptedSnapshotRef.current = session.snapshot;
@@ -1154,17 +1166,23 @@ export function useSimStatePublisher({
     const displayCandidateSatId = primaryCellRecord?.pendingTargetSatId
       ?? primaryCellRecord?.comparisonSatId
       ?? null;
+    const displayServingRoleBeamCount = homepageControllerEnabled
+      ? resolveSinrLivePhysicalRoleBeamCount(servingBeamCount)
+      : servingBeamCount;
+    const displayCandidateRoleBeamCount = homepageControllerEnabled
+      ? resolveSinrLivePhysicalRoleBeamCount(candidateBeamCount)
+      : candidateBeamCount;
     const displayBeamFallback = resolveSinrLiveBeamCapacityPerSat(profile);
     const displayServingBeamBudget = resolveSinrLiveBeamBudget({
       fallbackBeamCount: displayBeamFallback,
       satelliteId: displayServingSatId,
-      roleBeamCount: servingBeamCount,
+      roleBeamCount: displayServingRoleBeamCount,
       beamCountBySatellite,
     });
     const displayCandidateBeamBudget = resolveSinrLiveBeamBudget({
       fallbackBeamCount: displayBeamFallback,
       satelliteId: displayCandidateSatId,
-      roleBeamCount: candidateBeamCount,
+      roleBeamCount: displayCandidateRoleBeamCount,
       beamCountBySatellite,
     });
     const beamDisplayServingActiveCount = sim.sinrLiveCells === undefined
@@ -1429,12 +1447,17 @@ export function useSimStatePublisher({
         snapshot: acceptedHandoverPresentationSnapshotForRender,
         servingBeamCount: servingBeamCount ?? profile.beams.perSatellite,
         candidateBeamCount: candidateBeamCount ?? profile.beams.perSatellite,
+        physicalServingBeamCount: resolveSinrLivePhysicalRoleBeamCount(
+          servingBeamCount ?? profile.beams.perSatellite,
+        ) ?? profile.beams.perSatellite,
+        physicalCandidateBeamCount: resolveSinrLivePhysicalRoleBeamCount(
+          candidateBeamCount ?? profile.beams.perSatellite,
+        ) ?? profile.beams.perSatellite,
         beamCountBySatellite,
         previousMetrics: previousHomepageBeamMetricsRef.current,
-        // Homepage-only teaching projection: the current service beam is the
-        // visible baseline; accepted handover candidates may lead it. This is
-        // display-only and never feeds the canonical decision engine.
-        eeDisplayPolicy: 'handover-hierarchy',
+        // The homepage now presents the same corrected replacement EE that
+        // drives the handover policy. No synthetic hierarchy is applied.
+        eeDisplayPolicy: 'source',
       })
       : homepageControllerEnabled
         ? previousHomepageBeamMetricsRef.current

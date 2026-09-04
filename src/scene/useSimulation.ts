@@ -30,6 +30,7 @@ import {
   buildSinrLiveCellLayout,
   createSinrLiveCellModel,
   resolveSinrLiveBeamsPerSat,
+  resolveSinrLivePhysicalBeamBudget,
   resolveSinrLiveSceneCellCount,
 } from './sinrLiveCellRuntime';
 import { planSeekSettle, SEEK_SETTLE_MAX_STEP_SEC } from './seekSettle';
@@ -37,6 +38,7 @@ import { isMultiCandidateWarmStartFrame } from './multiCandidateWarmStart';
 import { resolveInitialReplayWarmupSec } from './replayStartPolicy';
 import { reScalarize } from '../modqn/replay-bundle/rescalarize';
 import { computeHeuristicNotPaperScore } from '../engine/handover/decision-override';
+import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../engine/handover/eeThreshold';
 import {
   ModqnEnvelopeContext,
   ModqnHandoverModeContext,
@@ -51,6 +53,28 @@ import type { ReScalarizeResult } from '../modqn/replay-bundle/rescalarize';
 class S3HandoverManager extends HandoverManager {
   // React MutableRefObject equivalent (plain object ref — no React dep needed).
   overrideRef: { current: HandoverDecisionOverride | null } = { current: null };
+  /**
+   * The homepage cell-truth model owns the visible primary handover. The
+   * legacy manager still supplies the initial serving link, but must not emit
+   * an independent SINR handover that can fire above the homepage EE floor.
+   */
+  private readonly suppressPrimaryHandover: boolean;
+
+  constructor(
+    config: Profile['handover'],
+    options: ConstructorParameters<typeof HandoverManager>[1] = {},
+    suppressPrimaryHandover = false,
+  ) {
+    super(config, options);
+    this.suppressPrimaryHandover = suppressPrimaryHandover;
+  }
+
+  override clearServing(): void {
+    // A transient legacy link-budget gap must not clear the state that the
+    // homepage's independent cell-truth authority is rendering.
+    if (this.suppressPrimaryHandover && this.state.satId !== null) return;
+    super.clearServing();
+  }
 
   override update(
     candidates: Parameters<HandoverManager['update']>[0],
@@ -58,6 +82,16 @@ class S3HandoverManager extends HandoverManager {
     simTimeMs: Parameters<HandoverManager['update']>[2],
     explicitOverride?: HandoverDecisionOverride,
   ) {
+    if (this.suppressPrimaryHandover && this.state.satId !== null) {
+      // Keep the legacy state available to frozen frame plumbing, while the
+      // homepage model alone decides intra/inter handover and its EE threshold.
+      const serving = candidates.find(candidate => (
+        candidate.satId === this.state.satId
+        && candidate.beamId === this.state.beamId
+      ));
+      if (serving !== undefined) this.state.sinrDb = serving.sinrDb;
+      return { action: 'stay' as const, reason: 'homepage EE cell-truth authority' };
+    }
     return super.update(
       candidates,
       dt,
@@ -212,6 +246,10 @@ export function useSimulation(
   focusCellId: number | null = null,
   /** Homepage-only gate; preview/replay lanes retain their existing authority. */
   multiCandidateDecisionEnabled = false,
+  /** Homepage-only absolute candidate EE floor, in Kbit/J. */
+  eeThresholdKbitPerJoule = DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
+  /** Root homepage only: cell truth owns primary handover decisions. */
+  suppressLegacyPrimaryHandover = false,
 ): SimFrame {
   // S3: read handover mode + current bundle envelope from contexts. When the
   // mode contexts are absent (headless tests, pure SINR render) we fall back to
@@ -311,15 +349,21 @@ export function useSimulation(
   // S3: use the subclass so stepRuntimeFrame picks up the override without
   // needing a frozen-file edit.
   const hoManager = useMemo(
-    () => new S3HandoverManager(profile.handover, { enforceSharedHandoverInterval: true }),
-    [profile.handover],
+    () => new S3HandoverManager(
+      profile.handover,
+      { enforceSharedHandoverInterval: true },
+      suppressLegacyPrimaryHandover,
+    ),
+    [profile.handover, suppressLegacyPrimaryHandover],
   );
   const requestedUeCount = Math.trunc(ueCount ?? 1);
   const effectiveUeCount = Number.isFinite(requestedUeCount) ? Math.max(1, requestedUeCount) : 1;
   const sceneCellCount = resolveSinrLiveSceneCellCount(servingBeamCount);
   const sceneBeamFallbackCount = servingBeamCount === undefined
     ? resolveSinrLiveBeamsPerSat(profile)
-    : sceneCellCount;
+    : multiCandidateDecisionEnabled
+      ? resolveSinrLivePhysicalBeamBudget(profile, sceneCellCount)
+      : sceneCellCount;
   const sceneCellUeDistribution = useMemo(() => {
     if (!useEarthFixedCellTruth || ueDistributionMode !== 'seven-cell-asymmetric') return null;
     const layout = buildSinrLiveCellLayout(profile, sceneCellCount);
@@ -372,12 +416,14 @@ export function useSimulation(
     servingBeamCount,
     candidateBeamCount,
     beamHoppingEnabled,
+    eeThresholdKbitPerJoule,
   });
   sinrLiveBeamRuntimeRef.current = {
     beamCountBySatellite,
     servingBeamCount,
     candidateBeamCount,
     beamHoppingEnabled,
+    eeThresholdKbitPerJoule,
   };
   const sinrLiveCellModel = useMemo(
     () => createSinrLiveCellModel(
@@ -390,6 +436,7 @@ export function useSimulation(
       sinrLiveBeamRuntimeRef.current.beamHoppingEnabled,
       beamPointingMode,
       multiCandidateDecisionEnabled,
+      sinrLiveBeamRuntimeRef.current.eeThresholdKbitPerJoule,
     ),
     [
       sinrLiveCellModelStructureKey,
@@ -414,11 +461,13 @@ export function useSimulation(
       servingBeamCount,
       candidateBeamCount,
       beamHoppingEnabled,
+      eeThresholdKbitPerJoule,
     );
   }, [
     beamCountBySatellite,
     beamHoppingEnabled,
     candidateBeamCount,
+    eeThresholdKbitPerJoule,
     profile,
     sceneBeamFallbackCount,
     servingBeamCount,

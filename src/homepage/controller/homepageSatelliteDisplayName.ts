@@ -8,6 +8,19 @@
  */
 import { formatSatelliteLabel } from '../../utils/formatSatelliteLabel';
 
+function formatHomepageFallbackSatelliteLabel(satelliteId: string): string {
+  const formattedLabel = formatSatelliteLabel(satelliteId);
+  const withoutSyntheticCandidatePrefix = formattedLabel
+    .replace(/^CANDIDATE(?:[-_ ]+)/i, '')
+    .trim();
+
+  // Candidate IDs are data keys, not user-facing names. Keep the original
+  // label as a safe fallback if a malformed synthetic ID contains no suffix.
+  return withoutSyntheticCandidatePrefix.length > 0
+    ? withoutSyntheticCandidatePrefix
+    : formattedLabel;
+}
+
 export interface HomepageSatelliteNameRecord {
   readonly satelliteId: string;
   readonly satelliteName: string;
@@ -35,5 +48,5 @@ export function resolveHomepageSatelliteDisplayName(
   const sourceName = names?.get(satelliteId)?.trim();
   return sourceName && sourceName.length > 0
     ? sourceName
-    : formatSatelliteLabel(satelliteId);
+    : formatHomepageFallbackSatelliteLabel(satelliteId);
 }

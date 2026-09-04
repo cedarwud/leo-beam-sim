@@ -1,6 +1,7 @@
 import type { AppExperienceMode } from './appExperienceMode';
 import { isSupportedBeamLayoutCount } from '../core/beam/completeHexPresets';
 import { DEFAULT_UE_MOBILITY_PARAMS } from '../engine/ue/multiUeMobility';
+import { normalizeEeThresholdKbitPerJoule } from '../engine/handover/eeThreshold';
 import type { EnvAxes } from '../modqn/training-trigger/types';
 import type { Profile } from '../profiles/types';
 import type { RuntimeConfig, BeamDensity } from '../scene/types';
@@ -68,6 +69,10 @@ export interface AppRuntimeConfigInput {
   readonly directorFocusCommand?: RuntimeConfig['directorFocusCommand'];
   readonly viewport: RuntimeConfig['viewport'];
   readonly sceneTopology: SceneTopologyState;
+  /** Homepage-only instantaneous EE candidate floor, in Kbit/J. */
+  readonly eeThresholdKbitPerJoule?: number;
+  /** The handover lecture currently running on the homepage, or null. */
+  readonly teachingLectureKind?: 'intra' | 'inter' | null;
   readonly selectedTrainingEnvAxes: EnvAxes | undefined;
   readonly modqnVisualLayerPreset?: ModqnVisualLayerPreset;
   // S-FLAG-2 producer-readiness gate for the MODQN service-allocation overlay
@@ -84,6 +89,7 @@ export interface AppRuntimeConfigInput {
   readonly manualHandoverStartedAtMs?: number;
   readonly manualHandoverSourceSatId?: string;
   readonly manualHandoverSourceCellId?: number;
+  readonly manualHandoverTargetSatId?: string;
   readonly manualHandoverTargetCellId?: number;
   readonly manualHandoverServingSinrDb?: number;
   readonly manualHandoverCandidateSinrDb?: number;
@@ -136,6 +142,10 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     // authority. Candidate follows it unless explicitly overridden.
     servingBeamCount: effectiveSceneBeamCount,
     candidateBeamCount: input.sceneTopology.candidateBeamCount ?? effectiveSceneBeamCount,
+    teachingLectureKind: input.teachingLectureKind ?? null,
+    eeThresholdKbitPerJoule: input.eeThresholdKbitPerJoule === undefined
+      ? undefined
+      : normalizeEeThresholdKbitPerJoule(input.eeThresholdKbitPerJoule),
     beamHoppingEnabled: input.sceneTopology.beamHoppingEnabled,
     focusCellId: input.sceneTopology.focusCellId,
     ueCount: input.sceneTopology.ueCount
@@ -176,6 +186,7 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     manualHandoverStartedAtMs: input.manualHandoverStartedAtMs,
     manualHandoverSourceSatId: input.manualHandoverSourceSatId,
     manualHandoverSourceCellId: input.manualHandoverSourceCellId,
+    manualHandoverTargetSatId: input.manualHandoverTargetSatId,
     manualHandoverTargetCellId: input.manualHandoverTargetCellId,
     manualHandoverServingSinrDb: input.manualHandoverServingSinrDb,
     manualHandoverCandidateSinrDb: input.manualHandoverCandidateSinrDb,

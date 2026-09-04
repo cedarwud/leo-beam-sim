@@ -182,7 +182,7 @@ export function SinrLiveQuickControls({
                 : 'Updating the handover event index for the current parameters'
               : 'Jump to the next indexed intra handover'}
           >
-            Next Intra{nextIntraMode === 'real-trigger' ? ' · trigger' : ''}{typeof nextIntraCount === 'number' ? ` · ${nextIntraCount}` : ''}
+            Intra Handover{nextIntraMode === 'real-trigger' ? ' · trigger' : ''}{typeof nextIntraCount === 'number' ? ` · ${nextIntraCount}` : ''}
           </button>
           <button
             type="button"
@@ -198,7 +198,7 @@ export function SinrLiveQuickControls({
               ? 'Seek to the next indexed inter handover and play the moving satellite pair'
               : 'Jump to the next indexed inter handover'}
           >
-            Next Inter{typeof nextInterCount === 'number' ? ` · ${nextInterCount}` : ''}
+            Inter Handover{typeof nextInterCount === 'number' ? ` · ${nextInterCount}` : ''}
           </button>
           {handoverIndexBuilding && showHandoverIndexStatus && (
             <span

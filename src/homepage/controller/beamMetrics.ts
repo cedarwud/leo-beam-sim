@@ -14,7 +14,10 @@ import type {
   HomepageSourceFrame,
 } from './contracts';
 import { projectHomepageHandoverStory } from './homepageHandoverStoryProjection';
-import { homepageSatelliteColorForBeam } from './homepageSatelliteVisualIdentity';
+import {
+  homepageEeColorNormalized,
+  homepageSatelliteColorForBeam,
+} from './homepageSatelliteVisualIdentity';
 import {
   hasContinuousHomepageMetricTimeline,
   stabilizeHomepageMetricValues,
@@ -23,7 +26,9 @@ import {
 import {
   SINR_LIVE_CANDIDATE_PROBE_PROVENANCE,
   SINR_LIVE_PRIMARY_BEAM_METRIC_PROVENANCE,
+  decodeCellLinkBudgetBeamId,
 } from '../../scene/sinrLiveCellModel';
+import { homepageDemoEeSatelliteFactor } from '../../engine/handover/homepageDemoEe';
 import type {
   SinrLiveCandidateProbeEvidence,
   SinrLivePrimaryBeamMetricEvidence,
@@ -39,6 +44,9 @@ export interface BuildHomepageBeamMetricsInput {
   readonly snapshot: HomepageAcceptedSnapshot | null;
   readonly servingBeamCount: number;
   readonly candidateBeamCount: number;
+  /** Physical beam budgets after mapping a focused-cell control to its seven-beam satellite. */
+  readonly physicalServingBeamCount?: number;
+  readonly physicalCandidateBeamCount?: number;
   readonly beamCountBySatellite?: Readonly<Record<string, number>>;
   /** Optional prior projection used only for same-role finite-value retention. */
   readonly previousMetrics?: HomepageBeamMetricsProjection | null;
@@ -91,6 +99,8 @@ interface DraftMetric {
 
 const HOMEPAGE_EE_HIERARCHY_PROVENANCE = 'homepage-ee-hierarchy-display-only' as const;
 const HOMEPAGE_EE_HIERARCHY_BASIS = 'homepage-handover-hierarchy-display' as const;
+const HOMEPAGE_DEMO_EE_PROVENANCE = 'homepage-demo-ee-display-only' as const;
+const HOMEPAGE_DEMO_EE_BASIS = 'homepage-demo-stable' as const;
 
 const CANDIDATE_PROBE_UNAVAILABLE_REASON =
   'candidate display-only power, rate, and instantaneous EE are unavailable: no finite same-frame angle-aware candidate-probe evidence exists';
@@ -147,7 +157,13 @@ function readAngleAwareMetricValues(
   const throughputBps = finiteOrNull(terms.throughputBps);
   const conversionEfficiency = finiteOrNull(terms.conversionEfficiency);
   const systemPowerW = finiteOrNull(terms.systemPowerW);
-  const sourceEe = finiteOrNull(terms.energyEfficiencyBitsPerJoule);
+  const rawSourceEe = finiteOrNull(terms.energyEfficiencyBitsPerJoule);
+  const homepageDemoEe = finiteOrNull(terms.homepageDemoEeBitsPerJoule);
+  // The homepage candidate lane publishes a bounded, temporally continuous
+  // projection alongside the raw formula. Prefer that projection when it is
+  // present so the serving row and the replacement rows share one readable
+  // threshold basis; rawSourceEe remains validated and available on the sample.
+  const sourceEe = homepageDemoEe ?? rawSourceEe;
   if (
     sinrDb === null
     || gammaDb === null
@@ -180,7 +196,8 @@ function readAngleAwareMetricValues(
     || conversionEfficiency <= 0
     || systemPowerW === null
     || systemPowerW <= 0
-    || sourceEe === null
+    || rawSourceEe === null
+    || (terms.homepageDemoEeBitsPerJoule !== undefined && homepageDemoEe === null)
   ) return null;
   // The public EE contract is system EE: the denominator is the same-frame
   // canonical P_sys, not the candidate link's own RF/supply power. Recompute
@@ -192,9 +209,9 @@ function readAngleAwareMetricValues(
   );
   if (
     !Number.isFinite(canonicalEe)
-    || Math.abs(sourceEe - canonicalEe) > Math.max(1e-9, Math.abs(canonicalEe) * 1e-9)
+    || Math.abs(rawSourceEe - canonicalEe) > Math.max(1e-9, Math.abs(canonicalEe) * 1e-9)
   ) return null;
-  return { sinrDb, powerW, throughputBps, energyEfficiencyBitsPerJoule: sourceEe };
+  return { sinrDb, powerW, throughputBps, energyEfficiencyBitsPerJoule: sourceEe! };
 }
 
 function readCandidateProbeMetricValues(
@@ -230,6 +247,98 @@ function comparePairRecord(left: PairRecord, right: PairRecord): number {
   if (left.active !== right.active) return left.active ? -1 : 1;
   if (left.snapshot !== right.snapshot) return left.snapshot ? -1 : 1;
   return compareBeamId(left.key.beamId, right.key.beamId);
+}
+
+/** Stable display-only contrast for the seven physical beams in one cell. */
+const HOMEPAGE_ROSTER_EE_FACTORS = Object.freeze([
+  0.98,
+  1.06,
+  0.88,
+  1.02,
+  0.84,
+  0.96,
+  0.90,
+] as const);
+
+function homepageRosterEeFactor(beamId: number): number {
+  const variantIndex = decodeCellLinkBudgetBeamId(beamId).variantIndex;
+  return HOMEPAGE_ROSTER_EE_FACTORS[variantIndex] ?? 0.94;
+}
+
+/**
+ * Keep a seven-beam candidate roster readable when a live frame publishes
+ * only B1. This is a homepage display fallback; it never enters the decision
+ * engine, the active RF assignments, or the canonical raw EE field.
+ */
+function fillHomepageRosterMetricGaps(
+  drafts: readonly DraftMetric[],
+  input: BuildHomepageBeamMetricsInput,
+): readonly DraftMetric[] {
+  if (input.eeDisplayPolicy !== 'source') return drafts;
+
+  const baselineBySatellite = new Map<string, DraftMetric>();
+  for (const draft of drafts) {
+    if (positiveFinite(draft.energyEfficiencyBitsPerJoule) === null) continue;
+    const current = baselineBySatellite.get(draft.satelliteId);
+    if (
+      current === undefined
+      || decodeCellLinkBudgetBeamId(draft.beamId).variantIndex === 0
+    ) baselineBySatellite.set(draft.satelliteId, draft);
+  }
+
+  const globalBaseline = drafts.find(draft => (
+    draft.role === 'candidate'
+    && positiveFinite(draft.energyEfficiencyBitsPerJoule) !== null
+  )) ?? drafts.find(draft => (
+    draft.role !== 'serving'
+    && positiveFinite(draft.energyEfficiencyBitsPerJoule) !== null
+  )) ?? drafts.find(draft => positiveFinite(draft.energyEfficiencyBitsPerJoule) !== null);
+  const globalBaselineEe = positiveFinite(globalBaseline?.energyEfficiencyBitsPerJoule);
+
+  return drafts.map(draft => {
+    if (draft.role !== 'observed' && draft.role !== 'candidate') return draft;
+    const sameSatelliteBaseline = baselineBySatellite.get(draft.satelliteId);
+    const baseline = sameSatelliteBaseline ?? globalBaseline;
+    const rawEe = positiveFinite(draft.energyEfficiencyBitsPerJoule);
+    const baselineEe = positiveFinite(baseline?.energyEfficiencyBitsPerJoule)
+      ?? globalBaselineEe;
+    // Finite values are already the model/source evidence used by the
+    // handover decision. Do not decorate them again here: a second
+    // satellite/beam multiplier can both suppress the whole roster and make
+    // the accepted target appear worse than the serving beam.
+    if (rawEe !== null) return draft;
+    if (baseline === undefined || baselineEe === null) return draft;
+
+    // Only synthesized rows need a deterministic fallback value. The
+    // fallback stays close to the same-satellite baseline while making the
+    // seven physical beams legible in the rail.
+    const satelliteFactor = homepageDemoEeSatelliteFactor(draft.satelliteId);
+    const sourceEe = baselineEe;
+    const displayedEe = Math.max(
+      80_000,
+      Math.min(
+        180_000,
+        sourceEe * satelliteFactor * homepageRosterEeFactor(draft.beamId),
+      ),
+    );
+    const powerW = positiveFinite(draft.powerW)
+      ?? positiveFinite(baseline?.powerW)
+      ?? 1;
+    const sinrDb = finiteOrNull(draft.sinrDb)
+      ?? finiteOrNull(baseline?.sinrDb)
+      ?? 0;
+    return {
+      ...draft,
+      availability: 'available',
+      sinrDb,
+      powerW,
+      throughputBps: displayedEe * powerW,
+      energyEfficiencyBitsPerJoule: displayedEe,
+      eeBasis: HOMEPAGE_DEMO_EE_BASIS,
+      provenance: HOMEPAGE_DEMO_EE_PROVENANCE,
+      reason: null,
+    };
+  });
 }
 
 function sumFinite(values: readonly number[]): number | null {
@@ -478,18 +587,6 @@ function rosterBeamIds(
   return result;
 }
 
-function normalizeEe(
-  ee: number,
-  min: number | null,
-  max: number | null,
-): number | null {
-  if (!Number.isFinite(ee) || min === null || max === null) return null;
-  // With no relative contrast, keep the metric at a neutral midpoint rather
-  // than implying that an isolated beam is intrinsically the strongest.
-  if (max === min) return 0.5;
-  return Math.max(0, Math.min(1, (ee - min) / (max - min)));
-}
-
 function metricRetentionKey(role: HomepageBeamMetricRole, key: CandidateLinkKey): string {
   return `${role}\u001f${candidateLinkKeyString(key)}`;
 }
@@ -500,6 +597,17 @@ function previousMetricIndex(
   const index = new Map<string, HomepageBeamMetric>();
   for (const metric of projection?.metrics ?? []) {
     const key = metricRetentionKey(metric.role, metric.key);
+    if (!index.has(key)) index.set(key, metric);
+  }
+  return index;
+}
+
+function previousMetricPairIndex(
+  projection: HomepageBeamMetricsProjection | null | undefined,
+): ReadonlyMap<string, HomepageBeamMetric> {
+  const index = new Map<string, HomepageBeamMetric>();
+  for (const metric of projection?.metrics ?? []) {
+    const key = candidateLinkKeyString(metric.key);
     if (!index.has(key)) index.set(key, metric);
   }
   return index;
@@ -631,6 +739,65 @@ function applyHomepageEeHierarchyDisplayPolicy(
 }
 
 /**
+ * The hierarchy policy is intentionally applied after the first raw-sample
+ * projection, so its target/baseline adjustments must pass through the same
+ * display filter once more. Otherwise an accepted-story phase change can
+ * bypass the continuity guard and visibly teleport EE for one frame.
+ */
+function stabilizeHomepageDisplayDrafts(
+  drafts: readonly DraftMetric[],
+  input: BuildHomepageBeamMetricsInput,
+): readonly DraftMetric[] {
+  const previousByRoleAndKey = previousMetricIndex(input.previousMetrics);
+  const previousByPair = previousMetricPairIndex(input.previousMetrics);
+  return drafts.map(draft => {
+    if (
+      draft.sinrDb === null
+      || draft.powerW === null
+      || draft.throughputBps === null
+      || draft.energyEfficiencyBitsPerJoule === null
+    ) return draft;
+    // The live homepage demo basis is already advanced through one bounded
+    // trajectory in the cell model. Do not smooth that same value again when
+    // the role/roster projection is finalized; a second pass is what made the
+    // rail show a stale above-threshold source at the instant of handover.
+    if (draft.eeBasis === HOMEPAGE_DEMO_EE_BASIS) return draft;
+    const current: HomepageLiveMetricValues = {
+      sinrDb: draft.sinrDb,
+      powerW: draft.powerW,
+      throughputBps: draft.throughputBps,
+      energyEfficiencyBitsPerJoule: draft.energyEfficiencyBitsPerJoule,
+    };
+    const previous = previousByRoleAndKey.get(metricRetentionKey(draft.role, draft.key))
+      // A handover changes a beam's display role from candidate/observed to
+      // serving. Retain the same pair's last value across that role boundary;
+      // otherwise the newly accepted service cold-starts from the target raw
+      // sample and the service block shows a false one-frame jump.
+      ?? previousByPair.get(candidateLinkKeyString(draft.key));
+    if (
+      previous === undefined
+      || previous.sinrDb === null
+      || previous.powerW === null
+      || previous.throughputBps === null
+      || previous.energyEfficiencyBitsPerJoule === null
+    ) return draft;
+    const stable = stabilizeHomepageMetricValues({
+      current,
+      previous,
+      currentSimTimeSec: input.sourceFrame.simTimeSec,
+      previousSimTimeSec: input.previousMetrics?.simTimeSec ?? null,
+    });
+    return {
+      ...draft,
+      sinrDb: stable.sinrDb,
+      powerW: stable.powerW,
+      throughputBps: stable.throughputBps,
+      energyEfficiencyBitsPerJoule: stable.energyEfficiencyBitsPerJoule,
+    };
+  });
+}
+
+/**
  * Project one accepted source frame into immutable homepage beam metrics.
  *
  * Candidate opportunity/snapshot data contributes pair identity and admission
@@ -668,6 +835,7 @@ export function buildHomepageBeamMetrics(
   const primaryBeamMetricsByKey = new Map<string, SinrLivePrimaryBeamMetricEvidence>();
   const primaryBeamMetricFieldPublished = cellFrame?.primaryBeamMetricEvidence !== undefined;
   const previousMetricsByRoleAndKey = previousMetricIndex(input.previousMetrics);
+  const previousMetricsByPair = previousMetricPairIndex(input.previousMetrics);
   const primaryServingRecord = cellFrame?.ues.find(record => record.ueId === sourceFrame.primaryUeId);
   const primaryServingSample = primaryServingRecord?.servingLinkSample ?? null;
   const primaryServingValues = (
@@ -907,6 +1075,14 @@ export function buildHomepageBeamMetrics(
     liveAggregates.set(sampleJoinKey, aggregate);
   }
 
+  // Primary-beam evidence is the display roster authority for the focused
+  // homepage cell. Keep its identities even when the generic SimFrame beam map
+  // is sparse (which is expected in the one-cell live lane); otherwise the
+  // model can measure B2..B7 but the rail has no pair to render them under.
+  for (const evidence of cellFrame?.primaryBeamMetricEvidence ?? []) {
+    addPair(evidence.key.satelliteId, evidence.key.beamId);
+  }
+
   for (const [joinKey, pair] of pairByJoinKey) {
     if (pair.active) activeKeys.add(joinKey);
     if (pair.candidate) candidateKeys.add(joinKey);
@@ -927,8 +1103,8 @@ export function buildHomepageBeamMetrics(
     const configuredIds = configuredBeamIds(satelliteId, sourceFrame, snapshotBeamIdsBySatellite);
     const configuredOverride = input.beamCountBySatellite?.[satelliteId];
     const roleCount = satelliteId === primaryServing?.satelliteId
-      ? input.servingBeamCount
-      : input.candidateBeamCount;
+      ? input.physicalServingBeamCount ?? input.servingBeamCount
+      : input.physicalCandidateBeamCount ?? input.candidateBeamCount;
     const requestedCount = usableCount(configuredOverride) ?? usableCount(roleCount);
     const beamIds = rosterBeamIds(sourcePairs, configuredIds, requestedCount);
     for (const beamId of beamIds) {
@@ -1021,7 +1197,12 @@ export function buildHomepageBeamMetrics(
         energyEfficiencyBitsPerJoule: aggregateEe,
       }
       : null;
-    const candidateValues = candidateProbeValues ?? legacyCandidateValues;
+    const primaryBeamMetric = primaryBeamMetricsByKey.get(joinKey);
+    const primaryBeamMetricValues = readPrimaryBeamMetricValues(primaryBeamMetric);
+    // B1 is normally supplied by the candidate probe. B2..B7 on a candidate
+    // satellite are display-only primary-beam evidence, so keep that evidence
+    // visible instead of turning the row into an empty card.
+    const candidateValues = candidateProbeValues ?? primaryBeamMetricValues ?? legacyCandidateValues;
     const aggregateValues = aggregateEe !== null
       && aggregateThroughputBps !== null
       && aggregateBeamPowerW !== null
@@ -1033,8 +1214,6 @@ export function buildHomepageBeamMetrics(
         energyEfficiencyBitsPerJoule: aggregateEe,
       }
       : null;
-    const primaryBeamMetric = role === 'candidate' ? undefined : primaryBeamMetricsByKey.get(joinKey);
-    const primaryBeamMetricValues = readPrimaryBeamMetricValues(primaryBeamMetric);
     const observedValues = primaryBeamMetricFieldPublished
       ? primaryBeamMetricValues
       : aggregateValues;
@@ -1043,15 +1222,44 @@ export function buildHomepageBeamMetrics(
       : role === 'serving'
         ? primaryServingValues
         : observedValues;
-    const previousMetric = previousMetricsByRoleAndKey.get(metricRetentionKey(role, pair.key));
+    const previousMetric = previousMetricsByRoleAndKey.get(metricRetentionKey(role, pair.key))
+      // The same physical pair legitimately changes from candidate to serving
+      // at commit. Use its prior accepted metric as the continuity baseline,
+      // instead of making the service row read the target's cold-start value.
+      ?? previousMetricsByPair.get(joinKey);
+    const storySample = role === 'candidate'
+      ? candidateProbe?.sample ?? primaryBeamMetric?.sample
+      : role === 'serving'
+        ? primaryServingSample
+        : primaryBeamMetric?.sample;
+    const usesHomepageDemoEe = (
+      storySample?.angleAware?.homepageDemoEeBitsPerJoule !== undefined
+      || previousMetric?.eeBasis === HOMEPAGE_DEMO_EE_BASIS
+    );
+    // Do not smear a pre-bounded raw value (for example the old 49 Kbit/J
+    // source frame) into the new homepage basis during hot reload/state
+    // migration. The next bounded sample is the correct new baseline.
+    const previousForStability = usesHomepageDemoEe
+      && previousMetric?.eeBasis !== HOMEPAGE_DEMO_EE_BASIS
+      ? null
+      : previousMetric;
+    // `homepageDemoEe` is already the single rate-limited homepage trajectory
+    // produced by the live decision lane. Applying the generic rail smoother a
+    // second time makes the displayed serving EE lag behind the value that
+    // actually crossed the threshold (for example showing 151 while the
+    // authority had already crossed below 135). Keep legacy/raw fixtures on
+    // the existing continuity filter, but never create a second clock for the
+    // homepage demo basis.
     const storyValues: HomepageLiveMetricValues | null = rawStoryValues === null
       ? null
-      : stabilizeHomepageMetricValues({
-        current: rawStoryValues,
-        previous: previousMetric ?? null,
-        currentSimTimeSec: sourceFrame.simTimeSec,
-        previousSimTimeSec: input.previousMetrics?.simTimeSec ?? null,
-      });
+      : usesHomepageDemoEe
+        ? rawStoryValues
+        : stabilizeHomepageMetricValues({
+          current: rawStoryValues,
+          previous: previousForStability ?? null,
+          currentSimTimeSec: sourceFrame.simTimeSec,
+          previousSimTimeSec: input.previousMetrics?.simTimeSec ?? null,
+        });
     const currentThroughputBps = storyValues?.throughputBps
       ?? null;
     const currentPowerW = storyValues?.powerW
@@ -1099,20 +1307,30 @@ export function buildHomepageBeamMetrics(
     let provenance: HomepageBeamMetric['provenance'];
     if (role === 'candidate' && candidateValuesAreFinite) {
       availability = 'available';
-      provenance = candidateValues !== null
-        ? candidateProbeValues === null && legacyCandidateValues !== null
-          ? 'active-assignment-angle-aware'
-          : SINR_LIVE_CANDIDATE_PROBE_PROVENANCE
+      provenance = usesHomepageDemoEe
+        ? HOMEPAGE_DEMO_EE_PROVENANCE
+        : candidateValues !== null
+        ? candidateProbeValues !== null
+          ? SINR_LIVE_CANDIDATE_PROBE_PROVENANCE
+          : primaryBeamMetricValues !== null
+            ? SINR_LIVE_PRIMARY_BEAM_METRIC_PROVENANCE
+            : legacyCandidateValues !== null
+              ? 'active-assignment-angle-aware'
+              : previousMetric?.provenance ?? 'not-available'
         : previousMetric?.provenance ?? 'not-available';
     } else if (role === 'candidate') {
       availability = 'unavailable';
-      reason = candidateProbe?.reason ?? CANDIDATE_PROBE_UNAVAILABLE_REASON;
-      provenance = candidateProbe === undefined
+      reason = candidateProbe?.reason ?? primaryBeamMetric?.reason ?? CANDIDATE_PROBE_UNAVAILABLE_REASON;
+      provenance = candidateProbe === undefined && primaryBeamMetric === undefined
         ? 'not-available'
-        : SINR_LIVE_CANDIDATE_PROBE_PROVENANCE;
+        : candidateProbe !== undefined
+          ? SINR_LIVE_CANDIDATE_PROBE_PROVENANCE
+          : SINR_LIVE_PRIMARY_BEAM_METRIC_PROVENANCE;
     } else if (energyEfficiencyBitsPerJoule !== null) {
       availability = 'available';
-      provenance = primaryBeamMetricFieldPublished
+      provenance = usesHomepageDemoEe
+        ? HOMEPAGE_DEMO_EE_PROVENANCE
+        : primaryBeamMetricFieldPublished
         ? SINR_LIVE_PRIMARY_BEAM_METRIC_PROVENANCE
         : 'active-assignment-angle-aware';
     } else if (isPrimaryServing && !hasLiveTerms) {
@@ -1144,14 +1362,22 @@ export function buildHomepageBeamMetrics(
       energyEfficiencyBitsPerJoule,
       eeNormalized: null,
       eeBasis: role === 'candidate' && candidateValuesAreFinite
-        ? candidateValues !== null
-          ? candidateProbeValues === null && legacyCandidateValues !== null
-            ? 'active-assignment'
-            : 'candidate-probe'
+        ? usesHomepageDemoEe
+          ? HOMEPAGE_DEMO_EE_BASIS
+          : candidateValues !== null
+          ? candidateProbeValues !== null
+            ? 'candidate-probe'
+            : primaryBeamMetricValues !== null
+              ? 'primary-beam-display'
+              : legacyCandidateValues !== null
+                ? 'active-assignment'
+                : previousMetric?.eeBasis ?? 'not-available'
           : previousMetric?.eeBasis ?? 'not-available'
         : energyEfficiencyBitsPerJoule === null
           ? 'not-available'
-          : primaryBeamMetricFieldPublished
+          : usesHomepageDemoEe
+            ? HOMEPAGE_DEMO_EE_BASIS
+            : primaryBeamMetricFieldPublished
             ? 'primary-beam-display'
             : 'active-assignment',
       provenance,
@@ -1160,7 +1386,13 @@ export function buildHomepageBeamMetrics(
     };
   });
 
-  const drafts = applyHomepageEeHierarchyDisplayPolicy(rawDrafts, input);
+  const drafts = stabilizeHomepageDisplayDrafts(
+    applyHomepageEeHierarchyDisplayPolicy(
+      fillHomepageRosterMetricGaps(rawDrafts, input),
+      input,
+    ),
+    input,
+  );
   const availableEe = drafts
     .filter(draft => draft.availability === 'available')
     .map(draft => draft.energyEfficiencyBitsPerJoule)
@@ -1176,11 +1408,7 @@ export function buildHomepageBeamMetrics(
     // fallback when no accepted allocation exists.
     eeNormalized: draft.energyEfficiencyBitsPerJoule === null
       ? null
-      : normalizeEe(
-        draft.energyEfficiencyBitsPerJoule,
-        availableEeMinBitsPerJoule,
-          availableEeMaxBitsPerJoule,
-        ),
+      : homepageEeColorNormalized(draft.energyEfficiencyBitsPerJoule),
     color: homepageSatelliteColorForBeam(draft.satelliteId, draft.beamId, {
       identityPaletteIndex: input.snapshot?.plan.identityAllocation?.assignments[draft.satelliteId]?.paletteIndex ?? null,
       // A candidate's primary beam is already the identity carrier for the
@@ -1188,13 +1416,7 @@ export function buildHomepageBeamMetrics(
       // after commit; `role` remains the decision truth, while this flag is
       // only the stable homepage shade treatment.
       isServing: draft.isPrimaryServing || draft.role === 'candidate',
-      eeNormalized: draft.energyEfficiencyBitsPerJoule === null
-        ? null
-        : normalizeEe(
-          draft.energyEfficiencyBitsPerJoule,
-          availableEeMinBitsPerJoule,
-          availableEeMaxBitsPerJoule,
-        ),
+      eeNormalized: homepageEeColorNormalized(draft.energyEfficiencyBitsPerJoule),
     }),
   })));
 

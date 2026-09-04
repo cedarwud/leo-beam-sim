@@ -3,6 +3,7 @@ import type { UeDistributionMode } from './engine/ue/multiUeState';
 import type { UeMobilityMode, UeMobilityParams } from './engine/ue/multiUeMobility';
 import type { SimulatorConstellation } from './simulator/types';
 import {
+  DEFAULT_BEAM_LAYOUT_COUNT,
   isSupportedBeamLayoutCount,
   type SupportedBeamLayoutCount,
 } from './core/beam/completeHexPresets';
@@ -124,11 +125,16 @@ export function applySceneTopology(
     : profile.orbit.shells;
 
   const effectiveBeamCount = topology.servingBeamCount ?? topology.beamCountPerSatellite;
-  const overriddenBeams = effectiveBeamCount !== null
+  // On the homepage, 1 is the focused-cell count. Keep the physical profile at
+  // the seven-beam satellite layout so the model can evaluate B1..B7 on C1.
+  const physicalBeamCount = effectiveBeamCount === 1
+    ? DEFAULT_BEAM_LAYOUT_COUNT
+    : effectiveBeamCount;
+  const overriddenBeams = physicalBeamCount !== null
     ? {
         ...profile.beams,
-        perSatellite: effectiveBeamCount,
-        maxActivePerSat: effectiveBeamCount,
+        perSatellite: physicalBeamCount,
+        maxActivePerSat: physicalBeamCount,
       }
     : profile.beams;
 

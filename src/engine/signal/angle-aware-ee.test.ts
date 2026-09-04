@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { loadProfile } from '../../profiles';
 import {
+  ANGLE_AWARE_BEAM_POWER_CAP_W,
   ANGLE_AWARE_SEGMENT_START_POWER_W,
   angleAwareBeamKey,
   angleAwareLinkKey,
@@ -39,6 +40,21 @@ check('continuous served link uses the previous-step power and gain ratio', () =
   assert.equal(second.segmentStartPowerW, ANGLE_AWARE_SEGMENT_START_POWER_W);
   const repeated = resolveAngleAwarePowerState(first, 4, 0.4, 0.5);
   assert.equal(repeated.powerW, first.powerW, 'same-timestamp evaluation should reuse prior power');
+});
+
+check('continuous power never exceeds the configured beam cap', () => {
+  const first = resolveAngleAwarePowerState(undefined, 4, 0.2, 1);
+  const gainCollapse = resolveAngleAwarePowerState(
+    first,
+    5,
+    0.4,
+    0.1,
+    ANGLE_AWARE_BEAM_POWER_CAP_W,
+  );
+  assert.ok(
+    gainCollapse.powerW <= ANGLE_AWARE_BEAM_POWER_CAP_W,
+    `power recurrence exceeded p_max: ${gainCollapse.powerW} W`,
+  );
 });
 
 check('a link with no previous state restarts at p_max / 2 after a continuity break', () => {

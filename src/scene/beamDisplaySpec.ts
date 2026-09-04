@@ -350,6 +350,8 @@ export function resolveBeamFocusSatIds(
 export interface DisplayHeroRecord {
   readonly servingSatId: string;
   readonly cellId: number;
+  /** Exact physical link identity; absent only for legacy cell-only callers. */
+  readonly beamId?: number | null;
 }
 
 /**
@@ -366,6 +368,7 @@ export function resolveDisplayHeroRecord(
   primary: {
     readonly servingSatId?: string | null;
     readonly cellId?: number | null;
+    readonly beamId?: number | null;
   } | null,
   drawableServingBeams: readonly DisplayHeroRecord[],
 ): DisplayHeroRecord | null {
@@ -377,7 +380,11 @@ export function resolveDisplayHeroRecord(
     && primary.cellId !== null
     && primary.cellId !== undefined
   ) {
-    return { servingSatId: primary.servingSatId, cellId: primary.cellId };
+    return {
+      servingSatId: primary.servingSatId,
+      cellId: primary.cellId,
+      beamId: primary.beamId ?? null,
+    };
   }
   return null;
 }

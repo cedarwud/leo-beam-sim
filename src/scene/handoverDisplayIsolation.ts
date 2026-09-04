@@ -195,6 +195,15 @@ export function resolveHandoverDisplayIsolation(input: {
   readonly presentationKind?: 'intra' | 'inter' | null;
   /** Shared owner mode; cooldown is still occupied even when `active` is false. */
   readonly presentationMode?: 'idle' | 'presenting' | 'cooldown';
+  /**
+   * A scripted handover lecture is open. Its whole point is that two cones can
+   * be read against each other, which the ambient fan drawn behind them
+   * defeats, so a lecture clears the field for BOTH kinds and declines the
+   * homepage's keep-the-configured-fan opt-in. The lecture draws its own pair
+   * from its own layer, so this holds for the whole run rather than only while
+   * a live presentation owner happens to be active.
+   */
+  readonly teachingLectureActive?: boolean;
 }): HandoverDisplayIsolationState {
   // Keep the old flag-only contract for existing pure callers/tests. A natural
   // source claims the display only after the normalized presentation owner has
@@ -212,10 +221,14 @@ export function resolveHandoverDisplayIsolation(input: {
     && presentationKind === 'inter';
   const explicitPresentationActive = sourceOwnsPresentation
     && (input.manualHandoverActive || input.cinemaCandidateActive);
-  const active = explicitPresentationActive || naturalPresentationActive;
+  const teachingLectureOwnsField = input.teachingLectureActive === true;
+  const active = teachingLectureOwnsField
+    || explicitPresentationActive
+    || naturalPresentationActive;
   const interCinemaActive = active && presentationKind === 'inter';
   const preserveConfiguredServingFan = input.preserveConfiguredServingFan === true
-    && interCinemaActive;
+    && interCinemaActive
+    && !teachingLectureOwnsField;
   const cinemaPending = sourceOwnsPresentation
     && input.cinemaCandidateArmed === true
     && input.cinemaCandidateReady !== true
@@ -241,7 +254,10 @@ export function resolveHandoverDisplayIsolation(input: {
     && !naturalInterPresentationActive
     && !explicitPresentationActive
     && !cinemaPending;
-  const suppressNaturalHandoverLayers = naturalPresentationActive || manualClaimed || cinemaClaimed;
+  const suppressNaturalHandoverLayers = naturalPresentationActive
+    || manualClaimed
+    || cinemaClaimed
+    || teachingLectureOwnsField;
 
   return {
     active,
@@ -251,8 +267,10 @@ export function resolveHandoverDisplayIsolation(input: {
     // candidate fan visible until the accepted event claims the presentation
     // so the user can compare the measured candidates before commit.
     hideCandidateFan: active || cinemaPending,
-    hideNormalBeamField: interCinemaActive,
-    showCinemaCandidateFan: interCinemaActive,
+    hideNormalBeamField: interCinemaActive || teachingLectureOwnsField,
+    // Intra draws both of its cones from one spacecraft, and the pair layer
+    // owns them, so no extra target fan may crowd the two ends being compared.
+    showCinemaCandidateFan: interCinemaActive && !teachingLectureOwnsField,
     hideTimelinePulse: active || cinemaPending || manualClaimed,
     hideTimelineTriggered: active || cinemaPending || manualClaimed,
     hideTimelineEffects: active || cinemaPending || manualClaimed,

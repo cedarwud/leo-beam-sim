@@ -44,6 +44,7 @@ import {
 import { colorForServingSatellite } from '../constants/servingColour';
 import {
   HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,
+  homepageEeVisualOpacity,
   homepageSatelliteColorForBeam,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
 import {
@@ -84,6 +85,7 @@ export interface SinrLiveCellFootprintRingsProps {
   readonly homepageIdentityPaletteIndexBySatelliteId?: ReadonlyMap<string, number | null>;
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
+  readonly primaryServingBeamId?: number | null;
   /** Optional canvas dataset key for the rendered-hex count (validator proof). */
   readonly telemetryCountDatasetKey?: string;
 }
@@ -96,6 +98,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
   const widthScale = props.widthScale ?? 1;
   const primaryServingSatId = props.primaryServingSatId ?? null;
   const primaryServingCellId = props.primaryServingCellId ?? null;
+  const primaryServingBeamId = props.primaryServingBeamId ?? null;
 
   // MESH-derived telemetry: publish the count of footprint hexes that actually drew, so
   // a validator can prove the footprints rendered (mirrors the cone layer).
@@ -128,6 +131,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
       {items.map(item => {
         const radius = item.baseRadiusWorld * widthScale;
         if (!(radius > 0)) return null;
+        const beamId = item.beamId ?? cellLinkBudgetBeamId(item.cellId);
         // Keep a crisp rim in the satellite's base hue; the inner ring/fill may
         // use a beam-level lightness shade, which is what makes intra switching
         // visible without assigning a role colour to the cell.
@@ -139,6 +143,8 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
             itemRole: item.role,
             heroSatId: primaryServingSatId,
             heroCellId: primaryServingCellId,
+            heroBeamId: primaryServingBeamId,
+            beamId,
           }),
           palette,
           item,
@@ -146,9 +152,9 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
         ).color;
         const homepageIdentity = props.homepageVisualIdentity === true
           && props.colorAuthority === 'item-identity';
-        const beamId = item.beamId ?? cellLinkBudgetBeamId(item.cellId);
         const isPrimaryServing = item.satId === primaryServingSatId
-          && item.cellId === primaryServingCellId;
+          && item.cellId === primaryServingCellId
+          && (primaryServingBeamId === null || beamId === primaryServingBeamId);
         const itemRole = resolveSinrLiveConeRole({
           layer,
           satId: item.satId,
@@ -156,6 +162,8 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
           itemRole: item.role,
           heroSatId: primaryServingSatId,
           heroCellId: primaryServingCellId,
+          heroBeamId: primaryServingBeamId,
+          beamId,
         });
         const isPrimaryIdentityBeam = isPrimaryServing
           || itemRole === 'candidatePrimary'
@@ -174,9 +182,15 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
         const borderColor = homepageBeamColor?.color
           ?? colorForServingSatellite(item.satId).markerColor;
         const roleColor = homepageBeamColor?.color ?? resolvedRoleColor;
+        const homepageEeOpacity = homepageIdentity
+          ? homepageEeVisualOpacity(props.homepageBeamEeByKey?.get(
+            homepageBeamEeKey(item.satId, beamId),
+          ))
+          : 1;
         const renderOpacityFactor = homepageIdentity && !isPrimaryIdentityBeam
           ? HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR
           : 1;
+        const finalOpacityFactor = renderOpacityFactor * homepageEeOpacity;
         // Three-layer hex: faint identity fill, a crisp satellite-hue rim
         // (proud 0.96→1.04r), and a bright beam-level inner ring (tight
         // 0.78→0.84r).
@@ -193,7 +207,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
               <meshBasicMaterial
                 color={roleColor}
                 transparent
-                opacity={SINR_LIVE_FOOTPRINT_FILL_OPACITY * renderOpacityFactor}
+                opacity={SINR_LIVE_FOOTPRINT_FILL_OPACITY * finalOpacityFactor}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 toneMapped={false}
@@ -209,7 +223,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
               <meshBasicMaterial
                 color={borderColor}
                 transparent
-                opacity={SINR_LIVE_FOOTPRINT_RING_OPACITY * renderOpacityFactor}
+                opacity={SINR_LIVE_FOOTPRINT_RING_OPACITY * finalOpacityFactor}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 toneMapped={false}
@@ -220,12 +234,30 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
               <meshBasicMaterial
                 color={roleColor}
                 transparent
-                opacity={SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY * renderOpacityFactor}
+                opacity={SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY * finalOpacityFactor}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 toneMapped={false}
               />
             </mesh>
+            {homepageIdentity && itemRole === 'handoverTarget' ? (
+              <mesh
+                name={`sinr-live-cell-footprint-target-highlight-${item.cellId}-${beamId}`}
+                renderOrder={16}
+                frustumCulled={false}
+                userData={{ targetHighlight: true, cellId: item.cellId, satId: item.satId, beamId }}
+              >
+                <ringGeometry args={[radius * 1.075, radius * 1.13, 6]} />
+                <meshBasicMaterial
+                  color={roleColor}
+                  transparent
+                  opacity={Math.min(1, 0.94 * finalOpacityFactor)}
+                  side={THREE.DoubleSide}
+                  depthWrite={false}
+                  toneMapped={false}
+                />
+              </mesh>
+            ) : null}
           </group>
         );
       })}

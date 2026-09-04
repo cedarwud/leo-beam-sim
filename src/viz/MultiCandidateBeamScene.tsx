@@ -89,6 +89,8 @@ export interface MultiCandidateBeamSceneRenderInstruction {
   readonly role: CandidatePresentationRole;
   readonly isServing: boolean;
   readonly isCandidate: boolean;
+  /** Homepage-only display cue for the exact beam selected for handover. */
+  readonly homepageTargetHighlight?: boolean;
   readonly isPinned: boolean;
   readonly satelliteIdentity: HandoverSatelliteVisualIdentity;
   readonly beamIdentity: HandoverBeamVisualIdentity | null;
@@ -758,10 +760,9 @@ function mapPresentationInstruction(
   const homepageColor = homepageVisualIdentity
     ? homepageSatelliteColorForBeam(source.satelliteId, source.beamId, {
       identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(source.satelliteId) ?? null,
-      // The candidate primary is already the stable identity carrier for the
-      // next link. Keep its primary shade through the eventual serving commit;
-      // role/solid-link truth remains unchanged.
-      isServing: source.isServing || source.isCandidate,
+      // Candidate colours stay in their satellite family, but do not become
+      // the active serving shade before the accepted handover commits.
+      isServing: source.isServing,
       eeNormalized: homepageBeamEeByKey?.get(
         homepageBeamEeKey(source.satelliteId, source.beamId),
       ),
@@ -802,6 +803,9 @@ function mapPresentationInstruction(
     role: source.role,
     isServing: source.isServing,
     isCandidate: source.isCandidate,
+    homepageTargetHighlight: homepageVisualIdentity
+      && source.isCandidate
+      && (source.role === 'provisional-leader' || source.role === 'selected-target'),
     isPinned: source.isPinned,
     satelliteIdentity: source.satelliteIdentity,
     beamIdentity: source.beamIdentity,
@@ -1059,6 +1063,14 @@ function MultiCandidateFootprint({
   /** Measurement-only candidates keep only their dashed/dotted outline. */
   readonly renderFill: boolean;
 }): JSX.Element {
+  const targetPoints = instruction.homepageTargetHighlight === true
+    ? (displayScale === 1
+      ? instruction.footprint.points
+      : scaledFootprintPoints(instruction.footprint.points, instruction.baseCenter, displayScale))
+    : [];
+  const targetHighlightPoints = targetPoints.length > 0
+    ? [...targetPoints, targetPoints[0]!] as readonly MultiCandidateScenePoint[]
+    : null;
   return (
     <group
       name={`multi-candidate-footprint-${instruction.satelliteId}-b${instruction.beamId}`}
@@ -1073,6 +1085,7 @@ function MultiCandidateFootprint({
         role: instruction.role,
         isServing: instruction.isServing,
         isCandidate: instruction.isCandidate,
+        homepageTargetHighlight: instruction.homepageTargetHighlight === true,
         isPinned: instruction.isPinned,
         isProvisionalLeader: instruction.role === 'provisional-leader',
         isSelectedTarget: instruction.role === 'selected-target',
@@ -1129,6 +1142,7 @@ function MultiCandidateFootprint({
             role: instruction.role,
             isServing: instruction.isServing,
             isCandidate: instruction.isCandidate,
+            homepageTargetHighlight: instruction.homepageTargetHighlight === true,
             isPinned: instruction.isPinned,
             isProvisionalLeader: instruction.role === 'provisional-leader',
             isSelectedTarget: instruction.role === 'selected-target',
@@ -1140,6 +1154,34 @@ function MultiCandidateFootprint({
           }}
         />
       ))}
+      {targetHighlightPoints !== null ? (
+        <Line
+          key={`${instruction.sceneJoinKey}/target-highlight`}
+          name={`multi-candidate-target-highlight-${instruction.satelliteId}-b${instruction.beamId}`}
+          points={targetHighlightPoints}
+          color={instruction.beamColor}
+          lineWidth={3.8}
+          transparent
+          opacity={0.98}
+          depthWrite={false}
+          renderOrder={18}
+          userData={{
+            pairKey: instruction.pairKey,
+            joinKey: instruction.joinKey,
+            sceneJoinKey: instruction.sceneJoinKey,
+            railJoinKey: instruction.railJoinKey,
+            satelliteId: instruction.satelliteId,
+            beamId: instruction.beamId,
+            cellId: instruction.cellId,
+            role: instruction.role,
+            isServing: instruction.isServing,
+            isCandidate: instruction.isCandidate,
+            targetHighlight: true,
+            isSolidData: instruction.link.isSolidData,
+            isMeasurementOnly: instruction.link.isMeasurementOnly,
+          }}
+        />
+      ) : null}
     </group>
   );
 }
@@ -1709,13 +1751,17 @@ export function selectHomepageCandidateSceneInstructions(
   ]);
 }
 
-function satelliteIdentityRoleTag(group: MultiCandidateSatelliteIdentityGroup): string {
-  if (group.isServingSatellite && group.hasSelectedTarget) return '服務／勝出';
-  if (group.isServingSatellite && group.hasProvisionalLeader) return '服務／暫列';
+function satelliteIdentityRoleTag(
+  group: MultiCandidateSatelliteIdentityGroup,
+  homepageVisualIdentity = false,
+): string {
+  const replacement = homepageVisualIdentity ? '替代' : '候選';
+  if (group.isServingSatellite && group.hasSelectedTarget) return `服務／${replacement}勝出`;
+  if (group.isServingSatellite && group.hasProvisionalLeader) return `服務／${replacement}暫列`;
   if (group.isServingSatellite) return '服務';
-  if (group.hasSelectedTarget) return '勝出';
-  if (group.hasProvisionalLeader) return '暫列';
-  if (group.hasEligibleCandidatePairs) return '候選';
+  if (group.hasSelectedTarget) return `${replacement}勝出`;
+  if (group.hasProvisionalLeader) return `${replacement}暫列`;
+  if (group.hasEligibleCandidatePairs) return replacement;
   if (group.hasObservedCandidatePairs) return '觀測';
   return '背景';
 }
@@ -1769,6 +1815,7 @@ export function formatBeamCellPairSummary(
 function formatSatelliteBeamSummary(
   group: MultiCandidateSatelliteIdentityGroup,
   roleTag: string,
+  homepageVisualIdentity = false,
 ): string {
   const servingBeamSet = new Set(group.servingBeamIds);
   const servingPairs = group.beamCellPairs.filter(pair => servingBeamSet.has(pair.beamId));
@@ -1781,7 +1828,8 @@ function formatSatelliteBeamSummary(
   const pairSummary = (pairs: readonly MultiCandidateBeamCellPair[]) =>
     formatBeamCellPairSummary(pairs, 1);
   if (group.isServingSatellite && group.candidateBeamIds.length > 0) {
-    const roleSummary = `服務 ${pairSummary(servingPairs)} · 候選 ${pairSummary(candidatePairs)}`;
+    const replacement = homepageVisualIdentity ? '替代' : '候選';
+    const roleSummary = `服務 ${pairSummary(servingPairs)} · ${replacement} ${pairSummary(candidatePairs)}`;
     return `${roleTag === '服務' ? '' : `${roleTag} · `}${roleSummary}`;
   }
   if (group.isServingSatellite) {
@@ -1797,6 +1845,7 @@ function MultiCandidateSatelliteIdentityMarker({
   candidateOrdinal,
   renderLabel,
   satelliteNameById,
+  homepageVisualIdentity,
 }: {
   readonly group: MultiCandidateSatelliteIdentityGroup;
   readonly satelliteLane: number;
@@ -1805,6 +1854,7 @@ function MultiCandidateSatelliteIdentityMarker({
   readonly candidateOrdinal: number | null;
   readonly renderLabel: boolean;
   readonly satelliteNameById?: ReadonlyMap<string, string> | null;
+  readonly homepageVisualIdentity?: boolean;
 }): JSX.Element {
   const instruction = group.identityInstruction;
   const camera = useThree(state => state.camera);
@@ -1844,7 +1894,7 @@ function MultiCandidateSatelliteIdentityMarker({
   // GLB, beam, footprint, and camera remain untouched.
   const satelliteLabelTranslateY = (satelliteLane % 3) * SATELLITE_LABEL_SCREEN_LANE_GAP_PX
     + SATELLITE_LABEL_SCREEN_BASE_OFFSET_PX;
-  const roleTag = satelliteIdentityRoleTag(group);
+  const roleTag = satelliteIdentityRoleTag(group, homepageVisualIdentity);
   const joinMetadata = Object.freeze({
     satelliteId: group.satelliteId,
     pairKeys: group.pairKeys,
@@ -1877,21 +1927,22 @@ function MultiCandidateSatelliteIdentityMarker({
     instruction.satelliteId,
     satelliteNameById,
   );
-  const beamSummary = formatSatelliteBeamSummary(group, roleTag);
+  const beamSummary = formatSatelliteBeamSummary(group, roleTag, homepageVisualIdentity);
   const visibleSatelliteLabel = `${satelliteLabel} · ${beamSummary}`;
   // The full B/C mapping remains in data attributes and the right rail.  The
   // centre stage only needs a glanceable role + spacecraft identity; repeating
   // every measured beam in a floating badge is what previously covered the
   // scene and made candidates appear to flicker as their roster changed.
+  const replacement = homepageVisualIdentity ? '替代' : '候選';
   const compactSatelliteLabel = `${group.isServingSatellite
-    ? group.hasCandidatePairs ? '服務／候選' : '服務'
+    ? group.hasCandidatePairs ? `服務／${replacement}` : '服務'
     : group.hasSelectedTarget
-      ? '接手候選'
+      ? `接手${replacement}`
       : group.hasProvisionalLeader
-        ? '候選暫列'
+        ? `${replacement}暫列`
         : candidateOrdinal === null
-          ? '候選'
-          : `候選 ${candidateOrdinal}`} · ${satelliteLabel}`;
+          ? replacement
+          : `${replacement} ${candidateOrdinal}`} · ${satelliteLabel}`;
   return (
     <Billboard
       position={instruction.apex}
@@ -2208,6 +2259,7 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
             : candidateOrdinalBySatelliteId.get(group.satelliteId) ?? null}
           renderLabel={renderSatelliteIdentityLabels}
           satelliteNameById={props.satelliteNameById}
+          homepageVisualIdentity={props.homepageVisualIdentity}
           key={`satellite-identity/${group.satelliteId}`}
         />
       ))}
