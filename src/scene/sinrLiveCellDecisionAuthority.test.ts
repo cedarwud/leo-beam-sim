@@ -66,6 +66,19 @@ test('primary multi-candidate authority commits one remeasured link without chan
     beamsPerSat: Infinity,
     coverageSteeringAngleDeg: 50,
   });
+  // Real (not display) EE is what the decision authority reads (SDD F3 fix).
+  // Initial attach requires the winning candidate's EE to already be >= the
+  // 135 Kbit/J floor (there is no "current serving" to compare against yet),
+  // so SAT-A starts at lonOffset=0deg (zenith, ~557-637 Kbit/J) exactly as
+  // before -- it is still the strongest of the three and wins initial attach
+  // legitimately. SAT-A then repositions to lonOffset=5.5deg (real elevation
+  // ~41deg, ~122-125 Kbit/J), genuinely below the floor with ~8-10% margin,
+  // not a boundary value. SAT-B repositions to zenith (0deg, ~557-637 Kbit/J)
+  // -- unambiguously higher than SAT-A's degraded reading and higher than
+  // SAT-C's unchanged ~459 Kbit/J, so SAT-B and not SAT-C wins the handover.
+  // Values probed empirically via a throwaway script driving the real
+  // SinrLiveCellModel, not assumed from elevation alone -- topo.elevationDeg
+  // is display/gate only and does not affect the physics (see decisionEe.ts).
   const ue = { id: 'ue-primary', eastKm: 8, northKm: 2 };
   const initial = model.step({
     visibleSats: [satellite('SAT-A', 0), satellite('SAT-B', 1.8), satellite('SAT-C', -1.5)],
@@ -84,13 +97,13 @@ test('primary multi-candidate authority commits one remeasured link without chan
   assert.equal(initialDecision.opportunities.some(item => item.forecastEe !== null), false);
 
   model.step({
-    visibleSats: [satellite('SAT-A', 1.8), satellite('SAT-B', 0), satellite('SAT-C', -1.5)],
+    visibleSats: [satellite('SAT-A', 5.5), satellite('SAT-B', 0), satellite('SAT-C', -1.5)],
     ues: [ue],
     simTimeSec: 1,
     dtSec: 1,
   });
   const committedFrame = model.step({
-    visibleSats: [satellite('SAT-A', 1.8), satellite('SAT-B', 0), satellite('SAT-C', -1.5)],
+    visibleSats: [satellite('SAT-A', 5.5), satellite('SAT-B', 0), satellite('SAT-C', -1.5)],
     ues: [ue],
     simTimeSec: 2,
     dtSec: 1,
@@ -388,6 +401,15 @@ test('a vanished serving pair uses an explicit measured service-continuity trans
     beamsPerSat: Infinity,
     coverageSteeringAngleDeg: 50,
   });
+  // SAT-A starts at zenith (lonOffset=0) so it legitimately wins initial
+  // attach (real EE >= the 135 Kbit/J floor, ~637 Kbit/J at this UE's
+  // position -- initial attach has no "current serving" to compare against,
+  // so the target itself must already clear the floor). SAT-A then degrades
+  // to lonOffset=5.5deg (~125 Kbit/J, genuinely below the floor) while still
+  // visible, so its real measured EE is what the engine reads for this frame
+  // before it vanishes on the next step. SAT-B at 1.5deg reads ~520 Kbit/J,
+  // well above SAT-A's degraded reading. See the sibling test above for how
+  // these were measured.
   const ue = { id: 'ue-primary', eastKm: 4, northKm: 1 };
   const attached = model.step({
     visibleSats: [satellite('SAT-A', 0), satellite('SAT-B', 1.5)],
@@ -397,10 +419,17 @@ test('a vanished serving pair uses an explicit measured service-continuity trans
   });
   assert.equal(attached.ues[0]?.servingSatId, 'SAT-A');
 
+  model.step({
+    visibleSats: [satellite('SAT-A', 5.5), satellite('SAT-B', 1.5)],
+    ues: [ue],
+    simTimeSec: 1,
+    dtSec: 1,
+  });
+
   const protectedFrame = model.step({
     visibleSats: [satellite('SAT-B', 0)],
     ues: [ue],
-    simTimeSec: 1,
+    simTimeSec: 2,
     dtSec: 1,
   });
   const decision = model.getHandoverDecisionFrame();

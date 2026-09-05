@@ -3056,7 +3056,7 @@ export function App() {
     // the panel and the sky disagree about which satellite the story is about.
     const servingLink = projection?.serving ?? null;
     const intraSatelliteId = teachingStageKind === 'intra'
-      ? teachingIntraSatelliteId ?? servingLink?.satelliteId ?? null
+      ? servingLink?.satelliteId ?? null
       : null;
     const serving = servingLink === null ? null : {
       satelliteLabel: name(intraSatelliteId ?? servingLink.satelliteId),
@@ -3179,25 +3179,29 @@ export function App() {
     // they have to be decoded rather than shifted. A beam whose cell is not in
     // the configured layout has no placement to draw against, so the story
     // steps to the next cell in that layout instead.
-    const sceneCellCount = resolveSinrLiveSceneCellCount(runtime.servingBeamCount);
-    const intraSatelliteId = teachingIntraSatelliteId ?? sourceSatelliteId;
-    const intraCells = [...new Set((simState.homepageBeamMetrics?.metrics ?? [])
-      .filter(metric => metric.satelliteId === intraSatelliteId)
-      .map(metric => cellIdFromLinkBudgetBeamId(metric.beamId))
-      .filter(cellId => cellId < sceneCellCount))];
-    const intraSourceCellId = intraSatelliteId === sourceSatelliteId
-      ? sourceCellId
-      : intraCells[0] ?? sourceCellId;
-    const targetCellId = intraCells.find(cellId => cellId !== intraSourceCellId)
-      ?? (intraSourceCellId + 1) % sceneCellCount;
-    if (targetCellId === intraSourceCellId) return null;
+    // A same-satellite lecture must never fail to draw. Deriving its cells from
+    // a chosen spacecraft's beam metrics could land on cells the configured
+    // layout has no placement for, and the whole story then resolved to null —
+    // which is what "no beams at all" looked like in sessions that happened to
+    // pick such a spacecraft. Take both cells straight from the configured
+    // layout instead, so a placement always exists, and keep the serving
+    // spacecraft's identity for the labels. The apex is synthetic for intra
+    // anyway, so the spacecraft's own position is not required.
+    // Intra re-points two physical beams onto the SAME geographic cell, so both
+    // cones share one ground target and differ only in which one is strong.
+    // Sending the target to a neighbouring cell drew a story about coverage
+    // moving, which is not what a same-cell beam switch is; and at a one-cell
+    // layout the neighbour wrapped back onto the source and the story resolved
+    // to null, which is why a single-beam scene drew nothing at all.
+    const sceneCellCount = Math.max(1, resolveSinrLiveSceneCellCount(runtime.servingBeamCount));
+    const intraCellId = sourceCellId < sceneCellCount ? sourceCellId : 0;
     return {
       kind: 'intra',
-      sourceSatelliteId: intraSatelliteId,
-      sourceCellId: intraSourceCellId,
+      sourceSatelliteId,
+      sourceCellId: intraCellId,
       targetSatelliteId: null,
-      targetCellId,
-      storyKey: `teaching-intra:${intraSatelliteId}:${intraSourceCellId}:${targetCellId}`,
+      targetCellId: intraCellId,
+      storyKey: `teaching-intra:${sourceSatelliteId}:${intraCellId}`,
     };
   }, [
     homepageRailProjection,

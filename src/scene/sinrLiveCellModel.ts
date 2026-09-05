@@ -95,9 +95,12 @@ import { InstantaneousEePolicy } from '../engine/handover/handoverSelectionPolic
 import {
   DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
   eeThresholdKbitPerJouleToBitsPerJoule,
-  isEeBelowThreshold,
   resolveEeThresholdKbitPerJoule,
 } from '../engine/handover/eeThreshold';
+import {
+  isEeBelowThreshold,
+  isHandoverEePermitted,
+} from '../engine/handover/handoverTriggerRule';
 import {
   advanceHomepageDemoEe,
   deriveHomepageDemoEeTarget,
@@ -111,6 +114,7 @@ import {
   type PrimaryUeAssignment,
 } from '../engine/handover/primaryServingTransaction';
 import { selectServiceContinuityFallback } from '../engine/handover/serviceContinuityFallback';
+import { resolveDecisionEeBitsPerJoule } from '../engine/handover/decisionEe';
 import { EARTH_KM_PER_DEG } from '../engine/orbit/earth-constants';
 import {
   resolveSinrLiveBeamBudget,
@@ -1058,6 +1062,21 @@ export class SinrLiveCellModel {
 
   /** Last accepted homepage serving pair per focused UE, across an intra/inter commit. */
   private readonly homepageDemoEeServingKeyByUe = new Map<string, string>();
+
+  /**
+   * Decision-side memory of the last REAL (not display) EE measured for a
+   * serving link, keyed the same way as `homepageDemoEeStates`. SDD F3: the
+   * continuity/threshold logic below needs "what was this link's actual EE a
+   * moment ago" when a serving satellite vanishes from the candidate set
+   * mid-frame (`measuredServingEe` goes null). Reading `homepageDemoEeStates`
+   * for that fallback -- as an earlier version of this code did -- silently
+   * substitutes the seeded DISPLAY trajectory, which is F3's bug recurring in
+   * a second spot the primary `decisionEe.ts` fix does not reach, because it
+   * only fixed the live-measured case. This map exists solely so the vanish
+   * fallback stays real physics; it is not a display value and nothing
+   * outside this decision block should read it.
+   */
+  private readonly lastKnownServingEeBitsPerJoule = new Map<string, number>();
   /**
    * Homepage continuity for primary-UE counterfactual beams. This is
    * deliberately separate from the canonical serving-state map: a candidate
@@ -1204,6 +1223,7 @@ export class SinrLiveCellModel {
     this.lastHandoverDecisionFrame = null;
     this.primaryLastCommit = null;
     this.primaryBeamMetricPowerStates.clear();
+    this.lastKnownServingEeBitsPerJoule.clear();
   }
 
   /** The single immutable frame consumed by the scene and publisher join. */
@@ -1985,6 +2005,7 @@ export class SinrLiveCellModel {
     this.primaryBeamMetricPowerStates.clear();
     this.homepageDemoEeStates.clear();
     this.homepageDemoEeServingKeyByUe.clear();
+    this.lastKnownServingEeBitsPerJoule.clear();
     this.cumulativeIntraHandoverCount = 0;
     this.cumulativeInterHandoverCount = 0;
     this.clearPrimaryDecisionState();
@@ -2614,13 +2635,19 @@ export class SinrLiveCellModel {
       const measuredServingEe = servingOpportunity?.instantaneousEe?.status === 'available'
         ? servingOpportunity.instantaneousEe.value
         : null;
-      const lastKnownServingEe = currentServingKey === null
+      const servingEeMemoryKey = currentServingKey === null
         ? null
-        : this.homepageDemoEeStates.get(angleAwareLinkKey(
-          primaryUe.id,
-          currentServingKey.satelliteId,
-          currentServingKey.beamId,
-        ))?.valueBitsPerJoule ?? null;
+        : angleAwareLinkKey(primaryUe.id, currentServingKey.satelliteId, currentServingKey.beamId);
+      if (
+        servingEeMemoryKey !== null
+        && measuredServingEe !== null
+        && Number.isFinite(measuredServingEe)
+      ) {
+        this.lastKnownServingEeBitsPerJoule.set(servingEeMemoryKey, measuredServingEe);
+      }
+      const lastKnownServingEe = servingEeMemoryKey === null
+        ? null
+        : this.lastKnownServingEeBitsPerJoule.get(servingEeMemoryKey) ?? null;
       const servingEe = measuredServingEe !== null && Number.isFinite(measuredServingEe)
         ? measuredServingEe
         : lastKnownServingEe;
@@ -2722,24 +2749,13 @@ export class SinrLiveCellModel {
             && sameCandidateLinkKey(engineReceipt.from, currentServingKey);
       const receiptEeContractSatisfied = engineReceipt === null
         ? true
-        : receiptSourceMatchesCurrent && (
-          currentServingKey === null
-            // Initial attach is not a handover: it only admits a usable link
-            // at or above the configured floor.
-            ? receiptTargetEe !== null
-              && Number.isFinite(receiptTargetEe)
-              && receiptTargetEe >= this.eeThresholdBitsPerJoule
-            // Every replacement, including the missing-pair continuity lane,
-            // must have crossed the serving EE floor first. A higher target is
-            // still required so the threshold cannot select a worse beam; the
-            // target itself does not need to be above the service floor.
-            : servingBelowEeThreshold
-              && servingEe !== null
-              && Number.isFinite(servingEe)
-              && receiptTargetEe !== null
-              && Number.isFinite(receiptTargetEe)
-              && receiptTargetEe > servingEe
-        );
+        : receiptSourceMatchesCurrent && isHandoverEePermitted({
+          hasCurrentServing: currentServingKey !== null,
+          servingBelowThreshold: servingBelowEeThreshold,
+          servingEeBitsPerJoule: servingEe,
+          targetEeBitsPerJoule: receiptTargetEe,
+          thresholdBitsPerJoule: this.eeThresholdBitsPerJoule,
+        });
       const receiptBlockedByServingThreshold = engineReceipt !== null
         && !receiptEeContractSatisfied;
       if (
@@ -3572,13 +3588,7 @@ export class SinrLiveCellModel {
       const sample = sampleByKey.get(key);
       const angleAwareSample = angleAwareSampleByKey.get(key);
       const angleAware = angleAwareSample?.angleAware;
-      const rawInstantaneousEe = angleAware?.energyEfficiencyBitsPerJoule ?? null;
-      const homepageInstantaneousEe = angleAware?.homepageDemoEeBitsPerJoule ?? null;
-      const instantaneousEe = this.multiCandidateDecisionEnabled
-        && homepageInstantaneousEe !== null
-        && Number.isFinite(homepageInstantaneousEe)
-        ? homepageInstantaneousEe
-        : rawInstantaneousEe;
+      const instantaneousEe = resolveDecisionEeBitsPerJoule(angleAware);
       const admissionSample = this.multiCandidateDecisionEnabled
         ? angleAwareSample
         : sample;

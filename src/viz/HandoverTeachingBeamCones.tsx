@@ -102,17 +102,19 @@ function resolveSample(frame: TeachingFrame | null, kind: TeachingHandoverKind):
   if (frame === null) return IDLE_SAMPLE;
   // The same crossfade shape the rest of the product's handover stories use, so
   // the release/acquire beat does not read as a different mechanism here.
-  const envelope = resolveHandoverCinemaEnvelope(kind, frame.switchProgress01, 1);
-  // The target enters the story when the narration introduces it, not before.
+  // Strength is energy efficiency and nothing else. Multiplying by a
+  // release/acquire envelope on top made the pair read backwards — the source
+  // was forced dark before its efficiency had actually fallen — and it drove
+  // both cones toward zero around the commit, which made the beams disappear
+  // exactly when the story said the switch was happening. EE alone gives the
+  // intended reading: the losing beam dims as its EE falls, the winning beam
+  // brightens as its EE rises, and neither ever vanishes.
   const targetIntroduced = frame.phaseIndex >= 1;
   return {
     sourceColor: frame.serving.color,
     targetColor: frame.winner.color,
-    sourceOpacity: eeConeAlpha(frame.serving.eeKbitPerJoule) * envelope.fromOpacity,
-    targetOpacity: targetIntroduced
-      ? eeConeAlpha(frame.winner.eeKbitPerJoule)
-        * Math.max(CANDIDATE_STANDBY_FACTOR, envelope.toOpacity)
-      : 0,
+    sourceOpacity: eeConeAlpha(frame.serving.eeKbitPerJoule),
+    targetOpacity: targetIntroduced ? eeConeAlpha(frame.winner.eeKbitPerJoule) : 0,
   };
 }
 
@@ -142,35 +144,7 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
   const targetPlacement = story.kind === 'intra' && story.targetCellId !== null
     ? props.placementByCellId.get(story.targetCellId)
     : sourcePlacement;
-  // Intra draws both cones from one apex, so if that spacecraft happens to sit
-  // outside the camera frustum the whole story is off screen — which is what
-  // "no beams at all" looked like even with correct geometry. A same-satellite
-  // lecture therefore uses a synthetic apex placed directly over its own two
-  // cells at a steep angle: authored teaching geometry, guaranteed in frame,
-  // and it cannot drift out of view as the constellation moves.
-  const liveSourceApex = props.satelliteWorldById.get(story.sourceSatelliteId);
-  const sourceApex = story.kind === 'intra'
-    ? (() => {
-      const target = story.targetCellId === null
-        ? sourcePlacement
-        : props.placementByCellId.get(story.targetCellId) ?? sourcePlacement;
-      if (sourcePlacement === undefined || target === undefined) return liveSourceApex;
-      const midX = (sourcePlacement.worldX + target.worldX) / 2;
-      const midZ = (sourcePlacement.worldZ + target.worldZ) / 2;
-      const spread = Math.hypot(
-        sourcePlacement.worldX - target.worldX,
-        sourcePlacement.worldZ - target.worldZ,
-      );
-      // Offset sideways by roughly the cell spread so the pair is seen as two
-      // distinct cones rather than one directly overhead, and lift to about a
-      // 60 degree look-down on the further of the two.
-      return {
-        x: midX + spread * 0.9,
-        y: Math.max(420, spread * 3.2),
-        z: midZ + spread * 0.9,
-      };
-    })()
-    : liveSourceApex;
+  const sourceApex = props.satelliteWorldById.get(story.sourceSatelliteId);
   const targetApex = story.kind === 'inter' && story.targetSatelliteId !== null
     ? props.satelliteWorldById.get(story.targetSatelliteId)
     : sourceApex;
@@ -182,6 +156,37 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
   ) return null;
 
   const items: SinrLiveCellBeamConeRenderItem[] = [];
+  // A same-satellite switch re-points ONE beam onto the SAME cell, so drawing a
+  // second cone there puts two identical shapes on top of each other and only
+  // one is ever visible. Draw a single cone instead and carry the story in its
+  // colour: it starts as the losing beam and becomes the winning beam, which is
+  // what a re-point actually looks like from the ground.
+  if (story.kind === 'intra') {
+    const acquiring = sample.targetOpacity >= sample.sourceOpacity;
+    items.push({
+      cellId: story.sourceCellId,
+      satId: story.sourceSatelliteId,
+      frequencyIndex: 0,
+      color: acquiring ? sample.targetColor : sample.sourceColor,
+      serving: true,
+      role: 'triggered',
+      apex: new THREE.Vector3(sourceApex.x, sourceApex.y, sourceApex.z),
+      baseCenter: new THREE.Vector3(sourcePlacement.worldX, 0, sourcePlacement.worldZ),
+      baseRadiusWorld: sourcePlacement.radiusWorld * TEACHING_FOOTPRINT_RADIUS_FACTOR,
+      opacity: Math.max(sample.sourceOpacity, sample.targetOpacity),
+      renderKey: `${story.storyKey}-beam`,
+    });
+    return (
+      <>
+        <TeachingConeGeometryTelemetry items={items} />
+        <SinrLiveCellBeamCones
+          items={items}
+          layer="triggered"
+          colorAuthority="item-identity"
+        />
+      </>
+    );
+  }
   if (sample.sourceOpacity > 0) {
     items.push({
       cellId: story.sourceCellId,
