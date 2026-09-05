@@ -67,7 +67,7 @@ export const ENERGY_LAB_PARAMS = Object.freeze({
   /** Paper (3.15a): power back-off used to define p_sat, dB. */
   powerBackoffDb: 5,
   /** Off-axis angles of the served users, in degrees. */
-  userOffAxisDeg: Object.freeze([0.2, 1.1, 2.4, 3.6]),
+  userOffAxisDeg: Object.freeze([0.2, 0.8, 1.2, 1.6]),
   /** Below this the link is treated as failing, matching the engine's rule. */
   lowSinrThresholdDb: -5,
 });

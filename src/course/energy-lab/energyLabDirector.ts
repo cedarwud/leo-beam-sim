@@ -280,8 +280,18 @@ export function energyLabSampleAt(powerW: number): EnergyLabSample {
 }
 
 export function bestSampledEnergyLabPoint(): EnergyLabSample {
-  let best = serviceValidEnergyLabPoints()[0] ?? SAMPLED_POINTS[0]!;
-  for (const candidate of serviceValidEnergyLabPoints().slice(1)) {
+  const valid = serviceValidEnergyLabPoints();
+  const [first, ...rest] = valid;
+  if (first === undefined) {
+    throw new Error(
+      'energy-lab: no sampled power stop keeps every served user above the low-SINR '
+        + 'threshold, so there is no valid "best" operating point to present. A worst '
+        + 'point must never be substituted for a best one — fix the fixture geometry '
+        + 'instead of falling back.',
+    );
+  }
+  let best = first;
+  for (const candidate of rest) {
     if (candidate.point.eeMbitPerJ > best.point.eeMbitPerJ) best = candidate;
   }
   return best;

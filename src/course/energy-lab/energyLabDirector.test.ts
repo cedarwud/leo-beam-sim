@@ -114,6 +114,12 @@ assert.ok(low.systemPowerW < baseline.systemPowerW);
 assert.ok(low.totalRateMbps < baseline.totalRateMbps);
 assert.equal(low.fixedOverheadW, baseline.fixedOverheadW);
 
+// An intermediate stop is a genuinely degraded state, not the outage/healthy
+// binary alone: some but not all served users clear the threshold.
+const degraded = energyLabSampleAt(0.35).point;
+assert.ok(degraded.lowSinrFraction > 0, 'intermediate stop should not be fully healthy');
+assert.ok(degraded.lowSinrFraction < 1, 'intermediate stop should not be a full outage');
+
 // Act 6 is a local source receipt only. It has no event/handover or transport claim.
 assert.equal(energyLabAct6BeatAtTime(0).id, 'source');
 assert.equal(energyLabAct6BeatAtTime(20).id, 'sample');
@@ -130,5 +136,16 @@ assert.deepEqual(receipt.fields.map(field => field.key), [
   'LOW_SINR_RATIO',
 ]);
 assert.equal(receipt.fields.map(field => field.key as string).includes('HANDOVER_EVENT'), false);
+const lowSinrRatioField = receipt.fields.find(field => field.key === 'LOW_SINR_RATIO');
+assert.equal(lowSinrRatioField?.value, 0);
+
+// No sampled point the selector could ever call "best" may present as evidence
+// while under-serving: every service-valid point's receipt must show a clean
+// low-SINR ratio, not merely the one the selector happens to have picked.
+for (const sample of serviceValid) {
+  const sampleReceipt = buildEnergyLabLocalReceipt(sample);
+  const ratioField = sampleReceipt.fields.find(field => field.key === 'LOW_SINR_RATIO');
+  assert.equal(ratioField?.value, 0);
+}
 
 console.log('energy-lab Act 5/6 split, sample answer, service-valid optimum, and local receipt tests pass');
