@@ -46,6 +46,28 @@ commit having already happened when `update()` returns
   evidence and refuses a still-healthy link, so paths consulting EE went from
   1/7 to 2/7 (`87e0b0e`).
 
+**Red-team detection is now 4/4** (was 1/4), measured by re-running all four
+mutations against `npm run check:baseline` in an isolated worktree. B was closed
+by asserting the required-gate set against a literal; C by a time-to-trigger
+contract asserted on the event log; D by an authoritative threshold test.
+
+**The largest structural finding of this session is not in this document's F
+list at all: 97 of the repo's 310 test files were run by nothing.** No npm
+script referenced them. 91 passed and are now adopted into
+`test:adopted-orphans` (253 tests, ~61s, wired into CI static-gates and
+validate:governance:full); 6 were red. Among the 91 were
+`src/engine/signal/angle-aware-ee.test.ts` and
+`src/profiles/transmitPowerDefault.test.ts` -- the two modules involved in the
+SINR admission regression above. The tests existed and passed the whole time;
+nothing ran them. `scripts/validate-static-all.mjs` cannot see this class of
+problem, since it auto-discovers `validate:*` npm keys only. `validate:test-orphans`
+is now a ratchet against new orphans. **Being green is not the same as being run.**
+
+That also produced a fourth independent regression traceable to `6b9474e`: it
+added `eeThreshold.ts` with a default of 135 and, in the same commit, a test
+asserting the control renders `100` -- internally inconsistent on arrival,
+invisible because the test was an orphan.
+
 **An invariant worth knowing about.** The homepage's EE authority depends on the
 legacy SINR-only manager being suppressed once a link exists
 (`MainScene.tsx` passes `homepageVisualIdentity && sceneLane === 'sinr-live'`
