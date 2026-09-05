@@ -9,7 +9,7 @@
  * It does not inspect forecast EE, throughput, or remaining-service forecasts.
  */
 
-import { mintMeasuredEePermit } from './eeCommitPermit';
+import { mintContinuityEePermit } from './eeCommitPermit';
 import {
   candidateLinkKey,
   candidateLinkKeyString,
@@ -200,14 +200,14 @@ export function selectServiceContinuityFallback(
   }
   // The serving link must actually be below the floor. A vanished pair is not
   // by itself permission to replace a link that was still healthy.
-  if (mintMeasuredEePermit({
+  // The vanished pair has no measurable target EE, so this lane cannot satisfy
+  // the "target strictly better" half of the rule. It uses the continuity mint,
+  // which records that absence on the permit instead of fabricating a
+  // comparison -- an earlier version passed the threshold itself as the target
+  // EE, which let the permit claim a measured comparison it never made.
+  if (mintContinuityEePermit({
     path: 'live-cell:service-continuity-fallback',
     servingEeBitsPerJoule: input.servingEe.servingEeBitsPerJoule,
-    // The vanished pair has no measurable target EE to compare against, so the
-    // "strictly better" half of the rule cannot apply here. Passing the
-    // threshold itself keeps the serving-below-floor half honest while making
-    // the missing comparison explicit rather than silently skipped.
-    targetEeBitsPerJoule: input.servingEe.thresholdBitsPerJoule,
     thresholdBitsPerJoule: input.servingEe.thresholdBitsPerJoule,
   }) === null) {
     return null;

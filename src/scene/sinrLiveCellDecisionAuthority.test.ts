@@ -622,3 +622,35 @@ test('a replacement that is visible but outside the steering cone still detaches
   assert.equal(detached.ues[0]?.servingSatId, null);
   assert.equal(detached.cells.some(cell => cell.servingSatId !== null), false);
 });
+
+test('two models sharing an epoch do not publish the same episode id', () => {
+  // A per-instance sequence cannot distinguish instances: both started at 0 and
+  // published identical ids, which feed presentation join keys.
+  const profile = loadProfile('hobs-2024-candidate-rich');
+  const build = () => new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 7,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: false,
+    beamsPerSat: Infinity,
+    coverageSteeringAngleDeg: 50,
+  });
+  const ue = { id: 'ue-primary', eastKm: 0, northKm: 0 };
+  const step = (model: SinrLiveCellModel) => {
+    model.step({ visibleSats: [satellite('SAT-A', 0)], ues: [ue], simTimeSec: 0, dtSec: 0 });
+    return model.getHandoverDecisionFrame()?.episodeId ?? null;
+  };
+  const first = step(build());
+  const second = step(build());
+  assert.notEqual(first, null);
+  assert.notEqual(first, second, 'two models with the same epochUtcMs must not share an episode id');
+});

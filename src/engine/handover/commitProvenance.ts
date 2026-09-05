@@ -50,6 +50,22 @@ export const HANDOVER_COMMIT_PATHS = Object.freeze([
 ] as const satisfies readonly HandoverCommitPath[]);
 
 /**
+ * Compile-time proof that the list above covers the union.
+ *
+ * `satisfies readonly HandoverCommitPath[]` only checks the other direction --
+ * that every listed value belongs to the union. A cross-family review added a
+ * union member without listing it here and both `tsc` and `check:handover`
+ * passed, because EXPECTED_COMMIT_PATH_COUNT is derived from the LIST: the new
+ * commit path was simply never counted or coverage-checked.
+ *
+ * If a member is missing below, `UnlistedCommitPath` stops being `never` and
+ * this line fails to compile, naming the missing path in the error.
+ */
+type UnlistedCommitPath = Exclude<HandoverCommitPath, typeof HANDOVER_COMMIT_PATHS[number]>;
+const _everyCommitPathIsListed: UnlistedCommitPath extends never ? true : UnlistedCommitPath = true;
+void _everyCommitPathIsListed;
+
+/**
  * Whether this path reads the EE threshold before committing.
  *
  * Two of seven do. `live-cell:ee-optimization` always did.
@@ -79,3 +95,30 @@ export function handoverCommitPathConsultsEeThreshold(path: HandoverCommitPath):
 export function handoverCommitPathIsInitialAttach(path: HandoverCommitPath): boolean {
   return path === 'manager:initial-attach';
 }
+
+/**
+ * Which handover actions each commit path is allowed to produce.
+ *
+ * A permit records which authority approved a commit. Without this map a permit
+ * minted for one path could be passed to a commit of a different kind and the
+ * decision would report that path as its provenance -- demonstrated by a
+ * cross-family review, which committed an `inter-handover` using a permit
+ * minted as `manager:intra-dwell`.
+ *
+ * `HandoverManager.commitDecision` enforces it. Adding a path means stating
+ * here what it may commit, which is the question worth being forced to answer.
+ */
+export const HANDOVER_COMMIT_PATH_ACTIONS: Readonly<
+  Record<HandoverCommitPath, readonly ('inter-handover' | 'intra-switch')[]>
+> = Object.freeze({
+  // Attach and re-attach are both published as inter-handover today.
+  'manager:initial-attach': Object.freeze(['inter-handover'] as const),
+  'manager:continuity-rescue': Object.freeze(['intra-switch'] as const),
+  'manager:inter-stable-pending-hold': Object.freeze(['inter-handover'] as const),
+  'manager:inter-stable-target': Object.freeze(['inter-handover'] as const),
+  'manager:intra-dwell': Object.freeze(['intra-switch'] as const),
+  // The live-cell lane does not route through HandoverManager.commitDecision;
+  // both kinds are listed because its receipts carry either.
+  'live-cell:service-continuity-fallback': Object.freeze(['inter-handover', 'intra-switch'] as const),
+  'live-cell:ee-optimization': Object.freeze(['inter-handover', 'intra-switch'] as const),
+});

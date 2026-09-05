@@ -210,6 +210,12 @@ const EXPECTED_COMMIT_PATH_COUNT = HANDOVER_COMMIT_PATHS.length;
  */
 const EE_COMMIT_PERMIT_ASSERTION_ALLOWLIST: readonly string[] = [
   'src/engine/handover/eeCommitPermit.ts',
+  // Forges permits on purpose, to prove assertMintedPermit rejects them. It is
+  // allowed to construct one and NOT allowed to commit with it -- a test cannot
+  // reach a production commit path, and the runtime WeakSet check would refuse
+  // it there anyway. Excluding this one file is narrower than excluding all
+  // *.test.ts, which would let any test fabricate authority unnoticed.
+  'src/engine/handover/eeCommitPermit.test.ts',
 ];
 
 /** Every `<expr> as T` / `<T>expr` in `file` whose asserted type names `typeName`. */

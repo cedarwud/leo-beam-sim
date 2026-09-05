@@ -1004,6 +1004,16 @@ function angleAwareRuntimeContinuityKey(input: {
   });
 }
 
+/**
+ * Distinguishes SinrLiveCellModel instances that share an epoch. Module-scoped
+ * on purpose: a per-instance counter cannot tell two instances apart.
+ */
+let primaryEpisodeInstanceSequence = 0;
+function nextPrimaryEpisodeInstanceId(): number {
+  primaryEpisodeInstanceSequence += 1;
+  return primaryEpisodeInstanceSequence;
+}
+
 export class SinrLiveCellModel {
   private profile: Profile;
   private readonly cellLayout: CellLayout;
@@ -1125,6 +1135,7 @@ export class SinrLiveCellModel {
    * every constructed engine's starting episode ID unique, so a re-attach
    * after a genuine detach cannot land back on an already-used ID.
    */
+  private readonly primaryEpisodeInstanceId = nextPrimaryEpisodeInstanceId();
   private primaryEpisodeSequence = 0;
   private lastHandoverDecisionFrame: HandoverDecisionFrame | null = null;
   private primaryLastCommit: HandoverDecisionFrame['recentCommit'] = null;
@@ -1194,7 +1205,11 @@ export class SinrLiveCellModel {
     // starting episode ID. The model-owned sequence below is never reset and
     // is bumped on every construction, so it -- not the instance-local
     // generation -- is what guarantees each engine's episode ID is unique.
-    const episodeId = `walker-primary:${this.epochUtcMs}:${this.primaryEpisodeSequence}`;
+    // The instance id is module-scoped, not per-model: two SinrLiveCellModel
+    // objects constructed with the same epochUtcMs both started their own
+    // sequence at 0 and published identical episode ids, which feed
+    // presentation join keys. Found by a cross-family review.
+    const episodeId = `walker-primary:${this.epochUtcMs}:${this.primaryEpisodeInstanceId}:${this.primaryEpisodeSequence}`;
     this.primaryEpisodeSequence += 1;
     return new HandoverDecisionEngine({
       episodeId,

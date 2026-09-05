@@ -3,10 +3,12 @@ import { test } from 'node:test';
 
 import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from './eeThreshold';
 import {
+  assertMintedPermit,
   mintInitialAttachPermit,
   mintLegacyEeBlindPermit,
   mintMeasuredEePermit,
   permitIsEeBlind,
+  type EeCommitPermit,
 } from './eeCommitPermit';
 
 /**
@@ -111,4 +113,47 @@ test('a measured permit records the evidence it was granted against', () => {
   assert.equal(permit!.evidence.servingEeBitsPerJoule, 120_000);
   assert.equal(permit!.evidence.thresholdBitsPerJoule, THRESHOLD_BITS_PER_JOULE);
   assert.equal(permitIsEeBlind(permit!), false);
+});
+
+test('a fabricated permit object is rejected even though it satisfies the type', () => {
+  // The type brand is phantom, so a JSON round-trip through `any` produces an
+  // object tsc accepts and the source-text guard cannot see (it is not a type
+  // assertion). Runtime identity is what rejects it.
+  const forged = JSON.parse(JSON.stringify({
+    path: 'live-cell:ee-optimization',
+    evidence: {
+      kind: 'measured',
+      servingEeBitsPerJoule: 200_000,
+      targetEeBitsPerJoule: 100_000,
+      thresholdBitsPerJoule: 135_000,
+    },
+  })) as EeCommitPermit;
+  assert.throws(
+    () => assertMintedPermit(forged, 'test'),
+    /was not issued by eeCommitPermit\.ts/,
+  );
+});
+
+test('a genuinely minted permit passes the same check', () => {
+  const real = mintInitialAttachPermit('manager:initial-attach');
+  assert.doesNotThrow(() => assertMintedPermit(real, 'test'));
+});
+
+test('a structural clone of a real permit is still rejected', () => {
+  const real = mintInitialAttachPermit('manager:initial-attach');
+  const clone = { ...real } as EeCommitPermit;
+  assert.throws(() => assertMintedPermit(clone, 'test'), /was not issued/);
+});
+
+test('a non-finite threshold is refused rather than minting on absent evidence', () => {
+  assert.equal(
+    mintMeasuredEePermit({
+      path: 'live-cell:ee-optimization',
+      servingEeBitsPerJoule: 100_000,
+      targetEeBitsPerJoule: 200_000,
+      thresholdBitsPerJoule: Number.NaN,
+    }),
+    null,
+    'every comparison against NaN is false, so this would otherwise mint on no evidence',
+  );
 });

@@ -1,10 +1,12 @@
 import type { Profile } from '../../profiles/types';
 import type { LinkSample } from '../signal/types';
 import {
+  assertMintedPermit,
   mintInitialAttachPermit,
   mintLegacyEeBlindPermit,
   type EeCommitPermit,
 } from './eeCommitPermit';
+import { HANDOVER_COMMIT_PATH_ACTIONS } from './commitProvenance';
 import type { HandoverDecision, HandoverEvent, IntraSwitchPreview, ServingState } from './types';
 
 /**
@@ -534,7 +536,10 @@ export class HandoverManager {
   }
 
   private commitDecision(
-    action: HandoverDecision['action'],
+    // Narrower than HandoverDecision['action'] on purpose: 'stay' is not a
+    // commit, and this function's whole contract is that reaching it means a
+    // handover is being committed.
+    action: Exclude<HandoverDecision['action'], 'stay'>,
     target: LinkSample,
     candidates: LinkSample[],
     simTimeMs: number,
@@ -545,6 +550,21 @@ export class HandoverManager {
     // what evidence it is committing on.
     permit: EeCommitPermit,
   ): HandoverDecision {
+    // A permit is authorization, so it is checked before it is acted on. Both
+    // holes this closes were found by a cross-family review: a permit object
+    // fabricated outside this module (the phantom type brand cannot see that),
+    // and a permit minted for one path being used to commit another -- a
+    // legacy EE-blind intra-dwell permit was accepted for an inter-handover,
+    // and the decision then reported that path as its provenance.
+    assertMintedPermit(permit, `HandoverManager.commitDecision(${action})`);
+    const permittedActions = HANDOVER_COMMIT_PATH_ACTIONS[permit.path];
+    if (!permittedActions.includes(action)) {
+      throw new Error(
+        `HandoverManager.commitDecision: permit for ${permit.path} does not authorize a "${action}" `
+        + `commit (it authorizes ${permittedActions.join(' or ')}). The permit records which authority `
+        + 'approved this commit, so using one for a different kind of handover misreports provenance.',
+      );
+    }
     const fromSatId = this.state.satId;
     const fromBeamId = this.state.beamId;
     const fromSinrDb = this.state.satId !== null ? this.state.sinrDb : null;

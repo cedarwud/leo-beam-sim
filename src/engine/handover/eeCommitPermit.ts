@@ -48,6 +48,22 @@ export type EeCommitEvidence =
   }
   | {
     /**
+     * The serving link measured below the floor, but the pair it is being
+     * replaced with has no measurable EE this frame -- the continuity lane,
+     * where the old pair has already vanished.
+     *
+     * This is deliberately NOT 'measured'. The first version of that lane
+     * passed the threshold itself as the target EE so it could reuse the
+     * measured mint, which made the permit claim evidence it did not have: a
+     * target with worse EE, or none at all, still produced a permit recording a
+     * measured comparison. A cross-family review caught it.
+     */
+    readonly kind: 'serving-below-floor-no-target-evidence';
+    readonly servingEeBitsPerJoule: number;
+    readonly thresholdBitsPerJoule: number;
+  }
+  | {
+    /**
      * Granted to an engine that structurally cannot read EE. Every one of these
      * is a known gap in the EE authority, ledgered in check:handover.
      */
@@ -62,12 +78,47 @@ export interface EeCommitPermit {
   readonly evidence: EeCommitEvidence;
 }
 
+/**
+ * Every permit this module has actually issued.
+ *
+ * The type brand is phantom: it exists only at compile time, so the runtime
+ * object carries no evidence of its origin. A cross-family review showed that
+ * made the permit forgeable in ways neither tsc nor the source-text guard could
+ * see -- `JSON.parse(JSON.stringify({...}))` assigned through `any`,
+ * `Object.assign`, generic laundering, `satisfies`. None of those is a type
+ * assertion, so scanning for `as EeCommitPermit` never fired.
+ *
+ * Identity is therefore tracked at runtime. A forged object is not in this set,
+ * whatever its shape, and `assertMintedPermit` rejects it. WeakSet so permits
+ * stay garbage-collectable.
+ */
+const issuedPermits = new WeakSet<EeCommitPermit>();
+
 function mint(path: HandoverCommitPath, evidence: EeCommitEvidence): EeCommitPermit {
   // The brand exists only in the type system -- `declare const ... unique symbol`
   // has no runtime value, so it is asserted here rather than assigned. This is
   // the one place that assertion is legitimate; check:handover rejects the same
   // assertion anywhere else.
-  return Object.freeze({ path, evidence }) as unknown as EeCommitPermit;
+  const permit = Object.freeze({ path, evidence }) as unknown as EeCommitPermit;
+  issuedPermits.add(permit);
+  return permit;
+}
+
+/**
+ * Reject anything this module did not issue.
+ *
+ * Call this at the point of use, before acting on a permit. The type system
+ * cannot do this job: a phantom brand is erased at runtime, and no TypeScript
+ * construct prevents a determined cast or an `any` round-trip.
+ */
+export function assertMintedPermit(permit: EeCommitPermit, context: string): void {
+  if (!issuedPermits.has(permit)) {
+    throw new Error(
+      `${context}: this EeCommitPermit was not issued by eeCommitPermit.ts. A permit is authorization `
+      + 'to commit a handover; fabricating one bypasses the EE evidence rule entirely. Obtain it from '
+      + 'a mint function.',
+    );
+  }
 }
 
 /**
@@ -85,6 +136,9 @@ export function mintMeasuredEePermit(input: {
   readonly thresholdBitsPerJoule: number;
 }): EeCommitPermit | null {
   const { path, servingEeBitsPerJoule, targetEeBitsPerJoule, thresholdBitsPerJoule } = input;
+  // A non-finite threshold makes every comparison below vacuously false, so it
+  // would mint on absent evidence. Refuse rather than fail open.
+  if (!Number.isFinite(thresholdBitsPerJoule)) return null;
   if (servingEeBitsPerJoule === null || !Number.isFinite(servingEeBitsPerJoule)) return null;
   if (targetEeBitsPerJoule === null || !Number.isFinite(targetEeBitsPerJoule)) return null;
   if (servingEeBitsPerJoule >= thresholdBitsPerJoule) return null;
@@ -93,6 +147,30 @@ export function mintMeasuredEePermit(input: {
     kind: 'measured',
     servingEeBitsPerJoule,
     targetEeBitsPerJoule,
+    thresholdBitsPerJoule,
+  });
+}
+
+/**
+ * Authorize a continuity replacement for a serving pair that has vanished.
+ *
+ * Requires evidence that the serving link was below the floor -- a vanished
+ * pair is not by itself permission to replace a link that was still healthy --
+ * but records honestly that the replacement's own EE could not be measured,
+ * because the frame the old pair disappeared from has no comparison to offer.
+ */
+export function mintContinuityEePermit(input: {
+  readonly path: HandoverCommitPath;
+  readonly servingEeBitsPerJoule: number | null;
+  readonly thresholdBitsPerJoule: number;
+}): EeCommitPermit | null {
+  const { path, servingEeBitsPerJoule, thresholdBitsPerJoule } = input;
+  if (!Number.isFinite(thresholdBitsPerJoule)) return null;
+  if (servingEeBitsPerJoule === null || !Number.isFinite(servingEeBitsPerJoule)) return null;
+  if (servingEeBitsPerJoule >= thresholdBitsPerJoule) return null;
+  return mint(path, {
+    kind: 'serving-below-floor-no-target-evidence',
+    servingEeBitsPerJoule,
     thresholdBitsPerJoule,
   });
 }
