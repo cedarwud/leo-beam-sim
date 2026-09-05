@@ -196,6 +196,7 @@ import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 import { FPSCounter } from './FPSCounter';
 import {
   shouldEnableHomepageMultiCandidateAuthority,
+  shouldSuppressLegacyPrimaryHandover,
   type SceneLane,
 } from '../app/sceneLane';
 import type { SimulationSourceMode } from '../app/simulationSourceMode';
@@ -1172,7 +1173,7 @@ function SceneContent(props: SceneContentProps) {
     runtime.focusCellId ?? null,
     shouldEnableHomepageMultiCandidateAuthority(sceneLane),
     runtime.eeThresholdKbitPerJoule,
-    homepageVisualIdentity && sceneLane === 'sinr-live',
+    shouldSuppressLegacyPrimaryHandover(sceneLane, homepageVisualIdentity),
   );
 
   return <SceneRenderContent {...props} sim={sim} simSource="live" liveSeekLandedKey={liveSeekLandedKey} />;
