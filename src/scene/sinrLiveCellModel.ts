@@ -2706,13 +2706,16 @@ export class SinrLiveCellModel {
             recentCommit: null,
             mode: 'service-continuity-protection',
           });
-        } else if (engineReceipt === null) {
+        } else if (engineReceipt === null && linkSats.length > 0) {
           // A temporary empty replacement set is a publication/coverage gap,
           // not proof that the focused service ended. Preserve the last
           // accepted identity so the homepage can keep rendering its serving
           // beam and wait for a real candidate before committing an inter HO.
           // Clearing here made one missed frame turn into a permanent detach:
           // the next frame had neither a serving pair nor a beam to draw.
+          // Scope: this tolerance holds only while some spacecraft is still
+          // link-eligible this frame. With nothing overhead there is no gap to
+          // wait out and nothing to hand over to -- see the detach below.
           this.primaryDecisionEngine.restore(decisionEngineSnapshot);
           decisionFrame = createHandoverDecisionFrame({
             ...decisionFrame,
@@ -2722,6 +2725,27 @@ export class SinrLiveCellModel {
             selectedTarget: null,
             selectedKind: null,
             recentCommit: null,
+            mode: 'service-continuity-protection',
+          });
+        } else if (engineReceipt === null) {
+          // No spacecraft is link-eligible this frame, so the vanished pair
+          // cannot be a publication gap and no measured pair can take over.
+          // Publish an explicit detached/initial-attach state rather than
+          // carrying a satellite-beam identity that no longer exists.
+          // Resetting the engine to a null serving link is what makes the
+          // republished frame report `initial-attach`; the frame contract
+          // rejects that phase while `serving` is non-null, so the assignment
+          // and the engine's serving link must be cleared together.
+          this.primaryServingAssignment = null;
+          this.primaryLastCommit = null;
+          this.primaryDecisionEngine.restore(decisionEngineSnapshot);
+          this.primaryDecisionEngine.reset(null);
+          const detachedFrame = this.primaryDecisionEngine.step(primaryCandidateOpportunities, {
+            ...decisionClock,
+            dtSec: 0,
+          });
+          decisionFrame = createHandoverDecisionFrame({
+            ...detachedFrame,
             mode: 'service-continuity-protection',
           });
         }
