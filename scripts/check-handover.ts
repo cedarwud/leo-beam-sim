@@ -54,7 +54,7 @@ import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../src/engine/handover/eeTh
 // ---------------------------------------------------------------------------
 
 import ts from 'typescript';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -89,18 +89,19 @@ type StructuralClaim =
   | { readonly kind: 'call'; readonly file: string; readonly callee: string; readonly label: string }
   | { readonly kind: 'function-declared'; readonly file: string; readonly name: string; readonly label: string };
 
-// The five manager claims match the PROVENANCE argument, not the reason
-// sentence. Matching the reason (argument 4) made these claims fail whenever a
-// message was reworded -- a cosmetic edit reported as a missing commit path.
-// Argument 5 is a HandoverCommitPath literal, so it changes only when the
-// authority actually changes.
+// The five manager claims match the PERMIT argument, not the reason sentence.
+// Matching the reason (argument 4) made these claims fail whenever a message
+// was reworded -- a cosmetic edit reported as a missing commit path. Argument 5
+// is the EeCommitPermit, so these change only when the authority does. Matching
+// the whole mint call rather than just the path literal also asserts that the
+// permit came from a mint function instead of being passed in from elsewhere.
 const F1_STRUCTURAL_CLAIMS: readonly StructuralClaim[] = [
   {
     kind: 'call-with-argument',
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
     argumentIndex: 5,
-    argumentPattern: /^'manager:initial-attach'$/,
+    argumentPattern: /^mintInitialAttachPermit\('manager:initial-attach'\)$/,
     label: 'initial/re-attach',
   },
   {
@@ -108,7 +109,7 @@ const F1_STRUCTURAL_CLAIMS: readonly StructuralClaim[] = [
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
     argumentIndex: 5,
-    argumentPattern: /^'manager:continuity-rescue'$/,
+    argumentPattern: /^mintLegacyEeBlindPermit\('manager:continuity-rescue'\)$/,
     label: 'continuity rescue intra-switch',
   },
   {
@@ -116,7 +117,7 @@ const F1_STRUCTURAL_CLAIMS: readonly StructuralClaim[] = [
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
     argumentIndex: 5,
-    argumentPattern: /^'manager:inter-stable-pending-hold'$/,
+    argumentPattern: /^mintLegacyEeBlindPermit\('manager:inter-stable-pending-hold'\)$/,
     label: 'inter-HO after stable pending hold',
   },
   {
@@ -124,7 +125,7 @@ const F1_STRUCTURAL_CLAIMS: readonly StructuralClaim[] = [
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
     argumentIndex: 5,
-    argumentPattern: /^'manager:inter-stable-target'$/,
+    argumentPattern: /^mintLegacyEeBlindPermit\('manager:inter-stable-target'\)$/,
     label: 'inter-HO stable target',
   },
   {
@@ -132,7 +133,7 @@ const F1_STRUCTURAL_CLAIMS: readonly StructuralClaim[] = [
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
     argumentIndex: 5,
-    argumentPattern: /^'manager:intra-dwell'$/,
+    argumentPattern: /^mintLegacyEeBlindPermit\('manager:intra-dwell'\)$/,
     label: 'intra-switch after dwell',
   },
   {
@@ -188,6 +189,30 @@ const COMMIT_PATH_TOPOLOGY: readonly {
 const EXPECTED_COMMIT_PATH_COUNT = HANDOVER_COMMIT_PATHS.length;
 
 /** Symbols that must only ever appear as a direct callee -- see escapingReferences. */
+/**
+ * Files allowed to write `as ... EeCommitPermit`.
+ *
+ * The permit's brand stops an object literal from satisfying the type, but no
+ * TypeScript construct stops a determined `as unknown as EeCommitPermit` -- a
+ * private class field was tried and does not stop it either. So forging a
+ * permit is blocked mechanically here instead: a type assertion naming
+ * EeCommitPermit outside its own module means some path granted itself
+ * authority to commit without going through a mint.
+ */
+const EE_COMMIT_PERMIT_ASSERTION_ALLOWLIST: readonly string[] = [
+  'src/engine/handover/eeCommitPermit.ts',
+];
+
+/** Every `<expr> as T` / `<T>expr` in `file` whose asserted type names `typeName`. */
+function permitTypeAssertions(file: string, typeName: string): ts.Node[] {
+  const found: ts.Node[] = [];
+  eachNode(sourceFileFor(file), node => {
+    if (!ts.isAsExpression(node) && !ts.isTypeAssertionExpression(node)) return;
+    if (node.type.getText().includes(typeName)) found.push(node);
+  });
+  return found;
+}
+
 const COMMIT_SYMBOLS_THAT_MAY_NOT_ESCAPE: readonly { readonly file: string; readonly name: string }[] = [
   { file: 'src/engine/handover/handover-manager.ts', name: 'commitDecision' },
   { file: 'src/scene/sinrLiveCellModel.ts', name: 'selectServiceContinuityFallback' },
@@ -828,6 +853,35 @@ for (const entry of COMMIT_PATH_TOPOLOGY) {
 }
 // A commit symbol used anywhere other than as a callee is a route the count
 // above cannot see (`.bind(this)`, an alias, `Reflect.apply`, `this['x'](...)`).
+// A permit forged by type assertion is a path granting itself commit authority.
+// The brand blocks object literals; only this check blocks `as unknown as`.
+{
+  const scanRoots = ['src', 'scripts'];
+  const offenders: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(join(repoRoot, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) { walk(rel); continue; }
+      if (!/\.tsx?$/.test(entry.name)) continue;
+      if (EE_COMMIT_PERMIT_ASSERTION_ALLOWLIST.includes(rel)) continue;
+      if (!readFileSync(join(repoRoot, rel), 'utf8').includes('EeCommitPermit')) continue;
+      for (const node of permitTypeAssertions(rel, 'EeCommitPermit')) {
+        offenders.push(locationOf(rel, node));
+      }
+    }
+  };
+  for (const root of scanRoots) walk(root);
+  console.log(`\n=== check:handover -- EeCommitPermit forgery guard ===`);
+  console.log(`  type assertions naming EeCommitPermit outside its module: ${offenders.length}`);
+  if (offenders.length > 0) {
+    fail(
+      `EeCommitPermit was forged by type assertion at ${offenders.join(', ')}. A permit may only come `
+      + `from a mint function in src/engine/handover/eeCommitPermit.ts; asserting one into existence `
+      + `is a commit path granting itself authority without EE evidence.`,
+    );
+  }
+}
+
 for (const entry of COMMIT_SYMBOLS_THAT_MAY_NOT_ESCAPE) {
   const escaping = escapingReferences(entry.file, entry.name);
   if (escaping.length > 0) {

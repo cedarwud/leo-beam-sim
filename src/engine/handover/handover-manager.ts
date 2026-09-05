@@ -1,6 +1,10 @@
 import type { Profile } from '../../profiles/types';
 import type { LinkSample } from '../signal/types';
-import type { HandoverCommitPath } from './commitProvenance';
+import {
+  mintInitialAttachPermit,
+  mintLegacyEeBlindPermit,
+  type EeCommitPermit,
+} from './eeCommitPermit';
 import type { HandoverDecision, HandoverEvent, IntraSwitchPreview, ServingState } from './types';
 
 /**
@@ -225,7 +229,7 @@ export class HandoverManager {
           sorted,
           simTimeMs,
           this.eventLog.length > 0 ? 're-attach after service loss' : 'initial attach',
-          'manager:initial-attach',
+          mintInitialAttachPermit('manager:initial-attach'),
         );
       }
       return { action: 'stay', reason: 'no candidate above threshold' };
@@ -270,7 +274,7 @@ export class HandoverManager {
           sorted,
           simTimeMs,
           'continuity rescue: serving beam left the steering cone, switch to steerable sibling',
-          'manager:continuity-rescue',
+          mintLegacyEeBlindPermit('manager:continuity-rescue'),
         );
       }
     }
@@ -325,7 +329,7 @@ export class HandoverManager {
             sorted,
             simTimeMs,
             `inter-HO after ${this.state.triggerTimeSec.toFixed(1)}s stable pending hold`,
-            'manager:inter-stable-pending-hold',
+            mintLegacyEeBlindPermit('manager:inter-stable-pending-hold'),
           );
         }
         return this.pendingDecisionReason(
@@ -352,7 +356,7 @@ export class HandoverManager {
           sorted,
           simTimeMs,
           `inter-HO: stable target for ${this.state.triggerTimeSec.toFixed(1)}s`,
-          'manager:inter-stable-target',
+          mintLegacyEeBlindPermit('manager:inter-stable-target'),
         );
       }
 
@@ -397,7 +401,7 @@ export class HandoverManager {
         sorted,
         simTimeMs,
         `intra-switch after ${this.intraSwitchTarget.triggerTimeSec.toFixed(1)}s dwell`,
-        'manager:intra-dwell',
+        mintLegacyEeBlindPermit('manager:intra-dwell'),
       );
     }
 
@@ -535,7 +539,11 @@ export class HandoverManager {
     candidates: LinkSample[],
     simTimeMs: number,
     reason: string,
-    provenance: HandoverCommitPath,
+    // Authorization to commit, not a description of the commit. A path that
+    // cannot obtain a permit cannot reach this function: the parameter is
+    // required, so a newly added commit path fails to compile until it states
+    // what evidence it is committing on.
+    permit: EeCommitPermit,
   ): HandoverDecision {
     const fromSatId = this.state.satId;
     const fromBeamId = this.state.beamId;
@@ -588,7 +596,7 @@ export class HandoverManager {
       action,
       target: { satId: target.satId, beamId: target.beamId },
       reason,
-      provenance,
+      provenance: permit.path,
     };
   }
 
