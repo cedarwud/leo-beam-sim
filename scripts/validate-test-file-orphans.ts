@@ -63,6 +63,44 @@ const orphans = tests.filter(file => {
   return !coveredByGlob(file);
 });
 
+// ---------------------------------------------------------------------------
+// Second class of orphan: the script itself.
+//
+// The check above proves a test file is NAMED by some npm script. It does not
+// prove anything runs that script. An independent audit found the consequence:
+// `test:homepage:alignment` names 17 test files -- including beamMetrics.test.ts,
+// which carries four FAILING tests -- and nothing invokes it. Not CI, not
+// another script. Four red tests sat behind a script no automation calls, and
+// the file-level ratchet could not see them by construction.
+//
+// A script is reachable if CI runs it, another script's body runs it, or
+// validate-static-all auto-discovers it (which it does for `validate:*` leaves).
+// ---------------------------------------------------------------------------
+const workflow = readFileSync(join(repoRoot, '.github/workflows/governance.yml'), 'utf8');
+const scriptBodies = pkg.scripts ?? {};
+
+function runsScript(body: string, name: string): boolean {
+  return new RegExp(`npm run ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$|&)`).test(body);
+}
+
+function scriptIsReachable(name: string): boolean {
+  if (name.startsWith('validate:')) return true; // validate-static-all auto-discovers these
+  if (runsScript(workflow, name)) return true;
+  return Object.entries(scriptBodies).some(([other, body]) => other !== name && runsScript(body, name));
+}
+
+const unreachableScripts = Object.keys(scriptBodies)
+  .filter(name => name.startsWith('test:') || name.startsWith('check:'))
+  .filter(name => !scriptIsReachable(name))
+  .sort();
+
+const knownUnreachablePath = join(repoRoot, 'scripts/fixtures/known-unreachable-scripts.json');
+const knownUnreachable: string[] = JSON.parse(readFileSync(knownUnreachablePath, 'utf8'));
+
+console.log(`unreachable test/check scripts: ${unreachableScripts.length} (known ${knownUnreachable.length})`);
+const newlyUnreachable = unreachableScripts.filter(name => !knownUnreachable.includes(name));
+const nowReachable = knownUnreachable.filter(name => !unreachableScripts.includes(name));
+
 const knownPath = join(repoRoot, 'scripts/fixtures/known-test-orphans.json');
 const known: string[] = JSON.parse(readFileSync(knownPath, 'utf8'));
 const knownSet = new Set(known);
@@ -74,6 +112,20 @@ console.log(`test files: ${tests.length}`);
 console.log(`orphans: ${orphans.length} (known ${known.length})`);
 
 let failed = false;
+for (const name of newlyUnreachable) {
+  console.error(
+    `FAIL: npm script "${name}" runs test files but nothing runs it -- not CI, not another script. `
+    + 'A test behind an uninvoked script is not a safety net.',
+  );
+  failed = true;
+}
+if (nowReachable.length > 0) {
+  console.error(
+    `FAIL: ${nowReachable.length} script(s) in known-unreachable-scripts.json are now reachable. `
+    + `Remove them -- the list is a ratchet and may only shrink:\n  ${nowReachable.join('\n  ')}`,
+  );
+  failed = true;
+}
 for (const file of added) {
   console.error(`FAIL: ${file} is a new test file that no npm script runs.`);
   failed = true;

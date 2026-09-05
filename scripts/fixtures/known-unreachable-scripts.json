@@ -1,0 +1,18 @@
+[
+  "check:c90:tle-study",
+  "check:six-acts:teaching-window",
+  "check:visual-lab:default-full-run",
+  "check:visual-lab:global-first-frame",
+  "test:active-simulator",
+  "test:c120",
+  "test:course",
+  "test:explain",
+  "test:global-constellation",
+  "test:golden-flow",
+  "test:homepage:alignment",
+  "test:scene-presentation",
+  "test:six-acts",
+  "test:tle-journey",
+  "test:tle:event-atlas",
+  "test:visual-lab:default-full-run"
+]
