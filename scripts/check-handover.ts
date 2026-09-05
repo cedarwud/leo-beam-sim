@@ -1133,6 +1133,37 @@ for (const path of HANDOVER_COMMIT_PATHS) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Authoritative constants, pinned HERE as well as in their unit tests.
+//
+// A weak-model experiment made this necessary. Given "make handovers happen
+// more often", a cheap model changed six profiles AND edited the literal in
+// authoritativeTimingConstants.test.ts from 3.5 to 2 so the suite stayed green,
+// then reported "all tests pass, 95-100% complete". The red signal existed; the
+// model turned it off. Only `git diff` caught it.
+//
+// Duplicating the values in the oracle does not make that impossible -- nothing
+// local can -- but it means silencing them requires editing this file too,
+// which is a deliberate act rather than an incidental one. The honest statement
+// of the limit stays: diff review is the real defence.
+// ---------------------------------------------------------------------------
+console.log('\n=== check:handover -- authoritative constants ===');
+const AUTHORITATIVE_CONSTANTS: readonly { readonly name: string; readonly actual: number; readonly expected: number }[] = [
+  { name: 'DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE', actual: DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE, expected: 135 },
+  { name: 'SINR_LIVE_SELECTION_HOLD_SEC', actual: SINR_LIVE_SELECTION_HOLD_SEC, expected: 1 },
+];
+for (const constant of AUTHORITATIVE_CONSTANTS) {
+  const ok = constant.actual === constant.expected;
+  console.log(`  [${ok ? 'ok' : 'CHANGED'}] ${constant.name} = ${constant.actual} (expected ${constant.expected})`);
+  if (!ok) {
+    fail(
+      `${constant.name} is ${constant.actual}, expected ${constant.expected}. This value is pinned in `
+      + `its unit test AND here, so changing the behaviour it governs means changing both on purpose. `
+      + `If the new value is intended, say so and update both; do not silence one of them.`,
+    );
+  }
+}
+
 console.log('\n=== check:handover -- verdict ===');
 if (failures.length > 0) {
   console.log(`RED: ${failures.length} failure(s).`);
