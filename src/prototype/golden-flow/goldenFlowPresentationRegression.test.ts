@@ -89,7 +89,29 @@ assert.doesNotMatch(prototypeSource, /className="golden-flow-legacy-stepper"/);
 assert.doesNotMatch(prototypeSource, /className="golden-flow-legacy-panel golden-flow-legacy-inputs"/);
 assert.match(prototypeSource, /className="golden-flow-event-dock"/);
 assert.doesNotMatch(sceneSource, /Math\.max\(actualAngle, THREE\.MathUtils\.degToRad/);
-assert.doesNotMatch(sceneSource, /color\.lerp|emissive\.lerp/);
+// Satellite identity must not be expressed by repainting the authored GLB
+// material during normal playback (see the "Preserve the authored GLB
+// material" comment in cloneSatelliteAsset). The one exception is the
+// light-capture theme (src/course/nav/lightCapture.ts), a deliberate
+// print/export rendering mode that swaps the whole scene to a light
+// background and must desaturate the GLB to stay legible there. Assert that
+// exception stays singular and stays inside its lightCapture guard, rather
+// than banning the pattern outright.
+const materialRepaintCalls = [...sceneSource.matchAll(/(?:color|emissive)\.lerp\(/g)];
+assert.equal(
+  materialRepaintCalls.length,
+  1,
+  'expected exactly one material colour/emissive lerp (the guarded light-capture satellite repaint)',
+);
+const repaintGuardWindow = sceneSource.slice(
+  Math.max(0, materialRepaintCalls[0].index - 200),
+  materialRepaintCalls[0].index,
+);
+assert.match(
+  repaintGuardWindow,
+  /if \(lightCapture && next instanceof THREE\.MeshStandardMaterial\) \{/,
+  'the sole material colour/emissive lerp must stay guarded by the light-capture branch',
+);
 assert.match(sceneSource, /buildConstantElevationTerminalPosition/);
 assert.match(sceneSource, /GOLDEN_FLOW_ANGLE_BEAM_DISPLAY_RADIUS = 1\.8/);
 assert.match(sceneSource, /GOLDEN_FLOW_ANGLE_BEAM_DISPLAY_OPACITY = 0\.08/);
