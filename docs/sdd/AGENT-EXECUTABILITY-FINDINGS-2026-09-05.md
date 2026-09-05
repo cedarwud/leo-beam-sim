@@ -5,6 +5,69 @@
 基準：`main` @ `6b9474e`（+ 未 commit 的 `handoverTriggerRule.ts` / `decisionEe.ts` 抽取）
 前置文件：`docs/sdd/FRONTEND-AUTHORITY-REFACTOR-SDD.md`（F1–F11 診斷、P1–P4 原則、§6 Step 0）
 
+---
+
+## 狀態更新（2026-09-05 稍晚，由後續 session 附加）
+
+**本文件的診斷仍然成立，但其中三項事實與一項結論已由實測修正。P1 已全部完成。**
+基準已從 `df0ce68`（RED 2）推進到全綠。以下每一項都可重跑驗證。
+
+### 已修正的事實
+
+| 原文 | 實測 |
+|---|---|
+| §3.3(b)：以 `indexOf` 切片 | 實際是 `hookSource.match(...)?.[0] ?? ''`。切片機制不同，但「空字串上 `doesNotMatch` 靜默通過」的結論正確。 |
+| §4.5.2：輸出 4 筆 `unknown-ee-blind-engine` | 實際是 **3 筆**。第 4 筆 handover-manager 記錄是 initial attach，狀態為 `not-applicable-initial-attach`，不是 blind commit。 |
+| §3.4：`validate-architecture-boundaries.ts` 解析 import edge | 它用的是 **regex over text**（`:64` 的 `importPattern`），不是 AST。它確實不依賴行號（優點成立），但 repo 內**沒有任何**腳本使用 TypeScript 的 AST API。 |
+
+### 已修正的結論：§4.5.1 只對了一半
+
+原文推論「紅色基線摧毀訊號通道」，並預期修好基線後 B/C/D 會變得可偵測。**實測不成立。**
+在全綠基線上重跑同樣四個突變：
+
+| 突變 | 綠基線上的結果 |
+|---|---|
+| A 決策端讀顯示 EE | 偵測到（測試 + check 都紅） |
+| B 移除 steering gate | **僅因行號巧合被偵測** — 刪一行使 `handoverSelectionPolicy.ts:283` 的釘死斷言錯位。與 steering 無關。 |
+| C 移除 TTT guard | 未偵測，輸出與基線逐位元組相同 |
+| D 閾值 135→130 | 未偵測，只印出新數值 |
+
+**真實偵測率仍是 1/4。** 紅色基線不是主因；那些檢查根本沒有斷言那些性質。
+綠基線是必要條件，不是充分條件。B/C/D 需要的是 §4.5.3 的機械防護，不是更好的靜態斷言。
+（D 已於 `a62d680` 關閉：`eeCommitPermit.test.ts` 以字面量斷言 135 並測邊界。）
+
+### 新發現：比七條路徑更嚴重的回歸
+
+`6b9474e`（訊息只有 `tmp`）同時造成三個互不相關的回歸：
+
+1. **候選 SINR 準入閘門一次都不會過**。實測 `sinr{pass=0, fail=91074}`、範圍 `[-53.6,-13.5] dB`，
+   閘值 `-5 dB`。原因是準入閘門改讀 `angleAwareSample`（EE 反事實，發射功率被夾在 1.65 W = 32.17 dBm），
+   比 profile 額定 50 dBm 低 17.8 dB。**沒有候選合格 → EE 換手權威在實際 pipeline 根本不會觸發。**
+   這很可能才是「怎麼講都不換手」的真正原因，而非七條路徑。已於 `d558881` 修復
+   （pass=50364、範圍 `[-38.0,+5.1]`）。**這是 F3 在新位置重演**：一個程式碼自己標為 EE/顯示反事實的值餵進了決策。
+2. `.githooks/pre-commit` 被改成 `exit 0` 空殼（原本跑 `validate:governance`），無 commit 說明。
+   `docs/frontend-change-contract.md` 直到 `7adc967` 前仍宣稱該 hook 是主要約束力來源。
+3. detach 行為（SDD §3 test 3）被改壞，且辯護註解無任何測試支撐。已於 `072bb9c` 修復。
+
+### P2 的規模被高估
+
+§3.1 估計 1,000–1,500 條釘死斷言。對**收斂七條 commit 路徑**這件事，實測擋路的是 **20 條**
+（+2 條條件性），其中 **16 條在 `check-handover.ts` 自己裡面**；`validate-frontend-scene-lane-governance.ts`
+（3,448 行）只擋 1 條。DELETE 類別為 0。那 1,000+ 條釘的是 `MainScene.tsx` 場景通道與 beam 顯示規格，
+與 handover commit 路徑無關。**P2 不需要作為獨立階段執行。**
+
+真正的阻礙不是守門機制，是 runtime 契約：呼叫端依賴 `update()` 回傳時 commit 已完成
+（`runtimeFrameStep.ts:871-876` 下一行就讀 `eventLog`；`liveWalkerHandoverEventIndex.ts:345-350`
+在兩次 step 之間讀增量）。
+
+### 目前進度
+
+P1-①∼⑤ 全部完成；P3 步驟 1–3 完成。現況：`check:baseline` 綠（19 測試）、
+`test:multi-candidate` 178/178、`check:handover` GREEN。
+讀 EE 的 commit 路徑從 1/7 增為 2/7；commit 需要 `EeCommitPermit`（必填參數，少傳即編譯失敗）。
+
+---
+
 這份文件回答的不是「哪個功能壞了」，而是：
 **為什麼擁有者用自然語言描述需求，agent 反覆改錯，且回報成功。**
 

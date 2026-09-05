@@ -4,6 +4,65 @@ Status: DRAFT, awaiting the Step 0 experiment. Authored 2026-09-04 at the end of
 long session; every load-bearing claim carries a `file:line` so the next session
 verifies rather than trusts. Claims marked HYPOTHESIS were not verified.
 
+## 0. Status update (appended 2026-09-05 by a later session)
+
+**Step 0 has run. F1-F11 still hold as a diagnosis; the plan below has been
+superseded in three places by measurement.** Read
+`AGENT-EXECUTABILITY-FINDINGS-2026-09-05.md` §"狀態更新" first -- it carries the
+corrections and the evidence.
+
+**F8 / §3 are out of date.** The five tests listed there as red are all green:
+`check:baseline` is exit 0 across 19 tests, `test:multi-candidate` is 178/178,
+and `check:handover` reports GREEN. Do not use §3 as a to-do list.
+
+**New finding, more severe than F1.** `6b9474e` routed the candidate SINR
+admission gate through the angle-aware EE counterfactual sample, whose transmit
+power is capped at 1.65 W (32.17 dBm) versus the profile's rated 50 dBm.
+Measured: `sinr{pass=0, fail=91074}` over `[-53.6, -13.5] dB` against a `-5 dB`
+gate -- **no candidate was ever hard-eligible, so the EE handover authority
+could not fire at all in the live pipeline.** That is a more likely root cause of
+the owner's "it never hands over" than F1. Fixed in `d558881`
+(`pass=50364`, `[-38.0, +5.1]`). Note the shape: this is **F3 recurring** -- a
+value the code itself labels as an EE/display counterfactual was feeding a
+decision, while the `sinrMeasurementContext` built a few lines above declared
+`powerModel: 'profile-rated-rf'`.
+
+**P2 does not need to run as its own phase.** §5's P2 assumed ~1,000-1,500
+pinned assertions stand in the way. Measured against the actual convergence:
+**20** assertions block it, 16 of them inside `scripts/check-handover.ts` itself.
+The real blocker is the runtime contract, not governance: callers depend on the
+commit having already happened when `update()` returns
+(`runtimeFrameStep.ts:871-876` reads `eventLog` on the next line;
+`liveWalkerHandoverEventIndex.ts:345-350` reads increments between steps).
+
+**P3 progress.** Steps 1-3 are done:
+- `commitProvenance.ts` -- the approving path is a typed value stated by the
+  committing code, not a regex over the reason sentence (`0bb5f0b`).
+- `eeCommitPermit.ts` -- committing requires a permit, as a REQUIRED parameter,
+  so a new commit path that does not state its evidence fails to compile
+  (`a62d680`). Honest limit: the brand stops object literals, not
+  `as unknown as`; that half is enforced mechanically by check:handover.
+- `selectServiceContinuityFallback` now requires the vanished link's EE
+  evidence and refuses a still-healthy link, so paths consulting EE went from
+  1/7 to 2/7 (`87e0b0e`).
+
+**An invariant worth knowing about.** The homepage's EE authority depends on the
+legacy SINR-only manager being suppressed once a link exists
+(`MainScene.tsx` passes `homepageVisualIdentity && sceneLane === 'sinr-live'`
+positionally into `useSimulation`; `App.tsx:4381` derives it from
+`pathname === '/'`). Until `c133135` this had no test, no validator and no
+golden anywhere. On the homepage lane the five EE-blind manager paths therefore
+reduce to initial attach alone; the remaining `legacy-ee-blind` ledger entries
+belong to the preview/replay and background-UE lanes.
+
+**§11 should be read as still current.** It is the list of errors made while
+writing this document, and the same classes recurred: a wrong mechanism
+(`indexOf` vs `.match`), a wrong count (4 vs 3 EE-blind commits), and a claim
+about `validate-architecture-boundaries.ts` parsing import edges when it uses a
+regex. Verify, do not trust -- including this section.
+
+---
+
 ## 1. Why this exists
 
 The owner has repeatedly asked for one behaviour — *handover must trigger only
