@@ -1115,6 +1115,17 @@ export class SinrLiveCellModel {
   /** Sole primary-UE serving assignment for the multi-candidate lane. */
   private primaryServingAssignment: PrimaryServingAssignment | null = null;
   private primaryDecisionEngine: HandoverDecisionEngine | null = null;
+  /**
+   * Counts every `HandoverDecisionEngine` instance ever constructed for the
+   * primary lane. `HandoverDecisionEngine.reset()` only bumps ITS OWN
+   * generation counter; that counter -- and the distinct episode ID it
+   * produces -- is lost whenever this model discards the engine object and
+   * builds a fresh one (see `createPrimaryDecisionEngine`). Folding this
+   * model-owned, never-reset sequence into the base episode ID instead makes
+   * every constructed engine's starting episode ID unique, so a re-attach
+   * after a genuine detach cannot land back on an already-used ID.
+   */
+  private primaryEpisodeSequence = 0;
   private lastHandoverDecisionFrame: HandoverDecisionFrame | null = null;
   private primaryLastCommit: HandoverDecisionFrame['recentCommit'] = null;
   /** A timeline jump must reseat the focused service at the new geometry. */
@@ -1177,8 +1188,16 @@ export class SinrLiveCellModel {
   }
 
   private createPrimaryDecisionEngine(initialServing: CandidateLinkKey | null): HandoverDecisionEngine {
+    // Each constructed engine starts its own generation count at 0 (see
+    // `HandoverDecisionEngine.reset()`), so two different engine instances
+    // built from the same fixed base would otherwise publish the identical
+    // starting episode ID. The model-owned sequence below is never reset and
+    // is bumped on every construction, so it -- not the instance-local
+    // generation -- is what guarantees each engine's episode ID is unique.
+    const episodeId = `walker-primary:${this.epochUtcMs}:${this.primaryEpisodeSequence}`;
+    this.primaryEpisodeSequence += 1;
     return new HandoverDecisionEngine({
-      episodeId: `walker-primary:${this.epochUtcMs}`,
+      episodeId,
       initialServing,
       policy: new InstantaneousEePolicy({
         initialTttSec: this.profile.handover.triggerTimeSec,

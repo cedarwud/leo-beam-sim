@@ -495,3 +495,78 @@ test('a vanished serving pair with no safe replacement publishes an explicit det
   assert.equal(detached.cells.some(cell => cell.beamIdentity !== null), false);
   assert.equal(detached.servedCellCount, 0);
 });
+
+test('a re-attach after a genuine detach gets a fresh episode ID, never a reused one', () => {
+  // Regression for a cross-family review finding: the explicit detach path
+  // (git show 072bb9c) calls `primaryDecisionEngine.reset(null)`, which bumps
+  // that engine INSTANCE's own generation counter. But the very next step()
+  // sees `primaryServingAssignment === null` (cleared by the detach) and
+  // unconditionally treats that as "the primary UE identity changed",
+  // discarding the just-reset engine instance and constructing a brand new
+  // one. A freshly constructed engine starts its own generation counter over
+  // at 0, so its starting episode ID collided with whatever the very first
+  // engine ever published -- silently reusing a historical episode identity
+  // for what is, service-wise, a brand new attach. Consumers that use
+  // episode equality as a continuity boundary (e.g.
+  // acceptedHandoverPresentationSnapshot.ts:525, the visual-identity
+  // allocator's priorAssignmentsFor in handoverVisualIdentity.ts:595, and
+  // MainScene.tsx's authorityTransitionRef) can then misattribute state from
+  // the vanished episode to the new one.
+  const profile = loadProfile('hobs-2024-candidate-rich');
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 7,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: false,
+    beamsPerSat: Infinity,
+    coverageSteeringAngleDeg: 50,
+  });
+  const ue = { id: 'ue-primary', eastKm: 0, northKm: 0 };
+
+  model.step({ visibleSats: [satellite('SAT-A', 0)], ues: [ue], simTimeSec: 0, dtSec: 0 });
+  const episodeA = model.getHandoverDecisionFrame()?.episodeId;
+  assert.ok(typeof episodeA === 'string' && episodeA.length > 0);
+
+  model.step({ visibleSats: [], ues: [ue], simTimeSec: 1, dtSec: 1 });
+  const episodeDetach1 = model.getHandoverDecisionFrame()?.episodeId;
+  assert.notEqual(episodeDetach1, episodeA, 'the detach must not keep A\'s episode identity');
+
+  model.step({ visibleSats: [satellite('SAT-B', 0)], ues: [ue], simTimeSec: 2, dtSec: 1 });
+  const reattachDecision = model.getHandoverDecisionFrame();
+  assert.equal(reattachDecision?.serving?.satelliteId, 'SAT-B');
+  // The actual defect: without the fix, this re-attach's episode ID is
+  // byte-identical to episodeA, even though A's service ended for good and
+  // this is a materially different service episode (a different satellite,
+  // with no commit receipt linking the two).
+  assert.notEqual(
+    reattachDecision?.episodeId,
+    episodeA,
+    'a re-attach must not silently reuse a historical episode ID',
+  );
+
+  // A second detach/re-attach round trip must not collide with any prior
+  // episode ID either -- the defect made every detach collide with every
+  // other detach, and every re-attach collide with every other re-attach.
+  model.step({ visibleSats: [], ues: [ue], simTimeSec: 3, dtSec: 1 });
+  const episodeDetach2 = model.getHandoverDecisionFrame()?.episodeId;
+  assert.notEqual(episodeDetach2, episodeDetach1, 'the second detach must not reuse the first detach\'s episode ID');
+  assert.notEqual(episodeDetach2, reattachDecision?.episodeId);
+
+  model.step({ visibleSats: [satellite('SAT-B', 0)], ues: [ue], simTimeSec: 4, dtSec: 1 });
+  const episodeReattach2 = model.getHandoverDecisionFrame()?.episodeId;
+  const seenEpisodeIds = [episodeA, episodeDetach1, reattachDecision?.episodeId, episodeDetach2, episodeReattach2];
+  assert.equal(
+    new Set(seenEpisodeIds).size,
+    seenEpisodeIds.length,
+    `every attach/detach cycle must produce a distinct episode ID, got: ${JSON.stringify(seenEpisodeIds)}`,
+  );
+});
