@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { SINR_LIVE_SELECTION_HOLD_SEC } from '../../scene/sinrLiveCellModel';
-import { loadProfile } from '../../profiles';
+import { SINR_LIVE_SELECTION_HOLD_SEC } from './sinrLiveCellModel';
+import { loadProfile } from '../profiles';
 
 /**
  * Authoritative handover timing, asserted as LITERALS.
+ *
+ * Lives in src/scene/ rather than src/engine/handover/ because
+ * SINR_LIVE_SELECTION_HOLD_SEC is a scene-lane constant, and
+ * validate:architecture:boundaries forbids an engine module from importing a
+ * scene one. It caught this file in the wrong directory.
  *
  * A cross-family review showed that setting `selectionHoldSec` to 0 makes the
  * 1-cell and 7-cell scenarios in check:handover commit at 1.0s instead of
