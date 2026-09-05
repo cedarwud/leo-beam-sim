@@ -52,16 +52,22 @@ export const HANDOVER_COMMIT_PATHS = Object.freeze([
 /**
  * Whether this path reads the EE threshold before committing.
  *
- * Only `live-cell:ee-optimization` does. The five `manager:*` paths belong to
- * the SINR-only rail-timeline engine (SDD F10), which never receives an EE
- * value; `live-cell:service-continuity-fallback` runs after the serving pair
- * has already vanished, so there is no live serving EE left to compare against.
+ * Two of seven do. `live-cell:ee-optimization` always did.
+ * `live-cell:service-continuity-fallback` now does as well: it requires the
+ * vanished link's EE evidence as a required input and refuses to replace a link
+ * that was still at or above the floor. Previously that check lived in its one
+ * caller, which is the SDD §2 F1 shape -- authority at the call site rather
+ * than in the authority.
  *
- * This is a statement of fact about today's code, not an endorsement: six of
- * seven returning `false` is the problem SDD §2 F1 describes.
+ * The five `manager:*` paths belong to the SINR-only rail-timeline engine
+ * (SDD F10), which never receives an EE value at all, so they still commit
+ * blind and hold a `legacy-ee-blind` permit that check:handover ledgers.
+ *
+ * This is a statement of fact about today's code, not an endorsement.
  */
 export function handoverCommitPathConsultsEeThreshold(path: HandoverCommitPath): boolean {
-  return path === 'live-cell:ee-optimization';
+  return path === 'live-cell:ee-optimization'
+    || path === 'live-cell:service-continuity-fallback';
 }
 
 /**

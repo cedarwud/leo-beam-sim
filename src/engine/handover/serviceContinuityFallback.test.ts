@@ -98,6 +98,7 @@ function input(
     sourceFrameId: string;
     simTimeMs: number;
     minimumDistinctCandidateSatellites: number;
+    servingEe: { servingEeBitsPerJoule: number | null; thresholdBitsPerJoule: number };
   }> = {},
 ) {
   return {
@@ -108,6 +109,13 @@ function input(
       episodeId: overrides.episodeId ?? 'continuity-episode/7',
       sourceFrameId: overrides.sourceFrameId ?? SOURCE_FRAME,
       simTimeMs: overrides.simTimeMs ?? 12_345,
+    },
+    // The lane now requires EE evidence for the vanished link. These fixtures
+    // exercise candidate selection, so the default puts the serving link
+    // genuinely below the floor; the dedicated test below covers refusal.
+    servingEe: overrides.servingEe ?? {
+      servingEeBitsPerJoule: 100_000,
+      thresholdBitsPerJoule: 135_000,
     },
   };
 }
@@ -193,5 +201,37 @@ test('rejects clock metadata from a different source frame', () => {
       sourceFrameId: 'other-frame',
     })),
     /share one source frame/,
+  );
+});
+
+test('refuses to replace a vanished pair whose last measured EE was still healthy', () => {
+  const set = setFrom([
+    measurement('SAT-B', 4, 30),
+    measurement('SAT-C', 2, 25),
+  ]);
+  // A safe, high-SINR replacement exists and the serving pair is absent from
+  // the frame -- everything except the EE evidence says "commit". The serving
+  // link was at the floor, so it was not unhealthy, and this lane must not
+  // start a service-identity change. This used to be enforced only by an
+  // `if (servingBelowEeThreshold)` at the single call site.
+  assert.equal(
+    selectServiceContinuityFallback(input(candidateLinkKey('SAT-A', 1), set, {
+      servingEe: { servingEeBitsPerJoule: 135_000, thresholdBitsPerJoule: 135_000 },
+    })),
+    null,
+  );
+  // Unmeasurable EE is refused too, rather than being read as zero.
+  assert.equal(
+    selectServiceContinuityFallback(input(candidateLinkKey('SAT-A', 1), set, {
+      servingEe: { servingEeBitsPerJoule: null, thresholdBitsPerJoule: 135_000 },
+    })),
+    null,
+  );
+  // One bit/J below the floor is unhealthy, so the same frame now commits.
+  assert.notEqual(
+    selectServiceContinuityFallback(input(candidateLinkKey('SAT-A', 1), set, {
+      servingEe: { servingEeBitsPerJoule: 134_999, thresholdBitsPerJoule: 135_000 },
+    })),
+    null,
   );
 });

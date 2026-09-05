@@ -9,6 +9,7 @@
  * It does not inspect forecast EE, throughput, or remaining-service forecasts.
  */
 
+import { mintMeasuredEePermit } from './eeCommitPermit';
 import {
   candidateLinkKey,
   candidateLinkKeyString,
@@ -39,6 +40,23 @@ export interface ServiceContinuityFallbackInput {
   readonly minimumDistinctCandidateSatellites?: number;
   /** Caller-owned episode and clock identity; never inferred here. */
   readonly clock: ServiceContinuityFallbackClock;
+  /**
+   * EE evidence for the serving link that vanished. Required, not optional.
+   *
+   * This lane used to rely on its caller having written
+   * `if (servingBelowEeThreshold)` around the call. That is the shape SDD §2 F1
+   * describes: the authority lives at the call site, so a second call site --
+   * or an edit that drops the guard -- silently commits without it. The check
+   * now lives here, and the parameter is required, so a caller that cannot
+   * supply EE evidence cannot reach this lane at all.
+   *
+   * `servingEeBitsPerJoule` is null when the vanished link had no measurable
+   * EE this frame; that is refused rather than treated as zero.
+   */
+  readonly servingEe: {
+    readonly servingEeBitsPerJoule: number | null;
+    readonly thresholdBitsPerJoule: number;
+  };
 }
 
 /** The reason is deliberately explicit in the published receipt. */
@@ -180,6 +198,21 @@ export function selectServiceContinuityFallback(
     const distinctSatelliteIds = new Set(safeCandidates.map(candidate => candidate.key.satelliteId));
     if (distinctSatelliteIds.size < minimumDistinctCandidateSatellites) return null;
   }
+  // The serving link must actually be below the floor. A vanished pair is not
+  // by itself permission to replace a link that was still healthy.
+  if (mintMeasuredEePermit({
+    path: 'live-cell:service-continuity-fallback',
+    servingEeBitsPerJoule: input.servingEe.servingEeBitsPerJoule,
+    // The vanished pair has no measurable target EE to compare against, so the
+    // "strictly better" half of the rule cannot apply here. Passing the
+    // threshold itself keeps the serving-below-floor half honest while making
+    // the missing comparison explicit rather than silently skipped.
+    targetEeBitsPerJoule: input.servingEe.thresholdBitsPerJoule,
+    thresholdBitsPerJoule: input.servingEe.thresholdBitsPerJoule,
+  }) === null) {
+    return null;
+  }
+
   const target = safeCandidates.sort(compareFallbackCandidates)[0] ?? null;
   if (target === null || target.sinr.value === null || !Number.isFinite(target.sinr.value)) {
     return null;

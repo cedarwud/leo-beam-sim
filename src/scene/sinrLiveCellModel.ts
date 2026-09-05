@@ -2686,6 +2686,13 @@ export class SinrLiveCellModel {
               sourceFrameId: decisionFrame.sourceFrameId,
               simTimeMs: decisionFrame.simTimeMs,
             },
+            // The lane re-checks this itself now; the surrounding
+            // `servingBelowEeThreshold` branch is no longer the only thing
+            // standing between a vanished pair and a replacement commit.
+            servingEe: {
+              servingEeBitsPerJoule: servingEe,
+              thresholdBitsPerJoule: this.eeThresholdBitsPerJoule,
+            },
           });
           continuityFallback = engineReceipt !== null;
         }
