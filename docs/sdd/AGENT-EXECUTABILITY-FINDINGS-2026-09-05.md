@@ -32,9 +32,23 @@
 | C 移除 TTT guard | 未偵測，輸出與基線逐位元組相同 |
 | D 閾值 135→130 | 未偵測，只印出新數值 |
 
-**真實偵測率仍是 1/4。** 紅色基線不是主因；那些檢查根本沒有斷言那些性質。
-綠基線是必要條件，不是充分條件。B/C/D 需要的是 §4.5.3 的機械防護，不是更好的靜態斷言。
-（D 已於 `a62d680` 關閉：`eeCommitPermit.test.ts` 以字面量斷言 135 並測邊界。）
+**當時的真實偵測率仍是 1/4。** 紅色基線不是主因；那些檢查根本沒有斷言那些性質。
+綠基線是必要條件，不是充分條件。
+
+**後續已補齊，現為 4/4**（同樣以 `npm run check:baseline` 在隔離 worktree 重測）：
+
+| 突變 | 現況 | 關閉方式 |
+|---|---|---|
+| A | 偵測到 | 原本就會 |
+| B | 偵測到 | `handoverSelectionPolicy.test.ts` 以**字面量**斷言必要 gate 集合 |
+| C | 偵測到 | `handover-manager.test.ts` 的 TTT 契約，斷言在 **event log** 上 |
+| D | 偵測到 | `eeCommitPermit.test.ts` 以字面量斷言 135 並測 134_999/135_000 邊界 |
+
+C 之所以長期無訊號，還有第二個原因：**`handover-manager.test.ts` 是孤兒測試**——
+`grep -c handover-manager.test package.json` 為 0，沒有任何 npm script 或 CI job 跑過它。
+`scripts/validate-static-all.mjs` 只自動探索 `validate:*` 開頭的 npm key，所以一個沒被引用的
+`*.test.ts` 對它完全不可見。**綠色不等於有被執行。** 該檔案與 `handoverSelectionPolicy.test.ts`
+已納入 `check:baseline`。
 
 ### 新發現：比七條路徑更嚴重的回歸
 
