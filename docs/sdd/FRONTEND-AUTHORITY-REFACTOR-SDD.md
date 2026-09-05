@@ -68,6 +68,26 @@ added `eeThreshold.ts` with a default of 135 and, in the same commit, a test
 asserting the control renders `100` -- internally inconsistent on arrival,
 invisible because the test was an orphan.
 
+**Where each acceptance sentence is now checked.** §7 lists five real requests.
+This is the map from each to the executable check that would fail if it broke --
+the P2 addressability the document asks for, applied to the acceptance list
+itself. All of these run: the orphan ratchet is at 0, so every test file in the
+repo is reachable from some npm script.
+
+| §7 sentence | Checked by |
+|---|---|
+| 1. EE below the threshold triggers handover | `eeCommitPermit.test.ts` (literal 135, the 134_999/135_000 boundary), `check:handover`'s EE gate and EE-blind ledger |
+| 2. The right rail shows all seven beams | `railProjection.test.ts`, `beamMetrics.test.ts`, `acceptedSnapshot.test.ts` |
+| 3. Beam colour follows EE through the handover | `beamMetrics.test.ts`, `homepageSatelliteVisualIdentity.test.ts` |
+| 4. The serving beam is not permanently B1 | `handoverPresentationExclusivity.test.ts`, `sinrLiveCellIntraDecision.test.ts` |
+| 5. Pressing Intra shows only intra | `handoverDisplayIsolation.test.ts`, `homepageHandoverControlsOwnership.test.ts` |
+
+Worth knowing before planning Track A: the four principal files above carry 243
+assertions between them and **none** of them reads production source text --
+they exercise behaviour. The data layer behind these five sentences is better
+covered than the F-list suggests. What is NOT covered by them is the visual
+presentation itself, which is what Track A is about.
+
 **An invariant worth knowing about.** The homepage's EE authority depends on the
 legacy SINR-only manager being suppressed once a link exists
 (`MainScene.tsx` passes `homepageVisualIdentity && sceneLane === 'sinr-live'`
