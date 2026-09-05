@@ -833,6 +833,23 @@ interface CellBeamMeasurement {
 /** Readable confirmation interval after candidate TTT in SINR compatibility mode. */
 export const SINR_LIVE_SELECTION_HOLD_SEC = 1;
 
+/**
+ * How many consecutive decision frames the model may keep a serving identity
+ * whose pair has vanished and whose replacement cannot be measured.
+ *
+ * One, because the regression this tolerance exists for is explicitly a single
+ * missed frame: clearing immediately turned one publication gap into a
+ * permanent detach. Without an upper bound, though, an opportunity with
+ * unavailable SINR/EE counted as a reason to keep the identity forever -- a UE
+ * far from a geometrically reachable satellite held a vanished serving pair
+ * indefinitely, which a cross-family review reproduced.
+ *
+ * This is a policy choice, not a physical constant. A seconds-based timeout was
+ * rejected because the repo defines no fixed publication period to derive one
+ * from honestly.
+ */
+export const SINR_LIVE_MAX_UNAVAILABLE_REPLACEMENT_FRAMES = 1;
+
 interface PrimaryServingAssignment {
   readonly primaryUeId: string;
   /** Geographic membership remains a separate fact from the selected beam. */
@@ -1135,6 +1152,8 @@ export class SinrLiveCellModel {
    * every constructed engine's starting episode ID unique, so a re-attach
    * after a genuine detach cannot land back on an already-used ID.
    */
+  /** Consecutive frames the vanished serving pair has gone unmeasured. */
+  private primaryServingMeasurementGap: { sourceFrameId: string; consecutiveFrames: number } | null = null;
   private readonly primaryEpisodeInstanceId = nextPrimaryEpisodeInstanceId();
   private primaryEpisodeSequence = 0;
   private lastHandoverDecisionFrame: HandoverDecisionFrame | null = null;
@@ -1252,6 +1271,7 @@ export class SinrLiveCellModel {
   }
 
   private clearPrimaryDecisionState(): void {
+    this.primaryServingMeasurementGap = null;
     this.primaryServingAssignment = null;
     this.primaryDecisionEngine = null;
     this.lastHandoverDecisionFrame = null;
@@ -2693,11 +2713,6 @@ export class SinrLiveCellModel {
         servingEe,
         this.eeThresholdBitsPerJoule,
       );
-      const hasReplacementOpportunity = currentServingKey !== null
-        && primaryCandidateOpportunities.opportunities.some(opportunity => (
-          !sameCandidateLinkKey(opportunity.key, currentServingKey)
-        ));
-
       // "Is anything still able to serve this UE?" -- deliberately NOT
       // `linkSats.length > 0`.
       //
@@ -2714,6 +2729,10 @@ export class SinrLiveCellModel {
       // service and must not read as one.
       const primaryCellHasReachableSatellite = primaryCellId !== null
         && (allCandidatesByCell.get(primaryCellId)?.length ?? 0) > 0;
+
+      // A measured serving pair clears the gap: the grace is for CONSECUTIVE
+      // unmeasured frames, so one good frame restores the full tolerance.
+      if (!servingPairMissing) this.primaryServingMeasurementGap = null;
 
       if (servingPairMissing && currentServingKey !== null) {
         // A missing scheduled pair is not a detach and is not permission to
@@ -2748,32 +2767,37 @@ export class SinrLiveCellModel {
           continuityFallback = engineReceipt !== null;
         }
 
-        if (engineReceipt === null && hasReplacementOpportunity) {
-          // Keep the last accepted service identity until a below-threshold
-          // source and a measured replacement are both available. This is the
-          // guard that prevents a high-elevation gap from looking like a fast
-          // inter handover or a fresh B1 attach.
-          this.primaryDecisionEngine.restore(decisionEngineSnapshot);
-          decisionFrame = createHandoverDecisionFrame({
-            ...decisionFrame,
-            phase: 'monitoring',
-            serving: currentServingKey,
-            provisionalLeader: null,
-            selectedTarget: null,
-            selectedKind: null,
-            recentCommit: null,
-            mode: 'service-continuity-protection',
-          });
-        } else if (engineReceipt === null && primaryCellHasReachableSatellite) {
-          // A temporary empty replacement set is a publication/coverage gap,
-          // not proof that the focused service ended. Preserve the last
-          // accepted identity so the homepage can keep rendering its serving
-          // beam and wait for a real candidate before committing an inter HO.
-          // Clearing here made one missed frame turn into a permanent detach:
-          // the next frame had neither a serving pair nor a beam to draw.
-          // Scope: this tolerance holds only while some satellite can still
-          // reach this cell. With nothing reachable there is no gap to wait out
-          // and nothing to hand over to -- see the detach below.
+        // Count consecutive unmeasured frames for this vanished pair. Only a
+        // NEW source frame advances the count, so re-entering this block within
+        // one frame cannot exhaust the grace.
+        if (engineReceipt === null) {
+          this.primaryServingMeasurementGap =
+            this.primaryServingMeasurementGap?.sourceFrameId === candidateSourceFrameId
+              ? this.primaryServingMeasurementGap
+              : {
+                sourceFrameId: candidateSourceFrameId,
+                consecutiveFrames: (this.primaryServingMeasurementGap?.consecutiveFrames ?? 0) + 1,
+              };
+        }
+        const withinMeasurementGapGrace =
+          (this.primaryServingMeasurementGap?.consecutiveFrames ?? 0)
+          <= SINR_LIVE_MAX_UNAVAILABLE_REPLACEMENT_FRAMES;
+
+        if (engineReceipt === null && primaryCellHasReachableSatellite && withinMeasurementGapGrace) {
+          // A temporary empty or unmeasurable replacement set is a
+          // publication/coverage gap, not proof that the focused service ended.
+          // Preserve the last accepted identity so the homepage can keep
+          // rendering its serving beam and wait for a real candidate before
+          // committing an inter HO. Clearing here immediately made one missed
+          // frame turn into a permanent detach: the next frame had neither a
+          // serving pair nor a beam to draw.
+          //
+          // Bounded, though. This used to also fire on `hasReplacementOpportunity`
+          // with no upper bound, so an opportunity whose SINR/EE was unavailable
+          // counted as a reason to hold the identity forever -- a UE far from a
+          // geometrically reachable satellite never detached. Geometry now buys
+          // a bounded grace, not indefinite preservation: reachability is
+          // permission to wait one frame, not evidence of service.
           this.primaryDecisionEngine.restore(decisionEngineSnapshot);
           decisionFrame = createHandoverDecisionFrame({
             ...decisionFrame,

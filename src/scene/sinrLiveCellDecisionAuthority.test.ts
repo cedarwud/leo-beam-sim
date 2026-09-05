@@ -654,3 +654,100 @@ test('two models sharing an epoch do not publish the same episode id', () => {
   assert.notEqual(first, null);
   assert.notEqual(first, second, 'two models with the same epochUtcMs must not share an episode id');
 });
+
+test('an unmeasurable replacement buys one frame of grace, then the model detaches', () => {
+  // Distinct from the steering-cone case above. Here a satellite IS
+  // geometrically reachable for the cell, so the reachability guard is
+  // satisfied, but the UE is far enough away that its SINR/EE cannot be
+  // measured. That used to preserve the vanished serving identity forever:
+  // an opportunity with unavailable evidence counted as a reason to wait.
+  const profile = loadProfile('hobs-2024-candidate-rich');
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 1,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: false,
+    beamsPerSat: Infinity,
+    coverageSteeringAngleDeg: 50,
+  });
+  const nearUe = { id: 'ue-primary', eastKm: 0, northKm: 0 };
+  const attached = model.step({
+    visibleSats: [satellite('SAT-A', 0)], ues: [nearUe], simTimeSec: 0, dtSec: 0,
+  });
+  assert.equal(attached.ues[0]?.servingSatId, 'SAT-A');
+
+  // SAT-A is gone; SAT-B reaches the cell, but the UE is 5000 km away so no
+  // usable measurement exists for it.
+  const farUe = { id: 'ue-primary', eastKm: 5000, northKm: 0 };
+  const firstGap = model.step({
+    visibleSats: [satellite('SAT-B', 0)], ues: [farUe], simTimeSec: 1, dtSec: 1,
+  });
+  assert.equal(
+    firstGap.ues[0]?.servingSatId,
+    'SAT-A',
+    'one unmeasured frame is the documented transient the tolerance exists for',
+  );
+
+  const secondGap = model.step({
+    visibleSats: [satellite('SAT-B', 0)], ues: [farUe], simTimeSec: 2, dtSec: 1,
+  });
+  const decision = model.getHandoverDecisionFrame();
+  assert.equal(decision?.phase, 'initial-attach', 'the grace is bounded, not indefinite');
+  assert.equal(decision?.serving, null);
+  assert.equal(secondGap.ues[0]?.servingSatId, null);
+  assert.equal(secondGap.cells.some(cell => cell.servingSatId !== null), false);
+});
+
+test('one bad frame followed by a good one keeps serving and clears the gap', () => {
+  // The grace counts CONSECUTIVE unmeasured frames. A recovered frame must
+  // restore the full tolerance, otherwise a slow drip of isolated gaps would
+  // eventually detach a healthy link.
+  const profile = loadProfile('hobs-2024-candidate-rich');
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 1,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: false,
+    beamsPerSat: Infinity,
+    coverageSteeringAngleDeg: 50,
+  });
+  const ue = { id: 'ue-primary', eastKm: 0, northKm: 0 };
+  model.step({ visibleSats: [satellite('SAT-A', 0)], ues: [ue], simTimeSec: 0, dtSec: 0 });
+
+  // One frame where SAT-A is absent but SAT-B reaches the cell.
+  model.step({ visibleSats: [satellite('SAT-B', 0)], ues: [ue], simTimeSec: 1, dtSec: 1 });
+  // SAT-A measurable again: the gap must reset.
+  const recovered = model.step({
+    visibleSats: [satellite('SAT-A', 0)], ues: [ue], simTimeSec: 2, dtSec: 1,
+  });
+  assert.notEqual(recovered.ues[0]?.servingSatId, null, 'a recovered frame must not leave the model detached');
+
+  // A single further gap must again be tolerated rather than detaching, which
+  // it would not be if the counter had kept its earlier value.
+  const oneMoreGap = model.step({
+    visibleSats: [satellite('SAT-B', 0)], ues: [ue], simTimeSec: 3, dtSec: 1,
+  });
+  assert.notEqual(
+    oneMoreGap.ues[0]?.servingSatId,
+    null,
+    'the gap counter must have been cleared by the recovered frame',
+  );
+});
