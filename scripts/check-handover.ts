@@ -1143,9 +1143,22 @@ for (const path of HANDOVER_COMMIT_PATHS) {
 // model turned it off. Only `git diff` caught it.
 //
 // Duplicating the values in the oracle does not make that impossible -- nothing
-// local can -- but it means silencing them requires editing this file too,
-// which is a deliberate act rather than an incidental one. The honest statement
-// of the limit stays: diff review is the real defence.
+// local can -- but it means silencing them is a deliberate act rather than an
+// incidental one. The honest statement of the limit stays: diff review is the
+// real defence.
+//
+// Two limits worth naming, both raised by a Gemini-family review of this block:
+//
+// 1. The failure message used to say the value was pinned in two places and
+//    that both needed updating. For a model trying to make a red light go
+//    away, that is an instruction manual. It now states that the value is
+//    deliberate and needs the owner's agreement, without describing the
+//    mechanism.
+// 2. This guards the CONSTANTS, not the logic that consumes them. Leaving 135
+//    intact while altering the comparison that reads it -- a scale factor, an
+//    extra disjunct, an earlier state transition -- passes this check
+//    completely. The behavioural assertions elsewhere in this oracle are what
+//    cover that; this block is not a substitute for them.
 // ---------------------------------------------------------------------------
 console.log('\n=== check:handover -- authoritative constants ===');
 const AUTHORITATIVE_CONSTANTS: readonly { readonly name: string; readonly actual: number; readonly expected: number }[] = [
@@ -1157,9 +1170,10 @@ for (const constant of AUTHORITATIVE_CONSTANTS) {
   console.log(`  [${ok ? 'ok' : 'CHANGED'}] ${constant.name} = ${constant.actual} (expected ${constant.expected})`);
   if (!ok) {
     fail(
-      `${constant.name} is ${constant.actual}, expected ${constant.expected}. This value is pinned in `
-      + `its unit test AND here, so changing the behaviour it governs means changing both on purpose. `
-      + `If the new value is intended, say so and update both; do not silence one of them.`,
+      `${constant.name} is ${constant.actual}, expected ${constant.expected}. This value is fixed `
+      + `deliberately and governs handover behaviour the owner has restated repeatedly. If the change `
+      + `is intended, it needs the owner's agreement and an explicit reason in the commit message. `
+      + `Do not adjust the expectation to match the code.`,
     );
   }
 }
