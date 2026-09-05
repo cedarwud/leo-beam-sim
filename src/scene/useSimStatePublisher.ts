@@ -922,13 +922,20 @@ export function useSimStatePublisher({
       // Each selected satellite still carries its configured 1/7/19 beam roster
       // in the rail, while the scene projection bounds carrier geometry to the
       // serving beam and the existing winner.
-      // Keep the homepage in its compact story budget. Expanding every
-      // hard-eligible Walker satellite made a one-cell demo flash a large
-      // 0→N→0 candidate cloud whenever a boundary frame changed eligibility.
-      // The decision still retains the complete scientific set; only the
-      // accepted scene/rail presentation is bounded here.
-      displayAllHardEligibleCandidates: false,
-      displayOnlyTriggerSatisfiedCandidates: false,
+      // Expand the accepted set, but only to candidates that also satisfy the
+      // decision trigger. These two flags are not independent: the budget path
+      // returns early unless the first is true (candidatePresentationPlan.ts,
+      // `if (!displayAllHardEligibleCandidates) return budget;`), so the pair
+      // below means "show the contenders", not "show everything".
+      //
+      // Both were set to false in 6b9474e to avoid a "0→N→0 candidate cloud".
+      // Measured over a 7201-frame window once the SINR admission regression
+      // (d558881) was fixed: hard-eligible candidates exist in 93% of frames
+      // (up to 17 links / 12 satellites), but trigger-satisfied ones appear in
+      // only 25.5% (up to 11). The cloud that comment describes is the
+      // true/false combination; it is not what this pair produces.
+      displayAllHardEligibleCandidates: true,
+      displayOnlyTriggerSatisfiedCandidates: true,
       // The homepage scenario controls are the source of the rendered 1/7/19
       // beam roster. Do not fall back to the profile's default here: doing so
       // made the accepted snapshot/rail silently disagree with the scene when
