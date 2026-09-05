@@ -16,11 +16,11 @@
  * §11, which records two false passes produced exactly that way).
  *
  * Exit code is 0 only if every scenario below produced the commit the
- * scenario is named for, with an approving path that is either EE-gated or
- * explicitly logged as EE-blind, and no EE-gated commit fired at/above
- * threshold. On the code as of commit 6b9474e this exits 1 -- SDD §3's five
- * tests are red, and the commits they document either did not happen or
- * happened with the wrong mode.
+ * scenario is named for, no EE-gated commit fired at/above threshold, every
+ * structural F1 claim still resolves, the commit-path count still matches
+ * EXPECTED_COMMIT_PATH_COUNT, and every EE-blind commit is one the ledger
+ * below already knows about. As of commit 072bb9c this exits 0; it exited 1
+ * through 6b9474e/df0ce68, where SDD §3 test 3 was red.
  *
  * Run: npm run check:handover
  */
@@ -48,6 +48,7 @@ import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../src/engine/handover/eeTh
 // path labels it prints would silently go stale. Fail loudly instead.
 // ---------------------------------------------------------------------------
 
+import ts from 'typescript';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -55,34 +56,220 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
 
-interface StaticClaim {
-  readonly file: string;
-  readonly line: number;
-  readonly mustContain: string;
-  readonly label: string;
-}
+// ---------------------------------------------------------------------------
+// Part 0 -- structural F1 claims.
+//
+// These claims used to pin absolute line numbers ("handover-manager.ts:221
+// must contain `commitDecision(`"). That made the one tool able to verify the
+// convergence of the seven commit paths the first casualty of that
+// convergence: any insertion or deletion above a pinned line invalidated it,
+// and a 7-line deletion did exactly that once. Claims are now resolved through
+// the TypeScript syntax tree, so they follow the symbol instead of the line.
+//
+// The topology assertion below is deliberately NOT drift-tolerant. Line drift
+// is noise; a change in HOW MANY commit paths exist is the event this whole
+// exercise is about, so it must stop the run until a human has re-read every
+// claim and updated the expected count on purpose.
+// ---------------------------------------------------------------------------
 
-const F1_STATIC_CLAIMS: readonly StaticClaim[] = [
-  { file: 'src/engine/handover/handover-manager.ts', line: 221, mustContain: 'commitDecision(', label: 'initial/re-attach' },
-  { file: 'src/engine/handover/handover-manager.ts', line: 265, mustContain: 'commitDecision(', label: 'continuity rescue intra-switch' },
-  { file: 'src/engine/handover/handover-manager.ts', line: 319, mustContain: 'commitDecision(', label: 'inter-HO after stable pending hold' },
-  { file: 'src/engine/handover/handover-manager.ts', line: 345, mustContain: 'commitDecision(', label: 'inter-HO stable target' },
-  { file: 'src/engine/handover/handover-manager.ts', line: 389, mustContain: 'commitDecision(', label: 'intra-switch after dwell' },
-  { file: 'src/scene/sinrLiveCellModel.ts', line: 2677, mustContain: 'selectServiceContinuityFallback(', label: 'service-continuity fallback' },
-  { file: 'src/engine/handover/handoverSelectionPolicy.ts', line: 283, mustContain: 'function instantaneousEeTriggerStatus(', label: 'the one EE-gated path' },
+type StructuralClaim =
+  | {
+    readonly kind: 'call-with-argument';
+    readonly file: string;
+    readonly callee: string;
+    readonly argumentIndex: number;
+    readonly argumentPattern: RegExp;
+    readonly label: string;
+  }
+  | { readonly kind: 'call'; readonly file: string; readonly callee: string; readonly label: string }
+  | { readonly kind: 'function-declared'; readonly file: string; readonly name: string; readonly label: string };
+
+const F1_STRUCTURAL_CLAIMS: readonly StructuralClaim[] = [
+  {
+    kind: 'call-with-argument',
+    file: 'src/engine/handover/handover-manager.ts',
+    callee: 'commitDecision',
+    argumentIndex: 4,
+    argumentPattern: /initial attach|re-attach after service loss/,
+    label: 'initial/re-attach',
+  },
+  {
+    kind: 'call-with-argument',
+    file: 'src/engine/handover/handover-manager.ts',
+    callee: 'commitDecision',
+    argumentIndex: 4,
+    argumentPattern: /continuity rescue/,
+    label: 'continuity rescue intra-switch',
+  },
+  {
+    kind: 'call-with-argument',
+    file: 'src/engine/handover/handover-manager.ts',
+    callee: 'commitDecision',
+    argumentIndex: 4,
+    argumentPattern: /stable pending hold/,
+    label: 'inter-HO after stable pending hold',
+  },
+  {
+    kind: 'call-with-argument',
+    file: 'src/engine/handover/handover-manager.ts',
+    callee: 'commitDecision',
+    argumentIndex: 4,
+    argumentPattern: /stable target for/,
+    label: 'inter-HO stable target',
+  },
+  {
+    kind: 'call-with-argument',
+    file: 'src/engine/handover/handover-manager.ts',
+    callee: 'commitDecision',
+    argumentIndex: 4,
+    argumentPattern: /dwell/,
+    label: 'intra-switch after dwell',
+  },
+  {
+    kind: 'call',
+    file: 'src/scene/sinrLiveCellModel.ts',
+    callee: 'selectServiceContinuityFallback',
+    label: 'service-continuity fallback',
+  },
+  {
+    kind: 'function-declared',
+    file: 'src/engine/handover/handoverSelectionPolicy.ts',
+    name: 'instantaneousEeTriggerStatus',
+    label: 'the one EE-gated path',
+  },
 ];
 
-interface StaticCheckResult {
-  readonly claim: StaticClaim;
-  readonly ok: boolean;
-  readonly actualLine: string;
+// The deliberately brittle half of the hybrid. Each entry counts one KIND of
+// commit authority; the total is the seven paths of SDD §2 F1. Converging the
+// paths (P3) is expected to break this on purpose.
+const COMMIT_PATH_TOPOLOGY: readonly {
+  readonly file: string;
+  readonly what: string;
+  readonly expected: number;
+  readonly count: () => number;
+}[] = [
+  {
+    file: 'src/engine/handover/handover-manager.ts',
+    what: 'commitDecision(...) call sites',
+    expected: 5,
+    count: () => callSites('src/engine/handover/handover-manager.ts', 'commitDecision').length,
+  },
+  {
+    file: 'src/scene/sinrLiveCellModel.ts',
+    what: 'selectServiceContinuityFallback(...) call sites',
+    expected: 1,
+    count: () => callSites('src/scene/sinrLiveCellModel.ts', 'selectServiceContinuityFallback').length,
+  },
+  {
+    file: 'src/engine/handover/handoverSelectionPolicy.ts',
+    what: 'instantaneousEeTriggerStatus declarations',
+    expected: 1,
+    count: () => functionDeclarations(
+      'src/engine/handover/handoverSelectionPolicy.ts',
+      'instantaneousEeTriggerStatus',
+    ).length,
+  },
+];
+
+const EXPECTED_COMMIT_PATH_COUNT = 7;
+
+const parsedSources = new Map<string, ts.SourceFile>();
+
+function sourceFileFor(file: string): ts.SourceFile {
+  const cached = parsedSources.get(file);
+  if (cached !== undefined) return cached;
+  const text = readFileSync(join(repoRoot, file), 'utf8');
+  const parsed = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  parsedSources.set(file, parsed);
+  return parsed;
 }
 
-function checkStaticClaims(): StaticCheckResult[] {
-  return F1_STATIC_CLAIMS.map(claim => {
-    const text = readFileSync(join(repoRoot, claim.file), 'utf8').split('\n');
-    const actualLine = text[claim.line - 1] ?? '';
-    return { claim, ok: actualLine.includes(claim.mustContain), actualLine };
+function eachNode(node: ts.Node, visit: (candidate: ts.Node) => void): void {
+  visit(node);
+  ts.forEachChild(node, child => { eachNode(child, visit); });
+}
+
+/** `foo(...)` and `this.foo(...)` both resolve to the name `foo`. */
+function calleeName(node: ts.CallExpression): string | null {
+  const expression = node.expression;
+  if (ts.isIdentifier(expression)) return expression.text;
+  if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
+  return null;
+}
+
+function callSites(file: string, callee: string): ts.CallExpression[] {
+  const found: ts.CallExpression[] = [];
+  eachNode(sourceFileFor(file), node => {
+    if (ts.isCallExpression(node) && calleeName(node) === callee) found.push(node);
+  });
+  return found;
+}
+
+function functionDeclarations(file: string, name: string): ts.Node[] {
+  const found: ts.Node[] = [];
+  eachNode(sourceFileFor(file), node => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === name) found.push(node);
+    if (ts.isVariableDeclaration(node)
+      && ts.isIdentifier(node.name)
+      && node.name.text === name
+      && node.initializer !== undefined
+      && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
+      found.push(node);
+    }
+  });
+  return found;
+}
+
+/** Line numbers are DERIVED for human output only -- never used to locate anything. */
+function locationOf(file: string, node: ts.Node): string {
+  const { line } = sourceFileFor(file).getLineAndCharacterOfPosition(node.getStart());
+  return `${file}:${line + 1}`;
+}
+
+interface StructuralCheckResult {
+  readonly label: string;
+  readonly file: string;
+  readonly ok: boolean;
+  readonly detail: string;
+}
+
+function checkStructuralClaims(): StructuralCheckResult[] {
+  return F1_STRUCTURAL_CLAIMS.map(claim => {
+    if (claim.kind === 'function-declared') {
+      const declarations = functionDeclarations(claim.file, claim.name);
+      return {
+        label: claim.label,
+        file: claim.file,
+        ok: declarations.length > 0,
+        detail: declarations.length > 0
+          ? `${claim.name} declared at ${locationOf(claim.file, declarations[0]!)}`
+          : `no declaration of ${claim.name} found`,
+      };
+    }
+    const calls = callSites(claim.file, claim.callee);
+    if (claim.kind === 'call') {
+      return {
+        label: claim.label,
+        file: claim.file,
+        ok: calls.length > 0,
+        detail: calls.length > 0
+          ? `${claim.callee}(...) called at ${calls.map(call => locationOf(claim.file, call)).join(', ')}`
+          : `no call to ${claim.callee}(...) found`,
+      };
+    }
+    const matching = calls.filter(call => {
+      const argument = call.arguments[claim.argumentIndex];
+      return argument !== undefined && claim.argumentPattern.test(argument.getText());
+    });
+    return {
+      label: claim.label,
+      file: claim.file,
+      ok: matching.length > 0,
+      detail: matching.length > 0
+        ? `${claim.callee}(...) with argument ${claim.argumentIndex} matching ${String(claim.argumentPattern)}`
+          + ` at ${matching.map(call => locationOf(claim.file, call)).join(', ')}`
+        : `no ${claim.callee}(...) call whose argument ${claim.argumentIndex} matches ${String(claim.argumentPattern)}`,
+    };
   });
 }
 
@@ -557,16 +744,33 @@ function scenarioHandoverManagerOrdinaryIntraDwell(): void {
 // Run everything, then print the raw machine-readable report.
 // ---------------------------------------------------------------------------
 
-console.log('=== check:handover -- static F1 claims ===');
-const staticResults = checkStaticClaims();
-for (const result of staticResults) {
-  const status = result.ok ? 'ok' : 'DRIFTED';
-  console.log(`  [${status}] ${result.claim.file}:${result.claim.line} (${result.claim.label})`);
+console.log('=== check:handover -- structural F1 claims ===');
+const structuralResults = checkStructuralClaims();
+for (const result of structuralResults) {
+  const status = result.ok ? 'ok' : 'MISSING';
+  console.log(`  [${status}] ${result.file} (${result.label})`);
+  console.log(`    ${result.detail}`);
   if (!result.ok) {
-    console.log(`    expected to contain: ${result.claim.mustContain}`);
-    console.log(`    actual line: ${result.actualLine.trim()}`);
-    fail(`static claim drifted: ${result.claim.file}:${result.claim.line} no longer contains "${result.claim.mustContain}"`);
+    fail(`structural claim unsatisfied: ${result.label} -- ${result.detail}`);
   }
+}
+
+console.log('\n=== check:handover -- commit-path topology (deliberately brittle) ===');
+let observedCommitPathCount = 0;
+for (const entry of COMMIT_PATH_TOPOLOGY) {
+  const observed = entry.count();
+  observedCommitPathCount += observed;
+  const status = observed === entry.expected ? 'ok' : 'CHANGED';
+  console.log(`  [${status}] ${entry.file}: ${observed} ${entry.what} (expected ${entry.expected})`);
+}
+if (observedCommitPathCount !== EXPECTED_COMMIT_PATH_COUNT) {
+  fail(
+    `commit-path topology changed: counted ${observedCommitPathCount} commit paths, expected `
+    + `${EXPECTED_COMMIT_PATH_COUNT}. This assertion is intentionally brittle -- the number of paths `
+    + `that can commit a handover is exactly what SDD §2 F1 is about. Re-read every structural claim `
+    + `above, confirm which authority each remaining path answers to, then update `
+    + `EXPECTED_COMMIT_PATH_COUNT and COMMIT_PATH_TOPOLOGY deliberately.`,
+  );
 }
 
 console.log('\n=== check:handover -- running scenarios ===');
@@ -597,6 +801,58 @@ const violations = eeGatedRecords.filter(r => r.eeGateStatus === 'at-or-above-th
 console.log(`  EE-observable commits: ${eeGatedRecords.length}`);
 console.log(`  violations (committed at/above threshold): ${violations.length}`);
 console.log(`  EE-blind commits (handover-manager.ts, never reads EE): ${records.filter(r => r.engine === 'handover-manager').length}`);
+
+// ---------------------------------------------------------------------------
+// The EE-blind commit ledger.
+//
+// `handover-manager.ts` can commit a handover with no EE evidence and no
+// threshold authority at all. This oracle has always been able to SEE that --
+// it printed the count as information -- but information is not a signal: a
+// red-team mutation that let a fourth path commit without EE produced no
+// failure, because nothing compared the count to anything.
+//
+// The ledger freezes the blind commits that exist today, keyed by the path
+// that approved them. A blind commit that is not listed fails the run, and a
+// listed entry that stops appearing also fails. The set can therefore only
+// change as a deliberate edit here -- which is the moment someone has to look
+// at it. P3 convergence is expected to shrink this list toward empty; an
+// initial attach has no prior link to measure and is not a blind commit.
+// ---------------------------------------------------------------------------
+const EXPECTED_EE_BLIND_COMMITS: readonly string[] = [
+  'handover-manager|inter-handover|handover-manager.ts:345 (inter-HO stable target)',
+  'handover-manager|intra-switch|handover-manager.ts:265 (continuity rescue intra-switch)',
+  'handover-manager|intra-switch|handover-manager.ts:389 (intra-switch after dwell, F2: gated on SINR only)',
+];
+
+const blindCommitKeys = records
+  .filter(r => r.eeGateStatus === 'unknown-ee-blind-engine')
+  .map(r => `${r.engine}|${r.kind}|${r.approvingPath}`)
+  .sort();
+const expectedBlindKeys = [...EXPECTED_EE_BLIND_COMMITS].sort();
+
+console.log('\n=== check:handover -- EE-blind commit ledger ===');
+console.log(`  ledgered: ${expectedBlindKeys.length}, observed: ${blindCommitKeys.length}`);
+for (const key of blindCommitKeys) {
+  console.log(`    [${expectedBlindKeys.includes(key) ? 'ledgered' : 'UNLEDGERED'}] ${key}`);
+}
+for (const key of blindCommitKeys) {
+  if (!expectedBlindKeys.includes(key)) {
+    fail(
+      `unledgered EE-blind commit: ${key} committed a handover with no EE evidence and no threshold `
+      + `authority, and is not in EXPECTED_EE_BLIND_COMMITS. Either the path must consult the EE `
+      + `threshold, or the ledger must be extended deliberately with the reason it may not.`,
+    );
+  }
+}
+for (const key of expectedBlindKeys) {
+  if (!blindCommitKeys.includes(key)) {
+    fail(
+      `ledgered EE-blind commit no longer observed: ${key}. If this path now consults the EE `
+      + `threshold, remove it from EXPECTED_EE_BLIND_COMMITS; if the scenario stopped exercising it, `
+      + `the scenario has lost coverage and the ledger can no longer see this path.`,
+    );
+  }
+}
 
 console.log('\n=== check:handover -- verdict ===');
 if (failures.length > 0) {
