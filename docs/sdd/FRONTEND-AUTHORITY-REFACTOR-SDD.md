@@ -71,8 +71,19 @@ invisible because the test was an orphan.
 **Where each acceptance sentence is now checked.** §7 lists five real requests.
 This is the map from each to the executable check that would fail if it broke --
 the P2 addressability the document asks for, applied to the acceptance list
-itself. All of these run: the orphan ratchet is at 0, so every test file in the
-repo is reachable from some npm script.
+itself.
+
+Correction to what this paragraph first said. It claimed "all of these run: the
+orphan ratchet is at 0, so every test file in the repo is reachable from some
+npm script." That inference is invalid, and this document was the place it did
+the most damage. Being NAMED by an npm script is not the same as being RUN: 18
+of the 34 test/check scripts were invoked by nothing at all, `beamMetrics.test.ts`
+sat four-failures-red behind one of them, and the orphan ratchet could not see
+that by construction. What is true today is narrower and is stated per row
+below: sentences 1, 2, 4 and 5 have tests inside `check:baseline`; sentence 3's
+`homepageSatelliteVisualIdentity.test.ts` is reached only through
+`test:adopted-orphans` in CI. A test file being listed somewhere is evidence of
+nothing on its own.
 
 | §7 sentence | Checked by |
 |---|---|
