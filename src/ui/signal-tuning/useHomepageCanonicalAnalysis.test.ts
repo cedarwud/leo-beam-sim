@@ -113,9 +113,14 @@ assert.match(
   /useEffect\(\(\) => \{[\s\S]*?\}, \[appliedOrbitRequest(?:, enabled)?\]\);/,
   'draft constellation/time edits must not trigger the archived-TLE build effect',
 );
-const applyBlock = hookSource.match(
+const applyBlockMatch = hookSource.match(
   /const applyRequestedOrbitSettings = \(\) => \{[\s\S]*?\n  \};/,
-)?.[0] ?? '';
+);
+assert.ok(
+  applyBlockMatch,
+  'applyRequestedOrbitSettings block must be found in the hook source before inspecting its contents',
+);
+const applyBlock = applyBlockMatch[0];
 assert.match(
   applyBlock,
   /setAppliedOrbitRequest\(/,
@@ -166,9 +171,14 @@ assert.match(
   /while \(cache\.size > HOMEPAGE_EXPERIMENT_CACHE_LIMIT\)/,
   'the accepted experiment cache must remain bounded',
 );
-const parameterUpdateBlock = hookSource.match(
+const parameterUpdateBlockMatch = hookSource.match(
   /const updateParameters = \(next: SimulatorParameters\) => \{[\s\S]*?\n  \};\n\n  const resetParameters/,
-)?.[0] ?? '';
+);
+assert.ok(
+  parameterUpdateBlockMatch,
+  'updateParameters block must be found in the hook source before inspecting its contents',
+);
+const parameterUpdateBlock = parameterUpdateBlockMatch[0];
 assert.match(parameterUpdateBlock, /rebuildAcceptedExperiment\(/);
 assert.doesNotMatch(
   parameterUpdateBlock,
