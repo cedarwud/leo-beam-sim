@@ -7,6 +7,7 @@ import {
   type EeCommitPermit,
 } from './eeCommitPermit';
 import { HANDOVER_COMMIT_PATH_ACTIONS } from './commitProvenance';
+import { recordHandoverCommitExecution } from './commitExecutionTrace';
 import type { HandoverDecision, HandoverEvent, IntraSwitchPreview, ServingState } from './types';
 
 /**
@@ -611,6 +612,21 @@ export class HandoverManager {
       // UE telemetry: only inter-HO starts its configured ping-pong guard.
       this.guardUntilMs = simTimeMs + this.pingPongGuardMs;
     }
+
+    // Recorded here, after eventLog.push and the serving-state mutation above,
+    // so the ledger witnesses commits that actually took effect rather than
+    // ones a scenario merely claims. See commitExecutionTrace.ts.
+    recordHandoverCommitExecution({
+      engine: 'handover-manager',
+      path: permit.path,
+      action,
+      simTimeMs,
+      sourceFrameId: null,
+      from: fromSatId !== null && fromBeamId !== null
+        ? { satelliteId: fromSatId, beamId: fromBeamId }
+        : null,
+      to: { satelliteId: target.satId, beamId: target.beamId },
+    });
 
     return {
       action,

@@ -37,6 +37,7 @@
  */
 
 import { computeGeometricOffAxisDeg } from '../engine/signal/beam-gain';
+import { recordHandoverCommitExecution } from '../engine/handover/commitExecutionTrace';
 import {
   ANGLE_AWARE_BACKOFF_DB,
   ANGLE_AWARE_BEAM_POWER_CAP_W,
@@ -3008,6 +3009,22 @@ export class SinrLiveCellModel {
             this.primaryServingAssignment.key.satelliteId,
           );
           this.primaryLastCommit = engineReceipt;
+          // Recorded only here: inside the successful transaction branch, after
+          // the assignment has been accepted. A receipt the decision engine
+          // merely proposed, or one whose transaction was rejected, must append
+          // nothing -- the ledger's value is that it witnesses commits that
+          // took effect. See commitExecutionTrace.ts.
+          recordHandoverCommitExecution({
+            engine: 'sinr-live-cell-model',
+            path: engineReceipt.mode === 'ee-optimization'
+              ? 'live-cell:ee-optimization'
+              : 'live-cell:service-continuity-fallback',
+            action: engineReceipt.kind === 'intra-satellite' ? 'intra-switch' : 'inter-handover',
+            simTimeMs: engineReceipt.simTimeMs,
+            sourceFrameId: engineReceipt.sourceFrameId,
+            from: engineReceipt.from,
+            to: engineReceipt.to,
+          });
           finalLit.splice(0, finalLit.length, ...transaction.evidence.lit);
           finalActive.splice(0, finalActive.length, ...transaction.evidence.active);
           if (continuityFallback) {

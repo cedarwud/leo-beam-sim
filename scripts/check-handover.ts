@@ -48,6 +48,7 @@ import { buildSinrLiveCellLayout } from '../src/scene/sinrLiveCellRuntime.ts';
 import type { CandidateOpportunity, HandoverCommitReceipt } from '../src/engine/handover/candidateDecisionContract.ts';
 import { HandoverManager } from '../src/engine/handover/handover-manager.ts';
 import type { HandoverDecision, HandoverEvent } from '../src/engine/handover/types.ts';
+import { handoverCommitExecutions } from '../src/engine/handover/commitExecutionTrace.ts';
 import {
   HANDOVER_COMMIT_PATHS,
   handoverCommitPathConsultsEeThreshold,
@@ -1102,7 +1103,14 @@ const COMMIT_PATHS_WITHOUT_RUNTIME_COVERAGE: readonly HandoverCommitPath[] = [
   // Empty: every declared commit path is exercised by a scenario above.
 ];
 
-const observedCommitPaths = new Set(records.map(record => record.commitPath));
+// Read from the production execution ledger, NOT from `records`. A scenario
+// builds `records` itself, so coverage derived from them proved only that a
+// scenario claimed a path -- a cross-family review satisfied this gate with a
+// synthetic push while the real route was unreachable. Ledger entries are
+// appended by the commit sites themselves, after the commit takes effect.
+const commitExecutions = handoverCommitExecutions();
+const observedCommitPaths = new Set(commitExecutions.map(execution => execution.path));
+console.log(`  executed commits witnessed by the production ledger: ${commitExecutions.length}`);
 console.log('\n=== check:handover -- commit-path runtime coverage ===');
 for (const path of HANDOVER_COMMIT_PATHS) {
   const observed = observedCommitPaths.has(path);
