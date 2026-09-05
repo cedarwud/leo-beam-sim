@@ -813,6 +813,36 @@ function scenarioHandoverManagerInterThenContinuityRescue(): void {
   }
 }
 
+function scenarioHandoverManagerPendingHoldCommit(): void {
+  // The one path with no runtime coverage until now. It is NOT the plain
+  // stable-target path: it fires when the best target has been REPLACED while
+  // the previous pending target is still qualified, and that pending target
+  // then reaches the full trigger time while still inside pendingTargetHoldMs.
+  // The commit goes to the PENDING target, not to the new best one.
+  const scenario = 'handover-manager inter-HO after stable pending hold (F1 pending-hold path)';
+  const manager = new HandoverManager(loadProfile('hobs-2024-paper-default').handover, { enforceSharedHandoverInterval: false });
+  manager.state = { satId: 'sat-a', beamId: 0, sinrDb: 10, triggerTimeSec: 0, pendingTarget: null };
+  // sat-b becomes the pending target and banks 2.0s of the 3.5s trigger time.
+  manager.update([sample('sat-a', 0, 10), sample('sat-b', 0, 20)], 2, 1000);
+  // sat-c is now the best target, but sat-b is still qualified and the hold
+  // window (1.5s) has not expired, so sat-b keeps accumulating and commits.
+  const commit = manager.update(
+    [sample('sat-a', 0, 10), sample('sat-b', 0, 20), sample('sat-c', 0, 26)],
+    2,
+    1500,
+  );
+  console.log(`  [${scenario}] commit=${JSON.stringify(commit)}`);
+  if (commit.action !== 'inter-handover') {
+    fail(`[${scenario}] expected an inter-handover from the pending-hold path, got "${commit.action}": ${commit.reason}`);
+    return;
+  }
+  if (commit.target?.satId !== 'sat-b') {
+    fail(`[${scenario}] the pending-hold path must commit the PENDING target sat-b, not ${commit.target?.satId}`);
+  }
+  const event = manager.eventLog[manager.eventLog.length - 1]!;
+  recordHandoverManagerEvent(scenario, event, commit);
+}
+
 function scenarioHandoverManagerOrdinaryIntraDwell(): void {
   const scenario = 'handover-manager ordinary intra dwell, SINR only (F1/F2 line 389)';
   const manager = new HandoverManager(loadProfile('hobs-2024-paper-default').handover, { enforceSharedHandoverInterval: false });
@@ -913,6 +943,7 @@ const scenarios: Array<[string, () => void]> = [
   ['intraCommit(7-cell)', () => scenarioIntraCommit(7)],
   ['handoverManagerInitialAttach', scenarioHandoverManagerInitialAttach],
   ['handoverManagerInterThenContinuityRescue', scenarioHandoverManagerInterThenContinuityRescue],
+  ['handoverManagerPendingHoldCommit', scenarioHandoverManagerPendingHoldCommit],
   ['handoverManagerOrdinaryIntraDwell', scenarioHandoverManagerOrdinaryIntraDwell],
 ];
 for (const [name, run] of scenarios) {
@@ -953,6 +984,7 @@ console.log(`  EE-blind commits (handover-manager.ts, never reads EE): ${records
 // sentence must not be able to change a ledger key.
 const EXPECTED_EE_BLIND_COMMITS: readonly HandoverCommitPath[] = [
   'manager:inter-stable-target',
+  'manager:inter-stable-pending-hold',
   'manager:continuity-rescue',
   'manager:intra-dwell',
 ];
@@ -998,6 +1030,46 @@ for (const [key, expectedCount] of expectedTally) {
       + `${observedCount}. If this path now consults the EE threshold, remove it from `
       + `EXPECTED_EE_BLIND_COMMITS; if the scenario stopped exercising it, the scenario has lost `
       + `coverage and the ledger can no longer see this path.`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Runtime coverage of the declared commit paths.
+//
+// The structural claims above prove a call site EXISTS; they cannot prove it is
+// reachable. A cross-family review made the point concretely: an unreachable
+// call can pad the topology count while a live path is removed, and every
+// static check stays green. Only a scenario that actually observes a commit on
+// a path proves that path still fires.
+//
+// The uncovered list is a ratchet: a path on it that starts being observed must
+// be removed from the list, and a path not on it that stops being observed
+// fails. Coverage can therefore only improve.
+// ---------------------------------------------------------------------------
+const COMMIT_PATHS_WITHOUT_RUNTIME_COVERAGE: readonly HandoverCommitPath[] = [
+  // Empty: every declared commit path is exercised by a scenario above.
+];
+
+const observedCommitPaths = new Set(records.map(record => record.commitPath));
+console.log('\n=== check:handover -- commit-path runtime coverage ===');
+for (const path of HANDOVER_COMMIT_PATHS) {
+  const observed = observedCommitPaths.has(path);
+  const excused = COMMIT_PATHS_WITHOUT_RUNTIME_COVERAGE.includes(path);
+  const status = observed ? 'observed' : excused ? 'UNCOVERED (known)' : 'UNCOVERED';
+  console.log(`  [${status}] ${path}`);
+  if (!observed && !excused) {
+    fail(
+      `commit path ${path} was not observed by any scenario. Its structural claim only proves the `
+      + `call site exists, not that it can still fire, so an unreachable path would keep every `
+      + `static check green. Add a scenario that exercises it, or add it to `
+      + `COMMIT_PATHS_WITHOUT_RUNTIME_COVERAGE with the reason.`,
+    );
+  }
+  if (observed && excused) {
+    fail(
+      `commit path ${path} is listed in COMMIT_PATHS_WITHOUT_RUNTIME_COVERAGE but a scenario now `
+      + `observes it. Remove it from that list -- the list is a ratchet and may only shrink.`,
     );
   }
 }
