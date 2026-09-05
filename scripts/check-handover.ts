@@ -15,12 +15,21 @@
  * never "component mounted" or "DOM attribute present" (forbidden by SDD
  * §11, which records two false passes produced exactly that way).
  *
- * Exit code is 0 only if every scenario below produced the commit the
- * scenario is named for, no EE-gated commit fired at/above threshold, every
- * structural F1 claim still resolves, the commit-path count still matches
- * EXPECTED_COMMIT_PATH_COUNT, and every EE-blind commit is one the ledger
- * below already knows about. As of commit 072bb9c this exits 0; it exited 1
- * through 6b9474e/df0ce68, where SDD §3 test 3 was red.
+ * Exit code is 0 only if ALL of the following hold:
+ *   - every scenario produced the commit it is named for;
+ *   - no EE-gated commit fired while its source was at/above the threshold;
+ *   - every structural F1 claim still resolves through the syntax tree;
+ *   - the commit-path count still equals EXPECTED_COMMIT_PATH_COUNT, which is
+ *     derived from the HandoverCommitPath union rather than written here;
+ *   - no commit symbol escapes as a value (an alias is a route the count
+ *     cannot see);
+ *   - no EeCommitPermit is forged by type assertion outside its own module;
+ *   - every EE-blind commit is one the ledger already knows about, compared as
+ *     a multiset so a duplicate cannot hide behind an existing key;
+ *   - every declared commit path was actually OBSERVED by a scenario. A
+ *     structural claim proves a call site exists, not that it can still fire.
+ *
+ * It exited 1 through 6b9474e/df0ce68, where SDD §3 test 3 was red.
  *
  * Run: npm run check:handover
  */
