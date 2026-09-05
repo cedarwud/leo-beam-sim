@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 import { loadProfile } from '../profiles/index';
@@ -39,8 +40,14 @@ test('a suppressed manager still performs the initial attach', () => {
 
 test('a suppressed manager never commits again once a link is established', () => {
   const manager = managerWithSuppression(true);
-  manager.update([sample('sat-a', 0, 10)], 0, 0);
+  const attach = manager.update([sample('sat-a', 0, 10)], 0, 0);
+  // Assert the PRECONDITION. Without this, a regression that suppressed the
+  // initial attach too would leave eventsAfterAttach at 0, every loop iteration
+  // returning 'stay', and the final length check comparing 0 === 0 -- the test
+  // would pass green while "once a link is established" never happened.
+  assert.equal(attach.action, 'inter-handover', 'precondition: the initial attach must have committed');
   const eventsAfterAttach = manager.eventLog.length;
+  assert.equal(eventsAfterAttach, 1, 'precondition: exactly one event was logged by that attach');
 
   // A far better satellite, held stable well past the trigger time. An
   // unsuppressed manager commits this; the homepage EE authority must not see
@@ -62,15 +69,40 @@ test('the same sequence DOES commit without suppression, so the test is not vacu
   manager.update([sample('sat-a', 0, 10)], 0, 0);
   const eventsAfterAttach = manager.eventLog.length;
 
-  let committed = false;
+  let committedTo: string | null = null;
   for (let step = 1; step <= 30; step += 1) {
     const decision = manager.update(
       [sample('sat-a', 0, 1), sample('sat-b', 0, 40)],
       1,
       step * 1000,
     );
-    if (decision.action !== 'stay') committed = true;
+    // Assert WHAT it committed, not merely that the action was not 'stay'.
+    // Any unexpected action value would otherwise read as a successful commit.
+    if (decision.action === 'inter-handover') committedTo = decision.target?.satId ?? null;
   }
-  assert.equal(committed, true, 'an unsuppressed manager commits this sequence');
+  assert.equal(committedTo, 'sat-b', 'an unsuppressed manager hands over to the better satellite');
   assert.ok(manager.eventLog.length > eventsAfterAttach, 'and logs the event');
+});
+
+/**
+ * The tests above construct S3HandoverManager directly, so they prove what a
+ * suppressed manager DOES -- but they would all stay green if the call site
+ * simply stopped asking for suppression. A Gemini-family review pointed that
+ * out: deleting the argument in MainScene is the actual failure mode, and
+ * nothing here could see it.
+ *
+ * Checked against source text because the question is whether a call site
+ * exists, which behaviour in this file cannot answer. Anchored tightly on the
+ * call itself rather than a loose span, so it cannot be satisfied by unrelated
+ * nearby text.
+ */
+const mainSceneSource = await readFile(new URL('./MainScene.tsx', import.meta.url), 'utf8');
+
+test('MainScene actually asks for suppression rather than defaulting to none', () => {
+  assert.match(
+    mainSceneSource,
+    /shouldSuppressLegacyPrimaryHandover\(sceneLane, homepageVisualIdentity\)/,
+    'useSimulation must be told when to suppress the legacy manager; without this argument the '
+    + 'homepage silently hands primary handover back to the SINR-only engine',
+  );
 });

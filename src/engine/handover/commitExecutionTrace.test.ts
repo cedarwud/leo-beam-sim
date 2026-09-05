@@ -75,6 +75,13 @@ test('ledger fields match the event the engine actually logged', () => {
   assert.equal(appended[0]!.simTimeMs, event.timeMs, 'the ledger must carry the engine time, not a scenario time');
   assert.equal(appended[0]!.to.satelliteId, event.toSatId);
   assert.equal(appended[0]!.to.beamId, event.toBeamId);
-  assert.equal(appended[0]!.from?.satelliteId ?? null, event.fromSatId);
+  // `from?.satelliteId ?? null` alone would pass when the ledger recorded
+  // `from: null` for an intra-switch, since event.fromSatId would also be
+  // compared against null in some shapes. Assert the link is present and
+  // complete: an intra-switch has a real previous beam, and dropping it would
+  // make the ledger unable to say what the commit moved away from.
+  assert.notEqual(appended[0]!.from, null, 'an intra-switch has a previous link');
+  assert.equal(appended[0]!.from!.satelliteId, event.fromSatId);
+  assert.equal(appended[0]!.from!.beamId, event.fromBeamId);
   assert.equal(appended[0]!.action, event.action);
 });

@@ -27,10 +27,9 @@ const AUTHORITATIVE_PROFILE_TRIGGER_TIME_SEC = 3.5;
 
 test('the live-scene selection hold is 1 second', () => {
   assert.equal(SINR_LIVE_SELECTION_HOLD_SEC, AUTHORITATIVE_SELECTION_HOLD_SEC);
-  assert.ok(
-    SINR_LIVE_SELECTION_HOLD_SEC > 0,
-    'a zero hold means a candidate commits the instant it leads, with no stability requirement at all',
-  );
+  // A `> 0` assertion here would be vacuous: the equality above already pins the
+  // value to 1, so it could never fail independently. The behavioural guard
+  // against a zero hold lives in check:handover's commit-timing assertion.
 });
 
 test('the candidate-rich profile trigger time is 3.5s', () => {

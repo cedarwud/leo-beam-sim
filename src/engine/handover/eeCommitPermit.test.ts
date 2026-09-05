@@ -112,6 +112,10 @@ test('a measured permit records the evidence it was granted against', () => {
   assert.equal(permit!.evidence.kind, 'measured');
   if (permit!.evidence.kind !== 'measured') return;
   assert.equal(permit!.evidence.servingEeBitsPerJoule, 120_000);
+  // The target was passed in and never asserted, so dropping or corrupting it
+  // while building the evidence object went unnoticed. The permit's whole
+  // purpose is to record what it was granted against.
+  assert.equal(permit!.evidence.targetEeBitsPerJoule, 500_000);
   assert.equal(permit!.evidence.thresholdBitsPerJoule, THRESHOLD_BITS_PER_JOULE);
   assert.equal(permitIsEeBlind(permit!), false);
 });
@@ -178,7 +182,13 @@ test('negative EE is refused: it is an error sentinel, not evidence', () => {
   );
 });
 
-test('a target carrying no data is not an improvement', () => {
+test('a zero-EE target is refused, though the strictly-better rule already covers it', () => {
+  // Honest note, because the first version of this test claimed more than it
+  // proved: with serving EE required to be non-negative, `target > serving`
+  // already implies `target > 0`, so the explicit `targetEeBitsPerJoule <= 0`
+  // check in production cannot be triggered independently. It is kept as
+  // defence in depth, and this test documents the composite behaviour rather
+  // than pretending to exercise that branch alone.
   assert.equal(
     mintMeasuredEePermit({
       path: 'live-cell:ee-optimization',
@@ -187,7 +197,7 @@ test('a target carrying no data is not an improvement', () => {
       thresholdBitsPerJoule: 135_000,
     }),
     null,
-    'zero bits per joule is a dead link, never a handover target',
+    'a dead link is never a handover target, by whichever rule rejects it first',
   );
 });
 
