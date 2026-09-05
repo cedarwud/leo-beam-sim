@@ -2683,6 +2683,23 @@ export class SinrLiveCellModel {
           !sameCandidateLinkKey(opportunity.key, currentServingKey)
         ));
 
+      // "Is anything still able to serve this UE?" -- deliberately NOT
+      // `linkSats.length > 0`.
+      //
+      // `linkSats` filters on elevation alone, but a satellite only becomes a
+      // candidate for a cell if it ALSO falls inside the steering limit
+      // (`collectCellScanGeometries` rejects `scanAngleDeg > maxSteeringAngleDeg`).
+      // A satellite can therefore sit at 80 deg elevation, be counted in
+      // `linkSats`, and still be unusable for this cell -- in which case the
+      // coverage-gap branch below preserved a service identity pointing at a
+      // satellite that had already vanished, indefinitely.
+      //
+      // `allCandidatesByCell` is used rather than `candidatesByCell` because it
+      // is the pre-beam-budget geometry: running out of beams is not the end of
+      // service and must not read as one.
+      const primaryCellHasReachableSatellite = primaryCellId !== null
+        && (allCandidatesByCell.get(primaryCellId)?.length ?? 0) > 0;
+
       if (servingPairMissing && currentServingKey !== null) {
         // A missing scheduled pair is not a detach and is not permission to
         // re-attach to whichever satellite happens to be next in the list.
@@ -2732,16 +2749,16 @@ export class SinrLiveCellModel {
             recentCommit: null,
             mode: 'service-continuity-protection',
           });
-        } else if (engineReceipt === null && linkSats.length > 0) {
+        } else if (engineReceipt === null && primaryCellHasReachableSatellite) {
           // A temporary empty replacement set is a publication/coverage gap,
           // not proof that the focused service ended. Preserve the last
           // accepted identity so the homepage can keep rendering its serving
           // beam and wait for a real candidate before committing an inter HO.
           // Clearing here made one missed frame turn into a permanent detach:
           // the next frame had neither a serving pair nor a beam to draw.
-          // Scope: this tolerance holds only while some spacecraft is still
-          // link-eligible this frame. With nothing overhead there is no gap to
-          // wait out and nothing to hand over to -- see the detach below.
+          // Scope: this tolerance holds only while some satellite can still
+          // reach this cell. With nothing reachable there is no gap to wait out
+          // and nothing to hand over to -- see the detach below.
           this.primaryDecisionEngine.restore(decisionEngineSnapshot);
           decisionFrame = createHandoverDecisionFrame({
             ...decisionFrame,
@@ -2754,8 +2771,8 @@ export class SinrLiveCellModel {
             mode: 'service-continuity-protection',
           });
         } else if (engineReceipt === null) {
-          // No spacecraft is link-eligible this frame, so the vanished pair
-          // cannot be a publication gap and no measured pair can take over.
+          // No satellite can reach this cell at all this frame, so the
+          // vanished pair cannot be a publication gap and nothing can take over.
           // Publish an explicit detached/initial-attach state rather than
           // carrying a satellite-beam identity that no longer exists.
           // Resetting the engine to a null serving link is what makes the

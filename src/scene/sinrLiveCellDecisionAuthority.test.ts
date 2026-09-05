@@ -570,3 +570,55 @@ test('a re-attach after a genuine detach gets a fresh episode ID, never a reused
     `every attach/detach cycle must produce a distinct episode ID, got: ${JSON.stringify(seenEpisodeIds)}`,
   );
 });
+
+test('a replacement that is visible but outside the steering cone still detaches', () => {
+  // The detach guard used to ask `linkSats.length > 0`, i.e. "is any satellite
+  // above the minimum elevation". But a satellite becomes a candidate for a
+  // cell only if it ALSO falls inside the steering limit, so a satellite at 80
+  // degrees elevation and 25 degrees of longitude offset counts in linkSats
+  // while being unusable for this cell. The model then held a service identity
+  // pointing at the vanished SAT-A indefinitely -- exactly what the explicit
+  // detach exists to prevent. The guard now asks whether any satellite can
+  // actually reach the cell.
+  const profile = loadProfile('hobs-2024-candidate-rich');
+  const model = new SinrLiveCellModel({
+    profile,
+    cellLayout: buildCellLayout({
+      centerLatDeg: OBSERVER.latDeg,
+      centerLonDeg: OBSERVER.lonDeg,
+      altitudeKm: 550,
+      beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
+      cellCount: 7,
+    }),
+    observer: OBSERVER,
+    epochUtcMs: EPOCH_MS,
+    candidateOpportunityMeasurementEnabled: true,
+    multiCandidateDecisionEnabled: true,
+    beamHoppingEnabled: false,
+    beamsPerSat: Infinity,
+    coverageSteeringAngleDeg: 50,
+  });
+  const ue = { id: 'ue-primary', eastKm: 0, northKm: 0 };
+  const attached = model.step({
+    visibleSats: [satellite('SAT-A', 0)],
+    ues: [ue],
+    simTimeSec: 0,
+    dtSec: 0,
+  });
+  assert.equal(attached.ues[0]?.servingSatId, 'SAT-A');
+
+  // SAT-B is well above the elevation floor, so it is in `linkSats`, but its
+  // cell scan angle exceeds the 50 degree steering limit, so it is not a
+  // candidate for this cell.
+  const detached = model.step({
+    visibleSats: [satellite('SAT-B', 25)],
+    ues: [ue],
+    simTimeSec: 1,
+    dtSec: 1,
+  });
+  const decision = model.getHandoverDecisionFrame();
+  assert.equal(decision?.phase, 'initial-attach');
+  assert.equal(decision?.serving, null);
+  assert.equal(detached.ues[0]?.servingSatId, null);
+  assert.equal(detached.cells.some(cell => cell.servingSatId !== null), false);
+});
