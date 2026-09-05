@@ -14,10 +14,7 @@ import type {
   HomepageSourceFrame,
 } from './contracts';
 import { projectHomepageHandoverStory } from './homepageHandoverStoryProjection';
-import {
-  homepageEeColorNormalized,
-  homepageSatelliteColorForBeam,
-} from './homepageSatelliteVisualIdentity';
+import { homepageSatelliteColorForBeam } from './homepageSatelliteVisualIdentity';
 import {
   hasContinuousHomepageMetricTimeline,
   stabilizeHomepageMetricValues,
@@ -591,6 +588,18 @@ function metricRetentionKey(role: HomepageBeamMetricRole, key: CandidateLinkKey)
   return `${role}\u001f${candidateLinkKeyString(key)}`;
 }
 
+function normalizeEe(
+  ee: number,
+  min: number | null,
+  max: number | null,
+): number | null {
+  if (!Number.isFinite(ee) || min === null || max === null) return null;
+  // With no relative contrast, keep the metric at a neutral midpoint rather
+  // than implying that an isolated beam is intrinsically the strongest.
+  if (max === min) return 0.5;
+  return Math.max(0, Math.min(1, (ee - min) / (max - min)));
+}
+
 function previousMetricIndex(
   projection: HomepageBeamMetricsProjection | null | undefined,
 ): ReadonlyMap<string, HomepageBeamMetric> {
@@ -772,8 +781,12 @@ function stabilizeHomepageDisplayDrafts(
       // A handover changes a beam's display role from candidate/observed to
       // serving. Retain the same pair's last value across that role boundary;
       // otherwise the newly accepted service cold-starts from the target raw
-      // sample and the service block shows a false one-frame jump.
-      ?? previousByPair.get(candidateLinkKeyString(draft.key));
+      // sample and the service block shows a false one-frame jump. This is a
+      // one-directional promotion continuity, not general role-change
+      // retention: a pair demoted away from candidate (for example to
+      // observed) must not inherit a stale value it never had in this role,
+      // or a role change fabricates a missing pair.
+      ?? (draft.role === 'serving' ? previousByPair.get(candidateLinkKeyString(draft.key)) : undefined);
     if (
       previous === undefined
       || previous.sinrDb === null
@@ -1226,7 +1239,10 @@ export function buildHomepageBeamMetrics(
       // The same physical pair legitimately changes from candidate to serving
       // at commit. Use its prior accepted metric as the continuity baseline,
       // instead of making the service row read the target's cold-start value.
-      ?? previousMetricsByPair.get(joinKey);
+      // This is a one-directional promotion continuity: a pair demoted away
+      // from candidate (for example to observed) has no comparable "prior
+      // accepted metric" to inherit, so it must not fall back across roles.
+      ?? (role === 'serving' ? previousMetricsByPair.get(joinKey) : undefined);
     const storySample = role === 'candidate'
       ? candidateProbe?.sample ?? primaryBeamMetric?.sample
       : role === 'serving'
@@ -1400,25 +1416,39 @@ export function buildHomepageBeamMetrics(
   const availableEeMinBitsPerJoule = availableEe.length > 0 ? Math.min(...availableEe) : null;
   const availableEeMaxBitsPerJoule = availableEe.length > 0 ? Math.max(...availableEe) : null;
 
-  const metrics: readonly HomepageBeamMetric[] = Object.freeze(drafts.map(draft => Object.freeze({
-    ...draft,
-    // The accepted snapshot owns episode-stable satellite reservations. Feed
-    // that slot into the compact homepage palette so a candidate keeps the
-    // same hue when it becomes serving; the ID hash is only a fixture/source
-    // fallback when no accepted allocation exists.
-    eeNormalized: draft.energyEfficiencyBitsPerJoule === null
+  const metrics: readonly HomepageBeamMetric[] = Object.freeze(drafts.map(draft => {
+    // Beam colour strength must track this frame's own EE spread (the
+    // acceptance story is "faint to strong through the handover"), not a
+    // fixed absolute scale: a candidate at 60 bits/J next to a serving beam
+    // at 50 reads as the stronger of the two, even though both are far below
+    // any global ceiling. Normalize once per draft and reuse the same value
+    // for the published metric and for the color it drives, so the two never
+    // disagree.
+    const eeNormalized = draft.energyEfficiencyBitsPerJoule === null
       ? null
-      : homepageEeColorNormalized(draft.energyEfficiencyBitsPerJoule),
-    color: homepageSatelliteColorForBeam(draft.satelliteId, draft.beamId, {
-      identityPaletteIndex: input.snapshot?.plan.identityAllocation?.assignments[draft.satelliteId]?.paletteIndex ?? null,
-      // A candidate's primary beam is already the identity carrier for the
-      // upcoming link. Keep it on the same primary visual tier before and
-      // after commit; `role` remains the decision truth, while this flag is
-      // only the stable homepage shade treatment.
-      isServing: draft.isPrimaryServing || draft.role === 'candidate',
-      eeNormalized: homepageEeColorNormalized(draft.energyEfficiencyBitsPerJoule),
-    }),
-  })));
+      : normalizeEe(
+        draft.energyEfficiencyBitsPerJoule,
+        availableEeMinBitsPerJoule,
+        availableEeMaxBitsPerJoule,
+      );
+    return Object.freeze({
+      ...draft,
+      // The accepted snapshot owns episode-stable satellite reservations. Feed
+      // that slot into the compact homepage palette so a candidate keeps the
+      // same hue when it becomes serving; the ID hash is only a fixture/source
+      // fallback when no accepted allocation exists.
+      eeNormalized,
+      color: homepageSatelliteColorForBeam(draft.satelliteId, draft.beamId, {
+        identityPaletteIndex: input.snapshot?.plan.identityAllocation?.assignments[draft.satelliteId]?.paletteIndex ?? null,
+        // A candidate's primary beam is already the identity carrier for the
+        // upcoming link. Keep it on the same primary visual tier before and
+        // after commit; `role` remains the decision truth, while this flag is
+        // only the stable homepage shade treatment.
+        isServing: draft.isPrimaryServing || draft.role === 'candidate',
+        eeNormalized,
+      }),
+    });
+  }));
 
   return Object.freeze({
     sourceFrameId: sourceFrame.sourceFrameId,
