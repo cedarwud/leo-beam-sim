@@ -50,7 +50,13 @@ import type { ReScalarizeResult } from '../modqn/replay-bundle/rescalarize';
 // which is FROZEN this slice) picks up the override without modification.
 // When `overrideRef.current` is null the call is byte-equivalent to the base
 // class — SDD §9.7 truth invariance is preserved for sinr-offset mode.
-class S3HandoverManager extends HandoverManager {
+/**
+ * Exported for the suppression contract test. The homepage's EE authority
+ * depends on this class refusing to commit, and that invariant reached
+ * production held only by a positional argument at the MainScene call site
+ * with no assertion anywhere.
+ */
+export class S3HandoverManager extends HandoverManager {
   // React MutableRefObject equivalent (plain object ref — no React dep needed).
   overrideRef: { current: HandoverDecisionOverride | null } = { current: null };
   /**
