@@ -486,4 +486,12 @@ test('a vanished serving pair with no safe replacement publishes an explicit det
   assert.equal(detached.ues[0]?.servingBeamId, null);
   assert.equal(detached.ues[0]?.servingLinkSample, null);
   assert.equal(detached.illuminatedBeams.some(item => item.serving), false);
+  // The published frame must not say "detached" and "this cell is served by
+  // SAT-A" at the same time. `cells` is assembled before the detach decision,
+  // so the detach has to clear the focused row in the same frame; without that
+  // patch decision.serving and ues[0].servingSatId read null here while
+  // cells[0].servingSatId still read 'SAT-A'.
+  assert.equal(detached.cells.some(cell => cell.servingSatId !== null), false);
+  assert.equal(detached.cells.some(cell => cell.beamIdentity !== null), false);
+  assert.equal(detached.servedCellCount, 0);
 });

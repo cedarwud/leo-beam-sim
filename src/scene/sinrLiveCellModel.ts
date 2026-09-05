@@ -2736,6 +2736,22 @@ export class SinrLiveCellModel {
           // republished frame report `initial-attach`; the frame contract
           // rejects that phase while `serving` is non-null, so the assignment
           // and the engine's serving link must be cleared together.
+          // `cellRecords` was assembled before this detach, exactly as it is
+          // before the commit transaction below. Clear the focused row in the
+          // same frame, or the published frame reports the UE as detached
+          // while the cell snapshot still names the vanished satellite.
+          const detachedCellId = cellIdFromLinkBudgetBeamId(currentServingKey.beamId);
+          const detachedCellIndex = cellRecords.findIndex(row => row.cellId === detachedCellId);
+          if (detachedCellIndex >= 0) {
+            const detachedCellRecord = cellRecords[detachedCellIndex]!;
+            cellRecords[detachedCellIndex] = {
+              ...detachedCellRecord,
+              servingSatId: null,
+              beamIdentity: null,
+              servingSinrDb: null,
+            };
+          }
+          finalServingByCell.delete(detachedCellId);
           this.primaryServingAssignment = null;
           this.primaryLastCommit = null;
           this.primaryDecisionEngine.restore(decisionEngineSnapshot);

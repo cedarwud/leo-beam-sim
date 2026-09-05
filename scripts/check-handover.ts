@@ -173,6 +173,12 @@ const COMMIT_PATH_TOPOLOGY: readonly {
 
 const EXPECTED_COMMIT_PATH_COUNT = 7;
 
+/** Symbols that must only ever appear as a direct callee -- see escapingReferences. */
+const COMMIT_SYMBOLS_THAT_MAY_NOT_ESCAPE: readonly { readonly file: string; readonly name: string }[] = [
+  { file: 'src/engine/handover/handover-manager.ts', name: 'commitDecision' },
+  { file: 'src/scene/sinrLiveCellModel.ts', name: 'selectServiceContinuityFallback' },
+];
+
 const parsedSources = new Map<string, ts.SourceFile>();
 
 function sourceFileFor(file: string): ts.SourceFile {
@@ -218,6 +224,40 @@ function functionDeclarations(file: string, name: string): ts.Node[] {
     }
   });
   return found;
+}
+
+/**
+ * References to `name` that are NOT the callee of a call and NOT its own
+ * declaration -- i.e. the symbol escaping as a value. A cross-family review
+ * demonstrated the bypass this closes: `const approve = this.commitDecision
+ * .bind(this); approve(...)` creates a real extra commit route while leaving
+ * the call-site count at 5, so the topology gate reported GREEN.
+ */
+function escapingReferences(file: string, name: string): ts.Node[] {
+  const escaping: ts.Node[] = [];
+  eachNode(sourceFileFor(file), node => {
+    const isDeclarationName = (ts.isMethodDeclaration(node.parent ?? node)
+      || ts.isFunctionDeclaration(node.parent ?? node)
+      || ts.isPropertyDeclaration(node.parent ?? node))
+      && (node.parent as { name?: ts.Node }).name === node;
+    if (isDeclarationName) return;
+    const matchesName = (ts.isIdentifier(node) && node.text === name)
+      || (ts.isPropertyAccessExpression(node) && node.name.text === name);
+    if (!matchesName) return;
+    // An import/export binding is how the symbol legitimately arrives; it is
+    // not the symbol escaping as a value.
+    const binder = node.parent;
+    if (binder !== undefined && (ts.isImportSpecifier(binder)
+      || ts.isExportSpecifier(binder)
+      || ts.isImportClause(binder)
+      || ts.isNamespaceImport(binder))) return;
+    // The callee position of a call is the legitimate, counted use.
+    const parent = node.parent;
+    if (parent !== undefined && ts.isCallExpression(parent) && parent.expression === node) return;
+    if (ts.isPropertyAccessExpression(node)) escaping.push(node);
+    else if (parent !== undefined && !ts.isPropertyAccessExpression(parent)) escaping.push(node);
+  });
+  return escaping;
 }
 
 /** Line numbers are DERIVED for human output only -- never used to locate anything. */
@@ -763,6 +803,20 @@ for (const entry of COMMIT_PATH_TOPOLOGY) {
   const status = observed === entry.expected ? 'ok' : 'CHANGED';
   console.log(`  [${status}] ${entry.file}: ${observed} ${entry.what} (expected ${entry.expected})`);
 }
+// A commit symbol used anywhere other than as a callee is a route the count
+// above cannot see (`.bind(this)`, an alias, `Reflect.apply`, `this['x'](...)`).
+for (const entry of COMMIT_SYMBOLS_THAT_MAY_NOT_ESCAPE) {
+  const escaping = escapingReferences(entry.file, entry.name);
+  if (escaping.length > 0) {
+    fail(
+      `commit symbol ${entry.name} escapes as a value at `
+      + `${escaping.map(node => locationOf(entry.file, node)).join(', ')}. An aliased or bound `
+      + `reference is a commit route the path count cannot see, so the topology gate above can no `
+      + `longer be trusted. Call it directly, or teach COMMIT_PATH_TOPOLOGY to count this route.`,
+    );
+  }
+}
+
 if (observedCommitPathCount !== EXPECTED_COMMIT_PATH_COUNT) {
   fail(
     `commit-path topology changed: counted ${observedCommitPathCount} commit paths, expected `
@@ -835,21 +889,36 @@ console.log(`  ledgered: ${expectedBlindKeys.length}, observed: ${blindCommitKey
 for (const key of blindCommitKeys) {
   console.log(`    [${expectedBlindKeys.includes(key) ? 'ledgered' : 'UNLEDGERED'}] ${key}`);
 }
-for (const key of blindCommitKeys) {
-  if (!expectedBlindKeys.includes(key)) {
+// Compared as a MULTISET, not with includes(). A cross-family review showed
+// that includes() lets a genuinely new blind path pass whenever its reason text
+// happens to classify to a key already in the ledger: the observed count grows
+// from 3 to 4 while every key is still "found".
+function tallyKeys(keys: readonly string[]): ReadonlyMap<string, number> {
+  const tally = new Map<string, number>();
+  for (const key of keys) tally.set(key, (tally.get(key) ?? 0) + 1);
+  return tally;
+}
+const observedTally = tallyKeys(blindCommitKeys);
+const expectedTally = tallyKeys(expectedBlindKeys);
+for (const [key, observedCount] of observedTally) {
+  const expectedCount = expectedTally.get(key) ?? 0;
+  if (observedCount > expectedCount) {
     fail(
-      `unledgered EE-blind commit: ${key} committed a handover with no EE evidence and no threshold `
-      + `authority, and is not in EXPECTED_EE_BLIND_COMMITS. Either the path must consult the EE `
-      + `threshold, or the ledger must be extended deliberately with the reason it may not.`,
+      `unledgered EE-blind commit: ${key} occurred ${observedCount} time(s) but the ledger allows `
+      + `${expectedCount}. A handover committed with no EE evidence and no threshold authority. `
+      + `Either the path must consult the EE threshold, or EXPECTED_EE_BLIND_COMMITS must be `
+      + `extended deliberately with the reason it may not.`,
     );
   }
 }
-for (const key of expectedBlindKeys) {
-  if (!blindCommitKeys.includes(key)) {
+for (const [key, expectedCount] of expectedTally) {
+  const observedCount = observedTally.get(key) ?? 0;
+  if (observedCount < expectedCount) {
     fail(
-      `ledgered EE-blind commit no longer observed: ${key}. If this path now consults the EE `
-      + `threshold, remove it from EXPECTED_EE_BLIND_COMMITS; if the scenario stopped exercising it, `
-      + `the scenario has lost coverage and the ledger can no longer see this path.`,
+      `ledgered EE-blind commit no longer observed: ${key} expected ${expectedCount} time(s), saw `
+      + `${observedCount}. If this path now consults the EE threshold, remove it from `
+      + `EXPECTED_EE_BLIND_COMMITS; if the scenario stopped exercising it, the scenario has lost `
+      + `coverage and the ledger can no longer see this path.`,
     );
   }
 }
