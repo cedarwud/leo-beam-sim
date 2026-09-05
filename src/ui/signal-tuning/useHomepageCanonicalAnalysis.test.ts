@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import ReactReconcilerFactory from 'react-reconciler';
+import { DefaultEventPriority } from 'react-reconciler/constants.js';
+import * as React from 'react';
 import {
   buildSimulationAnalysisFrame,
   createSimulatorTleState,
@@ -19,11 +22,14 @@ import {
   TleRunError,
   buildTleRunBundle,
 } from '../../tle/run';
+import { LATEST_TLE_REFERENCE_TAIPEI_LOCAL } from '../../tle/latestTleDefaults';
 import {
   acceptHomepageCanonicalParameterCandidate,
   buildHomepageFirstFrame,
+  HOMEPAGE_DEFAULT_CONSTELLATION,
   HomepageCanonicalEvaluationSession,
   shouldAttemptHomepageTleTimeFallback,
+  useHomepageCanonicalAnalysis,
   yieldForHomepageFirstFramePaint,
 } from './useHomepageCanonicalAnalysis';
 
@@ -31,12 +37,144 @@ const fetchFromPublic = async (path: RequestInfo | URL): Promise<Response> => (
   new Response(await readFile(`public${String(path)}`), { status: 200 })
 );
 
+// --- Minimal headless React hook harness --------------------------------
+//
+// This repo intentionally has no jsdom / React Testing Library / renderHook
+// (see src/ui/common/HelpPopover.test.tsx's header comment) and CONTRACT
+// forbids adding a new npm dependency for one. `react-reconciler` is not new
+// here, though: it is already an installed, first-class dependency (it is
+// what @react-three/fiber itself is built on) and its only job is to run a
+// React fiber tree against a host config — it does not need a DOM, jsdom,
+// fetch, or Worker to do that. So a hook that is *pure state-machine logic*
+// (no DOM, no jsdom-only APIs) can be mounted for real and driven with real
+// setState calls, without inventing a new test dependency.
+//
+// The host config below is a no-op renderer: it never paints anything (the
+// probe component always returns null), it just lets React commit fiber
+// work so that calling a captured setter here behaves exactly as it would
+// for a real consumer of the hook.
+let currentUpdatePriority = 0;
+const noopHostConfig = {
+  now: Date.now,
+  getRootHostContext: () => ({}),
+  getChildHostContext: (parentCtx: unknown) => parentCtx,
+  prepareForCommit: () => null,
+  resetAfterCommit: () => {},
+  createInstance: () => ({}),
+  createTextInstance: () => ({}),
+  appendInitialChild: () => {},
+  finalizeInitialChildren: () => false,
+  supportsMutation: true,
+  supportsPersistence: false,
+  supportsHydration: false,
+  appendChild: () => {},
+  appendChildToContainer: () => {},
+  removeChild: () => {},
+  removeChildFromContainer: () => {},
+  insertBefore: () => {},
+  insertInContainerBefore: () => {},
+  commitUpdate: () => {},
+  commitTextUpdate: () => {},
+  shouldSetTextContent: () => false,
+  clearContainer: () => {},
+  prepareUpdate: () => null,
+  getPublicInstance: (inst: unknown) => inst,
+  preparePortalMount: () => {},
+  scheduleTimeout: setTimeout,
+  cancelTimeout: clearTimeout,
+  noTimeout: -1,
+  isPrimaryRenderer: true,
+  getCurrentEventPriority: () => DefaultEventPriority,
+  getInstanceFromNode: () => null,
+  beforeActiveInstanceBlur: () => {},
+  afterActiveInstanceBlur: () => {},
+  prepareScopeUpdate: () => {},
+  getInstanceFromScope: () => null,
+  detachDeletedInstance: () => {},
+  supportsMicrotasks: true,
+  scheduleMicrotask: queueMicrotask,
+  setCurrentUpdatePriority: (priority: number) => { currentUpdatePriority = priority; },
+  getCurrentUpdatePriority: () => currentUpdatePriority,
+  resolveUpdatePriority: () => currentUpdatePriority || DefaultEventPriority,
+  maySuspendCommit: () => false,
+  preloadInstance: () => true,
+  startSuspendingCommit: () => {},
+  suspendInstance: () => {},
+  waitForCommitToBeReady: () => null,
+  NotPendingTransition: null,
+  HostTransitionContext: React.createContext(null),
+  resetFormInstance: () => {},
+  bindToConsole: (method: 'error' | 'warn' | 'info' | 'log') => (
+    (console[method] as ((...args: unknown[]) => void) | undefined)?.bind(console) ?? (() => {})
+  ),
+  shouldAttemptEagerTransition: () => false,
+};
+
+const headlessReconciler = (ReactReconcilerFactory as unknown as (config: unknown) => {
+  createContainer: (...args: unknown[]) => unknown;
+  updateContainerSync: (...args: unknown[]) => unknown;
+  flushSyncWork: () => unknown;
+  flushSyncFromReconciler: <T>(fn: () => T) => T;
+})(noopHostConfig);
+
+/**
+ * Mounts `useHook()` inside a real (headless) React fiber tree and returns a
+ * live handle to its latest return value plus an `act`-style function for
+ * driving state updates through that same fiber tree. This is the same
+ * technique `@testing-library/react-hooks`/RTL's `renderHook` use internally
+ * (call the hook from a throwaway component, capture what it returns) — it
+ * is just implemented directly on the already-installed `react-reconciler`
+ * instead of pulling in a new test dependency.
+ */
+function renderHookForTest<T>(useHook: () => T): {
+  readonly result: { current: T };
+  readonly act: (fn: () => void) => void;
+  /** Number of times the probe component body has run (mount + every commit). */
+  readonly renderCount: () => number;
+} {
+  const result = { current: undefined as unknown as T };
+  let renders = 0;
+  function Probe(): null {
+    renders += 1;
+    result.current = useHook();
+    return null;
+  }
+  const container = headlessReconciler.createContainer(
+    {},
+    0, // LegacyRoot
+    null,
+    false,
+    null,
+    '',
+    (err: unknown) => { throw err; },
+    null,
+  );
+  headlessReconciler.updateContainerSync(React.createElement(Probe), container, null, null);
+  headlessReconciler.flushSyncWork();
+  return {
+    result,
+    act: (fn: () => void) => { headlessReconciler.flushSyncFromReconciler(fn); },
+    renderCount: () => renders,
+  };
+}
+// -------------------------------------------------------------------------
+
+// Behavioral: mount the real hook and read its initial state directly,
+// instead of grepping the source for the constant assignment that feeds it.
+// A regex on `const HOMEPAGE_CANONICAL_TAIPEI_LOCAL = LATEST_TLE_REFERENCE_TAIPEI_LOCAL;`
+// only proves that text exists somewhere in the file (even inside a dead
+// comment); this proves the hook's actual `taipeiDateTime` return value is
+// the latest checked-in archive date.
+{
+  const initialMount = renderHookForTest(() => useHomepageCanonicalAnalysis({ enabled: false }));
+  assert.equal(
+    initialMount.result.current.taipeiDateTime,
+    LATEST_TLE_REFERENCE_TAIPEI_LOCAL,
+    'homepage default must open on the latest checked-in archive date',
+  );
+}
+
 const hookSource = await readFile(new URL('./useHomepageCanonicalAnalysis.ts', import.meta.url), 'utf8');
-assert.match(
-  hookSource,
-  /const HOMEPAGE_CANONICAL_TAIPEI_LOCAL = LATEST_TLE_REFERENCE_TAIPEI_LOCAL;/,
-  'homepage default must open on the latest checked-in archive date',
-);
 assert.match(
   hookSource,
   /await yieldForHomepageFirstFramePaint\(\);/,
@@ -121,11 +259,67 @@ assert.ok(
   'applyRequestedOrbitSettings block must be found in the hook source before inspecting its contents',
 );
 const applyBlock = applyBlockMatch[0];
-assert.match(
-  applyBlock,
-  /setAppliedOrbitRequest\(/,
-  'explicit Apply must start one source request transaction',
-);
+
+// Behavioral: this is the assertion an independent cross-family review
+// demonstrated broken. `assert.match(applyBlock, /setAppliedOrbitRequest\(/)`
+// only requires that string to appear somewhere in the matched block — a
+// commented-out `// setAppliedOrbitRequest(previous => ({` satisfies it just
+// as well as the real call, so the test could not tell "Apply starts a
+// transaction" from "someone commented that line out". Drive the real hook
+// instead and observe the one thing that call is actually for: promoting a
+// dirty draft (requestedConstellation/taipeiDateTime) into
+// appliedOrbitRequest, exposed here as `orbitSettingsDirty` flipping to
+// false. If `setAppliedOrbitRequest` is removed or neutered,
+// `appliedOrbitRequest.constellation` never catches up with
+// `requestedConstellation`, `orbitSettingsDirty` stays `true`, and this goes
+// red.
+{
+  const altConstellation = HOMEPAGE_DEFAULT_CONSTELLATION === 'starlink' ? 'oneweb' : 'starlink';
+  const mounted = renderHookForTest(() => useHomepageCanonicalAnalysis({ enabled: false }));
+  assert.equal(mounted.result.current.orbitSettingsDirty, false, 'a fresh mount must start clean (nothing to apply)');
+
+  mounted.act(() => mounted.result.current.setRequestedConstellation(altConstellation));
+  assert.equal(
+    mounted.result.current.orbitSettingsDirty,
+    true,
+    'changing the draft constellation away from the applied one must mark the request dirty',
+  );
+
+  mounted.act(() => mounted.result.current.applyRequestedOrbitSettings!());
+  assert.equal(
+    mounted.result.current.orbitSettingsDirty,
+    false,
+    'explicit Apply must start one source request transaction (commit the draft into appliedOrbitRequest)',
+  );
+
+  // Applying again with nothing changed must be a no-op re: the transaction
+  // guard (`if (!orbitSettingsDirty && status !== 'error') return;`). Field
+  // values would look identical either way (already-applied constellation
+  // copied back onto itself), so `orbitSettingsDirty` can't tell no-op apart
+  // from redundant-apply here; render count can, because a redundant apply
+  // still replaces `appliedOrbitRequest` with a new object identity (and
+  // clears/reloads scene state), which commits a fresh render, while the
+  // guarded no-op returns before touching any setter.
+  const rendersAfterFirstApply = mounted.renderCount();
+  mounted.act(() => mounted.result.current.applyRequestedOrbitSettings!());
+  assert.equal(
+    mounted.renderCount(),
+    rendersAfterFirstApply,
+    'applying a clean request must remain a no-op (must not re-render)',
+  );
+}
+
+// The worker-abort/dispose sequence and the atomic clear-before-rebuild
+// below are left as source-text checks. Proving them behaviorally requires
+// first driving the hook to a *populated* accepted state (a completed
+// catalog fetch + TLE run), which this hook only reaches through its
+// internal effect: a real `fetch`, `requestAnimationFrame`/timer paint
+// yield, and (best-effort) `Worker` construction, awaited across several
+// microtask/macrotask turns. That is a materially larger integration
+// harness than the fiber-only probe above needs, and out of proportion to
+// this fix; the concretely demonstrated defect (the commentable-out
+// `setAppliedOrbitRequest(` call) is now covered behaviorally above. These
+// two remain honest source-text checks, not behavioral ones.
 assert.match(
   applyBlock,
   /analysisRebuildAbortController\.current\?\.abort\(\);[\s\S]*?analysisWorkerTransport\.current\?\.dispose\(\);[\s\S]*?analysisWorkerTransport\.current = null;[\s\S]*?activeAbortController\.current\?\.abort\(\);/,
@@ -185,6 +379,33 @@ assert.doesNotMatch(
   /\.withParameters\(|\.withExperiment\(/,
   'a parameter input event must not synchronously rebuild all accepted anchors',
 );
+// Behavioral: setting a draft constellation must change `requestedConstellation`
+// without touching `appliedOrbitRequest` (i.e. no auto-apply). This regex is
+// tighter than the `setAppliedOrbitRequest(` one above — `\{\s*if` only
+// matches whitespace before `if`, so commenting out the guard line would
+// already break it — but the actual runtime claim ("stays a draft") is
+// proven directly here rather than inferred from source text.
+{
+  const altConstellation = HOMEPAGE_DEFAULT_CONSTELLATION === 'starlink' ? 'oneweb' : 'starlink';
+  const draftMount = renderHookForTest(() => useHomepageCanonicalAnalysis({ enabled: false }));
+  draftMount.act(() => draftMount.result.current.setRequestedConstellation(altConstellation));
+  assert.equal(
+    draftMount.result.current.requestedConstellation,
+    altConstellation,
+    'constellation selection must update the draft value',
+  );
+  assert.equal(
+    draftMount.result.current.orbitSettingsDirty,
+    true,
+    'constellation selection must remain a draft-only edit (must not auto-apply into appliedOrbitRequest)',
+  );
+}
+// The `if (next === requestedConstellation) return;` short-circuit itself
+// is not independently observable: React's own useState setter already
+// bails out of re-rendering when the next value is reference-equal to the
+// current one (this is a string), so removing the guard would not change
+// anything a consumer of the hook could see. That micro-optimization is
+// left as a structural source-text check, not claimed as behavioral.
 assert.match(
   hookSource,
   /setRequestedConstellation: next => \{\s*if \(next === requestedConstellation\) return;\s*setRequestedConstellation\(next\);\s*\}/,
@@ -220,6 +441,26 @@ assert.doesNotMatch(
   /homepageEvaluationFromRun/,
   'the hook must not publish the fixed two-hour run evaluation as EE_eval',
 );
+// Behavioral counterpart to the constellation draft-only check above.
+{
+  const draftDateMount = renderHookForTest(() => useHomepageCanonicalAnalysis({ enabled: false }));
+  const altTaipeiDateTime = '2020-01-01T00:00';
+  assert.notEqual(draftDateMount.result.current.taipeiDateTime, altTaipeiDateTime);
+  draftDateMount.act(() => draftDateMount.result.current.setTaipeiDateTime(altTaipeiDateTime));
+  assert.equal(
+    draftDateMount.result.current.taipeiDateTime,
+    altTaipeiDateTime,
+    'date/time selection must update the draft value',
+  );
+  assert.equal(
+    draftDateMount.result.current.orbitSettingsDirty,
+    true,
+    'date/time selection must remain a draft-only edit (must not auto-apply into appliedOrbitRequest)',
+  );
+}
+// As above, the `next === taipeiDateTime` short-circuit is not independently
+// observable (React's setState already bails out on an identical string),
+// so it stays a structural source-text check.
 assert.match(
   hookSource,
   /setTaipeiDateTime: next => \{\s*if \(next === taipeiDateTime\) return;\s*setTaipeiDateTime\(next\);\s*\}/,
