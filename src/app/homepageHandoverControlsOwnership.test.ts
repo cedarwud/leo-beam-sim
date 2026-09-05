@@ -97,13 +97,26 @@ test('homepage queues Next Intra/Inter while the replacement index is building',
     /handoverBusyRef\.current && !homepageHandoverQueueOpen/,
     'a stale presentation lock must not discard a homepage command that can be queued for the new index',
   );
+  // The homepage deliberately keeps both buttons clickable: a press during a
+  // rebuild is QUEUED (see the two assertions above), so gating them on
+  // `handoverCommandBusy` there would drop exactly the command the queue exists
+  // to hold. Every other lane stays gated. This assertion previously required
+  // the un-prefixed form and went red when `isRootHomepage ||` was added --
+  // undetected, because this file was an orphan no npm script ran.
+  //
+  // `[^}]*` rather than `[\s\S]*?`: the lazy any-character form matched across
+  // the closing brace into the NEXT prop, so deleting `&& !handoverCommandBusy`
+  // from this expression still matched the one below it and the assertion
+  // stayed green. Both halves are now checked independently.
   assert.match(
     appSource,
-    /nextIntraEnabled=\{manualHandoverRequest === null[\s\S]*!handoverCommandBusy\}/,
+    /nextIntraEnabled=\{isRootHomepage \|\| \(manualHandoverRequest === null[^}]*!handoverCommandBusy\)\}/,
+    'the homepage must keep Next Intra pressable so a command can queue during a rebuild, while other lanes stay gated on the busy flag',
   );
   assert.match(
     appSource,
-    /nextInterEnabled=\{manualHandoverRequest === null[\s\S]*!handoverCommandBusy\}/,
+    /nextInterEnabled=\{isRootHomepage \|\| \(manualHandoverRequest === null[^}]*!handoverCommandBusy\)\}/,
+    'the homepage must keep Next Inter pressable so a command can queue during a rebuild, while other lanes stay gated on the busy flag',
   );
 });
 

@@ -1,5 +1,4 @@
 [
-  "src/app/homepageHandoverControlsOwnership.test.ts",
   "src/course/energy-lab/energyLabDirector.test.ts",
   "src/prototype/golden-flow/goldenFlowAngleLesson.test.ts",
   "src/prototype/golden-flow/goldenFlowPresentationRegression.test.ts",
