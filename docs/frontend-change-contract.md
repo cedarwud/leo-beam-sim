@@ -6,9 +6,11 @@ runtime rendering boundary. This is the ENFORCED protocol; it exists because
 "整頓" rounds kept leaving the frontend "越疊越亂".
 
 > Memory (`.agent-memory/`) does NOT travel with the repo and is read-dependent.
-> Prose docs are advisory. The pre-commit hook + CI gates are what actually bind
-> an agent that did not read or cannot recall the rules. This doc tells you what
-> the gates expect so you pass them on purpose, not by luck.
+> Prose docs are advisory. **The pre-commit hook is currently disabled** (see
+> "Gate map" below) — CI (`.github/workflows/governance.yml`, `static-gates`)
+> is what actually runs the gates today, and even that is not a required
+> status check. This doc tells you what the gates expect so you pass them on
+> purpose, not by luck.
 
 ## Why this exists — 3 entropy loops (do not feed them)
 
@@ -63,7 +65,7 @@ make your change pass.
 | Invariant | Enforced by |
 |---|---|
 | Served ⇒ its serving beam is illuminated (else honest coverage-gap) | `validate:s0:connected-sat-has-beam` (model) + `validate:beam:visual-invariants:browser` (visual) |
-| Cone colour == its served UE's marker colour (ONE colour authority `src/constants/servingColour.ts`) | `validate:beam:colour-match` (in the pre-commit gate) |
+| Cone colour == its served UE's marker colour (ONE colour authority `src/constants/servingColour.ts`) | `validate:beam:colour-match` (part of `validate:governance`; not currently auto-run — the pre-commit hook is disabled) |
 | Every COUNTED handover RENDERS (ticker count vs on-screen flares) | `validate:phase-c:handover-pulse:render:browser` + `validate:phase-c:handover-ticker:render:browser` |
 | ONE viewport frame = ONE authoritative scene lane | `validate:frontend:scene-lane-governance` (Rule #1–9) |
 | Geometry / serving truth is byte-stable | `validate:s0:geometry-trace` (golden zero-diff) |
@@ -75,15 +77,21 @@ with the owner first.
 
 ## Gate map — what to run, when
 
+**The pre-commit hook is currently disabled** (`.githooks/pre-commit` is a
+no-op `exit 0` stub as of `6b9474e`, which stripped out the `validate:governance`
+call it used to run). Nothing runs automatically on commit today — every row
+below is something you must run yourself.
+
 | When | Command | Covers |
 |---|---|---|
-| Every commit (auto, ~16s) | pre-commit hook → `validate:governance` | lint + lane-governance + s0 model + **colour-match visual-truth** |
+| ~~Every commit (auto, ~16s)~~ pre-commit hook is disabled — run manually if you want this | `npm run validate:governance` | lint + lane-governance + s0 model + **colour-match visual-truth** |
 | Before a handoff / PR (~3min) | `npm run validate:governance:full` | the above + S1–S5 deterministic invariants + warm-start + goldens |
 | Before a handoff / PR (~8min) | `npm run validate:static:all` | EVERY static validator (catches a refactor that orphans/breaks one) |
+| **Definition of done for handover-authority work (~27s)** | `npm run check:baseline` | lint + the two SDD authority test files + `check:handover` (the commit-path / EE-blind-commit oracle) — also run in CI's `static-gates` job |
 | **Before declaring render work "done"** | `npm run validate:ready` | governance:full + the BROWSER visual gates (needs vite running + `APP_URL`) |
 
-The pre-commit hook is the fast foundation set; **the browser VISUAL gates live
-only in `validate:ready`.** A green commit does NOT mean the visual is correct —
+There is no automatic gate today; **the browser VISUAL gates live
+only in `validate:ready`.** A locally-green run does NOT mean the visual is correct —
 for STRUCTURAL render work you MUST run `validate:ready` and paste its result before
 you say it is done (the loop-3 fix: don't trust model-green for a visual claim). For a
 NON-STRUCTURAL change, see the fast-path immediately below — do NOT burn 8 minutes on it.
@@ -125,7 +133,9 @@ browser gates), or the served/beam counts. **When unsure, treat it as structural
 carve-out is "DOM / style / text / colour / pose-magnitude only, no lane / mount / counted-
 invariant change" — not a licence to skip the visual gate on real render work.
 
-Activate the hook on a fresh clone: `npm run setup:hooks`. Do NOT normalize
+`npm run setup:hooks` points `core.hooksPath` at `.githooks` on a fresh clone,
+but as of `6b9474e` the hook itself is a disabled no-op stub — running
+`setup:hooks` today does not gate anything. Do NOT normalize
 `git commit --no-verify`.
 
 ## Dispatch-prompt template (for spawning a frontend sub-agent)
@@ -161,14 +171,20 @@ When the controller dispatches via the Agent tool it SHOULD use
 
 ## Honest limits (do not overclaim)
 
-The pre-commit hook + static gates are COOPERATIVE, not adversarial:
-`git commit --no-verify` bypasses them; the hook lives in the working
-tree so one commit can both regress and defang it; the browser visual coverage is
-only in the MANUAL `validate:ready`. The ONLY unbypassable layer is **server-side
-CI on a PR** (`.github/workflows/`), which gates merges regardless of local state.
-Until a change lands through that CI, "the gates passed locally" means a
-cooperating agent passed them — it is not proof against a careless or adversarial
-one.
+The pre-commit hook is currently disabled (a no-op stub since `6b9474e`), so
+nothing runs automatically on commit at all today. CI (`static-gates` in
+`.github/workflows/governance.yml`) does run on every PR and push to `main`,
+but it is NOT a required status check — the workflow's own header says it
+"has never been green on a hosted runner" and warns not to mark it required
+until it is. So even server-side CI here does not currently block a merge;
+it surfaces red, it does not prevent it. All of this is COOPERATIVE, not
+adversarial: `git commit --no-verify` was never needed since the hook does
+nothing anyway, and the browser visual coverage is only in the MANUAL
+`validate:ready`. "The gates passed locally" (or in CI) means a cooperating
+agent ran them — it is not proof against a careless or adversarial one, and
+right now there is no mechanical enforcement at all, only the mechanical
+oracles themselves (`npm run check:baseline` and friends) for an agent that
+chooses to run them.
 
 ## See also
 

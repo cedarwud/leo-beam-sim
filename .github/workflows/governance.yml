@@ -46,6 +46,7 @@ jobs:
       - run: npm run test:visual-lab
       - run: npm run validate:governance:full
       - run: npm run validate:static:all
+      - run: npm run check:baseline
 
   visual-gates:
     # The END-TO-END VISUAL gates (the loop-3 fix: what the USER sees, not just
