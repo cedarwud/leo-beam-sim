@@ -1154,11 +1154,18 @@ for (const path of HANDOVER_COMMIT_PATHS) {
 //    away, that is an instruction manual. It now states that the value is
 //    deliberate and needs the owner's agreement, without describing the
 //    mechanism.
-// 2. This guards the CONSTANTS, not the logic that consumes them. Leaving 135
-//    intact while altering the comparison that reads it -- a scale factor, an
-//    extra disjunct, an earlier state transition -- passes this check
-//    completely. The behavioural assertions elsewhere in this oracle are what
-//    cover that; this block is not a substitute for them.
+// 2. This block guards the CONSTANTS, not the logic that consumes them --
+//    but that limit is narrower than it first appears, and the correction is
+//    worth recording because the earlier version of this comment overstated it.
+//    Measured: leaving DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE at 135 while
+//    widening the comparison that reads it (`>= threshold` to
+//    `>= threshold * 2`) does NOT pass. The boundary assertions in
+//    eeCommitPermit.test.ts -- 134_999 admissible, 135_000 refused -- test the
+//    behaviour at the floor, so a widened comparison fails "a link exactly at
+//    the floor is still healthy and must not hand over".
+//    What genuinely remains open is a change far from the boundary, or one in
+//    a path with no boundary assertion of its own. Boundary tests, not this
+//    block, are what cover consuming logic; keep writing them.
 // ---------------------------------------------------------------------------
 console.log('\n=== check:handover -- authoritative constants ===');
 const AUTHORITATIVE_CONSTANTS: readonly { readonly name: string; readonly actual: number; readonly expected: number }[] = [
