@@ -55,6 +55,7 @@ import {
 } from '../src/engine/handover/commitProvenance.ts';
 import type { LinkSample } from '../src/engine/signal/types.ts';
 import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../src/engine/handover/eeThreshold.ts';
+import { SINR_LIVE_SELECTION_HOLD_SEC } from '../src/scene/sinrLiveCellModel.ts';
 
 // ---------------------------------------------------------------------------
 // Part 0 -- static regression guard on SDD §2 F1's line-number claims. If the
@@ -458,10 +459,25 @@ function eeForKey(opportunities: readonly CandidateOpportunity[], satelliteId: s
   return match.instantaneousEe.value;
 }
 
+/**
+ * Timing evidence for a commit, so the oracle can assert WHEN as well as THAT.
+ *
+ * A cross-family review set `selectionHoldSec` to 0 and every gate still
+ * passed: the scenarios stepped until a receipt appeared and asserted only that
+ * one did. The commits fired at 1.0s instead of 1.75s and nothing noticed.
+ */
+interface CommitTimingExpectation {
+  readonly epochMs: number;
+  /** Time-to-trigger for this commit kind, before the selection hold. */
+  readonly triggerTimeSec: number;
+  readonly intraSwitchTimeSec: number;
+}
+
 function recordSinrLiveCellCommit(
   scenario: string,
   commit: HandoverCommitReceipt,
   priorOpportunities: readonly CandidateOpportunity[],
+  timing?: CommitTimingExpectation,
 ): void {
   const commitPath = classifySinrLiveCellPath(commit.mode);
   if (commitPath === null) {
@@ -499,6 +515,22 @@ function recordSinrLiveCellCommit(
     thresholdBitsPerJoule: EE_THRESHOLD_BITS_PER_JOULE,
     eeGateStatus,
   });
+  // A commit may not land before its candidate has satisfied both its
+  // time-to-trigger and the selection hold. The continuity lane is exempt: its
+  // source pair has already vanished, so it deliberately bypasses both.
+  if (timing !== undefined && commit.mode !== 'service-continuity-protection') {
+    const tttSec = commit.kind === 'intra-satellite' ? timing.intraSwitchTimeSec : timing.triggerTimeSec;
+    const minimumElapsedMs = (tttSec + SINR_LIVE_SELECTION_HOLD_SEC) * 1000;
+    const elapsedMs = commit.simTimeMs - timing.epochMs;
+    if (elapsedMs < minimumElapsedMs - 1) {
+      fail(
+        `[${scenario}] committed ${elapsedMs}ms after epoch, before its candidate could have satisfied `
+        + `a ${tttSec}s time-to-trigger plus the ${SINR_LIVE_SELECTION_HOLD_SEC}s selection hold `
+        + `(${minimumElapsedMs}ms). A commit that fires early is not the same decision, even though `
+        + 'the scenario still sees "a commit happened".',
+      );
+    }
+  }
   if (eeGateStatus === 'at-or-above-threshold') {
     fail(
       `[${scenario}] commit ${commit.from?.satelliteId}:${commit.from?.beamId} -> `
@@ -710,7 +742,11 @@ function scenarioIntraCommit(cellCount: 1 | 7): void {
     priorOpportunities = decision?.opportunities ?? priorOpportunities;
   }
   if (committedReceipt) {
-    recordSinrLiveCellCommit(scenario, committedReceipt, priorOpportunities);
+    recordSinrLiveCellCommit(scenario, committedReceipt, priorOpportunities, {
+      epochMs: localEpochMs,
+      triggerTimeSec: 1,
+      intraSwitchTimeSec: 0.75,
+    });
     // The production model enumerates all 6 synthetic same-cell beam
     // variants per geographic cell as candidates, not just the one variant
     // this scenario happens to compute above -- in the 7-cell layout their
