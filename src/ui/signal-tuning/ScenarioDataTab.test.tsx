@@ -82,8 +82,8 @@ assert.doesNotMatch(timeControls, /AM|PM|上午|下午|seconds|milliseconds|秒|
 assert.match(markup, /data-testid="scenario-data-beam-configuration-control"/);
 assert.doesNotMatch(markup, /scenario-data-ee-threshold-control/);
 assert.match(homepageMarkup, /data-testid="scenario-data-ee-threshold-control"/);
-assert.match(homepageMarkup, /value="100"/);
-assert.match(homepageMarkup, /100 Kbit\/J/);
+assert.match(homepageMarkup, /value="135"/);
+assert.match(homepageMarkup, /135 Kbit\/J/);
 assert.match(connectedMarkup, /data-scenario-connection="live-scene"/);
 assert.match(connectedMarkup, /data-scenario-epoch-owner="walker-runtime"/);
 assert.match(connectedMarkup, /data-testid="scenario-data-date"[^>]*value="2027-01-02"/);

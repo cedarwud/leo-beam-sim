@@ -11,7 +11,7 @@ const result = resolveDisplayHeroRecord(primary, [
 
 assert.deepEqual(
   result,
-  primary,
+  { ...primary, beamId: null },
   'the visual hero must retain the primary UE cell when its cone is temporarily unavailable',
 );
 

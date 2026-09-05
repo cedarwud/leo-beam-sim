@@ -1,7 +1,5 @@
 [
   "src/course/energy-lab/energyLabDirector.test.ts",
   "src/prototype/golden-flow/goldenFlowAngleLesson.test.ts",
-  "src/prototype/golden-flow/goldenFlowPresentationRegression.test.ts",
-  "src/scene/beamDisplaySpec.test.ts",
-  "src/ui/signal-tuning/ScenarioDataTab.test.tsx"
+  "src/prototype/golden-flow/goldenFlowPresentationRegression.test.ts"
 ]
