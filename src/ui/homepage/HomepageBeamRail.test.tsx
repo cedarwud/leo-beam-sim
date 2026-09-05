@@ -296,20 +296,45 @@ assert.match(
 assert.doesNotMatch(markup, /homepage-beam-rail-transport|homepage-beam-rail-counts|Selected speed|Effective speed|Paused|>Beam values</);
 assert.doesNotMatch(markup, /homepage-candidate-counts|Observed|Hard-eligible|Trigger satisfied|TTT-stable|Overflow/);
 assert.match(storyMarkup, /data-testid="homepage-handover-story"/);
-assert.match(storyMarkup, /data-story-kind="inter"/);
-assert.match(storyMarkup, /data-story-cell-count="7"/);
-assert.match(storyMarkup, /data-story-cell-example="seven-cell"/);
-assert.match(storyMarkup, /Inter · 7 cells/);
-assert.match(storyMarkup, /data-story-target-is-winner="true"/);
-assert.match(storyMarkup, /data-story-winner-basis="instantaneous-ee-max"/);
-assert.match(storyMarkup, /Selected · maximum instantaneous EE criterion/);
+// `data-story-kind` was renamed to `data-handover-kind` in 6b9474e, which
+// merged the separate accepted-story section and live-presentation section
+// into one explainer (see the "serving has one meaning on this rail" comment
+// above HandoverExplainer). Same value, same purpose, new attribute name.
+assert.match(storyMarkup, /data-handover-kind="inter"/);
+assert.match(storyMarkup, /INTER · qualifying/, 'the visible kind badge must render the accepted story kind');
+// A not-yet-committed story must show the pre-commit cue, not a winner claim.
+assert.match(
+  storyMarkup,
+  /Evaluate: wait for EE to cross the trigger, then compare beams\./,
+  'a ttt-stable story is not yet committed; the cue must not claim a beam has been selected',
+);
 assert.match(storyMarkup, /141\.18 Kbit\/J/);
-assert.match(committedStoryMarkup, /<h3[^>]*>Instantaneous EE comparison<\/h3>/);
-assert.doesNotMatch(committedStoryMarkup, /EE winner|EE 勝出|MAX EE|EE 最大/);
-assert.match(intraStoryMarkup, /data-story-kind="intra"/);
-assert.match(intraStoryMarkup, /data-story-cell-count="1"/);
-assert.match(intraStoryMarkup, /data-story-cell-example="one-cell"/);
-assert.match(intraStoryMarkup, /Intra · 1 cell/);
+// NOTE: `data-story-cell-count`, `data-story-cell-example`, the "N cells"
+// badge text, `data-story-target-is-winner`, `data-story-winner-basis` and the
+// distinct "Instantaneous EE comparison" heading were all deleted by 6b9474e
+// with no design comment addressing the loss, and are not rendered by any
+// production code path today (confirmed by reading HomepageBeamRail.tsx in
+// full: `storySection`/`storyGrid`/`storyEndpoint`/`storyEeValue`/
+// `storyArrow`/`storyFooter`/`storyWinnerBadge` styles are now dead,
+// unreferenced code, and `src/ui/homepage/HomepageHandoverComparisonOverlay.tsx`
+// — the only place in the tree that still renders `story.cellCount`,
+// `story.cellExample`, `story.targetIsWinner`, `story.qualifiedCandidateCount`
+// etc. — is never imported by App.tsx or any other production file). This is
+// flagged here, not silently dropped: the cell-reuse pattern (1/7/19-cell) and
+// the EE-max selection criterion are pedagogically meaningful content that
+// currently reaches no user. The owner must decide whether to (a) restore
+// this display inline in HomepageBeamRail.tsx, or (b) wire
+// HomepageHandoverComparisonOverlay into App.tsx via the rail's
+// `handoverComparison` prop, or (c) accept the removal. Until that is
+// decided, no assertion here claims this information is shown.
+assert.match(
+  committedStoryMarkup,
+  /Committed: the selected beam is now serving\./,
+  'a committed story must show the committed cue',
+);
+assert.match(committedStoryMarkup, /data-story-selection-status="committed"/);
+assert.match(intraStoryMarkup, /data-handover-kind="intra"/);
+assert.match(intraStoryMarkup, /INTRA · qualifying/, 'the visible kind badge must render the accepted story kind');
 
 assert.equal(
   (markup.match(/data-testid="homepage-beam-row"/g) ?? []).length,
@@ -374,7 +399,10 @@ assert.match(linkedMarkup, /episode-test\/link\/sat-candidate\|3"[^>]*data-selec
 assert.match(linkedMarkup, /1\.2 Mbit\/s/);
 assert.match(linkedMarkup, /data-pair-key="sat-candidate\/beam\/2"/);
 
-assert.match(presentationMarkup, /data-testid="homepage-handover-presentation"/);
+// 6b9474e merged the once-separate presentation section into the same
+// unified explainer as the accepted story (same testid as line ~298); a live
+// cinema presentation no longer gets its own testid.
+assert.match(presentationMarkup, /data-testid="homepage-handover-story"/);
 assert.match(presentationMarkup, /data-handover-kind="intra"/);
 assert.match(presentationMarkup, /data-handover-from-beam-id="2"/);
 assert.match(presentationMarkup, /data-handover-to-beam-id="3"/);
@@ -429,13 +457,25 @@ assert.match(denseRosterMarkup, /data-pair-key="sat-serving\/beam\/7"/);
 assert.match(denseRosterMarkup, /data-pair-key="sat-candidate\/beam\/19"/);
 const denseServingDetails = denseRosterMarkup.match(/<details[^>]*data-testid="homepage-serving-beam-details"[^>]*>/)?.[0] ?? '';
 assert.notEqual(denseServingDetails, '', 'dense serving rosters expose an other-beam disclosure');
-assert.doesNotMatch(denseServingDetails, /\bopen(?:=|>)/, 'serving secondary beams start collapsed');
+// 6b9474e deliberately flipped the initial state of this one disclosure (see
+// the "keep the six same-satellite beams visible on first render" comment
+// above `servingExpanded`'s useState in HomepageBeamRail.tsx): the serving
+// satellite's other physical beams now start expanded so a 7-beam roster is
+// visible without an extra click, while candidate groups (asserted below)
+// still start collapsed.
+assert.match(denseServingDetails, /\bopen(?:=|>)/, 'serving secondary beams start expanded by default');
 const denseCandidateDetails = denseRosterMarkup.match(/<details[^>]*data-testid="homepage-satellite-group"[^>]*>/)?.[0] ?? '';
 assert.doesNotMatch(denseCandidateDetails, /\bopen(?:=|>)/, 'dense candidate groups start collapsed');
 assert.equal((denseRosterMarkup.match(/<details\b/g) ?? []).length, 2);
 
 assert.match(allSurfaceReviewMarkup, /data-show-all-surfaces="true"/);
-assert.match(allSurfaceReviewMarkup, /data-testid="homepage-handover-story-placeholder"/);
-assert.match(allSurfaceReviewMarkup, /data-testid="homepage-handover-presentation-placeholder"/);
+// The dedicated placeholder testids were removed by 6b9474e's merge: the idle
+// (no story, no presentation) state now renders through the same unified
+// section, with an empty kind and an explicit "no handover is active" cue,
+// rather than a distinct placeholder element.
+assert.match(allSurfaceReviewMarkup, /data-testid="homepage-handover-story"/);
+assert.match(allSurfaceReviewMarkup, /data-handover-kind=""/);
+assert.match(allSurfaceReviewMarkup, /data-handover-active="false"/);
+assert.match(allSurfaceReviewMarkup, /Serving link: no handover is active\./);
 
 console.log('homepage beam rail checks pass');
