@@ -38,7 +38,12 @@ import {
 import { buildSinrLiveCellLayout } from '../src/scene/sinrLiveCellRuntime.ts';
 import type { CandidateOpportunity, HandoverCommitReceipt } from '../src/engine/handover/candidateDecisionContract.ts';
 import { HandoverManager } from '../src/engine/handover/handover-manager.ts';
-import type { HandoverEvent } from '../src/engine/handover/types.ts';
+import type { HandoverDecision, HandoverEvent } from '../src/engine/handover/types.ts';
+import {
+  HANDOVER_COMMIT_PATHS,
+  handoverCommitPathConsultsEeThreshold,
+  type HandoverCommitPath,
+} from '../src/engine/handover/commitProvenance.ts';
 import type { LinkSample } from '../src/engine/signal/types.ts';
 import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../src/engine/handover/eeThreshold.ts';
 
@@ -84,45 +89,50 @@ type StructuralClaim =
   | { readonly kind: 'call'; readonly file: string; readonly callee: string; readonly label: string }
   | { readonly kind: 'function-declared'; readonly file: string; readonly name: string; readonly label: string };
 
+// The five manager claims match the PROVENANCE argument, not the reason
+// sentence. Matching the reason (argument 4) made these claims fail whenever a
+// message was reworded -- a cosmetic edit reported as a missing commit path.
+// Argument 5 is a HandoverCommitPath literal, so it changes only when the
+// authority actually changes.
 const F1_STRUCTURAL_CLAIMS: readonly StructuralClaim[] = [
   {
     kind: 'call-with-argument',
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
-    argumentIndex: 4,
-    argumentPattern: /initial attach|re-attach after service loss/,
+    argumentIndex: 5,
+    argumentPattern: /^'manager:initial-attach'$/,
     label: 'initial/re-attach',
   },
   {
     kind: 'call-with-argument',
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
-    argumentIndex: 4,
-    argumentPattern: /continuity rescue/,
+    argumentIndex: 5,
+    argumentPattern: /^'manager:continuity-rescue'$/,
     label: 'continuity rescue intra-switch',
   },
   {
     kind: 'call-with-argument',
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
-    argumentIndex: 4,
-    argumentPattern: /stable pending hold/,
+    argumentIndex: 5,
+    argumentPattern: /^'manager:inter-stable-pending-hold'$/,
     label: 'inter-HO after stable pending hold',
   },
   {
     kind: 'call-with-argument',
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
-    argumentIndex: 4,
-    argumentPattern: /stable target for/,
+    argumentIndex: 5,
+    argumentPattern: /^'manager:inter-stable-target'$/,
     label: 'inter-HO stable target',
   },
   {
     kind: 'call-with-argument',
     file: 'src/engine/handover/handover-manager.ts',
     callee: 'commitDecision',
-    argumentIndex: 4,
-    argumentPattern: /dwell/,
+    argumentIndex: 5,
+    argumentPattern: /^'manager:intra-dwell'$/,
     label: 'intra-switch after dwell',
   },
   {
@@ -171,7 +181,11 @@ const COMMIT_PATH_TOPOLOGY: readonly {
   },
 ];
 
-const EXPECTED_COMMIT_PATH_COUNT = 7;
+// Derived from the provenance union rather than written here, so the declared
+// set of commit paths and the counted set cannot drift apart silently: adding a
+// member to HandoverCommitPath without adding the call site that uses it (or
+// vice versa) fails this gate.
+const EXPECTED_COMMIT_PATH_COUNT = HANDOVER_COMMIT_PATHS.length;
 
 /** Symbols that must only ever appear as a direct callee -- see escapingReferences. */
 const COMMIT_SYMBOLS_THAT_MAY_NOT_ESCAPE: readonly { readonly file: string; readonly name: string }[] = [
@@ -328,6 +342,9 @@ interface CommitRecord {
   readonly reason: string;
   readonly from: string | null;
   readonly to: string;
+  /** The typed identity of the authority that approved this commit. */
+  readonly commitPath: HandoverCommitPath;
+  /** Human-readable rendering of `commitPath`. Nothing keys off this. */
   readonly approvingPath: string;
   readonly pathConsultsEeThreshold: boolean;
   readonly servingEeBitsPerJouleAtCommit: number | null;
@@ -368,23 +385,30 @@ function satellite(id: string, lonOffsetDeg: number): CellModelSat {
   };
 }
 
-function classifySinrLiveCellPath(mode: string): { approvingPath: string; consultsEe: boolean } {
-  if (mode === 'ee-optimization') {
-    return {
-      approvingPath: 'handoverSelectionPolicy.ts:283 instantaneousEeTriggerStatus (via HandoverDecisionEngine.step -> InstantaneousEePolicy)',
-      consultsEe: true,
-    };
-  }
-  if (mode === 'service-continuity-protection') {
-    return {
-      approvingPath: 'sinrLiveCellModel.ts:2650 selectServiceContinuityFallback',
-      consultsEe: false,
-    };
-  }
-  return {
-    approvingPath: `sinrLiveCellModel.ts primary decision authority (unrecognized mode "${mode}")`,
-    consultsEe: false,
-  };
+/**
+ * Human-readable label for a typed commit path. This is presentation only --
+ * nothing keys off it. The typed path is the identity.
+ */
+const COMMIT_PATH_LABELS: Readonly<Record<HandoverCommitPath, string>> = {
+  'manager:initial-attach': 'handover-manager.ts (initial attach / re-attach)',
+  'manager:continuity-rescue': 'handover-manager.ts (continuity rescue intra-switch)',
+  'manager:inter-stable-pending-hold': 'handover-manager.ts (inter-HO after stable pending hold)',
+  'manager:inter-stable-target': 'handover-manager.ts (inter-HO stable target)',
+  'manager:intra-dwell': 'handover-manager.ts (intra-switch after dwell, F2: gated on SINR only)',
+  'live-cell:service-continuity-fallback': 'sinrLiveCellModel.ts selectServiceContinuityFallback',
+  'live-cell:ee-optimization':
+    'handoverSelectionPolicy.ts instantaneousEeTriggerStatus (via HandoverDecisionEngine.step -> InstantaneousEePolicy)',
+};
+
+/**
+ * The live-cell engine already reports a typed `mode`, so this is a total
+ * mapping rather than a regex over prose. An unmapped mode is a new commit path
+ * and must fail rather than be labelled "unrecognized" and counted as normal.
+ */
+function classifySinrLiveCellPath(mode: string): HandoverCommitPath | null {
+  if (mode === 'ee-optimization') return 'live-cell:ee-optimization';
+  if (mode === 'service-continuity-protection') return 'live-cell:service-continuity-fallback';
+  return null;
 }
 
 /** EE evidence for one candidate key from a prior frame's opportunity set. */
@@ -399,7 +423,15 @@ function recordSinrLiveCellCommit(
   commit: HandoverCommitReceipt,
   priorOpportunities: readonly CandidateOpportunity[],
 ): void {
-  const { approvingPath, consultsEe } = classifySinrLiveCellPath(commit.mode);
+  const commitPath = classifySinrLiveCellPath(commit.mode);
+  if (commitPath === null) {
+    fail(
+      `[${scenario}] live-cell commit reported mode "${commit.mode}", which maps to no known `
+      + `HandoverCommitPath. Either the mode is new -- in which case it is a new commit path and `
+      + `commitProvenance.ts must declare it -- or the mode was renamed and this mapping is stale.`,
+    );
+    return;
+  }
   const servingEe = commit.from === null
     ? null
     : eeForKey(priorOpportunities, commit.from.satelliteId, commit.from.beamId);
@@ -420,8 +452,9 @@ function recordSinrLiveCellCommit(
     reason: commit.reason,
     from: commit.from ? `${commit.from.satelliteId}:${commit.from.beamId}` : null,
     to: `${commit.to.satelliteId}:${commit.to.beamId}`,
-    approvingPath,
-    pathConsultsEeThreshold: consultsEe,
+    commitPath,
+    approvingPath: COMMIT_PATH_LABELS[commitPath],
+    pathConsultsEeThreshold: handoverCommitPathConsultsEeThreshold(commitPath),
     servingEeBitsPerJouleAtCommit: servingEe,
     thresholdBitsPerJoule: EE_THRESHOLD_BITS_PER_JOULE,
     eeGateStatus,
@@ -671,43 +704,42 @@ function scenarioIntraCommit(cellCount: 1 | 7): void {
 // commit it produces is structurally EE-blind -- reported, not inferred.
 // ---------------------------------------------------------------------------
 
-function classifyHandoverManagerReason(reason: string): { approvingPath: string } {
-  if (/^(initial attach|re-attach after service loss)/.test(reason)) {
-    return { approvingPath: 'handover-manager.ts:221 (initial attach / re-attach)' };
+/**
+ * Record one manager commit.
+ *
+ * The provenance is taken from the decision the engine returned, which states
+ * it directly. This used to be recovered by regex-matching the `reason`
+ * sentence, which could not work from an `eventLog` entry (those carry no
+ * `reason`), so every caller had to patch the classification back in by hand
+ * afterwards. A forgotten patch produced "unrecognized reason", which the
+ * EE-blind ledger then treated as an unledgered commit path.
+ */
+function recordHandoverManagerEvent(
+  scenario: string,
+  event: HandoverEvent,
+  decision: HandoverDecision,
+): void {
+  const commitPath = decision.provenance;
+  if (commitPath === undefined) {
+    fail(
+      `[${scenario}] handover-manager committed action="${event.action}" but the decision carried no `
+      + `provenance. commitDecision() is the only writer of that field, so either a commit path was `
+      + `added without declaring itself, or a commit was published without going through it.`,
+    );
+    return;
   }
-  if (/^continuity rescue/.test(reason)) {
-    return { approvingPath: 'handover-manager.ts:265 (continuity rescue intra-switch)' };
-  }
-  if (/stable pending hold/.test(reason)) {
-    return { approvingPath: 'handover-manager.ts:319 (inter-HO after stable pending hold)' };
-  }
-  if (/stable target for/.test(reason)) {
-    return { approvingPath: 'handover-manager.ts:345 (inter-HO stable target)' };
-  }
-  if (/dwell$/.test(reason)) {
-    return { approvingPath: 'handover-manager.ts:389 (intra-switch after dwell, F2: gated on SINR only)' };
-  }
-  return { approvingPath: `handover-manager.ts (unrecognized reason "${reason}")` };
-}
-
-function recordHandoverManagerEvent(scenario: string, event: HandoverEvent): void {
-  const { approvingPath } = classifyHandoverManagerReason(
-    // eventLog entries don't carry `reason`; re-derive the label from action + presence of fromSatId.
-    event.action === 'inter-handover' && event.fromSatId === null
-      ? 'initial attach'
-      : event.action,
-  );
   records.push({
     scenario,
     engine: 'handover-manager',
     simTimeMs: event.timeMs,
     kind: event.action,
     mode: null,
-    reason: `action=${event.action} deltaDb=${event.deltaDb ?? 'n/a'}`,
+    reason: decision.reason,
     from: event.fromSatId !== null ? `${event.fromSatId}:${event.fromBeamId}` : null,
     to: `${event.toSatId}:${event.toBeamId}`,
-    approvingPath,
-    pathConsultsEeThreshold: false,
+    commitPath,
+    approvingPath: COMMIT_PATH_LABELS[commitPath],
+    pathConsultsEeThreshold: handoverCommitPathConsultsEeThreshold(commitPath),
     servingEeBitsPerJouleAtCommit: null,
     thresholdBitsPerJoule: null,
     eeGateStatus: event.fromSatId === null ? 'not-applicable-initial-attach' : 'unknown-ee-blind-engine',
@@ -726,10 +758,7 @@ function scenarioHandoverManagerInitialAttach(): void {
     return;
   }
   const event = manager.eventLog[manager.eventLog.length - 1]!;
-  recordHandoverManagerEvent(scenario, event);
-  const { approvingPath } = classifyHandoverManagerReason('initial attach');
-  const idx = records.length - 1;
-  records[idx] = { ...records[idx]!, approvingPath, reason: decision.reason };
+  recordHandoverManagerEvent(scenario, event, decision);
 }
 
 function scenarioHandoverManagerInterThenContinuityRescue(): void {
@@ -746,9 +775,7 @@ function scenarioHandoverManagerInterThenContinuityRescue(): void {
     fail(`[${scenario}] expected inter-handover after 4s stable target, got "${inter.action}": ${inter.reason}`);
   } else {
     const event = manager.eventLog[manager.eventLog.length - 1]!;
-    recordHandoverManagerEvent(scenario, event);
-    const idx = records.length - 1;
-    records[idx] = { ...records[idx]!, reason: inter.reason, approvingPath: classifyHandoverManagerReason(inter.reason).approvingPath };
+    recordHandoverManagerEvent(scenario, event, inter);
   }
   // Serving beam (sat-b/0) drops out of the candidate set entirely; a
   // same-satellite sibling beam (sat-b/1) remains steerable above threshold.
@@ -757,9 +784,7 @@ function scenarioHandoverManagerInterThenContinuityRescue(): void {
     fail(`[${scenario}] expected continuity-rescue intra-switch once the shared guard cleared, got "${guardBlocked.action}": ${guardBlocked.reason}`);
   } else {
     const event = manager.eventLog[manager.eventLog.length - 1]!;
-    recordHandoverManagerEvent(scenario, event);
-    const idx = records.length - 1;
-    records[idx] = { ...records[idx]!, reason: guardBlocked.reason, approvingPath: classifyHandoverManagerReason(guardBlocked.reason).approvingPath };
+    recordHandoverManagerEvent(scenario, event, guardBlocked);
   }
 }
 
@@ -775,9 +800,7 @@ function scenarioHandoverManagerOrdinaryIntraDwell(): void {
     return;
   }
   const event = manager.eventLog[manager.eventLog.length - 1]!;
-  recordHandoverManagerEvent(scenario, event);
-  const idx = records.length - 1;
-  records[idx] = { ...records[idx]!, reason: commit.reason, approvingPath: classifyHandoverManagerReason(commit.reason).approvingPath };
+  recordHandoverManagerEvent(scenario, event, commit);
 }
 
 // ---------------------------------------------------------------------------
@@ -872,17 +895,19 @@ console.log(`  EE-blind commits (handover-manager.ts, never reads EE): ${records
 // at it. P3 convergence is expected to shrink this list toward empty; an
 // initial attach has no prior link to measure and is not a blind commit.
 // ---------------------------------------------------------------------------
-const EXPECTED_EE_BLIND_COMMITS: readonly string[] = [
-  'handover-manager|inter-handover|handover-manager.ts:345 (inter-HO stable target)',
-  'handover-manager|intra-switch|handover-manager.ts:265 (continuity rescue intra-switch)',
-  'handover-manager|intra-switch|handover-manager.ts:389 (intra-switch after dwell, F2: gated on SINR only)',
+// Keyed on the typed commit path, not on the prose label: rewording a reason
+// sentence must not be able to change a ledger key.
+const EXPECTED_EE_BLIND_COMMITS: readonly HandoverCommitPath[] = [
+  'manager:inter-stable-target',
+  'manager:continuity-rescue',
+  'manager:intra-dwell',
 ];
 
 const blindCommitKeys = records
   .filter(r => r.eeGateStatus === 'unknown-ee-blind-engine')
-  .map(r => `${r.engine}|${r.kind}|${r.approvingPath}`)
+  .map(r => r.commitPath)
   .sort();
-const expectedBlindKeys = [...EXPECTED_EE_BLIND_COMMITS].sort();
+const expectedBlindKeys: readonly HandoverCommitPath[] = [...EXPECTED_EE_BLIND_COMMITS].sort();
 
 console.log('\n=== check:handover -- EE-blind commit ledger ===');
 console.log(`  ledgered: ${expectedBlindKeys.length}, observed: ${blindCommitKeys.length}`);

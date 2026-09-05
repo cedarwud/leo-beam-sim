@@ -1,3 +1,5 @@
+import type { HandoverCommitPath } from './commitProvenance';
+
 export interface ServingState {
   satId: string | null;
   beamId: number | null;
@@ -14,6 +16,16 @@ export interface HandoverDecision {
   action: HandoverAction;
   target?: { satId: string; beamId: number };
   reason: string;
+  /**
+   * Which authority approved this commit, stated by the committing code rather
+   * than recovered by matching `reason` text.
+   *
+   * Invariant: `HandoverManager.commitDecision` is the only writer, so
+   * `provenance != null` is equivalent to "this decision committed a handover".
+   * A `stay` or pending decision leaves it undefined. Converging the commit
+   * paths depends on that equivalence, so do not set it anywhere else.
+   */
+  provenance?: HandoverCommitPath;
 }
 
 export interface HandoverEvent {
