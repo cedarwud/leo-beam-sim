@@ -66,3 +66,50 @@ assert.match(blockedInter.reason, /guard active/);
 assert.equal(manager.eventLog.length, 2);
 
 console.log('handover-manager exclusivity test passed');
+
+// ---------------------------------------------------------------------------
+// Time-to-trigger contract.
+//
+// Red-team mutation C removed the `triggerTimeSec >= this.triggerTimeSec`
+// condition from the stable-target commit and produced NO failure anywhere:
+// tsc passed, the tests passed, and check:handover printed output identical to
+// the baseline. Nothing asserted that a target must actually hold for the full
+// trigger time before it may commit.
+//
+// The assertion is on the EVENT LOG, not just the returned action: a commit is
+// only real once it has been logged, and the log is what downstream consumers
+// read.
+// ---------------------------------------------------------------------------
+{
+  const tttProfile = loadProfile('hobs-2024-paper-default').handover;
+  const ttt = new HandoverManager(tttProfile, { enforceSharedHandoverInterval: false });
+  ttt.state = { satId: 'sat-a', beamId: 0, sinrDb: 10, triggerTimeSec: 0, pendingTarget: null };
+
+  // sat-b becomes the pending target and banks 0.5s of the required 3.5s.
+  const armed = ttt.update([sample('sat-a', 0, 10), sample('sat-b', 0, 20)], 0.5, epochMs + 500);
+  assert.equal(armed.action, 'stay', 'arming a pending target must not commit');
+  const eventsBeforeHold = ttt.eventLog.length;
+
+  // The same target stays best, so the trigger keeps accumulating -- but it is
+  // still far short of 3.5s, so no commit may happen yet.
+  const held = ttt.update([sample('sat-a', 0, 10), sample('sat-b', 0, 20)], 0.5, epochMs + 1000);
+  assert.ok(
+    ttt.state.triggerTimeSec < tttProfile.triggerTimeSec,
+    `precondition: ${ttt.state.triggerTimeSec}s must still be under the ${tttProfile.triggerTimeSec}s trigger time`,
+  );
+  assert.equal(held.action, 'stay', 'a target below its time-to-trigger must not commit');
+  assert.equal(held.provenance, undefined, 'a non-commit decision carries no provenance');
+  assert.equal(
+    ttt.eventLog.length,
+    eventsBeforeHold,
+    'no handover event may be logged before the trigger time elapses',
+  );
+
+  // Once the trigger time is genuinely satisfied the same sequence DOES commit,
+  // so the assertions above are about timing, not about nothing ever committing.
+  const committed = ttt.update([sample('sat-a', 0, 10), sample('sat-b', 0, 20)], 3, epochMs + 4000);
+  assert.equal(committed.action, 'inter-handover', 'the target must commit once its trigger time elapses');
+  assert.ok(ttt.eventLog.length > eventsBeforeHold, 'and the commit must be logged');
+}
+
+console.log('handover-manager time-to-trigger contract test passed');

@@ -626,3 +626,27 @@ test('EE tolerance groups use a fixed highest-EE anchor and remain input-order i
   assert.deepEqual(evaluate(candidates), ['SAT-B|1', 'SAT-C|1', 'SAT-A|1']);
   assert.deepEqual(evaluate([...candidates].reverse()), ['SAT-B|1', 'SAT-C|1', 'SAT-A|1']);
 });
+
+/**
+ * Red-team mutation B: removing 'steering' from SINR_OFFSET_REQUIRED_GATES
+ * produced no failure anywhere. It was "caught" once only because deleting a
+ * line shifted a line-pinned assertion in check:handover -- a right answer for
+ * the wrong reason, and that pin is gone now.
+ *
+ * The expected set is written out as a literal on purpose. Deriving it from
+ * the constant under test is exactly how a change to that constant goes
+ * unnoticed.
+ *
+ * Honest limit: this asserts the SET, not the BEHAVIOUR. It catches a gate
+ * being dropped from the list, which is the mutation that went unnoticed, but
+ * it would not catch the list being honoured incorrectly downstream. The
+ * behavioural half wants a candidate with a failing steering gate proven
+ * inadmissible through the policy, which needs a full CandidateOpportunity
+ * fixture; see the note in AGENT-EXECUTABILITY-FINDINGS §4.5.3 B.
+ */
+test('the sinr-offset hard gates are exactly elevation, steering, scheduled-illumination and sinr', () => {
+  assert.deepEqual(
+    [...SINR_OFFSET_REQUIRED_GATES].sort(),
+    ['elevation', 'scheduled-illumination', 'sinr', 'steering'],
+  );
+});
