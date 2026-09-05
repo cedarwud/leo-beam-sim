@@ -94,6 +94,14 @@ export interface EeCommitPermit {
  */
 const issuedPermits = new WeakSet<EeCommitPermit>();
 
+// Captured at module load. `assertMintedPermit` would otherwise reach
+// WeakSet.prototype.has through a normal property lookup, which same-realm code
+// can replace with `() => true`. Cheap to close, so closed -- though a caller
+// able to patch built-ins has other routes and this is not the threat this
+// module is primarily defending against.
+const weakSetHas = WeakSet.prototype.has;
+const weakSetDelete = WeakSet.prototype.delete;
+
 function mint(path: HandoverCommitPath, evidence: EeCommitEvidence): EeCommitPermit {
   // The brand exists only in the type system -- `declare const ... unique symbol`
   // has no runtime value, so it is asserted here rather than assigned. This is
@@ -112,13 +120,18 @@ function mint(path: HandoverCommitPath, evidence: EeCommitEvidence): EeCommitPer
  * construct prevents a determined cast or an `any` round-trip.
  */
 export function assertMintedPermit(permit: EeCommitPermit, context: string): void {
-  if (!issuedPermits.has(permit)) {
+  // Single use. A permit authorizes ONE commit, so it is consumed here rather
+  // than merely checked: without this, a permit obtained once could authorize
+  // any number of later commits, including ones whose evidence no longer holds.
+  // Every call site mints inline, so nothing today depends on replay.
+  if (!weakSetHas.call(issuedPermits, permit)) {
     throw new Error(
       `${context}: this EeCommitPermit was not issued by eeCommitPermit.ts. A permit is authorization `
       + 'to commit a handover; fabricating one bypasses the EE evidence rule entirely. Obtain it from '
-      + 'a mint function.',
+      + 'a mint function, or it has already been used -- a permit authorizes one commit.',
     );
   }
+  weakSetDelete.call(issuedPermits, permit);
 }
 
 /**
@@ -138,9 +151,14 @@ export function mintMeasuredEePermit(input: {
   const { path, servingEeBitsPerJoule, targetEeBitsPerJoule, thresholdBitsPerJoule } = input;
   // A non-finite threshold makes every comparison below vacuously false, so it
   // would mint on absent evidence. Refuse rather than fail open.
-  if (!Number.isFinite(thresholdBitsPerJoule)) return null;
+  // EE is bits per joule: physically non-negative. A negative value is an error
+  // sentinel from an upstream measurement, not evidence, and comparing two of
+  // them produces an ordering that means nothing.
+  if (!Number.isFinite(thresholdBitsPerJoule) || thresholdBitsPerJoule < 0) return null;
   if (servingEeBitsPerJoule === null || !Number.isFinite(servingEeBitsPerJoule)) return null;
+  if (servingEeBitsPerJoule < 0) return null;
   if (targetEeBitsPerJoule === null || !Number.isFinite(targetEeBitsPerJoule)) return null;
+  if (targetEeBitsPerJoule <= 0) return null;
   if (servingEeBitsPerJoule >= thresholdBitsPerJoule) return null;
   if (targetEeBitsPerJoule <= servingEeBitsPerJoule) return null;
   return mint(path, {
@@ -165,8 +183,9 @@ export function mintContinuityEePermit(input: {
   readonly thresholdBitsPerJoule: number;
 }): EeCommitPermit | null {
   const { path, servingEeBitsPerJoule, thresholdBitsPerJoule } = input;
-  if (!Number.isFinite(thresholdBitsPerJoule)) return null;
+  if (!Number.isFinite(thresholdBitsPerJoule) || thresholdBitsPerJoule < 0) return null;
   if (servingEeBitsPerJoule === null || !Number.isFinite(servingEeBitsPerJoule)) return null;
+  if (servingEeBitsPerJoule < 0) return null;
   if (servingEeBitsPerJoule >= thresholdBitsPerJoule) return null;
   return mint(path, {
     kind: 'serving-below-floor-no-target-evidence',

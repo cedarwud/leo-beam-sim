@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from './eeThreshold';
 import {
   assertMintedPermit,
+  mintContinuityEePermit,
   mintInitialAttachPermit,
   mintLegacyEeBlindPermit,
   mintMeasuredEePermit,
@@ -134,9 +135,60 @@ test('a fabricated permit object is rejected even though it satisfies the type',
   );
 });
 
-test('a genuinely minted permit passes the same check', () => {
+test('a genuinely minted permit passes the check exactly once', () => {
   const real = mintInitialAttachPermit('manager:initial-attach');
   assert.doesNotThrow(() => assertMintedPermit(real, 'test'));
+  // A permit authorizes ONE commit. Replaying it would let evidence gathered
+  // for one frame authorize a commit in a later frame where it no longer holds.
+  assert.throws(() => assertMintedPermit(real, 'test'), /already been used/);
+});
+
+test('negative EE is refused: it is an error sentinel, not evidence', () => {
+  // EE is bits per joule and cannot be negative. Comparing two negatives
+  // produces an ordering that means nothing, and the old code minted on it:
+  // serving -10, target 0 satisfied "target strictly better" and authorized a
+  // handover onto a link carrying no data at all.
+  assert.equal(
+    mintMeasuredEePermit({
+      path: 'live-cell:ee-optimization',
+      servingEeBitsPerJoule: -10,
+      targetEeBitsPerJoule: 0,
+      thresholdBitsPerJoule: 50_000,
+    }),
+    null,
+  );
+  assert.equal(
+    mintMeasuredEePermit({
+      path: 'live-cell:ee-optimization',
+      servingEeBitsPerJoule: -50,
+      targetEeBitsPerJoule: -20,
+      thresholdBitsPerJoule: -10,
+    }),
+    null,
+    'a negative threshold is not a configuration this rule can be evaluated against',
+  );
+  assert.equal(
+    mintContinuityEePermit({
+      path: 'live-cell:service-continuity-fallback',
+      servingEeBitsPerJoule: -1,
+      thresholdBitsPerJoule: 135_000,
+    }),
+    null,
+    'a -1 measurement sentinel must not read as "below the floor"',
+  );
+});
+
+test('a target carrying no data is not an improvement', () => {
+  assert.equal(
+    mintMeasuredEePermit({
+      path: 'live-cell:ee-optimization',
+      servingEeBitsPerJoule: 0,
+      targetEeBitsPerJoule: 0,
+      thresholdBitsPerJoule: 135_000,
+    }),
+    null,
+    'zero bits per joule is a dead link, never a handover target',
+  );
 });
 
 test('a structural clone of a real permit is still rejected', () => {
