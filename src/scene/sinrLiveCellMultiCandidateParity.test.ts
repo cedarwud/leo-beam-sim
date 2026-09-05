@@ -98,10 +98,29 @@ function createModelPair() {
 function satellitesAt(simTimeSec: number): readonly CellModelSat[] {
   // The first six seconds preserve the initial A serving state.  At t=7 B is
   // overhead and remains the best candidate through the common t=8 commit.
+  //
+  // The off-boresight offset below (6.0 deg) is not cosmetic: the
+  // multi-candidate lane's decision authority is now a homepage-style EE
+  // health floor (sinrLiveCellModel.ts's `eeThresholdBitsPerJoule`, default
+  // 135 Kbit/J -- see src/engine/handover/eeThreshold.ts). In single-cell
+  // "focused" mode (cellLayout.centers.length === 1, exactly this fixture)
+  // `createPrimaryDecisionEngine` also narrows the hard-eligibility gates to
+  // elevation only (sinrLiveCellModel.ts's createPrimaryDecisionEngine),
+  // so nothing but that EE floor gates a handover. A smaller offset (the
+  // historical 1.8/-1.5 deg here) keeps every satellite's instantaneous EE
+  // comfortably above the floor for the whole fixture, so the decision
+  // engine never has a reason to look for a replacement and `selectedTarget`
+  // never leaves null -- the fixture must genuinely degrade the served link
+  // below the floor, not just present a better alternative. 6.0/-6.0 deg
+  // pushes A's (and steady-state B's) and C's real EE to ~113.9 Kbit/J,
+  // below the floor, while B's overhead EE at t=7 (~666 Kbit/J) still wins;
+  // C is symmetric with A/B so it never displaces the intended A->B parity
+  // event. Verified against src/engine/handover/handoverSelectionPolicy.ts's
+  // `instantaneousEeTriggerStatus`.
   return [
-    satellite('SAT-A', simTimeSec === 0 ? 0 : 1.8),
-    satellite('SAT-B', simTimeSec < 7 ? 1.8 : 0),
-    satellite('SAT-C', -1.5),
+    satellite('SAT-A', simTimeSec === 0 ? 0 : 6.0),
+    satellite('SAT-B', simTimeSec < 7 ? 6.0 : 0),
+    satellite('SAT-C', -6.0),
   ];
 }
 

@@ -45,10 +45,24 @@ test('Walker S1 publishes a complete same-UE candidate-pair set without activati
     coverageSteeringAngleDeg: 50,
   });
   const frame = model.step({
+    // Seven same-cell satellites, not three: 33fa5ba scoped primary-UE
+    // candidate measurement to the UE's own geographic cell (a same-satellite
+    // beam belonging to another cell was previously miscounted as a same-UE
+    // candidate). With multiCandidateDecisionEnabled left at its default
+    // (false, see sinrLiveCellModel.ts's config doc), the compensating B1..B7
+    // intra-cell beam expansion is intentionally scoped to the authoritative
+    // decision lane and does not apply here, so this measurement-only fixture
+    // now needs several distinct satellites in the same cell -- not the old
+    // cross-cell leak -- to exercise "several satellite-beam pairs survive
+    // measurement".
     visibleSats: [
       satellite('SAT-A', 0),
       satellite('SAT-B', 0.8),
       satellite('SAT-C', -0.8),
+      satellite('SAT-D', 1.6),
+      satellite('SAT-E', -1.6),
+      satellite('SAT-F', 2.4),
+      satellite('SAT-G', -2.4),
     ],
     ues: [{ id: 'ue-primary', eastKm: 8, northKm: 2 }],
     simTimeSec: 42.0004,

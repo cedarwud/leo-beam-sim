@@ -251,8 +251,14 @@ test('homepage scene colours use exact sat:beam EE entries and a stable primary 
   );
   assert.equal(
     candidateInstruction.cone.color,
+    // 6b9474e fixed this to `isServing: source.isServing`: a candidate must
+    // not receive the active-serving hero shade before the accepted handover
+    // actually commits. This test previously baked in the pre-fix formula
+    // (`source.isServing || source.isCandidate`, always true here), so its
+    // independently-computed "expected" value now reflects that stale
+    // behaviour rather than the corrected one.
     homepageSatelliteColorForBeam('sat-alpha', 2, {
-      isServing: true,
+      isServing: false,
       eeNormalized: 0.05,
     }).color,
   );
@@ -1042,12 +1048,38 @@ test('candidate identity labels use camera-facing Html badges with full data att
   assert.match(source, /data-has-provisional-leader=\{group\.hasProvisionalLeader \? '1' : '0'\}/);
   assert.match(source, /data-has-selected-target=\{group\.hasSelectedTarget \? '1' : '0'\}/);
   assert.match(source, /data-role-tag=\{roleTag\}/);
-  assert.match(source, /const beamSummary = formatSatelliteBeamSummary\(group, roleTag\)/);
+  // The badge now threads the homepage identity flag through so the compact
+  // 替代/候選 ("alternate"/"candidate") wording matches the rest of the scene.
+  assert.match(
+    source,
+    /const beamSummary = formatSatelliteBeamSummary\(group, roleTag, homepageVisualIdentity\)/,
+    'the beam summary badge must receive the homepage identity flag, not just group/roleTag',
+  );
   assert.match(source, /visibleSatelliteLabel = `\$\{satelliteLabel\} · \$\{beamSummary\}`/);
-  assert.match(source, /group\.hasCandidatePairs \? '服務／候選' : '服務'/);
-  assert.match(source, /服務 \$\{pairSummary\(servingPairs\)\} · 候選 \$\{pairSummary\(candidatePairs\)\}/);
-  assert.match(source, /group\.isServingSatellite && group\.hasProvisionalLeader\) return '服務／暫列'/);
-  assert.match(source, /group\.isServingSatellite && group\.hasSelectedTarget\) return '服務／勝出'/);
+  // The role-tag/summary branches now resolve their candidate word through a
+  // `replacement` variable (替代 under homepage identity, 候選 otherwise)
+  // instead of a fixed literal, so anchor on that variable rather than one
+  // hardcoded rendering of it.
+  assert.match(
+    source,
+    /group\.hasCandidatePairs \? `服務／\$\{replacement\}` : '服務'/,
+    'the compact serving+candidate label must resolve its candidate word from the homepage-identity-aware replacement variable',
+  );
+  assert.match(
+    source,
+    /服務 \$\{pairSummary\(servingPairs\)\} · \$\{replacement\} \$\{pairSummary\(candidatePairs\)\}/,
+    'the full serving+candidate summary must resolve its candidate word from the homepage-identity-aware replacement variable',
+  );
+  assert.match(
+    source,
+    /group\.isServingSatellite && group\.hasProvisionalLeader\) return `服務／\$\{replacement\}暫列`/,
+    'the serving+leader role tag must resolve its candidate word from the homepage-identity-aware replacement variable',
+  );
+  assert.match(
+    source,
+    /group\.isServingSatellite && group\.hasSelectedTarget\) return `服務／\$\{replacement\}勝出`/,
+    'the serving+selected role tag must resolve its candidate word from the homepage-identity-aware replacement variable',
+  );
   assert.match(source, /satelliteLane=\{satelliteBiasLaneById\.get\(group\.satelliteId\) \?\? 0\}/);
   assert.match(source, /userData=\{\{ \.\.\.joinMetadata, haloRole: 'serving' \}\}/);
   assert.match(source, /haloRole: candidateHaloIsStrong \? 'candidate' : 'observed'/);

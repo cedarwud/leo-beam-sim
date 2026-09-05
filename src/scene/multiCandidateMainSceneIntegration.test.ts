@@ -212,7 +212,15 @@ test('candidate authority is additive and cannot blanket-suppress the establishe
   assert.match(source, /multiCandidateCentralOverlayActive \|\| multiCandidateIdentityTransitionActive/);
   assert.match(
     source,
-    /const authorityHandoverPresentationCandidate = useMemo\([\s\S]{0,120}\) => multiCandidateAuthorityActive/,
+    /const authorityHandoverPresentationCandidate = useMemo\(\s*\(\) => \{\s*if \(!multiCandidateAuthorityActive\) return null;/,
+    'authority candidate presentation must stay memoized and gated behind multiCandidateAuthorityActive',
+  );
+  // A selection boundary is "armed, not switched" -- the homepage must not
+  // present it as an active authority handover before the atomic commit.
+  assert.match(
+    source,
+    /if \(homepageVisualIdentity && handoverAuthorityJoin\?\.transition\?\.boundary === 'selected'\) \{\s*return null;\s*\}/,
+    'an armed-but-unswitched selection boundary must not be treated as an active authority handover on the homepage',
   );
   assert.match(source, /const authorityTransitionRef = useRef<AuthorityHandoverTransition \| null>\(null\)/);
   assert.doesNotMatch(
@@ -415,10 +423,19 @@ test('authority presentation prioritizes actual switching while admitting manual
     source,
     /if \(authorityHandoverPresentationCandidate !== null\) \{\s*return authorityHandoverPresentationCandidate;\s*\}/,
   );
-  // Manual handover is admitted when authority has no active switching event
+  // Manual handover is admitted when authority has no active switching event.
+  // The guard now lives inside an extracted `manualCandidate()` closure
+  // (De Morgan negation of the original inline condition) that is invoked,
+  // and only admitted, after the authority-switching check above.
   assert.match(
     source,
-    /if \(manualHandoverActive && manualHandoverEvent !== null\)/,
+    /const manualCandidate = \(\): HandoverPresentationEvent \| null => \{\s*if \(!manualHandoverActive \|\| manualHandoverEvent === null\) return null;/,
+    'manual handover must stay gated on both the request flag and a non-null event before being admitted',
+  );
+  assert.match(
+    source,
+    /const manual = manualCandidate\(\);\s*if \(manual !== null\) return manual;/,
+    'the manual candidate must actually be invoked and admitted when authority has no active switching event',
   );
   // Cinema handover is admitted when authority has no active switching event
   assert.match(
