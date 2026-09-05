@@ -3613,9 +3613,17 @@ export class SinrLiveCellModel {
       const angleAwareSample = angleAwareSampleByKey.get(key);
       const angleAware = angleAwareSample?.angleAware;
       const instantaneousEe = resolveDecisionEeBitsPerJoule(angleAware);
-      const admissionSample = this.multiCandidateDecisionEnabled
-        ? angleAwareSample
-        : sample;
+      // Admission is a link-budget question and must use the profile-rated RF
+      // model that `sinrMeasurementContext` above already declares
+      // (`powerModel: 'profile-rated-rf'`, `ratedTransmitPowerDbm`). The
+      // angle-aware sample is the EE counterfactual: its transmit power is
+      // capped at ANGLE_AWARE_BEAM_POWER_CAP_W (1.65 W = 32.17 dBm) for the
+      // Joules-per-bit curve, ~17.8 dB under the profile's 50 dBm rating.
+      // Feeding it to the hard-eligibility gate put every candidate below the
+      // -5 dB floor -- 0 of 91,074 measurements passed -- so no candidate was
+      // ever eligible and the EE handover authority could never fire. The
+      // angle-aware sample stays available below for the EE display fields.
+      const admissionSample = sample;
       const currentServingKey = this.primaryServingAssignment?.key ?? null;
       const isAcceptedServingPair = currentServingKey !== null
         && currentServingKey.satelliteId === geometry.satId
