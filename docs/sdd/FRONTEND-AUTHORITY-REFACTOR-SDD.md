@@ -92,15 +92,27 @@ files NOT on that list: sinrLiveCellModel.ts is 4,343 lines but its largest
 function is 1,216 (28%), and HomepageBeamRail.tsx is 2,557 with a 15% maximum.
 File size and function size disagree, and the criterion is function size.
 
-Measured coverage of those three, 2026-09-06:
+Measured coverage of those three, 2026-09-06 -- and the first version of this
+paragraph got it wrong, which is worth keeping because the mistake is the
+instructive part:
 
-    App.tsx               executed by 0 tests;  41 validators read its SOURCE TEXT
-    MainScene.tsx         executed by 0 tests;   5 validators read its SOURCE TEXT
-    AppWalkerSandbox.tsx  executed by 0 tests;   0 of either
+    App.tsx               imported by 0 tests;  41 validators read its SOURCE TEXT
+    MainScene.tsx         imported by 0 tests;   5 validators read its SOURCE TEXT
+    AppWalkerSandbox.tsx  imported by 0 tests;   0 of either
 
-So there is no behavioural net on any of them -- nothing in check:baseline runs
-those functions -- and App.tsx additionally carries 41 source-text pins that a
-decomposition would turn red for the wrong reason while catching nothing real.
+IMPORTED BY ZERO IS NOT COVERED BY ZERO. There are 26 `*:browser` validators
+that never import these files -- they `page.goto` a running dev server and drive
+the real application, so they exercise `App` and `SceneRenderContent`
+end-to-end. Grepping for imports cannot see them. Five of the 26 run in CI's
+visual-gates job.
+
+So the net exists, it is browser-shaped, and the real questions before P4 are
+how many of the 26 are green today and how much of these functions they actually
+reach. Neither has been measured.
+
+What does hold is the App.tsx text-pin problem: 41 validators assert on its
+source, so a decomposition turns them red because text moved while catching
+nothing behavioural.
 That is `docs/frontend-change-contract.md`'s second entropy loop ("inverted
 governance ... add, never refactor becomes the locally rational move") with a
 number attached.
