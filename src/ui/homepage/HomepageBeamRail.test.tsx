@@ -201,6 +201,14 @@ const committedStoryMarkup = renderRail('en', {
   },
 });
 
+// Committed WITH a usable basis. The existing committed fixture deliberately
+// has `winnerBasis: 'unavailable'`, so on its own it cannot distinguish the
+// committed wording from the unavailable wording.
+const committedWithBasisMarkup = renderRail('en', {
+  ...candidateProjection,
+  handoverStory: { ...handoverStory, selectionStatus: 'committed' },
+});
+
 function rosterProjection(servingCount: number, candidateCount: number): HomepageRailProjection {
   const servingMetrics = Array.from({ length: servingCount }, (_, index) => metric({
     satelliteId: 'sat-serving',
@@ -309,24 +317,42 @@ assert.match(
   'a ttt-stable story is not yet committed; the cue must not claim a beam has been selected',
 );
 assert.match(storyMarkup, /141\.18 Kbit\/J/);
-// NOTE: `data-story-cell-count`, `data-story-cell-example`, the "N cells"
-// badge text, `data-story-target-is-winner`, `data-story-winner-basis` and the
-// distinct "Instantaneous EE comparison" heading were all deleted by 6b9474e
-// with no design comment addressing the loss, and are not rendered by any
-// production code path today (confirmed by reading HomepageBeamRail.tsx in
-// full: `storySection`/`storyGrid`/`storyEndpoint`/`storyEeValue`/
-// `storyArrow`/`storyFooter`/`storyWinnerBadge` styles are now dead,
-// unreferenced code, and `src/ui/homepage/HomepageHandoverComparisonOverlay.tsx`
-// — the only place in the tree that still renders `story.cellCount`,
-// `story.cellExample`, `story.targetIsWinner`, `story.qualifiedCandidateCount`
-// etc. — is never imported by App.tsx or any other production file). This is
-// flagged here, not silently dropped: the cell-reuse pattern (1/7/19-cell) and
-// the EE-max selection criterion are pedagogically meaningful content that
-// currently reaches no user. The owner must decide whether to (a) restore
-// this display inline in HomepageBeamRail.tsx, or (b) wire
-// HomepageHandoverComparisonOverlay into App.tsx via the rail's
-// `handoverComparison` prop, or (c) accept the removal. Until that is
-// decided, no assertion here claims this information is shown.
+// `6b9474e` deleted the cell-reuse topology and the EE-max selection criterion
+// from this rail with no design comment. The projection kept computing both,
+// and the only remaining reader was a 12 KB overlay component that nothing
+// imported -- so a well-tested producer fed nobody. For a teaching simulator
+// that is the wrong half to lose. The display is restored in
+// `IntraHandoverExplainer`; these assertions are what stops it going away again.
+//
+// The fixtures contrast deliberately (7-cell vs 1-cell, winner vs no basis,
+// ttt-stable vs committed) so hard-coded copy cannot satisfy them.
+assert.match(storyMarkup, /data-story-cell-count="7"/);
+assert.match(storyMarkup, /data-story-cell-example="seven-cell"/);
+assert.match(storyMarkup, /data-story-target-is-winner="true"/);
+assert.match(storyMarkup, /data-story-winner-basis="instantaneous-ee-max"/);
+assert.match(storyMarkup, /data-story-qualified-candidate-count="2"/);
+assert.match(storyMarkup, /7 cells reused per satellite \(C1–C7\)/, 'the 7-cell reuse topology must be visible, not only an attribute');
+
+assert.match(intraStoryMarkup, /data-story-cell-count="1"/);
+assert.match(intraStoryMarkup, /data-story-cell-example="one-cell"/);
+assert.match(intraStoryMarkup, /1 cell reused per satellite \(C1\)/, 'the 1-cell topology must render its own copy, not the 7-cell copy');
+assert.doesNotMatch(intraStoryMarkup, /7 cells reused/, 'contrasting fixtures must not both render the same sentence');
+
+// The criterion is a criterion until the decision commits. `targetIsWinner` is
+// derived independently of `selectionStatus`, so a ttt-stable story can carry a
+// winner that has not been selected yet -- the retired overlay claimed
+// "Selected by instantaneous EE ordering" on exactly this state, which is why
+// it was not wired back in.
+assert.match(storyMarkup, /Criterion: max instantaneous EE · 2 qualified/);
+assert.doesNotMatch(storyMarkup, /Committed by max instantaneous EE/, 'a ttt-stable story has not committed');
+assert.match(committedWithBasisMarkup, /Committed by max instantaneous EE · 2 qualified/);
+assert.doesNotMatch(committedWithBasisMarkup, /Criterion: max instantaneous EE/);
+
+// An absent basis must say so rather than implying an EE ordering happened.
+assert.match(committedStoryMarkup, /data-story-winner-basis="unavailable"/);
+assert.match(committedStoryMarkup, /data-story-target-is-winner="false"/);
+assert.match(committedStoryMarkup, /Selection criterion unavailable · 2 qualified/);
+assert.doesNotMatch(committedStoryMarkup, /max instantaneous EE/, 'no EE-ordering claim without a basis');
 assert.match(
   committedStoryMarkup,
   /Committed: the selected beam is now serving\./,

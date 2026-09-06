@@ -7,6 +7,7 @@ import type {
   HomepageBeamMetric,
   HomepageBeamMetricsProjection,
   HomepageHandoverPresentation,
+  HomepageHandoverStoryCellExample,
   HomepageHandoverStoryProjection,
   HomepagePlaybackTransportState,
   HomepageRailProjection,
@@ -40,7 +41,6 @@ export interface HomepageBeamRailProps {
   /** Optional handoff hook; the rail never chooses a beam. */
   readonly onFocusJoinKeyChange?: (joinKey: string | null) => void;
   /** Same-snapshot comparison evidence; kept out of the 3D scene. */
-  readonly handoverComparison?: ReactNode | null;
   /** Homepage teaching threshold, shown in Kbit/J and compared in bit/J. */
   readonly eeThresholdKbitPerJoule?: number | null;
   /**
@@ -82,6 +82,19 @@ const COLORS = Object.freeze({
 // a new handover target arrives.
 const HOMEPAGE_EE_SCALE_MIN_BITS_PER_JOULE = 0;
 const HOMEPAGE_EE_SCALE_MAX_BITS_PER_JOULE = EE_THRESHOLD_MAX_KBIT_PER_JOULE * 1000;
+
+/**
+ * The concrete cell set each reuse topology names.
+ *
+ * Keyed on `cellExample` rather than derived from `cellCount` on purpose: the
+ * two travel together in the projection, so rendering both means a test can
+ * tell a real projection from hard-coded copy.
+ */
+const CELL_EXAMPLE_LABEL: Readonly<Record<HomepageHandoverStoryCellExample, string>> = Object.freeze({
+  'one-cell': 'C1',
+  'seven-cell': 'C1–C7',
+  'nineteen-cell': 'C1–C19',
+});
 
 const METRIC_FIELDS: ReadonlyArray<{
   readonly field: MetricField;
@@ -953,6 +966,11 @@ function IntraHandoverExplainer({
       data-ee-threshold-trigger-ee={thresholdEvidenceEe === null ? '' : String(thresholdEvidenceEe)}
       data-ee-threshold-relation={thresholdEvidenceEe === null || thresholdBitsPerJoule === null ? 'unavailable' : sourceBelowThreshold ? 'below' : 'above'}
       data-story-selection-status={story?.selectionStatus ?? 'idle'}
+      data-story-cell-count={story === null ? '' : String(story.cellCount)}
+      data-story-cell-example={story?.cellExample ?? ''}
+      data-story-target-is-winner={story === null ? '' : story.targetIsWinner ? 'true' : 'false'}
+      data-story-winner-basis={story?.winnerBasis ?? ''}
+      data-story-qualified-candidate-count={story === null ? '' : String(story.qualifiedCandidateCount)}
       style={styles.handoverExplainerSection}
     >
       <div style={styles.sectionHeading}>
@@ -1052,6 +1070,43 @@ function IntraHandoverExplainer({
           <span data-testid="homepage-intra-handover-progress">{isEnglish ? 'Progress' : '進度'} {Math.round(progress01 * 100)}%</span>
         ) : null}
       </div>
+      {/*
+        The cell-reuse topology and the EE-max selection criterion. `6b9474e`
+        deleted both from this rail with no design comment; the projection kept
+        computing them and a 12 KB overlay component that nothing imported was
+        the only remaining reader. This is a teaching simulator, so the
+        pedagogically meaningful half of the decision was the half that stopped
+        reaching anyone.
+
+        The criterion is stated as a CRITERION, never as an accomplished
+        selection: `targetIsWinner` is derived from the objective and rank-one
+        witness independently of `selectionStatus`, so a ttt-stable story can
+        legitimately have a winner that has not been selected yet. The retired
+        overlay did claim "Selected by instantaneous EE ordering" on exactly
+        that state, which is why it was not simply wired back in.
+      */}
+      {story !== null ? (
+        <div data-testid="homepage-handover-story-topology" style={styles.handoverReadoutMeta}>
+          <span data-testid="homepage-handover-cell-count">
+            {isEnglish
+              ? `${story.cellCount} ${story.cellCount === 1 ? 'cell' : 'cells'} reused per satellite (${CELL_EXAMPLE_LABEL[story.cellExample]})`
+              : `每顆衛星重用 ${story.cellCount} 個 Cell（${CELL_EXAMPLE_LABEL[story.cellExample]}）`}
+          </span>
+          <span data-testid="homepage-handover-winner-basis">
+            {story.winnerBasis === 'instantaneous-ee-max'
+              ? story.selectionStatus === 'committed'
+                ? (isEnglish
+                  ? `Committed by max instantaneous EE · ${story.qualifiedCandidateCount} qualified`
+                  : `依瞬時 EE 最大提交 · ${story.qualifiedCandidateCount} 個合格候選`)
+                : (isEnglish
+                  ? `Criterion: max instantaneous EE · ${story.qualifiedCandidateCount} qualified`
+                  : `選擇準則：瞬時 EE 最大 · ${story.qualifiedCandidateCount} 個合格候選`)
+              : (isEnglish
+                ? `Selection criterion unavailable · ${story.qualifiedCandidateCount} qualified`
+                : `選擇準則無法判定 · ${story.qualifiedCandidateCount} 個合格候選`)}
+          </span>
+        </div>
+      ) : null}
       {presentation !== null ? (
         <div style={styles.handoverTransitionTrack} aria-hidden="true">
           <span style={{ ...styles.handoverTransitionFill, width: String(progress01 * 100) + '%' }} />
@@ -1144,7 +1199,6 @@ export function HomepageBeamRail({
   onFocusJoinKeyChange,
   satelliteNameById = null,
   handoverPresentation = null,
-  handoverComparison,
   eeThresholdKbitPerJoule = null,
   showAllSurfaces = false,
 }: HomepageBeamRailProps) {
@@ -1343,20 +1397,25 @@ export function HomepageBeamRail({
       data-focus-hook={selectedJoinKey === null ? 'none' : `homepage-beam:${selectedJoinKey}`}
       style={styles.rail}
     >
-      {handoverComparison !== undefined ? handoverComparison : (
-        <IntraHandoverExplainer
-          story={surfaceStory}
-          presentation={handoverPresentation}
-          serving={servingLink}
-          metrics={metrics}
-          thresholdKbitPerJoule={homepageEeThresholdKbitPerJoule}
-          eeScaleMin={eeScaleMin}
-          eeScaleMax={eeScaleMax}
-          isEnglish={isEnglish}
-          satelliteNameById={satelliteNameById}
-          showIdle={showAllSurfaces}
-        />
-      )}
+      {/*
+        This was a `handoverComparison` REPLACEMENT slot, not an additive one:
+        supplying it suppressed this explainer entirely. Its only intended
+        occupant, `HomepageHandoverComparisonOverlay`, was never imported by any
+        production file and is now deleted, so the seam is gone with it. The
+        explainer is the single handover teaching surface again.
+      */}
+      <IntraHandoverExplainer
+        story={surfaceStory}
+        presentation={handoverPresentation}
+        serving={servingLink}
+        metrics={metrics}
+        thresholdKbitPerJoule={homepageEeThresholdKbitPerJoule}
+        eeScaleMin={eeScaleMin}
+        eeScaleMax={eeScaleMax}
+        isEnglish={isEnglish}
+        satelliteNameById={satelliteNameById}
+        showIdle={showAllSurfaces}
+      />
       <section
         aria-labelledby="homepage-serving-beam-title"
         style={{
