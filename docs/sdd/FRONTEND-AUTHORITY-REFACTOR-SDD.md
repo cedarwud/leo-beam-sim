@@ -50,6 +50,28 @@ why test-file and `scripts/check-*` diffs must be reviewed by a human.
   including `check:baseline` never ran. Fixed in 72e75a9. The job is still not a
   required status check; that is an owner decision in repo settings.
 
+**§5's P4 rationale is stale, and P4 is still not the next step.** P4 defers
+splitting because "the seven commit sources sit in one `useMemo`, and the EE
+seeds/clamps/biases sit in one function". Measured 2026-09-06: the commit paths
+are in three engine modules (`handover-manager.ts` x5,
+`serviceContinuityFallback.ts`, `sinrLiveCellModel.ts:3020`) and no `useMemo`;
+`homepageDemoEe.ts` is a separate 182-line module with three exports. P3 removed
+both blockers. Anyone reading §5 today would defer P4 for a reason that no
+longer exists -- the same stale-claim defect as governance.yml's "error-free as
+of this commit".
+
+What still blocks P4 is different and unchanged: §5 requires the split to be
+"decided by a strong model and executed by tooling with `tsc` as the net --
+never by a model rewriting files", and neither the boundaries nor that tooling
+exist. Today produced two boundaries, both found the same way -- a defect
+announced the seam (`homepageBeamEeProjection.ts` out of MainScene's useMemo
+bodies, `resolveHomepageBeamBudgets` out of the publisher). That is 2 seams
+against 6,092 lines. Splitting on guesses is what §5 warns would have to be
+redone.
+
+Also worth stating: §7 is met without P4. Splitting is not a prerequisite for
+resuming development, and the line counts are not the acceptance criterion.
+
 **Open question for the owner (do not let a model pick a side):** should the
 homepage beam colour be keyed on cellId or beamId? `MainScene.tsx` passes
 `cellId`; a cheap model changed it to `beamId` and every gate stayed green.
