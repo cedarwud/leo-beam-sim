@@ -28,6 +28,12 @@ function metric({
   role,
   isPrimaryServing = false,
   unavailable = false,
+  // An `idle` beam is a CONFIGURED beam with no source measurement this frame.
+  // `beamMetrics` synthesises these deliberately, to complete a sparse roster up
+  // to the configured budget "so the rail still shows every configured row".
+  // This helper could not produce one until 2026-09-06, so no rail test held a
+  // single idle row -- see the idle-roster test below for what that cost.
+  idle = false,
   throughputBps = 1_200_000,
 }: {
   readonly satelliteId: string;
@@ -35,6 +41,7 @@ function metric({
   readonly role: HomepageBeamMetric['role'];
   readonly isPrimaryServing?: boolean;
   readonly unavailable?: boolean;
+  readonly idle?: boolean;
   readonly throughputBps?: number;
 }): HomepageBeamMetric {
   const color: HomepageSatelliteVisualColor = homepageSatelliteColorForBeam(satelliteId, beamId);
@@ -47,9 +54,9 @@ function metric({
     satelliteId,
     beamId,
     role,
-    availability: unavailable ? 'unavailable' : 'available',
-    sinrDb: unavailable ? null : 11.25,
-    powerW: unavailable ? null : 8.5,
+    availability: idle ? 'idle' : unavailable ? 'unavailable' : 'available',
+    sinrDb: idle || unavailable ? null : 11.25,
+    powerW: idle || unavailable ? null : 8.5,
     throughputBps: unavailable ? null : throughputBps,
     energyEfficiencyBitsPerJoule: unavailable ? null : 141_176,
     eeNormalized: unavailable ? null : 0.5,
@@ -503,5 +510,59 @@ assert.match(allSurfaceReviewMarkup, /data-testid="homepage-handover-story"/);
 assert.match(allSurfaceReviewMarkup, /data-handover-kind=""/);
 assert.match(allSurfaceReviewMarkup, /data-handover-active="false"/);
 assert.match(allSurfaceReviewMarkup, /Serving link: no handover is active\./);
+
+// ---------------------------------------------------------------------------
+// A sparse roster's idle rows must still reach the rail.
+//
+// This is acceptance sentence 2 -- 「右欄顯示服務衛星的全部七條波束」 -- and it
+// depends on rows that have no measurement. `beamMetrics` completes a sparse
+// roster up to the configured budget precisely so "the rail still shows every
+// configured row", and those synthesised rows come out `availability: 'idle'`
+// (asserted in beamMetrics.test.ts). With a sparse source frame, most of the
+// seven ARE the idle ones.
+//
+// Measured: told 「右欄的波束列表不要顯示 idle 的波束」, a cheap model added
+// `metric.availability !== 'idle'` to this rail's two metric lookups. It was on
+// the right file, the change was coherent, and every gate stayed green -- because
+// the `metric()` helper above could not produce an idle row, so no fixture in
+// this file had ever contained one. Sentence 3 was satisfied by breaking
+// sentence 2, silently.
+//
+// Whether idle beams should be hidden is the owner's call. Making that call
+// invisible is not.
+// ---------------------------------------------------------------------------
+const sparseRosterMarkup = renderRail('en', {
+  ...projection,
+  beamMetrics: {
+    ...projection.beamMetrics!,
+    metrics: [
+      metric({ satelliteId: 'sat-serving', beamId: 1, role: 'serving', isPrimaryServing: true }),
+      metric({ satelliteId: 'sat-serving', beamId: 2, role: 'observed' }),
+      // Beams 3..7 are configured but had no source measurement this frame.
+      ...Array.from({ length: 5 }, (_, index) => metric({
+        satelliteId: 'sat-serving',
+        beamId: index + 3,
+        role: 'observed',
+        idle: true,
+      })),
+    ],
+  },
+});
+
+assert.equal(
+  (sparseRosterMarkup.match(/data-testid="homepage-beam-row"/g) ?? []).length,
+  7,
+  'all seven configured beams must reach the rail, including the five with no measurement',
+);
+assert.match(
+  sparseRosterMarkup,
+  /data-ee-availability="idle"/,
+  'an idle beam must render as idle, not be dropped',
+);
+assert.equal(
+  (sparseRosterMarkup.match(/data-ee-availability="idle"/g) ?? []).length,
+  5,
+  'every configured beam without a measurement keeps its row',
+);
 
 console.log('homepage beam rail checks pass');
