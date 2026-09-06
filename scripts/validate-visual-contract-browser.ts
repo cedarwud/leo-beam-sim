@@ -548,7 +548,18 @@ async function verifyKeyboardAndReducedMotion(page: Page): Promise<readonly Find
   const keyboard = await page.evaluate(() => document.activeElement?.matches('[data-beat-control]') === true);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload({ waitUntil: 'networkidle' });
-  const motion = await page.evaluate(String.raw`(() => {
+  // `page.evaluate` given a STRING cannot infer a return type, so these three
+  // call sites produced `unknown` and 15 type errors -- introduced by 33fa5ba
+  // ("chore: checkpoint current project WIP"), which is why the comment in
+  // governance.yml still says this tsconfig is error-free. `typecheck:scripts`
+  // is step 1 of the static-gates job, so every later step -- check:baseline
+  // included -- has been unreachable in CI ever since. Naming the shape is the
+  // whole fix.
+  const motion = await page.evaluate<{
+    readonly media: boolean;
+    readonly effectivelyDisabled: boolean;
+    readonly maxDurationMs: number;
+  }>(String.raw`(() => {
     const durations = [...document.querySelectorAll('*')].flatMap(element => {
       const style = getComputedStyle(element);
       const values = [style.animationDuration, style.transitionDuration];
@@ -646,7 +657,15 @@ async function captureRouteSmoke(baseUrl: string, browser: Browser): Promise<Rou
     // compositor.
     await page.waitForTimeout(10_000);
     await page.screenshot({ path: ROUTE_SMOKE_SCREENSHOT, fullPage: false });
-    const snapshot = await page.evaluate(String.raw`(() => {
+    const snapshot = await page.evaluate<{
+      readonly canvasCount: number;
+      readonly scenePlanAvailability: string | null;
+      readonly scenePlanReason: string | null;
+      readonly globalFrameId: string | null;
+      readonly localFrameId: string | null;
+      readonly selectors: Record<string, number>;
+      readonly rects: Readonly<Record<string, RectPayload | null>>;
+    }>(String.raw`(() => {
       const rect = selector => {
         const element = document.querySelector(selector);
         if (element === null) return null;
@@ -709,7 +728,7 @@ async function captureContactSheet(validPath: string, badPath: string, badUnmark
     const badAllowedDecorationOversizeData = `data:image/png;base64,${(await readFile(badAllowedDecorationOversizePath)).toString('base64')}`;
     const badAllowedDecorationShadowData = `data:image/png;base64,${(await readFile(badAllowedDecorationShadowPath)).toString('base64')}`;
     await page.setContent('<canvas id="contact" width="1920" height="540"></canvas>');
-    const imageData = await page.evaluate(String.raw`(async () => {
+    const imageData = await page.evaluate<string>(String.raw`(async () => {
       const valid = ${JSON.stringify(validData)};
       const bad = ${JSON.stringify(badData)};
       const badUnmarked = ${JSON.stringify(badUnmarkedData)};

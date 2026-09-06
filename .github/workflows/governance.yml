@@ -38,9 +38,17 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
-      # P2 SN-5 slice B: the scripts/ tsconfig is error-free as of this commit;
-      # an independent step so a scripts/ type regression names itself in the UI
-      # (governance:full also chains it locally after validate:governance).
+      # P2 SN-5 slice B: an independent step so a scripts/ type regression names
+      # itself in the UI (governance:full also chains it locally after
+      # validate:governance).
+      #
+      # This is step 1 of the job, so when it fails NOTHING below it runs --
+      # including check:baseline. It DID fail, from 33fa5ba until 2026-09-06:
+      # `validate-visual-contract-browser.ts` acquired 15 `unknown` errors and
+      # the comment here still claimed the tsconfig was error-free. Every gate
+      # in this job was unreachable in CI for that whole period. If you are
+      # tempted to leave a red step here, move it to the END of the job instead,
+      # or the gates after it silently stop existing.
       - run: npm run typecheck:scripts
       - run: npm run test:simulator
       - run: npm run test:visual-lab
