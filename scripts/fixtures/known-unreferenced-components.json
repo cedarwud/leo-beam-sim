@@ -1,0 +1,18 @@
+[
+  "src/course/energy-lab/EnergyLabRoute.tsx",
+  "src/course/energy-lab/PlatformDrawer.tsx",
+  "src/explain/ScientificExplanationRoute.tsx",
+  "src/explain/scene/OrbitSourceStage.tsx",
+  "src/prototype/global-constellation/Act1ConstellationScene.tsx",
+  "src/prototype/scientific-explain/ScientificExplain3DInspector.tsx",
+  "src/prototype/scientific-explain/ScientificExplain3DScene.tsx",
+  "src/showcase/dashboard/AlgorithmDock.tsx",
+  "src/ui/DegenerateDataBanner.tsx",
+  "src/ui/LaneExperienceBar.tsx",
+  "src/ui/ModqnViewToggle.tsx",
+  "src/ui/homepage/HomepageDemoWindowButton.tsx",
+  "src/ui/homepage/HomepageTeachingModeControls.tsx",
+  "src/ui/signal-tuning/FormulaMap.tsx",
+  "src/ui/signal-tuning/SinrOverview.tsx",
+  "src/ui/signal-tuning/WalkerSceneMetrics.tsx"
+]
