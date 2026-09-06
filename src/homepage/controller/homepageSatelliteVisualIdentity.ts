@@ -14,9 +14,21 @@ import { servingIdentityPaletteIndex } from '../../constants/servingColour';
 
 export const HOMEPAGE_SATELLITE_COLOR_COUNT = 6 as const;
 
-/** Fixed EE scale shared by the homepage rail and the 3-D beam colours. */
-export const HOMEPAGE_EE_COLOR_SCALE_MIN_BITS_PER_JOULE = 80_000;
-export const HOMEPAGE_EE_COLOR_SCALE_MAX_BITS_PER_JOULE = 180_000;
+/*
+ * There is deliberately no fixed bits/J -> 0..1 EE scale here.
+ *
+ * `HOMEPAGE_EE_COLOR_SCALE_MIN/MAX_BITS_PER_JOULE` (80,000 / 180,000) and
+ * `homepageEeColorNormalized` lived here until they were removed. They silently
+ * duplicated `HOMEPAGE_DEMO_EE_CONFIG.minimum/maximumBitsPerJoule`, with nothing
+ * asserting the two agreed, and `6b9474e` used them to replace the frame-relative
+ * `metric.eeNormalized` in three places -- flattening the beam gradient the
+ * homepage handover story depends on.
+ *
+ * EE is normalized ONCE, in `beamMetrics.ts`, against the frame's own spread.
+ * Callers take `eeNormalized` and pass it through
+ * `homepageBeamEeProjection.ts`. Reintroducing an absolute scale here would
+ * recreate both the duplication and the flattening.
+ */
 
 /**
  * Six restrained hue families are enough for the compact homepage stage. A
@@ -160,21 +172,6 @@ function normalizedEeBucket(eeNormalized: number): number {
 function finiteEeBucket(eeNormalized: number | null | undefined): number | null {
   if (typeof eeNormalized !== 'number' || !Number.isFinite(eeNormalized)) return null;
   return normalizedEeBucket(eeNormalized);
-}
-
-/** Map the bounded homepage EE value to one fixed visual scale. */
-export function homepageEeColorNormalized(
-  eeBitsPerJoule: number | null | undefined,
-): number | null {
-  if (typeof eeBitsPerJoule !== 'number' || !Number.isFinite(eeBitsPerJoule)) return null;
-  return Math.max(
-    0,
-    Math.min(
-      1,
-      (eeBitsPerJoule - HOMEPAGE_EE_COLOR_SCALE_MIN_BITS_PER_JOULE)
-        / (HOMEPAGE_EE_COLOR_SCALE_MAX_BITS_PER_JOULE - HOMEPAGE_EE_COLOR_SCALE_MIN_BITS_PER_JOULE),
-    ),
-  );
 }
 
 /** Lower EE is visibly quieter while the beam remains on the same hue family. */

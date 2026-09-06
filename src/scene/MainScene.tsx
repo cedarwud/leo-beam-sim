@@ -62,8 +62,12 @@ import {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
   homepageSatelliteBaseColor,
   homepageSatelliteColorForBeam,
-  homepageEeColorNormalized,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
+import {
+  homepageBeamEeKey,
+  homepageBeamEeNormalizedByKey,
+  homepageSatelliteEeProgressById as homepageSatelliteEeProgressByIdFromMetrics,
+} from '../homepage/controller/homepageBeamEeProjection';
 import {
   HOMEPAGE_PRIMARY_UE_MARKER_COLOR,
   HOMEPAGE_PRIMARY_UE_MARKER_EMISSIVE,
@@ -1325,37 +1329,20 @@ function SceneRenderContent({
 }: SceneRenderContentProps) {
   const homepageBeamEeByKey = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
-    return new Map(
-      homepageBeamMetrics.metrics.map(metric => [
-        `${metric.satelliteId}:${metric.beamId}`,
-        homepageEeColorNormalized(metric.energyEfficiencyBitsPerJoule),
-      ] as const),
-    );
+    return homepageBeamEeNormalizedByKey(homepageBeamMetrics.metrics);
   }, [homepageBeamMetrics, homepageVisualIdentity]);
   const homepageBeamEeBitsPerJouleByKey = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
     return new Map(
       homepageBeamMetrics.metrics.map(metric => [
-        `${metric.satelliteId}:${metric.beamId}`,
+        homepageBeamEeKey(metric.satelliteId, metric.beamId),
         metric.energyEfficiencyBitsPerJoule,
       ] as const),
     );
   }, [homepageBeamMetrics, homepageVisualIdentity]);
   const homepageSatelliteEeProgressById = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
-    const bySatellite = new Map<string, number | null>();
-    for (const metric of homepageBeamMetrics.metrics) {
-      const value = homepageEeColorNormalized(metric.energyEfficiencyBitsPerJoule);
-      if (typeof value !== 'number' || !Number.isFinite(value)) {
-        if (!bySatellite.has(metric.satelliteId)) bySatellite.set(metric.satelliteId, null);
-        continue;
-      }
-      const previous = bySatellite.get(metric.satelliteId);
-      if (previous === undefined || previous === null || value > previous) {
-        bySatellite.set(metric.satelliteId, Math.max(0, Math.min(1, value)));
-      }
-    }
-    return bySatellite;
+    return homepageSatelliteEeProgressByIdFromMetrics(homepageBeamMetrics.metrics);
   }, [homepageBeamMetrics, homepageVisualIdentity]);
   const homepageIdentityPaletteIndexBySatelliteId = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || acceptedHandoverPresentation === null) return null;
