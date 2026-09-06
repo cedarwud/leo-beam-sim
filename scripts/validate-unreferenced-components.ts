@@ -108,19 +108,113 @@ function resolveSpecifier(fromFile: string, specifier: string): string | null {
   return null;
 }
 
-const referenced = new Set<string>();
 const sources = new Map<string, ts.SourceFile>();
+const text = new Map<string, string>();
 for (const file of allFiles) {
-  const source = parse(file);
-  sources.set(file, source);
-  for (const specifier of moduleSpecifiers(source)) {
-    const resolved = resolveSpecifier(file, specifier);
-    if (resolved !== null && resolved !== file) referenced.add(resolved);
-  }
+  sources.set(file, parse(file));
+  text.set(file, readFileSync(join(repoRoot, file), 'utf8'));
+}
+
+/**
+ * Whether some non-test module MOUNTS one of this file's components in JSX.
+ *
+ * This used to ask a weaker question -- whether any module imported the file --
+ * and the commit that added it said so: "this proves a component is IMPORTED,
+ * not that it is rendered on any route a user reaches". A cross-family review
+ * then walked straight into the case that limit was written about.
+ * `SatelliteBeams.tsx` says in its own header that it is NOT MOUNTED ON ANY
+ * LANE and that its dead mount "made MainScene falsely point here as if this
+ * were the live renderer -- the 改波束改不對 / edit the wrong file trap". It is
+ * imported, so the old check was blind to it.
+ *
+ * Measured before switching: every file the import-based check listed is also
+ * listed by this one -- 0 lost -- so this is a strictly stronger question, not
+ * a different one. 16 became 21.
+ *
+ * Mounted BY a validation fixture still counts as mounted. Excluding
+ * `src/validation/` was measured too and caught exactly one more file, not the
+ * one that motivated the idea, so the extra rule bought nothing.
+ */
+function mountedTagNames(source: ts.SourceFile): Set<string> {
+  const tags = new Set<string>();
+  const nameOf = (node: ts.JsxTagNameExpression): string | null => (
+    ts.isIdentifier(node) ? node.text : null
+  );
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const name = nameOf(node.tagName);
+      if (name !== null) tags.add(name);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return tags;
+}
+
+/**
+ * Every component name actually mounted by a production module in `src/`.
+ *
+ * Built from the AST, not by matching `<Name`, and both details were forced by
+ * measurement rather than chosen:
+ *
+ *  - Text matching counted a JSX MENTION INSIDE A COMMENT as a mount.
+ *    `MainScene.tsx` documents the retired steered renderer as
+ *    `{-* ... <SatelliteBeams> ... *-}`, so the one component whose own header
+ *    says "NOT MOUNTED IN-APP ON ANY LANE" and warns about the
+ *    "改波束改不對 / edit the wrong file" trap went undetected.
+ *  - It also counted `source.includes('<LaneExperienceBar />')` inside a
+ *    source-text validator, which is the assert-on-the-text-of-an-unmounted-
+ *    surface pathology this ratchet exists to name.
+ *
+ * `scripts/` is excluded: a validator that genuinely renders a component still
+ * reaches no user. That reclassified `SinrOffsetExplainer`, which an earlier
+ * version of this file called referenced for exactly that reason.
+ */
+/**
+ * Does a mount in this file put the component in front of a user?
+ *
+ * `scripts/` does not: a validator that genuinely renders a component still
+ * reaches nobody. Neither does `src/validation/`, which holds the vc-family
+ * render fixtures -- and that exclusion is the one that catches the case this
+ * upgrade was written for. `SatelliteBeams.tsx` says in its own header that it
+ * is NOT MOUNTED IN-APP ON ANY LANE, survives "ONLY as the render subject of
+ * the vc1c/vc2 validation fixtures", and that its dead mount made MainScene
+ * falsely point at it -- the "改波束改不對 / edit the wrong file" trap. Counting
+ * its fixture as a mount hid the clearest decoy in the tree.
+ *
+ * Measured: excluding `src/validation/` adds exactly SatelliteBeams.tsx and
+ * EarthFixedCells.tsx, so this is a targeted rule, not a net widened until
+ * something fell in.
+ */
+function isProductionMounter(file: string): boolean {
+  return file.startsWith('src/')
+    && !file.startsWith('src/validation/')
+    && !/\.test\.tsx?$/.test(file);
+}
+
+const mountedInProduction = new Set<string>();
+for (const [file, source] of sources) {
+  if (!isProductionMounter(file)) continue;
+  for (const tag of mountedTagNames(source)) mountedInProduction.add(tag);
+}
+
+function isMountedSomewhere(file: string, componentNames: readonly string[]): boolean {
+  // A file mounting only its own exports is not mounted by anything else.
+  const ownTags = mountedTagNames(sources.get(file)!);
+  return componentNames.some(name => {
+    if (!mountedInProduction.has(name)) return false;
+    for (const [other, source] of sources) {
+      if (other === file || !isProductionMounter(other)) continue;
+      if (mountedTagNames(source).has(name)) return true;
+    }
+    void ownTags;
+    return false;
+  });
 }
 
 /** A module that exports something a JSX tree could mount. */
-function exportsAComponent(source: ts.SourceFile): boolean {
+function exportedComponentNames(source: ts.SourceFile): string[] {
+  const names: string[] = [];
   const isExported = (node: ts.Node): boolean => (
     ts.canHaveModifiers(node)
     && (ts.getModifiers(node) ?? []).some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)
@@ -130,34 +224,41 @@ function exportsAComponent(source: ts.SourceFile): boolean {
     if (ts.isFunctionDeclaration(statement)
       && isExported(statement)
       && statement.name !== undefined
-      && capitalised(statement.name.text)) return true;
+      && capitalised(statement.name.text)) names.push(statement.name.text);
     if (ts.isVariableStatement(statement) && isExported(statement)) {
       for (const declaration of statement.declarationList.declarations) {
         if (ts.isIdentifier(declaration.name) && capitalised(declaration.name.text)
           && declaration.initializer !== undefined
           && (ts.isArrowFunction(declaration.initializer)
             || ts.isFunctionExpression(declaration.initializer)
-            || ts.isCallExpression(declaration.initializer))) return true;
+            || ts.isCallExpression(declaration.initializer))) names.push(declaration.name.text);
       }
     }
   }
-  return false;
+  return names;
 }
 
 const componentFiles = allFiles.filter(file => (
   file.startsWith('src/')
   && file.endsWith('.tsx')
   && !/\.test\.tsx?$/.test(file)
-  && exportsAComponent(sources.get(file)!)
+  && exportedComponentNames(sources.get(file)!).length > 0
 ));
 
-const unreferenced = componentFiles.filter(file => !referenced.has(file)).sort();
+const unreferenced = componentFiles
+  .filter(file => !isMountedSomewhere(file, exportedComponentNames(sources.get(file)!)))
+  .sort();
 
 const knownPath = join(repoRoot, 'scripts/fixtures/known-unreferenced-components.json');
 const known: string[] = JSON.parse(readFileSync(knownPath, 'utf8'));
 
 console.log(`component modules scanned: ${componentFiles.length}`);
 console.log(`unreferenced: ${unreferenced.length} (known ${known.length})`);
+// `LIST_ALL=1` prints the full current set. Kept because comparing a new
+// definition of "unmounted" against the frozen list needs the WHOLE set, not
+// the FAIL lines -- reading the FAIL lines as the set once produced a confident
+// "16 entries lost" that was pure artefact.
+if (process.env.LIST_ALL === '1') for (const f of unreferenced) console.log(`  [current] ${f}`);
 
 const added = unreferenced.filter(file => !known.includes(file));
 const resolvedSince = known.filter(file => !unreferenced.includes(file));
@@ -165,8 +266,9 @@ const resolvedSince = known.filter(file => !unreferenced.includes(file));
 let failed = false;
 for (const file of added) {
   console.error(
-    `FAIL: ${file} exports a component that no module imports. It renders for nobody, `
-    + 'so any test over it proves nothing a user can see. Wire it up, or delete it.',
+    `FAIL: ${file} exports a component that no production module MOUNTS. It renders for `
+    + 'nobody, so any test over it proves nothing a user can see, and a search for its name '
+    + 'sends an agent to edit a file with no effect on screen. Wire it up, or delete it.',
   );
   failed = true;
 }
@@ -183,4 +285,4 @@ if (failed) {
   console.error('RED: the unreferenced-component ratchet moved in the wrong direction.');
   process.exit(1);
 }
-console.log('GREEN: no new unreferenced components.');
+console.log('GREEN: no new unmounted components.');
