@@ -50,6 +50,21 @@ assert.equal(runtime.handoverResetKey, 'handover-1');
 assert.equal(runtime.viewport.width, 1280);
 assert.equal(runtime.replay.startOffsetSec, 12);
 
+// The default configuration must resolve a usable beam budget on its own.
+// `buildHomepageBeamMetrics` now refuses to guess one, so if this fallback ever
+// disappears the homepage throws instead of silently rendering a sparse rail --
+// this assertion catches it one layer earlier, where the cause is readable.
+assert.equal(
+  runtime.servingBeamCount,
+  7,
+  'the default runtime must resolve the profile beam layout, not leave the budget unset',
+);
+assert.equal(
+  runtime.candidateBeamCount,
+  7,
+  'candidate follows serving, so it must resolve the same default budget',
+);
+
 assert.equal(
   buildRuntime(createSceneTopologyState(), undefined, 125).eeThresholdKbitPerJoule,
   125,

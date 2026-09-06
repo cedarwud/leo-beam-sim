@@ -546,10 +546,21 @@ function configuredBeamIds(
   return [...ids].sort(compareBeamId);
 }
 
+/**
+ * `requestedCount` is deliberately NOT nullable.
+ *
+ * It used to be, and null meant "no cap, and skip the roster completion below".
+ * That is the silent under-render: with a sparse source map the rail returned
+ * only the ids it happened to know about, looked healthy, and showed two rows.
+ * This function cannot decide what "everything" means -- the budget authority
+ * is the profile, upstream -- so an unresolved budget is now an error at the
+ * call site rather than a quiet fallback here, and the type stops a future
+ * refactor from reintroducing the nullable path.
+ */
 function rosterBeamIds(
   pairs: readonly PairRecord[],
   configuredIds: readonly number[],
-  requestedCount: number | null,
+  requestedCount: number,
 ): readonly number[] {
   const selected = new Set<number>();
   const pairIds = [...pairs].sort(comparePairRecord).map(pair => pair.key.beamId);
@@ -557,7 +568,7 @@ function rosterBeamIds(
   const addUntilFull = (beamIds: readonly number[]): void => {
     for (const beamId of beamIds) {
       if (!isBeamId(beamId)) continue;
-      if (requestedCount !== null && selected.size >= requestedCount) return;
+      if (selected.size >= requestedCount) return;
       selected.add(beamId);
     }
   };
@@ -573,7 +584,7 @@ function rosterBeamIds(
   // the one-based roster when the source map is sparse so the rail still shows
   // every configured row; these added rows remain idle/N/A because no source
   // measurement is synthesized for them.
-  if (requestedCount !== null && selected.size < requestedCount) {
+  if (selected.size < requestedCount) {
     addUntilFull(Array.from({ length: requestedCount }, (_, index) => index + 1));
   }
 
@@ -1119,6 +1130,20 @@ export function buildHomepageBeamMetrics(
       ? input.physicalServingBeamCount ?? input.servingBeamCount
       : input.physicalCandidateBeamCount ?? input.candidateBeamCount;
     const requestedCount = usableCount(configuredOverride) ?? usableCount(roleCount);
+    if (requestedCount === null) {
+      // Every supported path supplies a positive budget: the publisher falls
+      // back to `profile.beams.perSatellite`, and persisted counts are
+      // validated against [1, 7, 19]. Reaching here means the budget authority
+      // upstream produced nothing usable, and the honest options are to guess a
+      // default here -- which is how the rail silently rendered two beams -- or
+      // to say so. Say so.
+      fail(
+        `no usable beam budget for ${satelliteId}: per-satellite override `
+        + `${String(configuredOverride)}, role count ${String(roleCount)}. `
+        + 'One of them must be a finite number >= 1; the profile beam layout is '
+        + 'the intended fallback and it is resolved before this point.',
+      );
+    }
     const beamIds = rosterBeamIds(sourcePairs, configuredIds, requestedCount);
     for (const beamId of beamIds) {
       const joinKey = candidateLinkKeyString(candidateLinkKey(satelliteId, beamId));

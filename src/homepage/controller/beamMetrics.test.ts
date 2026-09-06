@@ -625,6 +625,77 @@ test('uses configured per-satellite roster counts and stable configured beam ids
   );
 });
 
+test('throws clearly when neither the satellite override nor the role budget is usable', () => {
+  // `requestedCount` used to be nullable, and null meant "no cap, and skip the
+  // roster completion". With a sparse source map that silently produced a rail
+  // with a couple of rows and no error -- the shape of the reported "I only see
+  // a few beams". The budget authority is the profile, upstream; this module
+  // must not guess a default, so it says so instead.
+  const sparse = {
+    sourceFrame: sourceFrame({
+      opportunities: opportunitySet(SOURCE_FRAME_ID, [['sat-candidate', 2]]),
+      cellsBySatellite: new Map([
+        ['sat-serving', [1]],
+        ['sat-candidate', [1, 2]],
+      ]),
+    }),
+    snapshot: snapshot(SOURCE_FRAME_ID, SNAPSHOT_ID, [{ satelliteId: 'sat-candidate', beamIds: [2] }]),
+  };
+
+  assert.throws(
+    () => buildHomepageBeamMetrics({ ...sparse, servingBeamCount: 0, candidateBeamCount: 19 }),
+    (error: unknown) => error instanceof TypeError
+      && /no usable beam budget for sat-serving/.test((error as Error).message),
+    'a serving budget of 0 is not a budget',
+  );
+
+  assert.throws(
+    () => buildHomepageBeamMetrics({ ...sparse, servingBeamCount: 7, candidateBeamCount: 0 }),
+    (error: unknown) => error instanceof TypeError
+      && /no usable beam budget for sat-candidate/.test((error as Error).message),
+    'the candidate role path must be protected too, not only the serving one',
+  );
+
+  // Non-finite and negative are the same class of unusable, and used to take
+  // the same silent path.
+  for (const unusable of [Number.NaN, Number.POSITIVE_INFINITY, -3]) {
+    assert.throws(
+      () => buildHomepageBeamMetrics({ ...sparse, servingBeamCount: unusable, candidateBeamCount: 19 }),
+      TypeError,
+      `serving budget ${String(unusable)} must be refused, not treated as "show what you have"`,
+    );
+  }
+
+  // The error must name what was wrong, or it is not a usable red signal.
+  try {
+    buildHomepageBeamMetrics({ ...sparse, servingBeamCount: 0, candidateBeamCount: 19 });
+    assert.fail('expected a throw');
+  } catch (error) {
+    assert.match((error as Error).message, /role count 0/);
+    assert.match((error as Error).message, /finite number >= 1/);
+  }
+});
+
+test('a per-satellite override rescues an unusable role budget rather than throwing', () => {
+  // The throw is for "no budget at all". An explicit per-satellite budget is a
+  // budget, so it must still win over an unusable role count.
+  const projection = buildHomepageBeamMetrics({
+    sourceFrame: sourceFrame({
+      opportunities: opportunitySet(SOURCE_FRAME_ID, [['sat-candidate', 2]]),
+      cellsBySatellite: new Map([
+        ['sat-serving', [1]],
+        ['sat-candidate', [1, 2]],
+      ]),
+    }),
+    snapshot: snapshot(SOURCE_FRAME_ID, SNAPSHOT_ID, [{ satelliteId: 'sat-candidate', beamIds: [2] }]),
+    servingBeamCount: 0,
+    candidateBeamCount: 0,
+    beamCountBySatellite: { 'sat-serving': 7, 'sat-candidate': 7 },
+  });
+  assert.equal(projection.metrics.filter(metric => metric.satelliteId === 'sat-serving').length, 7);
+  assert.equal(projection.metrics.filter(metric => metric.satelliteId === 'sat-candidate').length, 7);
+});
+
 test('fills a sparse source roster to the requested count without inventing values', () => {
   const projection = buildHomepageBeamMetrics({
     sourceFrame: sourceFrame({
