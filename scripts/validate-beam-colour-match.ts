@@ -42,6 +42,8 @@ import {
   SINR_LIVE_CONE_SERVING_PRIMARY_COLOR,
   SINR_LIVE_CONE_BACKGROUND_COLOR,
   SINR_LIVE_CONE_CANDIDATE_COLOR,
+  SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
+  SINR_LIVE_CONE_CANDIDATE_OPACITY,
 } from '../src/constants/sinrLiveConeStyle.ts';
 import type {
   IlluminatedCellBeam,
@@ -249,6 +251,66 @@ check('non-serving cones share the identity authority too (one colour scheme for
   for (const c of nonServing) {
     assertEqual(c.color, colorForServingBeam(c.satId, c.cellId).markerColor, `non-serving cone ${c.satId}:${c.cellId} uses the identity authority`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Authoritative cone alpha ladder -- a SECOND pin, deliberately not in the test
+// file that reads these constants.
+//
+// Measured, not assumed. A cheap model was asked "candidate beams are too
+// loud, make them paler". It changed SINR_LIVE_CONE_CANDIDATE_OPACITY from 0.8
+// to 0.5 -- the exact value sinrLiveConeStyle.ts records as having been tried
+// and rejected for reading muddy over the green terrain -- and then rewrote the
+// assertion in SinrLiveCellBeamCones.test.ts that was guarding it: "carry the
+// same weight" became "carry sufficient weight", and the 0.75 floor became
+// 0.45. Every gate stayed green, including that file's own 71 checks, because
+// the only pin lived in the file being edited and was DERIVED from the
+// constants rather than stated independently.
+//
+// The EE threshold survived the same manoeuvre in the same experiment, and the
+// only structural difference was this: it is pinned as a literal in its test
+// AND again in scripts/check-handover.ts. Two pins in two files is what makes
+// the second edit a deliberate act instead of an accident.
+//
+// These are the shipped values. Changing them is allowed -- changing them here
+// as well is the point, because that is the moment the alpha ladder's design
+// decisions get read again rather than adjusted around.
+// ---------------------------------------------------------------------------
+const AUTHORITATIVE_CONE_SERVING_PRIMARY_OPACITY = 0.8;
+const AUTHORITATIVE_CONE_CANDIDATE_OPACITY = 0.8;
+const AUTHORITATIVE_CONE_COLOURED_ROLE_ALPHA_FLOOR = 0.75;
+
+check('the cone alpha ladder still holds its authoritative values', () => {
+  assertEqual(
+    SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
+    AUTHORITATIVE_CONE_SERVING_PRIMARY_OPACITY,
+    'serving primary cone opacity',
+  );
+  assertEqual(
+    SINR_LIVE_CONE_CANDIDATE_OPACITY,
+    AUTHORITATIVE_CONE_CANDIDATE_OPACITY,
+    'candidate cone opacity',
+  );
+});
+
+check('the two coloured roles carry equal weight and clear the visibility floor', () => {
+  // "Your link" and "your next link" are the two halves of the handover story.
+  // Making one quieter than the other is a design change to what the scene is
+  // saying, not a styling tweak, which is why it is asserted rather than left
+  // to whichever value the constants currently hold.
+  assertEqual(
+    SINR_LIVE_CONE_CANDIDATE_OPACITY,
+    SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
+    'serving and candidate cones carry the same weight',
+  );
+  assert(
+    SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY >= AUTHORITATIVE_CONE_COLOURED_ROLE_ALPHA_FLOOR,
+    `a coloured cone role below ${AUTHORITATIVE_CONE_COLOURED_ROLE_ALPHA_FLOOR} alpha reads muddy over the green terrain`,
+  );
+  assert(
+    SINR_LIVE_CONE_CANDIDATE_OPACITY >= AUTHORITATIVE_CONE_COLOURED_ROLE_ALPHA_FLOOR,
+    `a coloured cone role below ${AUTHORITATIVE_CONE_COLOURED_ROLE_ALPHA_FLOOR} alpha reads muddy over the green terrain`,
+  );
 });
 
 console.log(`\nsemantic beam-colour invariant: ${passed} checks passed.`);

@@ -549,4 +549,50 @@ assert.doesNotMatch(walkerCandidateSetMarkup, />[^<]*shell-pro-42-P22-S0[^<]*</)
 assert.doesNotMatch(walkerCandidateSetMarkup, /aria-label="[^"]*shell-pro-42-P22-S0[^"]*"/);
 assert.match(walkerCandidateSetMarkup, /aria-label="[^"]*G42-23-01[^"]*"/);
 
+// ---------------------------------------------------------------------------
+// The beam roster's three statements about itself must agree.
+//
+// `data-beam-roster-count`, the visible "N 個設定波束" text, and the number of
+// rendered `data-beam-id` items are all derived from `group.beamRoster` -- and
+// nothing asserted they stay in step. Measured: a cheap model asked to hide
+// idle beams added `.filter(entry => entry.observed)` to the map alone, leaving
+// the count attribute and the summary text at the unfiltered length. Every
+// gate stayed green, including this file's own suite, so a badge reading
+// "7 configured beams" above two rendered rows was a shippable state.
+//
+// This is the roster-completion contract seen from the render side: the roster
+// deliberately includes idle entries (beamMetrics fills a sparse source frame
+// to the configured budget), so "hide the idle ones" is a request that has to
+// change the count and the copy too, or say why it does not.
+// ---------------------------------------------------------------------------
+function rosterSelfConsistency(markup: string): void {
+  const blocks = markup.match(/data-beam-roster-count="(\d+)"[\s\S]*?(?=data-beam-roster-count="|$)/g) ?? [];
+  assert.ok(blocks.length >= 1, 'the candidate set renders at least one beam roster');
+  for (const block of blocks) {
+    const declared = Number.parseInt(/data-beam-roster-count="(\d+)"/.exec(block)![1]!, 10);
+    // Count the roster's own item class, not `data-beam-id` -- that attribute
+    // appears on other surfaces in the same markup and over-counts by picking
+    // them up past the end of the roster container.
+    const rendered = (block.match(/leo-handover-beam-roster__item/g) ?? []).length;
+    assert.equal(
+      rendered,
+      declared,
+      `a roster declaring ${declared} beams rendered ${rendered} of them; `
+      + 'the count, the copy and the rows are three statements about one list and must agree',
+    );
+    const labelled = /aria-label="(\d+) 個設定波束的同幀狀態"/.exec(block);
+    if (labelled !== null) {
+      assert.equal(
+        Number.parseInt(labelled[1]!, 10),
+        rendered,
+        'the accessible label must count the rows a sighted reader can see',
+      );
+    }
+  }
+}
+
+rosterSelfConsistency(zhMarkup);
+rosterSelfConsistency(enMarkup);
+rosterSelfConsistency(walkerCandidateSetMarkup);
+
 console.log('Handover evaluation panel contract test passed.');
