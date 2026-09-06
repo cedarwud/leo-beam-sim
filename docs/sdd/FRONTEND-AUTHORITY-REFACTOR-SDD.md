@@ -55,10 +55,22 @@ splitting because "the seven commit sources sit in one `useMemo`, and the EE
 seeds/clamps/biases sit in one function". Measured 2026-09-06: the commit paths
 are in three engine modules (`handover-manager.ts` x5,
 `serviceContinuityFallback.ts`, `sinrLiveCellModel.ts:3020`) and no `useMemo`;
-`homepageDemoEe.ts` is a separate 182-line module with three exports. P3 removed
-both blockers. Anyone reading §5 today would defer P4 for a reason that no
-longer exists -- the same stale-claim defect as governance.yml's "error-free as
-of this commit".
+`homepageDemoEe.ts` is a separate 182-line module with three exports. P3 removed both
+NAMED EXAMPLES. Anyone reading §5 today would cite two blockers that have moved.
+
+But the PRINCIPLE behind them -- "the tangle is inside functions, not between
+files" -- is still exactly right, and measuring it is what a P4 attempt has to
+start from. MainScene.tsx is 6,092 lines and `SceneRenderContent` alone is
+**4,798 of them (79%)**; the next largest top-level function is 192. So P4 is
+not "split a file". It is "decompose one React component function", where the
+state is hooks and closures rather than module boundaries, and that is
+substantially harder to do with tooling and `tsc` as the net than moving
+declarations between files. Anyone planning P4 should size it from the 4,798,
+not from the 6,092.
+
+(Recorded because the first version of this paragraph said P3 had removed both
+blockers, full stop. It removed the two examples and left the principle
+standing -- a correction made in the same session that made the claim.)
 
 What still blocks P4 is different and unchanged: §5 requires the split to be
 "decided by a strong model and executed by tooling with `tsc` as the net --
