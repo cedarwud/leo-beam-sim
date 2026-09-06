@@ -118,7 +118,14 @@ export function readSceneTopologyOverrides(): SceneTopologyState {
       // not exist under a different beam layout.
       focusCellId: null,
       satsPerPlane: typeof record.satsPerPlane === 'number' ? record.satsPerPlane : null,
+      // A persisted global beam count reaches `profile.beams.perSatellite`
+      // unvalidated (`sceneTopology.ts` applySceneTopology), so an unsupported
+      // stored value silently becomes the physical beam layout: 2 renders two
+      // beams, and 0 or -5 propagate verbatim -- measured, not assumed. The two
+      // sibling role counts below have always rejected anything outside
+      // [1, 7, 19]; this one never did, which is the whole asymmetry.
       beamCountPerSatellite: typeof record.beamCountPerSatellite === 'number'
+        && isSupportedBeamLayoutCount(record.beamCountPerSatellite)
         ? record.beamCountPerSatellite
         : null,
       beamCountBySatellite: normalizeBeamCountBySatellite(record.beamCountBySatellite),
