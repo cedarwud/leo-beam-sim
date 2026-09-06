@@ -44,7 +44,10 @@ import {
   SINR_LIVE_CONE_CANDIDATE_COLOR,
   SINR_LIVE_CONE_SERVING_PRIMARY_OPACITY,
   SINR_LIVE_CONE_CANDIDATE_OPACITY,
+  SINR_LIVE_CONE_PULSE_INTRA_COLOR,
+  SINR_LIVE_CONE_PULSE_INTER_COLOR,
 } from '../src/constants/sinrLiveConeStyle.ts';
+import { INTRA_HANDOVER_TARGET_COLOR } from '../src/constants/beamRoleTokens.ts';
 import type {
   IlluminatedCellBeam,
   SinrLiveCellFrame,
@@ -279,6 +282,39 @@ check('non-serving cones share the identity authority too (one colour scheme for
 const AUTHORITATIVE_CONE_SERVING_PRIMARY_OPACITY = 0.8;
 const AUTHORITATIVE_CONE_CANDIDATE_OPACITY = 0.8;
 const AUTHORITATIVE_CONE_COLOURED_ROLE_ALPHA_FLOOR = 0.75;
+
+/*
+ * The role colours, pinned in a second file for the same reason as the alphas.
+ *
+ * These DO have literal pins already -- but in SinrLiveCellBeamCones.test.ts,
+ * the file a model editing cone styling is already inside. The measured failure
+ * was a model rewriting an assertion in exactly that position. A pin in the
+ * file being edited is a speed bump; a pin in a second file is a decision.
+ *
+ * The intra orange had no literal pin anywhere, only a chain of constants
+ * referring to each other (SINR_LIVE_CONE_PULSE_INTRA_COLOR is defined AS
+ * INTRA_HANDOVER_TARGET_COLOR), so its test asserted a definition rather than a
+ * value. Found by a cross-family review.
+ */
+const AUTHORITATIVE_SERVING_YELLOW = '#facc15';
+const AUTHORITATIVE_CANDIDATE_BLUE = '#3b82f6';
+const AUTHORITATIVE_INTRA_TARGET_ORANGE = '#fb923c';
+
+check('the semantic role colours still hold their authoritative values', () => {
+  assertEqual(SINR_LIVE_CONE_SERVING_PRIMARY_COLOR, AUTHORITATIVE_SERVING_YELLOW, 'serving/hero yellow');
+  assertEqual(SINR_LIVE_CONE_CANDIDATE_COLOR, AUTHORITATIVE_CANDIDATE_BLUE, 'candidate blue');
+  assertEqual(INTRA_HANDOVER_TARGET_COLOR, AUTHORITATIVE_INTRA_TARGET_ORANGE, 'intra target orange');
+  // The pulse colours are defined in terms of the two above, so asserting the
+  // definition proves nothing about the value. Pin the values.
+  assertEqual(SINR_LIVE_CONE_PULSE_INTRA_COLOR, AUTHORITATIVE_INTRA_TARGET_ORANGE, 'intra pulse orange');
+  assertEqual(SINR_LIVE_CONE_PULSE_INTER_COLOR, AUTHORITATIVE_CANDIDATE_BLUE, 'inter pulse blue');
+  // Three roles, three distinct colours: the whole point of the semantic palette.
+  assertEqual(
+    new Set([AUTHORITATIVE_SERVING_YELLOW, AUTHORITATIVE_CANDIDATE_BLUE, AUTHORITATIVE_INTRA_TARGET_ORANGE]).size,
+    3,
+    'serving, candidate and intra-target must stay visually distinct',
+  );
+});
 
 check('the cone alpha ladder still holds its authoritative values', () => {
   assertEqual(

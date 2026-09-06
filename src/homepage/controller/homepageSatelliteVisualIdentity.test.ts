@@ -170,11 +170,33 @@ test('omitted EE keeps deterministic beam-slot fallback', () => {
 });
 
 test('palette index is deterministic and does not depend on display order', () => {
+  // `[...ids].reverse().reverse()` is the identity operation, so the previous
+  // version of this test compared one list against itself and could not fail --
+  // a degenerate allocator returning 0 for everything passed it. Found by a
+  // cross-family review of assertions whose two sides both derive from the code
+  // they are meant to guard.
   const ids = ['shell-pro-42-P21-S1', 'shell-pro-42-P21-S2', 'shell-pro-42-P22-S0'];
-  assert.deepEqual(
-    ids.map(homepageSatellitePaletteIndex),
-    [...ids].reverse().reverse().map(homepageSatellitePaletteIndex),
+
+  // Order independence, stated so it can fail: compute in reverse order and
+  // compare each id against its own forward result.
+  const forward = new Map(ids.map(id => [id, homepageSatellitePaletteIndex(id)] as const));
+  const reversed = new Map([...ids].reverse().map(id => [id, homepageSatellitePaletteIndex(id)] as const));
+  for (const id of ids) {
+    assert.equal(reversed.get(id), forward.get(id), `${id} keeps its slot regardless of processing order`);
+  }
+
+  // Distinctness, which order-independence alone does not give: an allocator
+  // that returns one constant is perfectly order-independent and useless here,
+  // because these three satellites appear on screen together.
+  assert.equal(
+    new Set(forward.values()).size,
+    ids.length,
+    'three co-visible satellites must not collapse onto one palette slot',
   );
+
+  // The shipped assignment, pinned. Changing the compression table is allowed;
+  // changing it silently is what this stops.
+  assert.deepEqual([...forward.values()], [2, 3, 4]);
 });
 
 test('inter-satellite source and target endpoints keep a strong hue contrast', () => {
