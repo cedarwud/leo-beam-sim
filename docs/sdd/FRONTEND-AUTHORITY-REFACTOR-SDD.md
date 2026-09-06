@@ -84,6 +84,37 @@ redone.
 Also worth stating: §7 is met without P4. Splitting is not a prerequisite for
 resuming development, and the line counts are not the acceptance criterion.
 
+**P4 is blocked by something P4's own section never mentions, and it is
+measurable.** The three files that actually hold a god function are App.tsx
+(`App`, 4,297 lines, 92% of the file), MainScene.tsx (`SceneRenderContent`,
+4,485, 74%) and AppWalkerSandbox.tsx (`AppWalkerSandbox`, 2,909, 90%). Note the
+files NOT on that list: sinrLiveCellModel.ts is 4,343 lines but its largest
+function is 1,216 (28%), and HomepageBeamRail.tsx is 2,557 with a 15% maximum.
+File size and function size disagree, and the criterion is function size.
+
+Measured coverage of those three, 2026-09-06:
+
+    App.tsx               executed by 0 tests;  41 validators read its SOURCE TEXT
+    MainScene.tsx         executed by 0 tests;   5 validators read its SOURCE TEXT
+    AppWalkerSandbox.tsx  executed by 0 tests;   0 of either
+
+So there is no behavioural net on any of them -- nothing in check:baseline runs
+those functions -- and App.tsx additionally carries 41 source-text pins that a
+decomposition would turn red for the wrong reason while catching nothing real.
+That is `docs/frontend-change-contract.md`'s second entropy loop ("inverted
+governance ... add, never refactor becomes the locally rational move") with a
+number attached.
+
+Therefore the step before P4 is not more oracles and not check:ee. It is
+retiring the inverted governance on App.tsx: judge each of the 41 text pins,
+convert what can be behavioural, delete what protects nothing, and get minimal
+behavioural coverage on `App` and `SceneRenderContent`. That also removes a live
+false-green -- those 41 are green today and prove only that text has not moved.
+
+(This entry corrects an earlier claim of mine in this same session that the
+present moment was the safest ever to attempt P4. It is not: the net does not
+reach these files at all.)
+
 **Open question for the owner (do not let a model pick a side):** should the
 homepage beam colour be keyed on cellId or beamId? `MainScene.tsx` passes
 `cellId`; a cheap model changed it to `beamId` and every gate stayed green.
