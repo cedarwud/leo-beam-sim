@@ -33,6 +33,7 @@ import {
   type UeCellServingRecord,
 } from './sinrLiveCellModel';
 import {
+  resolveHomepageBeamBudgets,
   resolveSinrLiveBeamBudget,
   resolveSinrLivePhysicalRoleBeamCount,
 } from './sinrLiveBeamBudget';
@@ -1452,14 +1453,14 @@ export function useSimStatePublisher({
       ? buildHomepageBeamMetrics({
         sourceFrame: homepageSourceFrame,
         snapshot: acceptedHandoverPresentationSnapshotForRender,
-        servingBeamCount: servingBeamCount ?? profile.beams.perSatellite,
-        candidateBeamCount: candidateBeamCount ?? profile.beams.perSatellite,
-        physicalServingBeamCount: resolveSinrLivePhysicalRoleBeamCount(
-          servingBeamCount ?? profile.beams.perSatellite,
-        ) ?? profile.beams.perSatellite,
-        physicalCandidateBeamCount: resolveSinrLivePhysicalRoleBeamCount(
-          candidateBeamCount ?? profile.beams.perSatellite,
-        ) ?? profile.beams.perSatellite,
+        // One resolver, so serving and candidate cannot be crossed here without
+        // failing `sinrLiveBeamBudget.test.ts`. These were four interleaved
+        // inline expressions and the seam had no test of its own.
+        ...resolveHomepageBeamBudgets({
+          servingBeamCount,
+          candidateBeamCount,
+          profileBeamsPerSatellite: profile.beams.perSatellite,
+        }),
         beamCountBySatellite,
         previousMetrics: previousHomepageBeamMetricsRef.current,
         // The homepage now presents the same corrected replacement EE that

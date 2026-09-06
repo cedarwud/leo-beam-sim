@@ -47,3 +47,43 @@ export function resolveSinrLiveBeamBudget(input: SinrLiveBeamBudgetInput): numbe
 
   return input.fallbackBeamCount;
 }
+
+export interface HomepageBeamBudgets {
+  readonly servingBeamCount: number;
+  readonly candidateBeamCount: number;
+  readonly physicalServingBeamCount: number;
+  readonly physicalCandidateBeamCount: number;
+}
+
+/**
+ * The four beam budgets the homepage projection is built from.
+ *
+ * This existed as four inline `X ?? profile.beams.perSatellite` expressions in
+ * `useSimStatePublisher`, with serving and candidate interleaved. Both sides of
+ * that seam were tested -- `beamMetrics.test.ts` proves a 7/19 input yields
+ * 7/19 rows, `HomepageBeamRail.test.tsx` proves a 7/19 projection renders 26
+ * rows -- and the seam itself was not, so swapping serving for candidate in one
+ * of the four lines would have left every test green. That is the exact shape
+ * of three of the eight regressions in `6b9474e`: the wiring was replaced while
+ * the units on either side kept passing.
+ *
+ * A role value of 1 is the focused-cell selection, not a one-beam satellite, so
+ * the PHYSICAL budget stays at the shipped seven-beam layout while the role
+ * budget stays 1. Keeping both in one return value is what makes that pairing
+ * assertable.
+ */
+export function resolveHomepageBeamBudgets(input: {
+  readonly servingBeamCount?: number;
+  readonly candidateBeamCount?: number;
+  readonly profileBeamsPerSatellite: number;
+}): HomepageBeamBudgets {
+  const { servingBeamCount, candidateBeamCount, profileBeamsPerSatellite } = input;
+  const serving = servingBeamCount ?? profileBeamsPerSatellite;
+  const candidate = candidateBeamCount ?? profileBeamsPerSatellite;
+  return {
+    servingBeamCount: serving,
+    candidateBeamCount: candidate,
+    physicalServingBeamCount: resolveSinrLivePhysicalRoleBeamCount(serving) ?? profileBeamsPerSatellite,
+    physicalCandidateBeamCount: resolveSinrLivePhysicalRoleBeamCount(candidate) ?? profileBeamsPerSatellite,
+  };
+}
