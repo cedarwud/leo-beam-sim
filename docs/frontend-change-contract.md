@@ -75,6 +75,49 @@ A legitimate truth change (rare, owner-approved) re-baselines the
 `baseline-kpi-*.json`. If you think you need to move the golden, STOP and confirm
 with the owner first.
 
+## Surface map — the owner's words to the authoritative file
+
+Measured, not guessed. A cheap model was told 「右欄的波束列表不要顯示 idle 的波束」
+and edited `CandidateSetPanel.tsx` — the handover-evaluation panel inside
+`InfoPanel`, not the homepage right rail. Its change was internally consistent
+and every gate stayed green. Its own report called the edited region 「主比較區」
+(the central comparison area), which is not a right rail at all, so it never
+found the real surface: it grepped for the idle/measurement concept, landed on
+the file that happened to contain matching words, and attached the owner's label
+to it.
+
+No assertion can catch that. The change was correct code in the wrong place.
+What the repo was missing is this table.
+
+`SatelliteBeams.tsx` already carries a hand-written version of the same fix
+(「👉 To change the LIVE sinr-live beam DISPLAY, edit: ...」), written after
+someone hit the identical trap. It was the only signpost in the tree.
+
+**This table is checked by `npm run validate:surface-map`.** Every path must
+exist and every symbol must be exported from it, so the map cannot rot into a
+confidently wrong signpost — which would be worse than no map.
+
+| The owner says | Authoritative file | Exported symbol |
+|---|---|---|
+| 右欄 / 首頁右欄 / 波束列表 / beam rail | `src/ui/homepage/HomepageBeamRail.tsx` | `HomepageBeamRail` |
+| 換手評估面板 / 候選比較 / 同幀候選 | `src/ui/handover-evaluation/CandidateSetPanel.tsx` | `CandidateSetPanel` |
+| 3-D 波束 / 波束錐 / 場景裡的波束 | `src/viz/SinrLiveCellBeamCones.tsx` | `SinrLiveCellBeamCones` |
+| 波束錐的顏色 / 透明度 | `src/constants/sinrLiveConeStyle.ts` | `SINR_LIVE_CONE_CANDIDATE_OPACITY` |
+| 首頁波束顏色 / 顏色隨 EE 濃淡 | `src/homepage/controller/homepageSatelliteVisualIdentity.ts` | `homepageSatelliteColorForBeam` |
+| EE 正規化 / 顏色的 EE 尺度 | `src/homepage/controller/beamMetrics.ts` | `buildHomepageBeamMetrics` |
+| EE 閾值 / 換手門檻 | `src/engine/handover/eeThreshold.ts` | `DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE` |
+| 誰可以提交換手 / 換手權威 | `src/engine/handover/eeCommitPermit.ts` | `mintMeasuredEePermit` |
+| 一顆衛星顯示幾條波束 / 波束預算 | `src/scene/sinrLiveBeamBudget.ts` | `resolveHomepageBeamBudgets` |
+
+**Decoys — files a search will hit that are NOT the live surface:**
+
+- `src/viz/SatelliteBeams.tsx` — the retired steered renderer. Not in the scene
+  graph on any lane; it survives only as the subject of the vc1c/vc2 validation
+  fixtures. Editing it changes nothing on screen.
+- `src/ui/handover-evaluation/CandidateSetPanel.tsx` — a beam roster, but in the
+  info panel, not the homepage right rail. This is the one that actually caught
+  a model out.
+
 ## Gate map — what to run, when
 
 **The pre-commit hook is currently disabled** (`.githooks/pre-commit` is a

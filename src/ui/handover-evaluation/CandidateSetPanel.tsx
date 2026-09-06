@@ -1,3 +1,21 @@
+/**
+ * ⚠️ This is NOT the homepage right rail.
+ *
+ * The homepage right-side beam list is `src/ui/homepage/HomepageBeamRail.tsx`
+ * (mounted by App.tsx). This panel is the handover-evaluation candidate board,
+ * mounted inside `InfoPanel` via `HandoverEvaluationPanel`.
+ *
+ * Measured trap: told 「右欄的波束列表不要顯示 idle 的波束」, a model edited this
+ * file. Its change was internally consistent and every gate passed. It landed
+ * here because this file contains the words matching "no measurement"
+ * (`zero-activity`, 「此時域無活動量」) while the real rail spells the same
+ * concept `availability === 'idle'` -- so a search for the concept finds only
+ * this one. Its own report called the region it edited 「主比較區」, which is
+ * not a right rail: it never found the real surface at all.
+ *
+ * 👉 Homepage right rail  -> src/ui/homepage/HomepageBeamRail.tsx
+ * 👉 The full surface map -> docs/frontend-change-contract.md
+ */
 import { useId, useState, type CSSProperties, type KeyboardEvent } from 'react';
 
 import type {
