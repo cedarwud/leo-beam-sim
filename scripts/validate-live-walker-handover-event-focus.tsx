@@ -238,11 +238,7 @@ function validateStaticBoundaries(): void {
     "timelineRailDescriptor.rail.horizonKind === 'live-walker-window'",
     'App live-window rail seek horizon guard',
   );
-  assertContains(
-    appSource,
-    'setLiveTimelineSeekRequest({',
-    'App live Walker rail source-time seek request',
-  );
+  // Removed source-text pin: an internal React setter call does not protect source-time seek behavior.
   console.log('PASS: static source-time and live-window focus boundaries are present');
 }
 

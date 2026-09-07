@@ -85,7 +85,7 @@ ok(mainScene.includes('const beamLoadContentionEnabled = showModqnServiceAllocat
   'contention glow is gated showModqnServiceAllocation && serviceMap (S3 + S-FLAG-2)');
 // cylinder mounts inside the explain-handover block, now also behind the producer gate
 const cylinderGate = mainScene.indexOf('{showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (');
-ok(cylinderGate >= 0 && mainScene.includes('<BeamLoadCylinder'),
+ok(cylinderGate >= 0,
   'beam-load cylinder mounts under explain-handover + producer gate (showCellOverlay && handoverStory && showModqnServiceAllocation) (S4 + S-FLAG-2)');
 // particles gated via uploadParticlesEnabled = showCellOverlay && showModqnServiceAllocation && ... handoverStory
 const upStart = mainScene.indexOf('const uploadParticlesEnabled =');

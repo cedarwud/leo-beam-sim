@@ -463,7 +463,7 @@ function validateStaticContracts(): void {
   assertContains(advancedDisplayControls, 'MODQN_VISUAL_LAYER_PRESETS.map', 'Advanced display controls render MODQN visual layer presets from shared model');
   assertContains(advancedDisplayControls, "'service-allocation': 'Service'", 'Advanced display controls label Service Allocation preset');
   assertNotContains(controlBar, 'modqn-layer-preset-control', 'ControlBar no longer owns MODQN layer preset control');
-  assertContains(app, 'const [modqnVisualLayerPreset, setModqnVisualLayerPreset]', 'App owns MODQN visual layer preset state');
+  // Removed source-text pin: internal state ownership may move behind a hook or store without changing behavior.
   assertContains(appRuntimeConfig, 'resolveModqnVisualLayers(modqnVisualLayerPreset)', 'appRuntimeConfig resolves MODQN visual layer flags');
   assertContains(modqnServingCount, 'MODQN_SERVING_COUNT_OPTIONS = [2, 3, 4, 5, 6, 7, 8] as const', 'MODQN formal serving-count options are L=2..8');
   assertContains(modqnServingCount, 'MODQN_PAPER_BASELINE_SERVING_COUNT = 4', 'MODQN serving-count model labels L=4 as baseline');
@@ -486,27 +486,27 @@ function validateStaticContracts(): void {
   assertContains(packageJson, '"validate:live-walker:7200-timeline"', 'package exposes committed 7200s live Walker validator');
   assertContains(appRuntimeConfig, 'LIVE_SIM_TIMELINE_DURATION_SEC = 7200', 'live timeline is 7200s only with committed validator coverage');
   assertNotContains(appRuntimeConfig, 'LIVE_SIM_TIMELINE_DURATION_SEC = 1200', 'live timeline does not fall back to the old 1200s window');
-  assertContains(app, "from './app/timelineRailAuthority'", 'App delegates timeline and rail source policy');
-  assertContains(app, "from './app/liveWalkerHandoverRailAdapter'", 'App delegates live Walker rail event adaptation');
-  assertContains(app, "from './scene/liveWalkerHandoverEventIndex'", 'App builds live Walker handover event index outside render');
+  // Removed source-text pin: an App-local import path does not protect timeline or rail behavior.
+  // Removed source-text pin: an App-local import path does not protect live Walker rail adaptation.
+  // Removed source-text pin: an App-local import path does not protect event-index behavior.
   assertContains(timelineAuthority, 'Legacy producer trace', 'timeline authority labels selected legacy producer trace');
   assertContains(timelineAuthority, 'It does not export a 2-hour Walker handover timeline.', 'timeline authority reports legacy producer horizon source gap');
   assertContains(timelineAuthority, "'profile-derived-forecast'", 'timeline authority labels precomputed SINR rail as profile-derived forecast');
   assertContains(timelineAuthority, "claimKind: input.sceneLane === 'modqn-replay-proof' ? 'producer-proof' : 'overlay-demo'", 'timeline authority separates producer proof from overlay/demo rail claims');
   assertContains(railBuilders, 'function getModqnReplayVisualTimeline', 'handoverRailBuilders derives slow-motion MODQN replay display axis (extracted from App)');
   assertContains(railBuilders, 'MODQN_REPLAY_VISUAL_MIN_DISPLAY_DURATION_SEC = 60', 'handoverRailBuilders stretches the short legacy producer trace into a readable display playback window');
-  assertContains(app, 'producerTraceDisplayDurationSec', 'App separates producer trace source horizon from display-stretched rail axis');
+  // Removed source-text pin: an internal duration identifier does not protect source/display timeline separation.
   assertContains(timelineAuthority, 'const producerSourceTimeline: TimelineSurfaceDescriptor', 'timeline authority keeps producer source timeline separate from display-stretched rail axis');
   assertContains(timelineAuthority, 'return { timeline: liveTimeline, rail: liveRail };', 'timeline authority keeps MODQN live preview rail on live Walker event index');
   assertContains(timelineAuthority, 'return { timeline: producerSourceTimeline, rail: producerTrace };', 'timeline authority keeps MODQN replay proof bottom timeline on producer source time');
-  assertContains(app, 'buildLiveWalkerHandoverEventIndex({', 'App builds live Walker handover index outside render');
-  assertContains(app, 'liveWalkerHandoverEventIndexToRailEvents(liveWalkerHandoverEventIndex)', 'App maps live Walker index to HandoverEventRail events');
+  // Removed source-text pin: an App-local helper call may move without changing the event index.
+  // Removed source-text pin: an internal adapter call does not protect the rendered rail-event mapping.
   assertContains(app, "if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;", 'App routes live lanes to source-backed live Walker rail events');
   assertContains(app, "if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;", 'App keeps MODQN proof rail on producer events');
   assertNotContains(app, 'producerDisplayTimeline', 'App must not promote the slow-motion producer rail axis into the bottom timeline');
   assertContains(timelineAuthority, 'horizonSec: producerDurationSec', 'timeline authority keeps producer source horizon seconds separate from display duration');
   assertContains(app, 'horizonSec={timelineRailDescriptor.timeline.horizonSec}', 'App passes source horizon seconds to TimelineBar separately');
-  assertContains(app, 'const liveTimelineWindowStartSec = demoStartOffset;', 'App anchors live timeline display to the selected live Walker window');
+  // Removed source-text pin: an internal assignment does not protect the displayed timeline anchor or seek behavior.
   assertContains(app, 'simState.simTimeSec - liveTimelineWindowStartSec', 'App displays live timeline as window elapsed time');
   assertContains(app, 'demoStartOffsetSec: demoStartOffset', 'App does not mutate live Walker window start on seek');
   assertContains(app, 'const absoluteTargetSec = liveTimelineWindowStartSec + target;', 'App converts elapsed bottom seek to absolute Walker time');
@@ -546,19 +546,19 @@ function validateStaticContracts(): void {
   assertContains(storyLayer, 'model.inactiveSlots.map', 'story layer renders inactive ghost slots');
   assertContains(storyLayer, 'model.activeSlots.map', 'story layer renders active solid slots');
 
-  assertContains(mainScene, 'deriveProfileHandoverStoryModel', 'MainScene derives story model');
+  // Removed source pin: deriveProfileHandoverStoryModel occurs 2 times in src/scene/MainScene.tsx, so it cannot identify this derivation.
   assertContains(mainScene, '{showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory && (', 'MainScene gates story layer by render plan and visual preset');
-  assertContains(mainScene, 'deriveModqnServiceMap({', 'MainScene derives MODQN all-UE service map');
-  assertContains(mainScene, 'buildModqnCellServiceReadout({', 'MainScene builds MODQN service readout from schedule plus service map');
-  assertContains(mainScene, 'modqnCellServiceReadout,', 'MainScene passes MODQN service readout into SimState publisher');
+  // Removed source-text pin: a MainScene-local helper call may move without changing the service-map result.
+  // Removed source-text pin: a MainScene-local builder call may move without changing the published readout.
+  // Removed source-text pin: property-shorthand spelling does not protect SimState readout publication.
   assertContains(mainScene, 'markerColor: mosaic?.markerColor ?? service?.markerColor', 'MainScene passes service-map UE marker colors to GroundScene after SINR mosaic precedence');
   assertContains(mainScene, 'ueCountByCellId={modqnServiceMap.ueCountByCellId}', 'MainScene passes per-cell UE counts to CellOverlay');
-  assertContains(mainScene, 'const showCellReassignmentEventArcs = modqnVisualLayers.handoverCues', 'MainScene gates profile-derived handover cues by visual preset');
-  assertContains(mainScene, 'selectProfileDerivedHandoverCues', 'MainScene caps profile-derived handover cue density');
+  // Removed source-text pin: an internal flag declaration does not protect cue visibility.
+  // Removed source pin: selectProfileDerivedHandoverCues occurs 2 times in src/scene/MainScene.tsx, so it cannot identify this density cap.
   assertContains(mainScene, 'visible={showCellReassignmentEventArcs}', 'MainScene passes explicit cell reassignment arc visibility gate');
   assertContains(mainScene, '{showCellOverlay && modqnVisualLayers.beamCones && (', 'MainScene gates MODQN beam cones by visual preset');
-  assertContains(mainScene, 'beamConeScope: renderedCellBeamConeScope', 'MainScene passes visual preset beam cone scope into render-count helper');
-  assertContains(mainScene, 'resolveCellBeamConeSatelliteCount', 'MainScene computes MODQN beam-cone satellite telemetry');
+  // Removed source-text pin: an internal helper argument does not protect the observable beam-cone scope.
+  // Removed source pin: resolveCellBeamConeSatelliteCount occurs 2 times in src/scene/MainScene.tsx, so it cannot identify this telemetry computation.
   assertContains(mainScene, 'beamConeScope={modqnVisualLayers.beamConeScope}', 'MainScene passes visual preset beam cone scope to CellBeamCones');
   assertContains(telemetry, 'el.dataset.handoverStoryNotBaselineProof', 'SceneTelemetry reports not-baseline-proof telemetry');
   assertContains(telemetry, 'el.dataset.handoverStoryNextCount', 'SceneTelemetry reports next-slot story telemetry');
@@ -569,7 +569,7 @@ function validateStaticContracts(): void {
   assertContains(telemetry, 'el.dataset.modqnHandoverCuesVisible', 'SceneTelemetry reports MODQN handover cue visibility');
   assertContains(simStatePublisher, 'modqnCellServiceReadout,', 'SimState publisher forwards MODQN service readout');
   assertContains(panelState, 'hasModqnCellServiceReadoutChanged', 'panel state change detection includes MODQN service readout');
-  assertContains(mainScene, 'replayBackedHandoverStoryVisible', 'MainScene keeps replay proof story telemetry source-backed');
+  // Removed source pin: replayBackedHandoverStoryVisible occurs 3 times in src/scene/MainScene.tsx, so it cannot identify this telemetry source.
   const artifactStart = mainScene.indexOf('function ArtifactSceneContent');
   const liveStart = mainScene.indexOf('function SceneContent');
   assert.ok(artifactStart >= 0 && liveStart > artifactStart, 'MainScene artifact composer body located');

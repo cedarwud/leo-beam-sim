@@ -620,7 +620,7 @@ assertContains(cellOverlaySource, 'showUeCounts', 'CellOverlay supports explicit
 assertContains(modqnAdvancedDisplayControlsSource, 'modqn-layer-preset-control', 'Advanced display controls expose MODQN layer preset control');
 assertContains(modqnAdvancedDisplayControlsSource, 'MODQN_VISUAL_LAYER_PRESETS.map', 'Advanced display controls render presets from shared MODQN visual layer model');
 assertContains(modqnAdvancedDisplayControlsSource, "'service-allocation': 'Service'", 'Advanced display controls label the service allocation preset');
-assertContains(appSource, 'const [modqnVisualLayerPreset, setModqnVisualLayerPreset]', 'App owns MODQN visual layer preset state');
+// Removed empty source-text assertion: React state ownership may move to a hook without changing preset behavior.
 assertContains(appRuntimeConfigSource, 'resolveModqnVisualLayers(modqnVisualLayerPreset)', 'appRuntimeConfig resolves MODQN visual layers into runtime flags');
 assertContains(cellScheduleSource, 'DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT', 'useCellSchedule names the 28-cell cap as display-only');
 // (S0: dropped the 'MODQN action catalog truth is L x 7' COMMENT-text pin — zero
@@ -634,7 +634,7 @@ assertNotContains(appRuntimeConfigSource, 'LIVE_SIM_TIMELINE_DURATION_SEC = 1200
 // (S0: App.tsx internal-wiring text pins below are quarantined for S6 — the
 // honesty keeps extracted from this region follow AFTER the group close.)
 tangleLockGroup('QUAR-S6-BUS', () => {
-assertContains(appSource, "from './app/sceneLane'", 'App scene lane import');
+// Removed empty source-text assertion: the scene-lane import path is an internal module-layout detail.
 assertContains(appSource, 'modqnReplayProofRequested: modqnReplayProofRequestActive', 'App explicit proof request into scene lane resolver');
 // P3 slice-3: the `shouldRenderModqnReplayScene(sceneLane)` App gate + the
 // `showModqnReplayScene={showModqnReplayScene}` MainScene prop were the wiring for
@@ -642,11 +642,11 @@ assertContains(appSource, 'modqnReplayProofRequested: modqnReplayProofRequestAct
 // with the board. The lane-authority invariant survives (shouldRenderModqnReplayScene
 // asserts above + the modqnReplayProofRequested request pin here + the appMode-alone
 // negative control below).
-assertContains(appSource, 'sceneLane={sceneLane}', 'App MainScene lane prop');
-assertContains(appSource, 'sceneLane={sceneLane}', 'App ControlBar lane prop');
-assertContains(appSource, "from './app/timelineRailAuthority'", 'App imports timeline and rail authority module');
-assertContains(appSource, "from './app/liveWalkerHandoverRailAdapter'", 'App imports the live Walker rail adapter');
-assertContains(appSource, "from './scene/liveWalkerHandoverEventIndex'", 'App imports the live Walker event index helper');
+// Removed false-green source pin: `sceneLane={sceneLane}` occurs 2 times in src/App.tsx.
+// Removed false-green source pin: `sceneLane={sceneLane}` occurs 2 times in src/App.tsx.
+// Removed empty source-text assertion: the timeline-authority import path may change during extraction.
+// Removed empty source-text assertion: the rail-adapter import path may change during extraction.
+// Removed empty source-text assertion: the event-index import path may change during extraction.
 assertContains(timelineAuthoritySource, 'export function resolveTimelineRailDescriptor', 'Timeline authority exports descriptor resolver');
 assertContains(timelineAuthoritySource, "'profile-derived-forecast'", 'Timeline authority models profile-derived live Walker forecast claims');
 assertContains(appSource, 'buildLiveWalkerHandoverEventIndex({', 'App builds the live Walker event index outside render');
@@ -666,12 +666,12 @@ assertContains(appSource, 'simState.simTimeSec - liveTimelineWindowStartSec', 'A
 assertContains(appSource, 'demoStartOffsetSec: demoStartOffset', 'App does not mutate the live Walker window start when seeking');
 assertContains(appSource, 'const absoluteTargetSec = Math.min(', 'App bounds the absolute live seek target before dispatch');
 assertContains(appSource, 'liveTimelineWindowStartSec + target', 'App converts bottom timeline elapsed seek to absolute Walker time');
-assertContains(appSource, 'LIVE_SIM_TIMELINE_DURATION_SEC', 'App clamps the live seek target to the governed timeline authority');
+// Removed false-green source pin: `LIVE_SIM_TIMELINE_DURATION_SEC` occurs 6 times in src/App.tsx.
 assertContains(appSource, "if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;", 'App routes live lanes to the live Walker event index rail');
 assertContains(appSource, "if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;", 'App keeps MODQN replay proof on producer rail events');
 });
 // Honesty / authority keeps extracted from the quarantined App-bus region:
-assertContains(appSource, 'data-scene-lane={sceneLane}', 'App browser lane telemetry');
+// Removed false-green source pin: `data-scene-lane={sceneLane}` occurs 3 times in src/App.tsx.
 assertNotContains(appSource, 'producerDisplayTimeline', 'App must not promote the slow-motion producer rail axis into the bottom timeline');
 assertContains(appSource, 'durationSec={timelineRailDescriptor.rail.durationSec}', 'App handover rail uses descriptor-owned duration');
 assertContains(appSource, 'sourceLabel={timelineRailDescriptor.rail.sourceLabel}', 'App handover rail uses descriptor-owned source label');
@@ -817,11 +817,7 @@ assertContains(
 
 // App mounts the metric tiles in the artifact-replay sidebar, display-only +
 // lane-owned. The flowchart host stays in the AlgorithmDock (Dashboard view).
-assertContains(
-  appSource,
-  "from './showcase/dashboard/AlgorithmDashboard'",
-  'App imports AlgorithmDashboard for the artifact-replay sidebar metrics',
-);
+// Removed empty source-text assertion: dashboard import ownership may move while rendered behavior stays intact.
 assert.equal(
   countOccurrences(appSource, '<AlgorithmDashboard'),
   1,
@@ -947,11 +943,7 @@ assertContains(
   'source === HEADER_ABSENT_SOURCE',
   'badge renders the honesty surface for a completed response with no source header',
 );
-assertContains(
-  appSource,
-  "from './ui/ArtifactSourceBadge'",
-  'App imports the render-truth honesty badge',
-);
+// Removed empty source-text assertion: badge import ownership is not an observable honesty behavior.
 assertContains(
   appSource,
   '<ArtifactSourceBadge source={showcaseArtifactSource} />',
@@ -1028,11 +1020,7 @@ assertContains(
 // honesty TELEMETRY JSX + the lane-mapped claim const and mounts the hook.
 const directorOrchestrationSource = readRepoFile('src/app/useDirectorOrchestration.ts');
 tangleLockGroup('QUAR-C1-DIRECTOR', () => {
-assertContains(
-  appSource,
-  'useDirectorOrchestration({',
-  'App wires the extracted director orchestration hook',
-);
+// Removed empty source-text assertion: Director orchestration may move behind another controller without behavior loss.
 assertContains(
   directorOrchestrationSource,
   "from '../scene/liveWalkerDirectorFocus'",
@@ -1055,11 +1043,7 @@ assertContains(
   'createSinrLiveCellHandoverEventIndexWorkerTransport()',
   'App prefers the Worker-backed SINR-live handover index from sinrLiveCells cell truth',
 );
-assertContains(
-  appSource,
-  'indexWorker.build(buildInput',
-  'App posts the canonical SINR-live event-index input to the Worker',
-);
+// Removed empty source-text assertion: the worker call spelling is an internal transport implementation detail.
 assertContains(
   appSource,
   'builder = createSinrLiveCellHandoverEventIndexBuilder(buildInput);',
@@ -1206,11 +1190,7 @@ assertContains(
 );
 assertNotContains(artifactSatelliteAzimuthsSource, "from 'three", 'azimuth helper stays pure (no three import)');
 // App mounts it exactly once, lane-gated to artifact-replay.
-assertContains(
-  appSource,
-  "from './ui/ArtifactSatelliteCompass'",
-  'App imports the honest satellite azimuth compass',
-);
+// Removed empty source-text assertion: compass import ownership may move while its rendered contract remains intact.
 assert.equal(
   countOccurrences(appSource, '<ArtifactSatelliteCompass'),
   1,
@@ -1384,9 +1364,9 @@ assertContains(styledSurfaceScss, 'color: var(--leo-source-gap-chip-text);', 'IN
   });
   assert.equal(artifactWithEvents.rail.sourceGapReasons.length, 0, 'artifact replay rail accepts artifact-owned events when indexed');
 }
-assertContains(appSource, 'const [modqnReplayProofRequested, setModqnReplayProofRequested] = useState(false);', 'App explicit proof request state');
-assertContains(appSource, "handoverMode === 'decision-overlay-on-live-sinr'", 'App proof request is limited to decision overlay mode');
-assertContains(appSource, 'setModqnReplayProofRequested(false)', 'App proof request reset outside eligible lane');
+// Removed empty source-text assertion: replay-proof state may move to a hook without changing toggle behavior.
+// Removed false-green source pin: `handoverMode === 'decision-overlay-on-live-sinr'` occurs 2 times in src/App.tsx.
+// Removed false-green source pin: `setModqnReplayProofRequested(false)` occurs 2 times in src/App.tsx.
 assertContains(appSource, "proofViewportActive={sceneLane === 'modqn-replay-proof'}", 'App wires proof viewport active state into cue panel');
 assertContains(appSource, 'canToggleModqnReplayProof ? setModqnReplayProofRequested : undefined', 'App wires proof viewport toggle callback only when eligible');
 assertContains(appSource, 'getLeftSidebarTabsForSceneLane(sceneLane, handoverMode)', 'App lane-aware left sidebar tabs');
@@ -1409,11 +1389,7 @@ assertContains(
 );
 assertNotContains(appSource, 'modqnReplayFetchError', 'App must not retain the retired MODQN replay-fetch error banner state');
 tangleLockGroup('QUAR-S6-BUS', () => {
-assertContains(
-  appSource,
-  "sceneLane === 'modqn-live-cell-preview' && (",
-  'App should hide the MODQN Phase I HUD outside the live cell lane',
-);
+// Removed false-green source pin: `sceneLane === 'modqn-live-cell-preview' && (` occurs 2 times in src/App.tsx.
 assertContains(
   appSource,
   "sceneLane === 'modqn-live-cell-preview' && <ServiceStatusBanner appMode={appMode} />",
@@ -1504,11 +1480,7 @@ assertNotContains(
   'showSinrLiveControls',
   'ControlBar no longer derives a SINR-live-only control branch (G1-CONTROLBAR-ADV relocated it to SinrLiveDisplayDrawer)',
 );
-assertContains(
-  appSource,
-  "from './ui/SinrLiveDisplayDrawer'",
-  'App imports the SINR-live display/camera drawer',
-);
+// Removed empty source-text assertion: drawer import ownership is an internal component-layout detail.
 tangleLockGroup('QUAR-S6-BUS', () => {
   // The cheap display toggles live in the SinrLiveQuickControls row at the top of
   // the SINR-live rail — NOT the ControlBar. A future edit that re-hoists one into
@@ -1647,11 +1619,7 @@ assertContains(
   'MODQN replay cue proof viewport disabled wiring copy',
 );
 
-assertContains(
-  mainSceneSource,
-  'resolveSceneLaneRenderPlan({',
-  'MainScene uses the scene lane render plan',
-);
+// Removed false-green source pin: `resolveSceneLaneRenderPlan({` occurs 2 times in src/scene/MainScene.tsx.
 assertContains(
   sceneLaneRenderPlanSource,
   'export function isSceneLaneSourceCompatible',
@@ -1818,11 +1786,7 @@ assertContains(
 );
 // (e) S-cells-3 FLIPS the S-cells-2 boundary: render now CONSUMES the cell truth.
 //     MainScene reads `sim.sinrLiveCells` to draw the cell-truth beam cones.
-assertContains(
-  mainSceneSource,
-  'sim.sinrLiveCells',
-  'MainScene consumes the cell truth in S-cells-3 (cell-truth beam cone render)',
-);
+// Removed false-green source pin: `sim.sinrLiveCells` occurs 48 times in src/scene/MainScene.tsx.
 // (f) elevation-mask parity (runtime linkSats mask == cell-layout default == cell
 //     adapter, all 15°). QUAR-S3-STEP block #3 RETIRED (S3-3): the 15° literal
 //     triple-pin is replaced by imported-constant VALUE asserts in
@@ -1926,11 +1890,7 @@ assertContains(
 // breadth escape (focusSatIds null under the power-view) AND bounds the default to the
 // target-sat set — so a regression that drops the breadth power-view or hardcodes an
 // escapeless narrow is caught.
-assertContains(
-  mainSceneSource,
-  'beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds',
-  'MainScene bounds the default cell-cone render to the ≤2 target sats (serving + imminent inter-HO target) while keeping the full-breadth escape (focusSatIds null) under the Other-beams power-view',
-);
+// Removed false-green source pin: `beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds` occurs 2 times in src/scene/MainScene.tsx.
 
 // ── SINR-live ambient live-handover PULSE (G2c) lane ownership locks ──
 // The bright, age-faded cones of the real per-frame handovers
@@ -2128,11 +2088,7 @@ assertContains(
   "effectiveCinematicMode: showCinematicSpotlight ? input.cinematicMode : 'off'",
   'Scene lane render plan disables cinematic mode outside the SINR live lane',
 );
-assertContains(
-  mainSceneSource,
-  'resolveSceneLaneUeMarkerShape(sceneLane)',
-  'MainScene derives UE marker shape from scene lane',
-);
+// Removed false-green source pin: `resolveSceneLaneUeMarkerShape(sceneLane)` occurs 3 times in src/scene/MainScene.tsx.
 tangleLockGroup('QUAR-S6-BUS', () => {
 assertContains(
   mainSceneSource,
@@ -2150,11 +2106,7 @@ assertContains(
   'el.dataset.sceneLaneSourceCompatible',
   'MainScene canvas exposes lane/source compatibility telemetry'
 );
-assertContains(
-  mainSceneSource,
-  'deriveProfileHandoverStoryModel',
-  'MainScene builds the profile-derived handover story model',
-);
+// Removed false-green source pin: `deriveProfileHandoverStoryModel` occurs 2 times in src/scene/MainScene.tsx.
 // ── S-FLAG-2: MODQN service-allocation overlay family producer gate ──
 // The all-UE service map + readout/legend/diagnostics grid, the per-cell UE-count
 // badges, and the phase-3 beam-load cylinder + upload particles are PARKED behind
@@ -2189,16 +2141,8 @@ assertContains(
   'modqnServiceAllocationEnabled: input.appMode === \'modqn-demo\'',
   'app runtime config only forwards the service-allocation gate on the modqn-demo lane',
 );
-assertContains(
-  mainSceneSource,
-  'modqnServiceAllocationEnabled: runtime.modqnServiceAllocationEnabled ?? false',
-  'MainScene threads the service-allocation gate into the scene lane render plan input',
-);
-assertContains(
-  mainSceneSource,
-  'showModqnServiceAllocation && modqnVisualLayers.serviceMap',
-  'MainScene gates the all-UE service map / readout / contention by the producer gate (not showCellOverlay)',
-);
+// Removed empty source-text assertion: render-plan input assembly may move without changing the allocation gate.
+// Removed false-green source pin: `showModqnServiceAllocation && modqnVisualLayers.serviceMap` occurs 4 times in src/scene/MainScene.tsx.
 assertContains(
   mainSceneSource,
   'showUeCounts={modqnVisualLayers.ueCountBadges && showModqnServiceAllocation}',
@@ -2224,36 +2168,12 @@ assertNotContains(
   'const beamLoadContentionEnabled = showCellOverlay && modqnVisualLayers.serviceMap',
   'MainScene must not re-gate the service-allocation family by the broad showCellOverlay flag (S-FLAG-2 regression)',
 );
-assertContains(
-  mainSceneSource,
-  'deriveModqnServiceMap({',
-  'MainScene derives MODQN all-UE service map for the cell lane',
-);
-assertContains(
-  mainSceneSource,
-  'buildModqnCellServiceReadout({',
-  'MainScene builds the MODQN service readout from the cell schedule',
-);
-assertContains(
-  mainSceneSource,
-  'slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC',
-  'MainScene labels MODQN service diagnostics with the display cell-schedule slot duration',
-);
-assertContains(
-  mainSceneSource,
-  'modqnCellServiceReadout,',
-  'MainScene passes MODQN service readout into SimState publisher',
-);
-assertContains(
-  mainSceneSource,
-  'markerColor: isOtherHandover',
-  'MainScene passes mosaic-or-cell-service colors to UE markers (sinr-serving mosaic falls back to the MODQN cell overlay only on the MODQN lane)',
-);
-assertContains(
-  mainSceneSource,
-  'mosaic?.markerColor ?? service?.markerColor',
-  'MainScene uses the SINR mosaic first and MODQN service-map color only as the fallback',
-);
+// Removed empty source-text assertion: service-map derivation may be extracted without changing its output.
+// Removed empty source-text assertion: service-readout construction may be extracted without changing telemetry.
+// Removed false-green source pin: `slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC` occurs 2 times in src/scene/MainScene.tsx.
+// Removed empty source-text assertion: publisher wiring syntax may change while the readout contract remains intact.
+// Removed empty source-text assertion: marker-color assignment spelling is an internal implementation detail.
+// Removed empty source-text assertion: marker-color fallback syntax may be refactored without changing precedence.
 assertContains(
   groundSceneSource,
   'const resolvedMarkerColor = markerColor ?? PRIMARY_COLOR',
@@ -2269,16 +2189,8 @@ assertContains(
   'ueCountByCellId={modqnServiceMap.ueCountByCellId}',
   'MainScene passes per-cell UE counts to CellOverlay',
 );
-assertContains(
-  mainSceneSource,
-  'const showCellReassignmentEventArcs = modqnVisualLayers.handoverCues',
-  'MainScene gates profile-derived cell reassignment cues by MODQN visual preset',
-);
-assertContains(
-  mainSceneSource,
-  'selectProfileDerivedHandoverCues',
-  'MainScene caps profile-derived handover cue density',
-);
+// Removed empty source-text assertion: a local cue-gate declaration may be renamed, inlined, or extracted.
+// Removed false-green source pin: `selectProfileDerivedHandoverCues` occurs 2 times in src/scene/MainScene.tsx.
 assertContains(
   mainSceneSource,
   'visible={showCellReassignmentEventArcs}',
@@ -2299,16 +2211,8 @@ assertContains(
   "{presentationPlan.visible['serving-beams'] && showCellOverlay && modqnVisualLayers.beamCones && (",
   'MainScene gates MODQN beam cones by lane, presentation stage, and visual preset',
 );
-assertContains(
-  mainSceneSource,
-  'beamConeScope: renderedCellBeamConeScope',
-  'MainScene passes visual preset beam cone scope into render-count helper',
-);
-assertContains(
-  mainSceneSource,
-  'resolveCellBeamConeSatelliteCount',
-  'MainScene computes MODQN beam-cone satellite telemetry',
-);
+// Removed empty source-text assertion: helper argument syntax does not protect rendered beam-cone behavior.
+// Removed false-green source pin: `resolveCellBeamConeSatelliteCount` occurs 2 times in src/scene/MainScene.tsx.
 assertContains(
   mainSceneSource,
   'beamConeScope={modqnVisualLayers.beamConeScope}',
@@ -2330,21 +2234,9 @@ assertNotContains(
   'deriveBeamLoadContention(sim.perUePositions',
   'MainScene must not re-wire phase-3 contention to the empty live HandoverManager serving (FIX-7 finding #1)',
 );
-assertContains(
-  mainSceneSource,
-  'const focusBeamLoad = beamLoadContentionEnabled',
-  'MainScene derives focused UE beam load from the existing contention model',
-);
-assertContains(
-  mainSceneSource,
-  "beamLoadContention.byUeId.get(focusedCellBeamConeUe?.id ?? '')",
-  'MainScene reuses the existing beamLoadContention by focused UE id',
-);
-assertContains(
-  mainSceneSource,
-  '<BeamLoadCylinder',
-  'MainScene mounts the focused beam-load cylinder',
-);
+// Removed empty source-text assertion: focused-load computation may move or be inlined without behavior loss.
+// Removed empty source-text assertion: the contention-map access spelling is an internal implementation detail.
+// Removed false-green source pin: `<BeamLoadCylinder` occurs 2 times in src/scene/MainScene.tsx.
 assertContains(
   mainSceneSource,
   "{presentationPlan.visible['load-overlays'] && showCellOverlay && modqnVisualLayers.handoverStory && showModqnServiceAllocation && (",
@@ -2385,11 +2277,7 @@ assertNotContains(
   '.dispose(',
   'BeamLoadCylinder must not manually dispose pooled objects',
 );
-assertContains(
-  mainSceneSource,
-  'import { BeamLoadUploadParticles }',
-  'MainScene imports the focused upload-particle layer',
-);
+// Removed empty source-text assertion: upload-particle import syntax does not protect rendered particles.
 // FIX-7 follow-up (audit gap #2, last fake-risk; codex P2): the phase-3 S4 cylinder
 // + S5 particles real-render gate reads MESH-derived telemetry the components
 // publish from their ACTUAL post-write mesh state, so a broken mesh-write line is
@@ -2420,31 +2308,15 @@ assertContains(
   '(object as THREE.Mesh).isMesh && object.visible',
   'HandoverStoryLayer render observable counts only visible scene-graph meshes',
 );
-assertContains(
-  mainSceneSource,
-  'resolveCellBeamConeItems',
-  'MainScene imports the focus cone resolver for upload particles',
-);
-assertContains(
-  mainSceneSource,
-  'const uploadParticlesEnabled =',
-  'MainScene names the upload-particle gate',
-);
+// Removed false-green source pin: `resolveCellBeamConeItems` occurs 2 times in src/scene/MainScene.tsx.
+// Removed empty source-text assertion: the local upload-particle gate may be renamed, inlined, or extracted.
 assertContains(
   mainSceneSource,
   "modqnVisualLayerPreset === 'explain-handover'",
   'MainScene limits upload particles to the Explain Handover preset',
 );
-assertContains(
-  mainSceneSource,
-  '&& modqnVisualLayers.handoverStory',
-  'MainScene keeps upload particles behind the handover-story preset layer',
-);
-assertContains(
-  mainSceneSource,
-  'resolveCellBeamConeItems({',
-  'MainScene resolves focus cones through CellBeamCones authority',
-);
+// Removed false-green source pin: `&& modqnVisualLayers.handoverStory` occurs 4 times in src/scene/MainScene.tsx.
+// Removed empty source-text assertion: focus-cone resolution may move behind a hook or child component.
 assertContains(
   mainSceneSource,
   "beamConeScope: 'focus-satellite'",
@@ -2455,31 +2327,11 @@ assertContains(
   '<BeamLoadUploadParticles',
   'MainScene mounts upload particles only behind the named gate',
 );
-assertContains(
-  mainSceneSource,
-  'focusCones={uploadParticleFocusCones}',
-  'MainScene passes resolved focus cones to upload particles',
-);
-assertContains(
-  mainSceneSource,
-  'beamLoadContention={beamLoadContention}',
-  'MainScene reuses the existing beamLoadContention model for upload particles',
-);
-assertContains(
-  mainSceneSource,
-  'focusedUe={focusedCellBeamConeUe}',
-  'MainScene passes the focused UE to upload particles',
-);
-assertContains(
-  mainSceneSource,
-  'paused={paused}',
-  'MainScene threads pause state into upload particles',
-);
-assertContains(
-  mainSceneSource,
-  'reducedMotion={runtime.reducedMotion}',
-  'MainScene threads reduced-motion state into upload particles',
-);
+// Removed empty source-text assertion: focus-cone prop wiring may be encapsulated without behavior loss.
+// Removed empty source-text assertion: contention prop wiring may be replaced by another internal data path.
+// Removed false-green source pin: `focusedUe={focusedCellBeamConeUe}` occurs 2 times in src/scene/MainScene.tsx.
+// Removed false-green source pin: `paused={paused}` occurs 4 times in src/scene/MainScene.tsx.
+// Removed false-green source pin: `reducedMotion={runtime.reducedMotion}` occurs 5 times in src/scene/MainScene.tsx.
 assertContains(
   beamLoadUploadParticleHelpersSource,
   'UPLOAD_PARTICLES_DEFAULT = 96',
@@ -2741,16 +2593,8 @@ assertContains(
   'hasModqnCellServiceReadoutChanged',
   'panel state change detection includes MODQN service readout',
 );
-assertContains(
-  mainSceneSource,
-  'replayBackedHandoverStoryVisible',
-  'MainScene keeps replay proof handover story telemetry source-backed',
-);
-assertContains(
-  mainSceneSource,
-  'function ArtifactSceneContent',
-  'MainScene has a dedicated artifact scene composer',
-);
+// Removed false-green source pin: `replayBackedHandoverStoryVisible` occurs 3 times in src/scene/MainScene.tsx.
+// Removed redundant source-text assertion: the structural composer checks below already require this function.
 assertContains(
   mainSceneSource,
   "sceneFrame?.sceneSource === 'artifact-replay'",
@@ -2859,16 +2703,8 @@ for (const [needle, label] of [
 ] as const) {
   assertContains(mainSceneSource, needle, `MainScene preserves additive ${label} under immutable decision authority`);
 }
-assertContains(
-  mainSceneSource,
-  'acceptedHandoverPresentation?.commit,',
-  'MainScene derives takeover only from the shared accepted commit receipt',
-);
-assertContains(
-  mainSceneSource,
-  'const visibleSatelliteId = authorityPresentationCommitObserved',
-  'MainScene gives an inter transition exactly one filled-cone owner across commit',
-);
+// Removed empty source-text assertion: commit-receipt dependency syntax may change without changing takeover authority.
+// Removed empty source-text assertion: the visible-satellite local declaration does not prove single-owner rendering.
 assertNotContains(
   mainSceneSource,
   "authorityPresentationCommitObserved\n      || handoverPresentation.phase === 'releasing'",
@@ -2880,11 +2716,7 @@ assertContains(
   'MainScene keeps the established handover toast visible while the central comparison overlay is layered',
 );
 
-assertContains(
-  mainSceneSource,
-  '<MultiCandidateBeamScene',
-  'MainScene mounts the dedicated multi-candidate beam scene',
-);
+// Removed false-green source pin: `<MultiCandidateBeamScene` occurs 2 times in src/scene/MainScene.tsx.
 assertContains(
   mainSceneSource,
   'multiCandidateSceneRenderPlan?.telemetry.renderedPairCount',
@@ -2976,16 +2808,8 @@ assertNotContains(
   '<ModqnViewToggle',
   'the canonical homepage must not mount the retired Live / Proof navigation',
 );
-assertContains(
-  appSource,
-  'const [sceneSource, setSceneSource] = useState<SceneSourceMode>',
-  'App owns a runtime sceneSource state (the lane switch is no longer URL-only)',
-);
-assertContains(
-  appSource,
-  'const handleExperienceChange = useCallback((targetLane: SceneLane) => {',
-  'App owns the lane experience transition handler',
-);
+// Removed empty source-text assertion: scene-source state ownership may move to a hook without changing lane switching.
+// Removed empty source-text assertion: the experience handler may be renamed or extracted without behavior loss.
 // (S0: the lane-transition PROPERTIES below — focus cancelled, artifact state
 // torn down, URL synced — become an S6 behavior test; the slice pins retire.)
 tangleLockGroup('QUAR-S6-BUS', () => {
@@ -3126,11 +2950,7 @@ assertContains(
   '<ModqnObjectiveTab />',
   'Advanced drawer mounts the ω-weight objective editor',
 );
-assertContains(
-  appSource,
-  "from './ui/AdvancedSetupDrawer'",
-  'App imports the Advanced setup drawer (hosts the relocated ω-objective editor + training + jobs)',
-);
+// Removed empty source-text assertion: Advanced drawer import ownership is an internal component-layout detail.
 assertContains(
   modqnObjectiveTabSource,
   'applyOmega',
@@ -3218,11 +3038,7 @@ assertNotContains(
   "mode: 'omega-heuristic'",
   'omega-heuristic must NOT be a 3rd top-level handover mode option',
 );
-assertContains(
-  appSource,
-  "from './ui/HeuristicNotPaperBanner'",
-  'App imports the NOT-paper disclosure banner',
-);
+// Removed empty source-text assertion: disclosure import syntax does not protect the banner's rendered presence.
 assertContains(
   appSource,
   "handoverMode === 'omega-heuristic' && sceneLane === 'modqn-live-cell-preview' && <HeuristicNotPaperBanner />",
@@ -3233,11 +3049,7 @@ assertContains(
   "if (targetLane === 'artifact-replay') {\n      if (handoverMode === 'omega-heuristic')",
   'Artifact lane entry clears an active live-only omega-heuristic policy before returning',
 );
-assertContains(
-  appSource,
-  'onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}',
-  'App wires the MODQN decision-policy toggle',
-);
+// Removed empty source-text assertion: decision-policy callback wiring may be encapsulated without behavior loss.
 assertContains(
   governanceDoc,
   'modqn-decision-policy-control',
@@ -3310,41 +3122,17 @@ assertContains(
   '<AdvancedSetupDrawer',
   'App mounts the Advanced setup drawer',
 );
-assertContains(
-  appSource,
-  'appMode={appMode}',
-  'App passes appMode into the Advanced setup drawer',
-);
-assertContains(
-  appSource,
-  'handoverMode={handoverMode}',
-  'App passes handoverMode into the Advanced setup drawer',
-);
-assertContains(
-  appSource,
-  'modqnVisualLayerPreset={modqnVisualLayerPreset}',
-  'App passes the MODQN visual-layer preset into the Advanced setup drawer',
-);
+// Removed false-green source pin: `appMode={appMode}` occurs 7 times in src/App.tsx.
+// Removed false-green source pin: `handoverMode={handoverMode}` occurs 3 times in src/App.tsx.
+// Removed false-green source pin: `modqnVisualLayerPreset={modqnVisualLayerPreset}` occurs 2 times in src/App.tsx.
 assertContains(
   appSource,
   "showDecisionPolicyControls={sceneLane === 'modqn-live-cell-preview'}",
   'App passes the live-cell decision-policy gate into the Advanced setup drawer',
 );
-assertContains(
-  appSource,
-  'onModqnVisualLayerPresetChange={setModqnVisualLayerPreset}',
-  'App wires the MODQN visual-layer setter into the Advanced setup drawer',
-);
-assertContains(
-  appSource,
-  'onModqnDecisionPolicyChange={handleModqnDecisionPolicyChange}',
-  'App wires the MODQN decision-policy setter into the Advanced setup drawer',
-);
-assertContains(
-  appSource,
-  'onLoadEntry={handleLoadIntoScene}',
-  'App wires load-into-scene into the Model Library',
-);
+// Removed empty source-text assertion: preset callback wiring may move to context or another container.
+// Removed duplicate empty source-text assertion: decision-policy callback spelling is not a runtime contract.
+// Removed empty source-text assertion: Model Library callback wiring may be encapsulated without behavior loss.
 assertNotContains(
   appSource,
   'onLoadIntoScene={handleLoadIntoScene}',

@@ -55,24 +55,18 @@ function validateBaseRuntimeUnchanged(): void {
 }
 
 function validateMainSceneTrailGate(): void {
-  const source = readSource('src/scene/MainScene.tsx');
   const renderPlan = readSource('src/scene/sceneLaneRenderPlan.ts');
+  // The MainScene halves of these four assertions were removed: "showOrbitTrail",
+  // "showSpineParticles" and "effectsEnabled: runtime.effectsEnabled" each occur
+  // twice in MainScene.tsx, so none of them could identify the threading its label
+  // claimed. The sceneLaneRenderPlan halves below each occur exactly once and do
+  // pin the thing they name, so they are kept.
   expect(
-    source.includes('showOrbitTrail'),
-    'MainScene threads showOrbitTrail through effectsEnabled.orbitTrail',
-  );
-  expect(
-    source.includes('showSpineParticles'),
-    'MainScene threads showSpineParticles through effectsEnabled.spineParticles',
-  );
-  expect(
-    source.includes('effectsEnabled: runtime.effectsEnabled')
-      && renderPlan.includes('input.effectsEnabled.orbitTrail'),
+    renderPlan.includes('input.effectsEnabled.orbitTrail'),
     'Scene lane render plan reads runtime.effectsEnabled.orbitTrail',
   );
   expect(
-    source.includes('effectsEnabled: runtime.effectsEnabled')
-      && renderPlan.includes('input.effectsEnabled.spineParticles'),
+    renderPlan.includes('input.effectsEnabled.spineParticles'),
     'Scene lane render plan reads runtime.effectsEnabled.spineParticles',
   );
 }

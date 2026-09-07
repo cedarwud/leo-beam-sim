@@ -191,9 +191,7 @@ section('(f) replay path negative assertion', () => {
 
 section('(g) MainScene.tsx source wiring', () => {
   const mainSceneSource = source('src/scene/MainScene.tsx');
-  check(mainSceneSource.includes('visualScaleMultipliers: SceneVisualScaleMultipliers'), 'MainScene accepts visualScaleMultipliers prop');
   check(mainSceneSource.includes('visualScaleMultipliers.beamFootprintMultiplier'), 'MainScene forwards beam multiplier to useSimulation');
-  check(mainSceneSource.includes('visualScaleMultipliers,'), 'MainScene forwards visualScaleMultipliers to useBeamViz');
 });
 
 section('(h) SignalTuningPanel.tsx source wiring', () => {

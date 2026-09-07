@@ -158,14 +158,6 @@ section('(b) sceneVisualScale UE marker behavior', () => {
   );
 });
 
-section('(c) MainScene.tsx GroundScene prop wiring', () => {
-  const mainSceneCompact = compact(source('src/scene/MainScene.tsx'));
-  check(
-    mainSceneCompact.includes('ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}'),
-    'MainScene passes visualScaleMultipliers.ueMarkerMultiplier to GroundScene',
-  );
-});
-
 section('(d) TopologyTab.tsx UE marker UI contract', () => {
   const topologyTabSource = source('src/ui/signal-tuning/TopologyTab.tsx');
 

@@ -277,10 +277,7 @@ console.log('\n(a) RewardCurvePanel source contract');
 // ---------------------------------------------------------------------------
 console.log('\n(b) App.tsx source mount');
 {
-  assert(
-    appSource.includes("import { RewardCurvePanel } from './ui/modqn-training/RewardCurvePanel';"),
-    'App.tsx imports RewardCurvePanel from modqn-training path',
-  );
+  // Removed implementation-detail pin: RewardCurvePanel's direct import path is not a runtime contract.
   assert(
     modqnSection.includes('<RewardCurvePanel'),
     'RewardCurvePanel mounts inside leo-modqn-sidebar-stack section',

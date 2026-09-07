@@ -80,17 +80,12 @@ assert.equal(
 );
 recordPass('S2.1', 'App.tsx no longer imports MODQN_PHASE7F_REPLAY_PLAYBACK_SHELL_MODEL');
 
-assert.ok(
-  appSource.includes('fetchModqnReplayBundleEnvelope'),
-  'S2.1a: App.tsx must wire fetchModqnReplayBundleEnvelope',
-);
-recordPass('S2.1a', 'App.tsx wires fetchModqnReplayBundleEnvelope');
-
-assert.ok(
-  appSource.includes('getModqnReplayPlaybackFallbackShellModel'),
-  'S2.1b: App.tsx must call getModqnReplayPlaybackFallbackShellModel for fallback path',
-);
-recordPass('S2.1b', 'App.tsx uses fallback accessor instead of direct shell-model import');
+// S2.1a / S2.1b were source-text pins on 'fetchModqnReplayBundleEnvelope' (4
+// occurrences in src/App.tsx) and 'getModqnReplayPlaybackFallbackShellModel' (2),
+// so neither literal could identify the wiring its label named. The checks are
+// removed rather than recorded: a recordPass with no assertion behind it reports
+// coverage that does not exist. Re-add them as behavioural assertions if the
+// wiring needs a guard.
 
 // 1c. The shell-model constant may remain in playback-shell.ts as a typed reference.
 const shellSource = readFileSync(PLAYBACK_SHELL_PATH, 'utf8');

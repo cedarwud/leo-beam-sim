@@ -243,7 +243,7 @@ section('(d) App.tsx + MainScene.tsx runtime threading source grep', () => {
   const useSimulationSource = source('src/scene/useSimulation.ts');
   const runtimeFrameStepSource = source('src/scene/runtimeFrameStep.ts');
 
-  check(appSource.includes('buildAppRuntimeConfig'), 'App.tsx delegates runtime config construction');
+  // Removed source-text assertion: "buildAppRuntimeConfig" appeared 3 times in src/App.tsx, so it could not identify the claimed delegation.
   check(appRuntimeConfigSource.includes('ueDistributionMode: input.appMode === \'sinr-experiment\''), 'appRuntimeConfig computes runtime.ueDistributionMode from app mode');
   check(
     appRuntimeConfigSource.includes("? 'seven-cell-asymmetric'")

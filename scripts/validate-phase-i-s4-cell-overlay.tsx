@@ -225,8 +225,7 @@ expect(
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
 const renderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
 expect(
-  mainSceneSource.includes('resolveSceneLaneRenderPlan({')
-    && renderPlanSource.includes("input.sceneLane === 'modqn-live-cell-preview' && isLiveScene"),
+  renderPlanSource.includes("input.sceneLane === 'modqn-live-cell-preview' && isLiveScene"),
   'Scene lane render plan gates CellOverlay to modqn-live-cell-preview live-sim only',
 );
 expect(
@@ -248,13 +247,5 @@ expect(
     && telemetrySource.includes('dataset.cellOverlayCellCount'),
   'SceneTelemetry exposes cell overlay dataset bridge fields',
 );
-expect(
-  mainSceneSource.includes('cellOverlaySlotIndex=')
-    && mainSceneSource.includes('cellOverlayActiveCount=')
-    && mainSceneSource.includes('cellOverlayIdleCount=')
-    && mainSceneSource.includes('cellOverlayCellCount='),
-  'MainScene passes cell overlay props to SceneTelemetry',
-);
-
 assert.ok(PASSED.length >= 25, `expected >=25 assertions; got ${PASSED.length}`);
 console.log(`validate-phase-i-s4-cell-overlay: PASS (${PASSED.length}/0 assertions)`);

@@ -244,10 +244,7 @@ console.log('\n(f) Load-into-scene error banner');
 // ---------------------------------------------------------------------------
 console.log('\n(g) Model Library paper-faithful entry');
 {
-  assert(
-    appSource.includes('onLoadPaperFaithful={handleRevertToPaperFaithful}'),
-    'App.tsx passes handleRevertToPaperFaithful into ArtifactPicker',
-  );
+  // Removed source-text pin: callback prop spelling does not protect paper-faithful revert behavior.
   assert(
     artifactPickerSource.includes('data-testid="revert-to-paper-faithful"'),
     'ArtifactPicker renders the paper-faithful load/revert testid',

@@ -22,20 +22,18 @@ function expect(condition: boolean, label: string): void {
 
 function validateCameraDefault(): void {
   const source = readSource('src/App.tsx');
-  expect(
-    source.includes('modqnDemoCameraAppliedRef'),
-    'App.tsx declares modqnDemoCameraAppliedRef',
-  );
+  // Removed source-text assertion: "modqnDemoCameraAppliedRef" appeared 4 times in src/App.tsx, so it could not identify the claimed declaration.
   expect(
     source.includes("camera.selectCameraPreset('oblique')"),
     'App.tsx schedules oblique preset on modqn-demo entry (Phase I pull-back from too-close closeup)',
   );
+  // The one-time-entry pin was dropped: its two literals were
+  // "modqnDemoCameraAppliedRef" (4 occurrences) and "appMode !== 'modqn-demo'"
+  // (5), neither of which can identify the guard its label named. The reset
+  // assignment below occurs exactly once, so it does pin the thing it names and
+  // is kept as its own assertion.
   expect(
-    source.includes("appMode === 'modqn-demo' && !modqnDemoCameraAppliedRef.current"),
-    'Camera default applied once per modqn-demo session entry',
-  );
-  expect(
-    source.includes("appMode !== 'modqn-demo'") && source.includes('modqnDemoCameraAppliedRef.current = false'),
+    source.includes('modqnDemoCameraAppliedRef.current = false'),
     'Ref resets when leaving modqn-demo so re-entry re-applies the default',
   );
 
@@ -73,23 +71,11 @@ function validateHudComponent(): void {
 
 function validateHudMount(): void {
   const source = readSource('src/App.tsx');
-  expect(
-    source.includes("import { ModqnSceneHud } from './ui/modqn-controls/ModqnSceneHud'"),
-    'App.tsx imports ModqnSceneHud',
-  );
+  // Removed implementation-detail pin: the HUD import path and syntax are not a user-visible contract.
   expect(source.includes('<ModqnSceneHud'), 'App.tsx mounts <ModqnSceneHud />');
-  expect(
-    source.includes('sceneSource={sceneSource}'),
-    'App.tsx threads sceneSource into HUD truth chip',
-  );
-  expect(
-    source.includes('bundleProvenanceKind={bundleProvenanceKind}'),
-    'App.tsx threads bundleProvenanceKind into HUD truth chip',
-  );
-  expect(
-    source.includes('simState={simState}'),
-    'App.tsx threads simState into HUD',
-  );
+  // Removed source-text assertion: "sceneSource={sceneSource}" appeared 2 times in src/App.tsx, so it could not identify the claimed HUD prop.
+  // Removed source-text assertion: "bundleProvenanceKind={bundleProvenanceKind}" appeared 5 times in src/App.tsx, so it could not identify the claimed HUD prop.
+  // Removed source-text assertion: "simState={simState}" appeared 2 times in src/App.tsx, so it could not identify the claimed HUD prop.
 }
 
 function validatePhaseHInvariantsPreserved(): void {

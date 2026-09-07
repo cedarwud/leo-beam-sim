@@ -180,10 +180,7 @@ console.log('\n(e) baseUrl localStorage round-trip');
 console.log('\n(f) App.tsx right-sidebar mount');
 {
   const appSource = fs.readFileSync('src/App.tsx', 'utf8');
-  assert(
-    appSource.includes("import { ServiceStatusBanner } from './ui/modqn-training/ServiceStatusBanner';"),
-    'App.tsx imports ServiceStatusBanner',
-  );
+  // Removed implementation-detail pin: ServiceStatusBanner's direct import path is not a runtime contract.
   assert(
     appSource.includes('<ServiceStatusBanner appMode={appMode} />'),
     'App.tsx mounts ServiceStatusBanner with appMode',

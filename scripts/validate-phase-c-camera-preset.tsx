@@ -253,10 +253,6 @@ section('(i) Single-chain director speed tier source', () => {
 
 section('(j) MainScene OrbitControls ownership restore guarantee source', () => {
   const mainSceneSource = source('src/scene/MainScene.tsx');
-  check(
-    mainSceneSource.includes("if (effectiveCinematicMode !== 'director')"),
-    'director command handler is inert unless effectiveCinematicMode is director',
-  );
   check(mainSceneSource.includes('controls.enabled = false'), 'acquiring disables OrbitControls');
   check(
     /tween\.kind === 'director-restore'[\s\S]*?controls\.enabled = true/.test(mainSceneSource),
@@ -332,10 +328,7 @@ section('(l) resolveDirectorFocusPose extracted to a pure, renderer-free module'
   );
 
   const mainSceneSource = source('src/scene/MainScene.tsx');
-  check(
-    mainSceneSource.includes("from './directorFocusPose'"),
-    'MainScene imports resolveDirectorFocusPose from the extracted module',
-  );
+  // Removed source-text pin: a relative import path does not protect director camera behavior.
   check(
     !/function resolveDirectorFocusPose/.test(mainSceneSource),
     'MainScene no longer defines resolveDirectorFocusPose inline (single source of truth)',

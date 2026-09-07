@@ -261,10 +261,7 @@ console.log('\n(a) DecisionVizPanel source contract');
 // ---------------------------------------------------------------------------
 console.log('\n(b) App.tsx source mount');
 {
-  assert(
-    appSource.includes("import { DecisionVizPanel } from './ui/modqn-training/DecisionVizPanel';"),
-    'App.tsx imports DecisionVizPanel from modqn-training path',
-  );
+  // Removed source-text pin: an import statement spelling does not protect the mounted decision panel.
   assert(modqnSection.includes('<DecisionVizPanel'), 'DecisionVizPanel mounts inside leo-modqn-sidebar-stack section');
   assert(
     modqnSection.indexOf('<RewardCurvePanel') !== -1

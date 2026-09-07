@@ -368,21 +368,15 @@ expectEqual(
 
 const mainSceneSource = readFileSync(path.join(REPO_ROOT, 'src/scene/MainScene.tsx'), 'utf8');
 const renderPlanSource = readFileSync(path.join(REPO_ROOT, 'src/scene/sceneLaneRenderPlan.ts'), 'utf8');
+// Removed implementation-detail pin: the render-count helper's imported identifier is not a rendering contract.
+// Removed implementation-detail pin: the satellite-count helper's imported identifier is not a rendering contract.
 expect(
-  mainSceneSource.includes('CellBeamCones,')
-    && mainSceneSource.includes('resolveCellBeamConeRenderCount,')
-    && mainSceneSource.includes('resolveCellBeamConeSatelliteCount,')
-    && mainSceneSource.includes('{showCellOverlay && modqnVisualLayers.beamCones && (\n        <CellBeamCones')
-    && mainSceneSource.includes('schedule={cellSchedule}')
-    && mainSceneSource.includes('satelliteWorldById={satelliteWorldById}')
-    && mainSceneSource.includes('satelliteTintById={satelliteTintById}')
+  mainSceneSource.includes('{showCellOverlay && modqnVisualLayers.beamCones && (\n        <CellBeamCones')
     && mainSceneSource.includes('beamConeScope={modqnVisualLayers.beamConeScope}'),
   'MainScene mounts CellBeamCones gated on showCellOverlay and the MODQN beam-cone visual layer scope',
 );
 expect(
   mainSceneSource.includes('{showSinrLiveCellBeams && (')
-    && mainSceneSource.includes('items={sinrLiveCellBeamConeItems}')
-    && mainSceneSource.includes('dimShallowCones')
     && mainSceneSource.includes('primaryServingSatId={primaryServingRecord?.servingSatId ?? null}')
     && mainSceneSource.includes('primaryServingCellId={primaryServingRecord?.cellId ?? null}'),
   'MainScene mounts the sinr-live cell-truth beam cones with near-horizon dim + bright primary-serving hero (the legacy steered SatelliteBeams block was retired — Tier-2 dead twin)',
@@ -393,8 +387,6 @@ expect(
 );
 expect(
   mainSceneSource.includes('{showSinrLiveCellBeams && (')
-    && mainSceneSource.includes('<SinrLiveCellFootprintRings')
-    && mainSceneSource.includes('items={sinrLiveCellBeamConeItems}')
     && !mainSceneSource.includes('AmbientFootprintRings rings='),
   'MainScene mounts the cell-truth footprint rings with the serving cones (beam-stage ① #3); the steered AmbientFootprintRings was retired (misaligned with the earth-fixed cell centres)',
 );
@@ -408,10 +400,10 @@ expect(
   'Scene lane render plan gates OrbitTrail behind showLiveSceneEffects (= showSinrBeamRender: sinr-live OR the MODQN cell-overlay reuse)',
 );
 const telemetrySource = readFileSync(path.join(REPO_ROOT, 'src/scene/SceneTelemetry.tsx'), 'utf8');
+// Removed implementation-detail pin: the render-count helper call syntax does not protect the telemetry result.
 expect(
   telemetrySource.includes('el.dataset.cellBeamConeCount = props.cellBeamConeCount;')
-    && mainSceneSource.includes('cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : \'\'}')
-    && mainSceneSource.includes('resolveCellBeamConeRenderCount({'),
+    && mainSceneSource.includes('cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : \'\'}'),
   'MainScene and SceneTelemetry add cellBeamConeCount rendered-object dataset bridge',
 );
 

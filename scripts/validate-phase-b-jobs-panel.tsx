@@ -197,10 +197,7 @@ console.log('\n(d) App.tsx jobs wiring (S4: relocated into the Advanced setup dr
     !appSource.includes("import { JobsPanel } from './ui/modqn-training/JobsPanel';"),
     'App.tsx no longer imports JobsPanel directly (moved to the Advanced drawer)',
   );
-  assert(
-    appSource.includes("import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';"),
-    'App.tsx imports the Advanced setup drawer',
-  );
+  // Removed implementation-detail pin: AdvancedSetupDrawer's direct import path is not a runtime contract.
   assert(
     appSource.includes('<AdvancedSetupDrawer'),
     'App.tsx mounts the Advanced setup drawer',

@@ -208,14 +208,11 @@ console.log('\n(c) ClaimBoundaryBanner user-trained chip');
 console.log('\n(e) App.tsx artifact picker wiring');
 {
   const source = fs.readFileSync('src/App.tsx', 'utf8');
-  assert(source.includes('import { ArtifactPicker }'), 'App.tsx imports ArtifactPicker');
-  assert(source.includes('fetchTrainingServiceManifest'), 'App.tsx imports fetchTrainingServiceManifest');
-  assert(source.includes('useState<string | null>(null)'), 'App.tsx tracks selectedUserTrainedJobId');
-  assert(
-    source.includes("useState<'paper-faithful' | 'user-trained'>('paper-faithful')"),
-    'App.tsx tracks bundle provenance state',
-  );
-  assert(source.includes('handleLoadIntoScene'), 'App.tsx defines handleLoadIntoScene callback');
+  // Removed implementation-detail pin: ArtifactPicker's direct import syntax is not a runtime contract.
+  // Removed false-green pin: fetchTrainingServiceManifest appeared twice in App.tsx.
+  // Removed false-green pin: the generic useState<string | null>(null) text appeared six times in App.tsx.
+  // Removed implementation-detail pin: the provenance state's useState signature does not verify its UI default.
+  // Removed false-green pin: handleLoadIntoScene appeared twice in App.tsx.
   assert(source.includes('<ArtifactPicker'), 'App.tsx mounts ArtifactPicker');
   assert(
     source.includes('onLoadEntry={handleLoadIntoScene}'),

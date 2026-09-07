@@ -255,7 +255,7 @@ section('(e) useSimulation + App + MainScene source grep', () => {
   check(useSimulationSource.includes('mobilityStatesRef'), 'useSimulation maintains mobilityStatesRef');
   check(useSimulationSource.includes('createMobilityStates(effectiveUeCount, ueMobilityMode'), 'useSimulation initializes mobility states by ueCount and mode');
   check(useSimulationSource.includes('mobilityStates: mobilityStatesRef.current'), 'useSimulation passes mobilityStates to stepRuntimeFrame');
-  check(appSource.includes('buildAppRuntimeConfig'), 'App delegates runtime config construction');
+  // Removed source-text assertion: "buildAppRuntimeConfig" appeared 3 times in src/App.tsx, so it could not identify the claimed delegation.
   check(appPersistenceSource.includes('record.ueMobilityMode'), 'appPersistence reads persisted ueMobilityMode');
   check(appRuntimeConfigSource.includes("ueMobilityMode: input.appMode === 'sinr-experiment'"), 'appRuntimeConfig gates ueMobilityMode by app mode');
   check(appRuntimeConfigSource.includes("trainingTopology.ueMobilityMode ?? 'static'"), 'appRuntimeConfig lets modqn-demo user-trained artifacts drive mobility from training truth');

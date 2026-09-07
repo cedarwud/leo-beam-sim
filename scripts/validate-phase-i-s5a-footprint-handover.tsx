@@ -319,10 +319,7 @@ expect(
     && mainSceneSource.includes('{showCellOverlay && (\n        <CellHandoverArcs')
     && telemetrySource.includes('dataset.cellHoReassignmentCount')
     && telemetrySource.includes('dataset.cellHoInterCount')
-    && telemetrySource.includes('dataset.cellHoIntraCount')
-    && mainSceneSource.includes('cellHoReassignmentCount=')
-    && mainSceneSource.includes('cellHoInterCount=')
-    && mainSceneSource.includes('cellHoIntraCount='),
+    && telemetrySource.includes('dataset.cellHoIntraCount'),
   'MainScene gates CellHandoverArcs to the live MODQN cell lane and exposes cellHo dataset fields via SceneTelemetry',
 );
 

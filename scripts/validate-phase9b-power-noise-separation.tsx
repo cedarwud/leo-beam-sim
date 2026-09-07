@@ -277,8 +277,8 @@ function assertTuningWiringAndEvidencePath(): void {
   }
 
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-  assertContains(appSource, 'setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next))');
-  assertContains(appSource, 'isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}');
+  // Removed source-text assertion: "setStaleFormulaEvidenceKey(getSignalTuningEvidenceKey(next))" appeared 2 times in src/App.tsx, so it could not identify the claimed evidence path.
+  // Removed source-text assertion: "isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}" appeared 4 times in src/App.tsx, so it could not identify the claimed stale-state prop.
 }
 
 function run(): void {

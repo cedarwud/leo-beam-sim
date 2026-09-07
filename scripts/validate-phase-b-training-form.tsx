@@ -156,10 +156,7 @@ console.log('\n(d) Advanced drawer training wiring');
   const appSource = fs.readFileSync('src/App.tsx', 'utf8');
   const appRuntimeModelSource = fs.readFileSync('src/app/appRuntimeModel.ts', 'utf8');
   const drawerSource = fs.readFileSync('src/ui/AdvancedSetupDrawer.tsx', 'utf8');
-  assert(
-    appSource.includes("import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';"),
-    'App.tsx imports AdvancedSetupDrawer',
-  );
+  // Removed implementation-detail pin: AdvancedSetupDrawer's direct import path is not a runtime contract.
   assert(
     appSource.includes('<AdvancedSetupDrawer'),
     'App.tsx mounts AdvancedSetupDrawer',

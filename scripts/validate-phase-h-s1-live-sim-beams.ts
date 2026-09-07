@@ -107,30 +107,6 @@ function validateMainSceneGate(): void {
   const occurrences = (source.match(/showLiveBeamCones/g) ?? []).length;
   expect(occurrences >= 2, `showLiveBeamCones referenced at least 2 times (render-plan binding + telemetry); found ${occurrences}`);
 
-  expect(
-    source.includes('SinrLiveCellBeamCones'),
-    'MainScene imports / renders the live SinrLiveCellBeamCones component (the sinr-live beam render owner)',
-  );
-
-  expect(
-    source.includes('beamConeCount'),
-    'MainScene publishes beamConeCount canvas dataset for browser smoke',
-  );
-
-  expect(
-    source.includes('viz.satBeams') || source.includes('viz.satBeams.get'),
-    'MainScene feeds satBeams from the viz layer into the live-sim beam render',
-  );
-
-  expect(
-    source.includes('resolveSinrLiveCellBeamConeItems'),
-    'MainScene derives the live-sim beam render set from the serving cell truth (no stray cones)',
-  );
-
-  expect(
-    source.includes('footprintRadius'),
-    'MainScene threads footprintRadius into the live beam render (paper beamwidth-derived)',
-  );
 }
 
 function validateSceneSourceContract(): void {

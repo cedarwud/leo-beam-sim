@@ -421,11 +421,7 @@ function assertSceneBridgeSource(): void {
     "if (handoverMode !== 'decision-overlay-on-live-sinr')",
     'App replay-to-scene mode gate',
   );
-  assertContains(
-    appSource,
-    'createOmegaRescalarizedModqnReplayPlaybackDisplayState',
-    'App replay-to-scene bridge',
-  );
+  // Removed source-text assertion: "createOmegaRescalarizedModqnReplayPlaybackDisplayState" appeared 2 times in src/App.tsx, so it could not identify the claimed replay-to-scene bridge.
   assertContains(
     railBuildersSource,
     'MODQN_REPLAY_HANDOVER_SLOT_SEC',
@@ -446,11 +442,7 @@ function assertSceneBridgeSource(): void {
     '<ModqnReplayCuePanel',
     'App replay sidebar cue panel',
   );
-  assertContains(
-    appSource,
-    'modqnReplayProofRequested: modqnReplayProofRequestActive',
-    'App must resolve the scene lane before mounting replay scene proof',
-  );
+  // Removed source-text pin: an internal argument spelling does not protect the replay-proof request gate.
   // P3 slice-3: the `shouldRenderModqnReplayScene(sceneLane)` gate + the
   // `showModqnReplayScene={showModqnReplayScene}` MainScene prop + the MainScene
   // board import/mount/worldUnitsPerKm pins were the wiring for the clean-deleted
