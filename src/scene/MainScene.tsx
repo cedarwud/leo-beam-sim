@@ -99,7 +99,6 @@ import { SatelliteMarker } from '../viz/SatelliteMarker';
 import {
   SPINE_PARTICLES_PER_BEAM,
   SpineParticles,
-  type SpineParticlePlan,
 } from '../viz/SpineParticles';
 import { OrbitTrail } from '../viz/OrbitTrail';
 import { ServingGroundRipple } from '../viz/ServingGroundRipple';
@@ -175,7 +174,7 @@ import { UAV } from '../components/scene/UAV';
 import { Starfield } from '../components/ui/Starfield';
 import { BaseSceneLayout } from './BaseSceneLayout';
 import { TeachingFloor } from './TeachingFloor';
-import { SceneTelemetry, type MultiCandidateSceneRenderStatus } from './SceneTelemetry';
+import { SceneTelemetry } from './SceneTelemetry';
 import {
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
@@ -281,6 +280,8 @@ import {
   resolveRecentPrimaryHandoverEvent,
 } from './recentHandoverPresentationEvent';
 import { resolveAdditiveHandoverConeColoring } from './additiveHandoverConeColoring';
+import { resolveAuthoritySpineParticlePlans } from './multiCandidateAuthoritySpineParticlePlans';
+import { resolveMultiCandidateSceneRenderStatus } from './multiCandidateSceneRenderStatus';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -2157,24 +2158,14 @@ function SceneRenderContent({
         || instruction.link.visible
       ),
   ) ?? false;
-  const multiCandidateAuthoritySpineParticlePlans = useMemo<readonly SpineParticlePlan[] | undefined>(() => {
-    if (!multiCandidateCentralOverlayActive) return undefined;
-    const serving = multiCandidateSceneRenderPlan?.instructions.find(instruction => instruction.isServing);
-    const primaryUeWorld = sceneFrame.ues[0]?.worldPos;
-    if (serving === undefined || primaryUeWorld === undefined) return [];
-    const start = new THREE.Vector3(...serving.apex);
-    const end = new THREE.Vector3(...primaryUeWorld);
-    return Object.freeze(Array.from({ length: SPINE_PARTICLES_PER_BEAM }, (_, particleIndex) => ({
-      id: `authority:${serving.pairKey}:P${particleIndex}`,
-      satelliteId: serving.satelliteId,
-      beamId: serving.beamId,
-      particleIndex,
-      color: serving.beamColor,
-      start: start.clone(),
-      end: end.clone(),
-      phaseOffset: particleIndex / SPINE_PARTICLES_PER_BEAM,
-    })));
-  }, [multiCandidateCentralOverlayActive, multiCandidateSceneRenderPlan, sceneFrame.ues]);
+  const multiCandidateAuthoritySpineParticlePlans = useMemo(() => (
+    resolveAuthoritySpineParticlePlans({
+      enabled: multiCandidateCentralOverlayActive,
+      serving: multiCandidateSceneRenderPlan?.instructions.find(instruction => instruction.isServing),
+      primaryUeWorld: sceneFrame.ues[0]?.worldPos,
+      particlesPerBeam: SPINE_PARTICLES_PER_BEAM,
+    })
+  ), [multiCandidateCentralOverlayActive, multiCandidateSceneRenderPlan, sceneFrame.ues]);
   const multiCandidateSatelliteColorsInput = useMemo<MultiCandidateSatelliteColorsInput>(
     () => ({
       acceptedSatelliteIdentities: Object.values(
@@ -3501,22 +3492,15 @@ function SceneRenderContent({
   const mountedMultiCandidateSceneRenderPlan = candidateComparisonSceneActive
     ? multiCandidateCandidateReviewRenderPlan
     : multiCandidateSceneRenderPlan;
-  const multiCandidateSceneRenderStatus: MultiCandidateSceneRenderStatus =
-    acceptedHandoverPresentation === null
-      ? 'no-accepted-snapshot'
-      : !multiCandidateSnapshotMatchesFrame
-        ? 'source-frame-mismatch'
-        : acceptedHandoverPresentation.phase === 'switching'
-          ? 'switching'
-          : acceptedHandoverPresentation.counts.hardEligible < 2
-            ? 'below-comparison-threshold'
-            : !multiCandidateComparisonPhase
-              ? 'phase-not-comparison'
-              : mountedMultiCandidateSceneRenderPlan === null
-                ? 'missing-scene-plan'
-                : mountedMultiCandidateSceneRenderPlan.unmappedPairs.length > 0
-                  ? 'unmapped-pairs'
-                  : 'active';
+  const multiCandidateSceneRenderStatus = resolveMultiCandidateSceneRenderStatus({
+    hasAcceptedSnapshot: acceptedHandoverPresentation !== null,
+    sourceFrameMatches: multiCandidateSnapshotMatchesFrame,
+    decisionPhase: acceptedHandoverPresentation?.phase ?? null,
+    hardEligibleCount: acceptedHandoverPresentation?.counts.hardEligible ?? 0,
+    comparisonPhase: multiCandidateComparisonPhase,
+    hasScenePlan: mountedMultiCandidateSceneRenderPlan !== null,
+    unmappedPairCount: mountedMultiCandidateSceneRenderPlan?.unmappedPairs.length ?? 0,
+  });
   // Keep the marker roles aligned with the anchored inter shot while the live
   // simulation is being rebuilt at the selected event lead-in. This is a
   // presentation identity only; the right rail and the published serving truth

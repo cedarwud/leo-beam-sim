@@ -72,7 +72,10 @@ import {
   deriveVisualLabDemoHandoverView,
   VISUAL_LAB_DEMO_HANDOVER_DURATION_MS,
 } from './visualLabDemoHandoverView';
+import { advanceVisualLabDemoReplay } from './visualLabDemoReplayClock';
 import { buildVisualLabFigureExportModel } from './visualLabFigureExportModel';
+import { resolveVisualLabDialogKeyAction } from './visualLabDialogKeyAction';
+import { deriveVisualLabReplayLaunchPlan } from './visualLabReplayLaunchPlan';
 import {
   DEFAULT_VISUAL_LAB_INPUTS,
   VISUAL_LAB_INPUT_DEFINITIONS,
@@ -358,21 +361,20 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     if (!clipShelfOpen) return undefined;
     clipCloseButtonRef.current?.focus();
     const handleDialogKeys = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
+      const focusable = [...(clipPanelRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled):not([tabindex="-1"])') ?? [])];
+      const action = resolveVisualLabDialogKeyAction({
+        key: event.key,
+        shiftKey: event.shiftKey,
+        activeIndex: focusable.indexOf(document.activeElement as HTMLButtonElement),
+        focusableCount: focusable.length,
+      });
+      if (action?.type === 'close') {
         setClipShelfOpen(false);
         return;
       }
-      if (event.key !== 'Tab') return;
-      const focusable = [...(clipPanelRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled):not([tabindex="-1"])') ?? [])];
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (action?.type === 'focus') {
         event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
+        focusable[action.index]?.focus();
       }
     };
     window.addEventListener('keydown', handleDialogKeys);
@@ -529,14 +531,13 @@ export function UnifiedVisualLabPrototype(): ReactElement {
       const now = performance.now();
       const deltaMs = Math.max(0, now - previousTickAt);
       previousTickAt = now;
-      const nextElapsedMs = current.elapsedMs + deltaMs;
-      if (nextElapsedMs >= VISUAL_LAB_DEMO_HANDOVER_DURATION_MS) {
+      const next = advanceVisualLabDemoReplay(current, deltaMs, VISUAL_LAB_DEMO_HANDOVER_DURATION_MS);
+      if (next === null) {
         demoReplayRef.current = null;
         setDemoReplay(null);
         setSimpleReplayKind(null);
         return;
       }
-      const next = Object.freeze({ ...current, elapsedMs: nextElapsedMs });
       demoReplayRef.current = next;
       setDemoReplay(next);
     }, 50);
@@ -1056,18 +1057,16 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     setClipLaunchError(null);
     setPlaying(false);
     try {
-      if (target.runtime === 'guided') {
-        if (target.clipId !== 'inter-handover' && target.clipId !== 'intra-beam-handover') {
-          throw new Error('Unknown guided replay target.');
-        }
+      const plan = deriveVisualLabReplayLaunchPlan(target);
+      if (plan.runtime === 'guided') {
         if (storyOpen) setStoryOpen(false);
         setStoryDirectorEnabled(true);
-        openModule(target.clipId === 'inter-handover' ? 'sinr' : 'power', false);
-        setView('service', false);
-        setFocus('handover');
+        openModule(plan.module, false);
+        setView(plan.view, false);
+        setFocus(plan.focus);
         setClipShelfOpen(false);
-        await guidedReplay.openStory(target.clipId, target.runtimeId);
-      } else if (target.runtime === 'story') {
+        await guidedReplay.openStory(plan.guidedReplayId, target.runtimeId);
+      } else if (plan.runtime === 'story') {
         if (causalReplay.open) await causalReplay.close();
         const selected = storyController.selectStory(target.runtimeId);
         const compiled = selected.stories.find(story => story.storyId === target.runtimeId) ?? null;
@@ -1080,20 +1079,14 @@ export function UnifiedVisualLabPrototype(): ReactElement {
         storyController.play();
         setStoryDirectorEnabled(true);
         setStoryOpen(true);
-        openModule('scene', false);
-        setView('service', false);
-        setFocus('handover');
+        openModule(plan.module, false);
+        setView(plan.view, false);
+        setFocus(plan.focus);
       } else {
-        const causalStoryId = target.runtimeId === 'power-cap'
-          ? 'power-cap'
-          : target.runtimeId === 'beamwidth'
-            ? 'beamwidth'
-            : null;
-        if (causalStoryId === null) throw new Error('Unknown causal replay target.');
         setStoryOpen(false);
         setStoryDirectorEnabled(true);
-        openModule(causalStoryId === 'beamwidth' ? 'sinr' : 'power', false);
-        await causalReplay.openStory(causalStoryId);
+        openModule(plan.module, false);
+        await causalReplay.openStory(plan.storyId);
         await causalReplay.togglePlay();
       }
       setClipShelfOpen(false);

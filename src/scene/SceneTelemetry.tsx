@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { REPLAY_CANVAS_ATTRIBUTES } from './replayCanvasAttributes';
+import type { MultiCandidateSceneRenderStatus } from './multiCandidateSceneRenderStatus';
 
 function formatCameraVector(vector: THREE.Vector3): string {
   return [vector.x, vector.y, vector.z].map(value => value.toFixed(2)).join(',');
@@ -124,17 +125,6 @@ export interface SceneTelemetryProps {
   // Artifact replay boundary control
   shouldClearReplayAttributes?: boolean;
 }
-
-export type MultiCandidateSceneRenderStatus =
-  | 'active'
-  | 'inactive'
-  | 'no-accepted-snapshot'
-  | 'source-frame-mismatch'
-  | 'below-comparison-threshold'
-  | 'switching'
-  | 'phase-not-comparison'
-  | 'missing-scene-plan'
-  | 'unmapped-pairs';
 
 export function SceneTelemetry(props: SceneTelemetryProps) {
   const gl = useThree(state => state.gl);

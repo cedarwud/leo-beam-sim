@@ -246,6 +246,8 @@ import {
   resolveSceneLane,
   type SceneLane,
 } from './app/sceneLane';
+import { resolveLiveWalkerEventIndexSourceGapReasons } from './app/liveWalkerEventIndexSourceGap';
+import { resolveTeachingInterRosterSatelliteIds } from './app/teachingInterRoster';
 import { MODQN_SERVICE_ALLOCATION_PRODUCER_READY } from './scene/sceneLaneRenderPlan';
 import {
   useDirectorOrchestration,
@@ -2272,25 +2274,16 @@ export function App() {
     simState.simTimeSec - liveTimelineWindowStartSec,
     LIVE_SIM_TIMELINE_DURATION_SEC,
   );
-  const liveWalkerHandoverEventIndexSourceGapReasons = useMemo(() => {
-    if (
-      sceneSource === 'live-sim'
-      && isWalkerSceneActive
-      && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
-      && liveWalkerHandoverEventIndexBuilding
-    ) {
-      return ['Source gap: rebuilding the live handover index for the current parameters.'] as const;
-    }
-    if (
-      sceneSource === 'live-sim'
-      && isWalkerSceneActive
-      && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
-      && liveWalkerHandoverEventIndex === null
-    ) {
-      return ['Source gap: live-scene handover event index is not ready.'] as const;
-    }
-    return liveWalkerHandoverEventIndex?.sourceGapReasons ?? [];
-  }, [isWalkerSceneActive, liveWalkerHandoverEventIndex, liveWalkerHandoverEventIndexBuilding, sceneLane, sceneSource]);
+  const liveWalkerHandoverEventIndexSourceGapReasons = useMemo(
+    () => resolveLiveWalkerEventIndexSourceGapReasons({
+      sceneSource,
+      isWalkerSceneActive,
+      sceneLane,
+      indexBuilding: liveWalkerHandoverEventIndexBuilding,
+      indexSourceGapReasons: liveWalkerHandoverEventIndex?.sourceGapReasons ?? null,
+    }),
+    [isWalkerSceneActive, liveWalkerHandoverEventIndex, liveWalkerHandoverEventIndexBuilding, sceneLane, sceneSource],
+  );
   const timelineRailDescriptor = useMemo(() => resolveTimelineRailDescriptor({
     sceneLane,
     sceneSource,
@@ -2935,26 +2928,12 @@ export function App() {
    */
   const teachingInterRosterSatelliteIds = useMemo<readonly string[]>(() => {
     const projection = homepageRailProjection;
-    const servingSatelliteId = projection?.serving?.satelliteId ?? null;
     const roster = projection?.visibleCandidates ?? projection?.candidates ?? [];
-    const satelliteIds = [...new Set(roster
-      .filter(link => servingSatelliteId === null || link.satelliteId !== servingSatelliteId)
-      .map(link => link.satelliteId))];
-    const bestEeBySatellite = new Map<string, number>();
-    for (const metric of projection?.beamMetrics?.metrics ?? []) {
-      if (metric.satelliteId === servingSatelliteId) continue;
-      const ee = metric.energyEfficiencyBitsPerJoule ?? Number.NEGATIVE_INFINITY;
-      const current = bestEeBySatellite.get(metric.satelliteId);
-      if (current === undefined || ee > current) bestEeBySatellite.set(metric.satelliteId, ee);
-      if (!satelliteIds.includes(metric.satelliteId)) satelliteIds.push(metric.satelliteId);
-    }
-    // Row 1 is the winner the narration argues for, so rank by the measured
-    // replacement efficiency rather than by the order the roster happened to
-    // publish. A stronger link is also a higher one, which keeps the transfer
-    // cone off the horizon where it would read as a smear on the terrain.
-    const ee = (satelliteId: string): number =>
-      bestEeBySatellite.get(satelliteId) ?? Number.NEGATIVE_INFINITY;
-    return Object.freeze([...satelliteIds].sort((left, right) => ee(right) - ee(left)));
+    return resolveTeachingInterRosterSatelliteIds({
+      servingSatelliteId: projection?.serving?.satelliteId ?? null,
+      candidateSatelliteIds: roster.map(link => link.satelliteId),
+      beamMetrics: projection?.beamMetrics?.metrics ?? [],
+    });
   }, [homepageRailProjection]);
 
   /**
