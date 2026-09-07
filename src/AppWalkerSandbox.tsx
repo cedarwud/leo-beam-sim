@@ -182,6 +182,9 @@ import {
   getModqnProducerTraceRange,
   resolveTimelineRailDescriptor,
 } from './app/timelineRailAuthority';
+import { resolveWalkerHandoverRailSeek } from './app/walkerHandoverRailSeek';
+import { canRequestWalkerIntraDemo } from './app/walkerIntraDemoAdmission';
+import { resolveWalkerTimelineSeek } from './app/walkerTimelineSeek';
 import { advanceArchivedTlePlaybackCursor } from './app/archivedTlePlayback';
 import {
   liveWalkerHandoverEventIndexToRailEvents,
@@ -260,8 +263,8 @@ import {
 } from './prototype/visual-lab-g0/visualLabUeGeometry';
 import {
   positionForWalkerVisualLabUeAngle,
-  type WalkerVisualLabUeGeometryInput,
 } from './app/walkerVisualLabUeGeometry';
+import { buildWalkerVisualLabUeGeometryInput } from './app/walkerVisualLabUeGeometryInput';
 import type { WalkerIntraTeachingDisplayInput } from './app/walkerIntraTeachingDisplay';
 import { focusForVisualLabInput } from './prototype/visual-lab-g0/visualLabInputFocus';
 import './prototype/visual-lab-g0/UnifiedVisualLabPrototype.scss';
@@ -813,15 +816,12 @@ export function AppWalkerSandbox() {
 
   const requestMovingIntraDemo = useCallback((origin: 'button' | 'scheduled' = 'button'): boolean => {
     const presentation = simState.intraHandoverPresentation;
-    if (
-      presentation === null
-      || presentation === undefined
-      || manualHandoverRequest !== null
-      || visibleHandover.active
-      || handoverBusyRef.current
-      || !Number.isFinite(presentation.servingSinrDb)
-      || !Number.isFinite(presentation.candidateSinrDb)
-    ) return false;
+    if (!canRequestWalkerIntraDemo({
+      presentation,
+      manualHandoverActive: manualHandoverRequest !== null,
+      visibleHandoverActive: visibleHandover.active,
+      handoverBusy: handoverBusyRef.current,
+    })) return false;
     manualHandoverWasPausedRef.current = playback.paused;
     // The display-only fallback must keep the source timeline running so the
     // source satellite and its beam apex continue to move during the cue.
@@ -1855,51 +1855,59 @@ export function AppWalkerSandbox() {
   }, [homepageCanonicalAnalysis, isLegacyWalkerRoute, resetAnalysisWindow, sceneLane]);
 
   const handleTimelineSeek = useCallback((targetSec: number) => {
-    const target = clampTimelineTime(targetSec, timelineDurationSec);
-    // Archived-TLE homepage: the hook owns the published anchor and the
-    // canonical frame. Never route this surface through Walker rebase/seek or
-    // reset the live analysis window; a seek selects only an already-computed
-    // 30-second anchor from the immutable run.
-    if (sceneLane === 'sinr-live' && !isLegacyWalkerRoute) {
+    const resolution = resolveWalkerTimelineSeek({
+      scene: {
+        lane: sceneLane,
+        source: sceneSource,
+        isLegacyWalkerRoute,
+      },
+      targetSec,
+      timeline: {
+        durationSec: timelineDurationSec,
+        axisKind: timelineRailDescriptor.timeline.axisKind,
+        axisDurationSec: timelineRailDescriptor.timeline.axisDurationSec,
+      },
+      rail: {
+        axisDurationSec: timelineRailDescriptor.rail.axisDurationSec,
+      },
+      live: {
+        windowStartSec: liveTimelineWindowStartSec,
+        durationSec: LIVE_SIM_TIMELINE_DURATION_SEC,
+      },
+    });
+
+    if (resolution.kind === 'archived-tle') {
       if (homepageCanonicalAnalysis.runReady ?? false) {
-        homepageCanonicalAnalysis.selectTimelineTimeSec?.(target);
+        homepageCanonicalAnalysis.selectTimelineTimeSec?.(resolution.targetSec);
       }
       return;
     }
-    if (sceneSource === 'artifact-replay') {
+    if (resolution.kind === 'artifact-replay') {
       resetAnalysisWindow();
-      replayController?.seek(target);
+      replayController?.seek(resolution.targetSec);
       return;
     }
-    if (timelineRailDescriptor.timeline.axisKind === 'display-stretched') {
+    if (resolution.kind === 'display-stretched') {
       resetAnalysisWindow();
-      setModqnReplayVisualElapsedSec(clampTimelineTime(target, timelineRailDescriptor.timeline.axisDurationSec));
+      setModqnReplayVisualElapsedSec(resolution.targetSec);
       return;
     }
-    if (sceneLane === 'modqn-replay-proof') {
+    if (resolution.kind === 'modqn-replay-proof') {
       resetAnalysisWindow();
-      const railAxisDurationSec = timelineRailDescriptor.rail.axisDurationSec;
-      const visualTargetSec = timelineDurationSec > 0 && railAxisDurationSec > 0
-        ? (target / timelineDurationSec) * railAxisDurationSec
-        : target;
-      setModqnReplayVisualElapsedSec(clampTimelineTime(visualTargetSec, railAxisDurationSec));
+      setModqnReplayVisualElapsedSec(resolution.targetSec);
       return;
     }
 
     // The visible live timeline starts at the profile's demo offset, but its
-    // source horizon still ends at the 7200s Walker cache boundary. Without
-    // this clamp, the rightmost jump sends `startOffset + duration` into the
-    // loop normalizer, which wraps it back to the demo start.
-    const absoluteTargetSec = Math.min(
-      liveTimelineWindowStartSec + target,
-      LIVE_SIM_TIMELINE_DURATION_SEC,
-    );
+    // source horizon still ends at the 7200s Walker cache boundary. The pure
+    // resolver clamps this source target so the rightmost jump cannot wrap the
+    // live loop back to the demo start.
     requestLiveTimelineSeek({
-      targetSec: absoluteTargetSec,
-      requestKey: `${absoluteTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
+      targetSec: resolution.sourceTargetSec,
+      requestKey: `${resolution.sourceTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
     });
     setLiveObservedHandoverRailEvents([]);
-    setModqnReplayVisualElapsedSec(target);
+    setModqnReplayVisualElapsedSec(resolution.visualTargetSec);
   }, [
     resetAnalysisWindow,
     homepageCanonicalAnalysis,
@@ -2147,24 +2155,27 @@ export function AppWalkerSandbox() {
   }, [appMode, applyHandoverModeSideEffects, camera, cancelPendingLiveFocus, effectiveProfile, handleAppModeChange, handoverMode, sceneLane, sceneSource]);
 
   const handleHandoverRailSeek = useCallback((targetSec: number) => {
-    if (sceneLane === 'sinr-live') {
-      handleTimelineSeek(targetSec);
+    const resolution = resolveWalkerHandoverRailSeek({
+      sceneLane,
+      directorFocusEnabled,
+      targetSec,
+      railDurationSec: timelineRailDescriptor.rail.durationSec,
+      liveTimelineWindowStartSec,
+      timelineDurationSec,
+    });
+    if (resolution.kind === 'timeline') {
+      handleTimelineSeek(resolution.targetSec);
       return;
     }
-    if (directorFocusEnabled) {
-      const sourceTarget = clampTimelineTime(targetSec, timelineRailDescriptor.rail.durationSec);
+    if (resolution.kind === 'director-live') {
       requestLiveTimelineSeek({
-        targetSec: sourceTarget,
-        requestKey: `${sourceTarget.toFixed(3)}:${Date.now().toString(36)}`,
+        targetSec: resolution.sourceTargetSec,
+        requestKey: `${resolution.sourceTargetSec.toFixed(3)}:${Date.now().toString(36)}`,
       });
       setLiveObservedHandoverRailEvents([]);
-      setModqnReplayVisualElapsedSec(clampTimelineTime(
-        sourceTarget - liveTimelineWindowStartSec,
-        timelineDurationSec,
-      ));
+      setModqnReplayVisualElapsedSec(resolution.visualTargetSec);
       return;
     }
-    handleTimelineSeek(targetSec);
   }, [
     directorFocusEnabled,
     handleTimelineSeek,
@@ -2446,33 +2457,14 @@ export function AppWalkerSandbox() {
     setVlabRefSelectedUe(null);
     void vlabRefSession.dispatch({ type: 'resetRepresentativeUeFrameOptions' });
   }, [vlabRefSession]);
-  const vlabRefUeGeometryInput = useMemo<WalkerVisualLabUeGeometryInput | null>(() => {
-    if (
-      vlabRefSnapshot === null
-      || vlabRefLocalScene?.representative.availability !== 'available'
-      || vlabRefLocalScene.representative.user === null
-      || vlabRefLocalScene.representative.cell === null
-      || vlabRefSnapshot.serving.distanceKm === null
-      || vlabRefSnapshot.serving.elevationDeg === null
-      || !Number.isFinite(vlabRefLocalScene.substrate.worldUnitsPerKm)
-      || vlabRefLocalScene.substrate.worldUnitsPerKm <= 0
-    ) return null;
-    const representative = vlabRefLocalScene.representative;
-    return {
-      link: {
-        satelliteDistanceKm: vlabRefSnapshot.serving.distanceKm,
-        satelliteElevationDeg: vlabRefSnapshot.serving.elevationDeg,
-      },
-      geometry: {
-        beamCenterKm: representative.cell.centerKm,
-        acceptedPositionKm: representative.user.positionKm,
-        cellRadiusKm: vlabRefLocalScene.substrate.cellRadiusKm,
-        worldUnitsPerKm: vlabRefLocalScene.substrate.worldUnitsPerKm,
-      },
-      representativeUserIndex: representative.user.index,
+  const vlabRefUeGeometryInput = useMemo(
+    () => buildWalkerVisualLabUeGeometryInput({
+      snapshot: vlabRefSnapshot,
+      localScene: vlabRefLocalScene,
       selectedUeWorldPosition: vlabRefSelectedUe,
-    };
-  }, [vlabRefLocalScene, vlabRefSelectedUe, vlabRefSnapshot]);
+    }),
+    [vlabRefLocalScene, vlabRefSelectedUe, vlabRefSnapshot],
+  );
   const { vlabRefUeGeometry } = useWalkerVisualLabGeometry({ vlabRefUeGeometryInput });
   const vlabRefUeGeometryControls: VisualLabUeGeometryControls | null = useMemo(() => {
     if (vlabRefUeGeometry === null) return null;

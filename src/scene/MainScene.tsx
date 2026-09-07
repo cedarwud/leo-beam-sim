@@ -116,7 +116,6 @@ import {
 } from '../viz/CellBeamCones';
 import {
   SinrLiveCellBeamCones,
-  type SinrLiveCellPlacement,
   type SinrLiveCellBeamConeRenderItem,
   type SinrLiveCinemaHandoverCandidate,
 } from '../viz/SinrLiveCellBeamCones';
@@ -269,6 +268,12 @@ import {
 } from './homepageSceneBeamVisibility';
 import { useHomepageBeamVisibility } from './useHomepageBeamVisibility';
 import { useBeamInfoItems } from './useBeamInfoItems';
+import { resolveSinrLiveCellPlacementById } from './sinrLiveCellPlacement';
+import { resolveMultiCandidateBeamColors } from './multiCandidateBeamColors';
+import { resolveHandoverMarkerSatelliteIds } from './handoverMarkerSatelliteIds';
+import { resolveHomepageIntraCellAnchor } from './homepageIntraCellAnchor';
+import { resolveSinrLiveCellTruthSpineParticlePlans } from './sinrLiveCellTruthSpineParticlePlans';
+import { resolveLatchedAuthorityTransition } from './latchedAuthorityTransition';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -1456,35 +1461,19 @@ function SceneRenderContent({
   // cell truth uses (so cellIds match `sim.sinrLiveCells`) and the SAME
   // `worldUnitsPerKm` the UE markers use (east → +X, north → −Z), so a cone base
   // and its UEs share one frame. Empty off the sinr-live lane.
-  const sinrLiveCellPlacementById = useMemo<ReadonlyMap<number, SinrLiveCellPlacement>>(() => {
-    if (!useEarthFixedCellTruth) return new Map();
-    if (canonicalScenario !== undefined && archivedTlePlacement !== undefined) {
-      const placement = archivedTlePlacement;
-      return new Map(placement.cells.map(cell => [cell.canonicalCellId, {
-        cellId: cell.canonicalCellId,
-        worldX: cell.centerKm[0] * worldUnitsPerKm,
-        worldZ: -cell.centerKm[1] * worldUnitsPerKm,
-        radiusWorld: cell.radiusKm * worldUnitsPerKm,
-        worldUnitsPerKm,
-      }]));
-    }
-    const activeLayout = buildSinrLiveCellLayout(
-      profile,
-      resolveSinrLiveSceneCellCount(runtime.servingBeamCount),
-    );
-    return new Map(activeLayout.centers.map(center => [center.cellId, {
-      cellId: center.cellId,
-      worldX: center.localXKm * worldUnitsPerKm,
-      worldZ: -center.localYKm * worldUnitsPerKm,
-      radiusWorld: activeLayout.cellRadiusKm * worldUnitsPerKm,
-      worldUnitsPerKm,
-    }]));
-  }, [
+  const sinrLiveCellPlacementById = useMemo(() => resolveSinrLiveCellPlacementById({
+    enabled: useEarthFixedCellTruth,
+    hasCanonicalScenario: canonicalScenario !== undefined,
+    archivedTlePlacement,
+    profile,
+    servingBeamCount: runtime.servingBeamCount,
+    worldUnitsPerKm,
+  }), [
     archivedTlePlacement,
     canonicalScenario,
+    profile,
     runtime.servingBeamCount,
     useEarthFixedCellTruth,
-    profile,
     worldUnitsPerKm,
   ]);
   const cellSchedule = useCellSchedule({
@@ -2211,67 +2200,19 @@ function SceneRenderContent({
     ],
   );
   const { multiCandidateSatelliteColorById } = useMultiCandidateSatelliteColors({ multiCandidateSatelliteColorsInput });
-  const multiCandidateBeamColorBySatelliteCell = useMemo(() => {
-    const colors = new Map<string, string>();
-    for (const instruction of multiCandidateSceneRenderPlan?.instructions ?? []) {
-      // The accepted plan carries the same beam token used by the rail. Keep
-      // the HSL resolver only as a fallback for an ambient beam absent from the
-      // snapshot; otherwise a collision-resolved rail identity would diverge
-      // from the transition cone by one shade.
-      colors.set(
-        `${instruction.satelliteId}/${instruction.cellId}`,
-        resolveSceneAcceptedBeamColor(
-          instruction.satelliteId,
-          instruction.beamId,
-          colorForServingBeam(instruction.satelliteId, instruction.cellId).markerColor,
-          instruction.isServing || instruction.isCandidate,
-        ),
-      );
-    }
-    if (multiCandidateAuthorityActive) {
-      for (const link of acceptedHandoverPresentation?.plan.displayedLinks ?? []) {
-        const cellId = cellIdFromLinkBudgetBeamId(link.beamId);
-        colors.set(
-          `${link.satelliteId}/${cellId}`,
-          resolveSceneAcceptedBeamColor(
-            link.satelliteId,
-            link.beamId,
-            colorForServingBeam(link.satelliteId, cellId).markerColor,
-            link.isServing || link.isCandidate,
-          ),
-        );
-      }
-    }
-    return colors;
-  }, [acceptedHandoverPresentation, multiCandidateAuthorityActive, multiCandidateSceneRenderPlan, resolveSceneAcceptedBeamColor]);
-  const multiCandidateBeamColorBySatelliteBeam = useMemo(() => {
-    const colors = new Map<string, string>();
-    for (const instruction of multiCandidateSceneRenderPlan?.instructions ?? []) {
-      colors.set(
-        `${instruction.satelliteId}/${instruction.beamId}`,
-        resolveSceneAcceptedBeamColor(
-          instruction.satelliteId,
-          instruction.beamId,
-          colorForServingBeam(instruction.satelliteId, instruction.cellId).markerColor,
-          instruction.isServing || instruction.isCandidate,
-        ),
-      );
-    }
-    if (multiCandidateAuthorityActive) {
-      for (const link of acceptedHandoverPresentation?.plan.displayedLinks ?? []) {
-        colors.set(
-          `${link.satelliteId}/${link.beamId}`,
-          resolveSceneAcceptedBeamColor(
-            link.satelliteId,
-            link.beamId,
-            colorForServingBeam(link.satelliteId, cellIdFromLinkBudgetBeamId(link.beamId)).markerColor,
-            link.isServing || link.isCandidate,
-          ),
-        );
-      }
-    }
-    return colors;
-  }, [acceptedHandoverPresentation, multiCandidateAuthorityActive, multiCandidateSceneRenderPlan, resolveSceneAcceptedBeamColor]);
+  const multiCandidateBeamColors = useMemo(() => resolveMultiCandidateBeamColors({
+    sceneInstructions: multiCandidateSceneRenderPlan?.instructions ?? [],
+    authorityDisplayedLinks: acceptedHandoverPresentation?.plan.displayedLinks ?? [],
+    authorityActive: multiCandidateAuthorityActive,
+    resolveBeamColor: resolveSceneAcceptedBeamColor,
+  }), [
+    acceptedHandoverPresentation,
+    multiCandidateAuthorityActive,
+    multiCandidateSceneRenderPlan,
+    resolveSceneAcceptedBeamColor,
+  ]);
+  const multiCandidateBeamColorBySatelliteCell = multiCandidateBeamColors.bySatelliteCell;
+  const multiCandidateBeamColorBySatelliteBeam = multiCandidateBeamColors.bySatelliteBeam;
   const liveBeamIdentityColorBySatelliteBeam = useMemo(() => {
     const colors = new Map<string, string>();
     // Use the actual rendered beam roster so ground effects and the central
@@ -2392,35 +2333,16 @@ function SceneRenderContent({
   const satelliteCandidateLabelVisibleSatelliteIds = candidateComparisonSceneActive
     ? candidateComparisonVisibleSatelliteIds
     : homepageCandidateStageVisibleSatelliteIds;
-  const handoverMarkerSatelliteIds = useMemo(() => {
-    const ids = new Set<string>();
-    if (multiCandidateSceneVisualActive) {
-      for (const satelliteId of multiCandidateCentralMarkerSatelliteIds ?? []) {
-        ids.add(satelliteId);
-      }
-    }
-    if (renderedCandidateSatelliteId !== null && renderedCandidateSatelliteId !== undefined) {
-      ids.add(renderedCandidateSatelliteId);
-    }
-    if (candidateComparisonSceneActive && multiCandidateCandidateReviewRenderPlan !== null) {
-      // The accepted plan can contain a candidate just outside the ambient
-      // display slice. Add only the small central shortlist so its GLB can be
-      // matched to the dashed measurement line and the rail swatch.
-      for (const satelliteId of candidateComparisonVisibleSatelliteIds ?? []) {
-        ids.add(satelliteId);
-      }
-    }
-    if (handoverCinemaCandidate !== null) {
-      ids.add(handoverCinemaCandidate.fromSatId);
-      ids.add(handoverCinemaCandidate.toSatId);
-    }
-    const transition = handoverAuthorityJoin?.transition;
-    if (transition !== null && transition !== undefined) {
-      ids.add(transition.from.satelliteId);
-      ids.add(transition.to.satelliteId);
-    }
-    return ids;
-  }, [
+  const handoverMarkerSatelliteIds = useMemo(() => resolveHandoverMarkerSatelliteIds({
+    multiCandidateSceneVisualActive,
+    multiCandidateCentralMarkerSatelliteIds,
+    renderedCandidateSatelliteId,
+    candidateComparisonSceneActive,
+    candidateReviewRenderPlanPresent: multiCandidateCandidateReviewRenderPlan !== null,
+    candidateComparisonVisibleSatelliteIds,
+    handoverCinemaCandidate,
+    authorityTransition: handoverAuthorityJoin?.transition,
+  }), [
     handoverAuthorityJoin,
     handoverCinemaCandidate,
     candidateComparisonSceneActive,
@@ -2982,21 +2904,20 @@ function SceneRenderContent({
   // from/to cell ids in the event and rail joins. Inter handovers continue to
   // use the UE-centred anchor below because their two satellites are distinct.
   const homepageIntraCellAnchor = useMemo(() => {
-    const sourceCellId = presentedHandoverPairCandidate?.kind === 'intra'
-      ? presentedHandoverPairCandidate.fromCellId
-      : handoverPresentationCandidate?.kind === 'intra'
-        ? handoverPresentationCandidate.from.cellId
-        : recentPrimaryHandoverEvent?.kind === 'intra'
-          ? recentPrimaryHandoverEvent.fromCellId
-          : manualHandoverEvent?.kind === 'intra'
-            ? manualHandoverEvent.fromCellId
-            : displayHeroRecord?.cellId ?? null;
-    const placement = sourceCellId === null || sourceCellId === undefined
-      ? undefined
-      : sinrLiveCellPlacementById.get(sourceCellId);
-    return placement === undefined
-      ? manualHandoverGroundTarget
-      : new THREE.Vector3(placement.worldX, 0, placement.worldZ);
+    const point = resolveHomepageIntraCellAnchor({
+      presentedHandoverPairCandidate,
+      handoverPresentationCandidate,
+      recentPrimaryHandoverEvent,
+      manualHandoverEvent,
+      displayHeroCellId: displayHeroRecord?.cellId,
+      placementByCellId: sinrLiveCellPlacementById,
+      fallback: {
+        x: manualHandoverGroundTarget.x,
+        y: manualHandoverGroundTarget.y,
+        z: manualHandoverGroundTarget.z,
+      },
+    });
+    return new THREE.Vector3(point.x, point.y, point.z);
   }, [
     displayHeroRecord?.cellId,
     handoverPresentationCandidate,
@@ -3266,32 +3187,14 @@ function SceneRenderContent({
   // area while the earth-fixed cell cone/grid is elsewhere.  The ambient stream
   // therefore follows the one visible hero cell cone, and disappears when that
   // cone is not drawable instead of flying toward a stale target.
-  const sinrLiveCellTruthSpineParticlePlans = useMemo<readonly SpineParticlePlan[]>(() => {
-    if (!showSinrLiveCellBeams || multiCandidateCentralOverlayActive) return [];
-    const heroSatId = displayHeroRecord?.servingSatId;
-    const heroCellId = displayHeroRecord?.cellId;
-    if (heroSatId === undefined || heroCellId === undefined) return [];
-    const heroCone = restrictHomepageBeamItems(sinrLiveCellBeamConeItems).find(item => (
-      item.serving
-      && item.satId === heroSatId
-      && item.cellId === heroCellId
-    ));
-    if (heroCone === undefined) return [];
-    const start = heroCone.apex.clone();
-    const end = heroCone.baseCenter.clone();
-    return Object.freeze(Array.from({ length: SPINE_PARTICLES_PER_BEAM }, (_, particleIndex) => ({
-      id: `cell-truth:${heroCone.satId}:C${heroCone.cellId}:P${particleIndex}`,
-      satelliteId: heroCone.satId,
-      beamId: cellLinkBudgetBeamId(heroCone.cellId),
-      particleIndex,
-      // The carrier remains the same, but its colour follows the serving
-      // satellite/beam identity instead of the semantic serving-yellow role.
-      color: heroCone.color,
-      start: start.clone(),
-      end: end.clone(),
-      phaseOffset: particleIndex / SPINE_PARTICLES_PER_BEAM,
-    })));
-  }, [
+  const sinrLiveCellTruthSpineParticlePlans = useMemo(() => resolveSinrLiveCellTruthSpineParticlePlans({
+    enabled: showSinrLiveCellBeams,
+    multiCandidateCentralOverlayActive,
+    displayHeroRecord,
+    coneItems: sinrLiveCellBeamConeItems,
+    restrictItems: restrictHomepageBeamItems,
+    particlesPerBeam: SPINE_PARTICLES_PER_BEAM,
+  }), [
     displayHeroRecord,
     multiCandidateCentralOverlayActive,
     restrictHomepageBeamItems,
@@ -3499,28 +3402,14 @@ function SceneRenderContent({
   // remains armed; this keeps the final handover state readable instead of ending
   // on an empty viewport. Display-only; no simulation record is changed.
 
-  const latchedAuthorityTransition = useMemo<AuthorityHandoverTransition | null>(() => {
-    const event = handoverPresentation.event;
-    const transition = authorityTransitionRef.current;
-    if (
-      !(multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
-      || !handoverPresentation.active
-      || event === null
-      || transition === null
-      || transition.eventId !== event.eventId
-    ) return null;
-    const committed = authorityPresentationCommitObserved || transition.boundary === 'committed';
-    return Object.freeze({
-      eventId: transition.eventId,
-      episodeId: transition.episodeId,
-      sourceFrameId: transition.sourceFrameId,
-      simTimeMs: transition.simTimeMs,
-      kind: transition.kind,
-      boundary: committed ? 'committed' : 'selected',
-      from: transition.from,
-      to: transition.to,
-    });
-  }, [
+  const latchedAuthorityTransition = useMemo<AuthorityHandoverTransition | null>(() => resolveLatchedAuthorityTransition({
+    multiCandidateCentralOverlayActive,
+    multiCandidateIdentityTransitionActive,
+    presentationActive: handoverPresentation.active,
+    presentationEvent: handoverPresentation.event,
+    authorityTransition: authorityTransitionRef.current,
+    authorityPresentationCommitObserved,
+  }), [
     handoverPresentation.active,
     handoverPresentation.event,
     handoverPresentation.phase,

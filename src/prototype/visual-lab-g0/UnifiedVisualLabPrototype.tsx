@@ -17,7 +17,6 @@ import { useVisualLabSession } from '../../visualLab/session';
 import {
   deriveVisualLabStorySceneDirection,
   useVisualLabStoryController,
-  type VisualLabStorySceneDirection,
 } from '../../visualLab/story';
 import {
   VisualLabStoryRail,
@@ -48,6 +47,7 @@ import {
   type VisualLabGuidedReplayNormalizedAnchorMap,
 } from '../../visualLab/guidedReplay';
 import type { VisualLabInspectTarget } from './presentation/visualLabPresentationContract';
+import { visualLabShellUiCopy } from './presentation/visualLabShellUiCopy';
 import {
   captureCanvasToWebm,
   type VisualLabCaptureBundle,
@@ -64,7 +64,13 @@ import {
   type VisualLabClipFramePresentation,
 } from './visualLabClipCompositor';
 import { visualLabCopy } from './presentation/visualLabCopy';
-import type { VisualLabCanonicalSnapshot } from './visualLabCanonicalSnapshotAdapter';
+import { deriveVisualLabClipAvailability } from './visualLabClipAvailability';
+import {
+  deriveVisualLabDemoDirection,
+  type VisualLabDemoHandoverKind,
+  type VisualLabDemoReplayState,
+} from './visualLabDemoDirection';
+import { buildVisualLabFigureExportModel } from './visualLabFigureExportModel';
 import {
   DEFAULT_VISUAL_LAB_INPUTS,
   VISUAL_LAB_INPUT_DEFINITIONS,
@@ -81,11 +87,10 @@ import { useVisualLabCausalReplay } from './useVisualLabCausalReplay';
 import { useVisualLabGuidedReplay } from './useVisualLabGuidedReplay';
 import { focusForVisualLabInput } from './visualLabInputFocus';
 import {
-  degreesFromRadians,
-  offAxisAngleRadForVisualLabUe,
   positionForVisualLabUeOffAxisAngle,
   radiansFromDegrees,
 } from './visualLabUeGeometry';
+import { deriveVisualLabUeGeometryControls } from './visualLabUeGeometryControls';
 import { canonicalHandoverPresentation } from './visualLabHandoverPresentation';
 import { advanceVisualLabPlayback } from './visualLabPlaybackClock';
 import {
@@ -119,13 +124,6 @@ const GUIDED_REPLAY_ANNOTATION_ANCHORS: VisualLabGuidedReplayNormalizedAnchorMap
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-type DemoHandoverKind = 'intra-handover' | 'inter-handover';
-
-interface DemoHandoverState {
-  readonly kind: DemoHandoverKind;
-  readonly elapsedMs: number;
 }
 
 interface DemoHandoverView {
@@ -223,7 +221,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [storyOpen, setStoryOpen] = useState(false);
   const [simpleReplayKind, setSimpleReplayKind] = useState<'intra-handover' | 'inter-handover' | null>(null);
-  const [demoReplay, setDemoReplay] = useState<DemoHandoverState | null>(null);
+  const [demoReplay, setDemoReplay] = useState<VisualLabDemoReplayState | null>(null);
   const [storyDirectorEnabled, setStoryDirectorEnabled] = useState(true);
   const [sceneLabelsVisible, setSceneLabelsVisible] = useState(true);
   const [clipShelfOpen, setClipShelfOpen] = useState(false);
@@ -241,7 +239,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
   const clipCloseButtonRef = useRef<HTMLButtonElement>(null);
   const clipCaptureAbortRef = useRef<AbortController | null>(null);
   const clipFrameRef = useRef<VisualLabClipFramePresentation | null>(null);
-  const demoReplayRef = useRef<DemoHandoverState | null>(null);
+  const demoReplayRef = useRef<VisualLabDemoReplayState | null>(null);
   const guidedHandoverActive = guidedReplay.open && isGuidedHandoverPhase(guidedReplay.phase);
   const guidedReturnProgress = guidedReplay.open
     ? guidedReplayReturnProgress(guidedReplay.phase, guidedReplay.progress.phaseElapsedMs)
@@ -279,47 +277,19 @@ export function UnifiedVisualLabPrototype(): ReactElement {
           : storyBeamTrace.to.beamId,
         phase: storyState.activeStep.phase,
       } as const;
-  const demoDirection = useMemo<VisualLabStorySceneDirection | null>(() => {
-    if (demoReplay === null || demoReplayView === null || localScene === null) return null;
-    const rankedSatellites = localScene.satellites
-      .slice()
-      .sort((left, right) => right.topocentric.elevationDeg - left.topocentric.elevationDeg);
-    // The intra path preserves the accepted serving identity and footprint.
-    // The inter path starts from the highest visible pair in the retained
-    // pool, so a stale low-elevation candidate cannot open the story.
-    const servingSatellite = demoReplay.kind === 'inter-handover'
-      ? rankedSatellites[0] ?? localScene.serving
-      : localScene.serving;
-    const servingId = servingSatellite.satelliteId;
-    const otherSatellite = rankedSatellites.find(satellite => satellite.satelliteId !== servingId)
-      ?? (localScene.candidate.availability === 'available' && localScene.candidate.satelliteId !== servingId ? localScene.candidate : null);
-    const targetId = demoReplay.kind === 'intra-handover'
-      ? servingId
-      : otherSatellite?.satelliteId ?? `${servingId}-demo-candidate`;
-    const user = localScene.representative.availability === 'available'
-      ? localScene.representative.user
-      : localScene.substrate.users[0] ?? null;
-    const fromBeamId = user === null
-      ? localScene.activeBeamTargets.targets[0]?.beamId ?? 0
-      : localScene.activeBeamTargets.targets.find(target => target.cellIndex === user.cellIndex)?.beamId
-        ?? localScene.activeBeamTargets.targets[0]?.beamId
-        ?? 0;
-    // A same-satellite handover changes the beam ownership presentation on
-    // the same UE/cell; it must not draw a fictional jump to another cell.
-    const toBeamId = fromBeamId;
-    return Object.freeze({
-      storyId: `demo:${demoReplay.kind}`,
-      storyKind: demoReplay.kind === 'intra-handover' ? 'intra-handover' : 'inter-handover',
-      beat: demoReplayView.beat,
-      cameraCue: demoReplayView.beat === 'before'
-        ? 'handover-before'
-        : demoReplayView.beat === 'decision' ? 'handover-decision' : 'handover-after',
-      fromSatelliteId: servingId,
-      toSatelliteId: targetId,
-      fromBeamId: demoReplay.kind === 'intra-handover' ? fromBeamId : null,
-      toBeamId: demoReplay.kind === 'intra-handover' ? toBeamId : null,
-      userIndex: user?.index ?? null,
-      revision: `demo:${demoReplay.kind}:${demoReplayView.phase}:${Math.round(demoReplay.elapsedMs / 80)}`,
+  const demoDirection = useMemo(() => {
+    if (demoReplay === null || demoReplayView === null) return null;
+    return deriveVisualLabDemoDirection({
+      replay: demoReplay,
+      view: demoReplayView,
+      scene: localScene === null ? null : {
+        satellites: localScene.satellites,
+        serving: localScene.serving,
+        candidate: localScene.candidate,
+        representative: localScene.representative,
+        users: localScene.substrate.users,
+        activeBeamTargets: localScene.activeBeamTargets,
+      },
     });
   }, [demoReplay, demoReplayView, localScene]);
   const demoBeamFocus = useMemo(() => {
@@ -400,95 +370,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     : globalRenderReady
       ? 'ready' as const
       : globalArtifactState.status === 'loading' || applyingSource ? 'loading' as const : 'idle' as const;
-  const ui = lab.presentation.locale === 'zh-Hant' ? {
-    sourceAria: '目前場景來源',
-    fieldAria: '場域切換',
-    modulesAria: '可逐步加入的分析模組',
-    ntpuField: 'NTPU 場域',
-    globalField: '全球軌道',
-    active: '目前操作',
-    added: '已加入',
-    add: '加入',
-    unavailable: '目前資料無法建立',
-    building: '正在建立衛星軌道與鏈路結果',
-    buildingHint: '完整計算完成後即可調整參數。',
-    centerAria: '視覺化場景、故事與時間軸',
-    showSceneLabels: '顯示標籤',
-    rebuilding: '正在更新衛星軌道場景',
-    replayLibrary: '情境回放',
-    closeReplay: '結束回放',
-    closeReplayLibrary: '關閉情境回放',
-    intraHandover: '同衛星換手',
-    interHandover: '跨衛星換手',
-    stopHandover: '停止換手播放',
-    downloadReplay: '下載回放',
-    recordingReplay: '正在錄製回放…',
-    replayDownloaded: '回放影片與來源資訊已下載。',
-    legendAria: '場景圖例',
-    earthPrimary: '服務、候選與軌跡',
-    earthVisible: 'NTPU 可見衛星',
-    earthContext: '同一 TLE 時刻的其他衛星',
-    skyServing: '服務軌跡',
-    skyCandidate: '候選軌跡',
-    skyContext: '其他可見衛星',
-    serviceServing: '服務衛星與波束',
-    serviceCandidate: '候選衛星與波束',
-    serviceContext: '其他衛星與干擾',
-    energy: '能量流',
-    timelineBuilding: '正在建立完整時間軸',
-    timelineLocked: '計算完成前不開放尚未建立的時間點。',
-    calculationProgress: '軌道與鏈路計算進度',
-    resultBuilding: '正在建立計算結果',
-    resultLocked: '目前還沒有可顯示的完整結果。',
-    skipControls: '跳到參數控制',
-    skipScene: '跳到視覺化場景',
-    skipResults: '跳到計算結果',
-    switchTheme: lab.presentation.theme === 'dark' ? '切換至淺色主題' : '切換至深色主題',
-  } : {
-    sourceAria: 'Current scene source',
-    fieldAria: 'Field switch',
-    modulesAria: 'Analysis modules that can be revealed progressively',
-    ntpuField: 'NTPU field',
-    globalField: 'Global orbit',
-    active: 'Active',
-    added: 'Shown',
-    add: 'Add',
-    unavailable: 'The selected data could not be built',
-    building: 'Building orbit and link results',
-    buildingHint: 'Controls become available when the complete calculation is ready.',
-    centerAria: 'Visualization scene, story, and timeline',
-    showSceneLabels: 'Show labels',
-    rebuilding: 'Updating the satellite-orbit scene',
-    replayLibrary: 'Scenario replay',
-    closeReplay: 'End replay',
-    closeReplayLibrary: 'Close scenario replay',
-    intraHandover: 'Intra-satellite beam switch',
-    interHandover: 'Inter-satellite handover',
-    stopHandover: 'Stop handover playback',
-    downloadReplay: 'Download replay',
-    recordingReplay: 'Recording replay…',
-    replayDownloaded: 'The replay video and provenance have been downloaded.',
-    legendAria: 'Scene legend',
-    earthPrimary: 'Serving, candidate, and trajectories',
-    earthVisible: 'Satellites visible from NTPU',
-    earthContext: 'Other satellites at the same TLE instant',
-    skyServing: 'Serving pass',
-    skyCandidate: 'Candidate pass',
-    skyContext: 'Other visible satellites',
-    serviceServing: 'Serving satellite and beams',
-    serviceCandidate: 'Candidate satellite and beam',
-    serviceContext: 'Other satellites and interference',
-    energy: 'Energy flow',
-    timelineBuilding: 'Building the complete timeline',
-    timelineLocked: 'Times that have not been computed remain unavailable.',
-    calculationProgress: 'Orbit and link computation progress',
-    resultBuilding: 'Building computed results',
-    resultLocked: 'No complete result is available yet.',
-    skipControls: 'Skip to parameter controls',
-    skipScene: 'Skip to visualization scene',
-    skipResults: 'Skip to computed results',
-    switchTheme: lab.presentation.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme',
-  } as const;
+  const ui = visualLabShellUiCopy(lab.presentation.locale, lab.presentation.theme);
 
   useEffect(() => {
     setSelectedUe(null);
@@ -620,54 +502,21 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     && lab.accepted.analysisRunId.length > 0
     && snapshot !== null
     && requiredSceneAssetsReady;
-  const clipEntries = createVisualLabClipEntries({
-    'inter-handover': {
-      status: storyState.availability.interHandover.status === 'available'
-        ? causalReplayAvailable ? 'available' : 'pending'
-        : 'unavailable',
-      reason: storyState.availability.interHandover.status === 'available'
-        ? causalReplayAvailable ? null : lab.presentation.locale === 'zh-Hant' ? '等待完整 A/B 場景建立。' : 'Waiting for the complete A/B scene.'
-        : lab.presentation.locale === 'zh-Hant'
-          ? '目前資料沒有完整的跨衛星換手三錨點。'
-          : 'The current source has no complete three-anchor inter-satellite handover.',
-      runtimeId: storyState.availability.interHandover.selectedStoryId,
-      sourceLabel: replaySourceLabel,
+  const clipEntries = createVisualLabClipEntries(deriveVisualLabClipAvailability({
+    locale: lab.presentation.locale,
+    sourceLabel: replaySourceLabel,
+    causalReplayAvailable,
+    acceptedRunReady: lab.accepted?.runReady === true,
+    hasSnapshot: snapshot !== null,
+    phaseReady: lab.phase === 'ready',
+    interHandover: {
+      status: storyState.availability.interHandover.status,
+      selectedStoryId: storyState.availability.interHandover.selectedStoryId,
     },
-    'intra-beam-handover': {
-      status: storyState.availability.intraHandover.status === 'available'
-        ? causalReplayAvailable ? 'available' : 'pending'
-        : lab.phase === 'ready' && lab.accepted?.runReady === true && snapshot !== null
-          ? 'preparing'
-          : 'unavailable',
-      reason: storyState.availability.intraHandover.status === 'available'
-        ? causalReplayAvailable ? null : lab.presentation.locale === 'zh-Hant' ? '等待完整 A/B 場景建立。' : 'Waiting for the complete A/B scene.'
-        : lab.phase === 'ready' && lab.accepted?.runReady === true && snapshot !== null
-          ? lab.presentation.locale === 'zh-Hant'
-            ? '播放時會先用同一筆 archived-TLE 真實資料建立 beam-hopping 三錨點，核對後才開始回放。'
-            : 'Playback first builds and checks a beam-hopping three-anchor trace from the same archived-TLE run.'
-          : lab.presentation.locale === 'zh-Hant'
-            ? '目前資料尚未完成，無法準備同衛星換束軌跡。'
-            : 'The current source is not complete enough to prepare a same-satellite beam-switch trace.',
-      runtimeId: 'intra-handover',
-      sourceLabel: replaySourceLabel,
+    intraHandover: {
+      status: storyState.availability.intraHandover.status,
     },
-    'link-gain-ab': {
-      status: causalReplayAvailable ? 'available' : 'pending',
-      reason: causalReplayAvailable
-        ? null
-        : lab.presentation.locale === 'zh-Hant' ? '等待完整場景建立。' : 'Waiting for the complete scene.',
-      runtimeId: 'beamwidth',
-      sourceLabel: replaySourceLabel,
-    },
-    'power-cap-ab': {
-      status: causalReplayAvailable ? 'available' : 'pending',
-      reason: causalReplayAvailable
-        ? null
-        : lab.presentation.locale === 'zh-Hant' ? '等待完整場景建立。' : 'Waiting for the complete scene.',
-      runtimeId: 'power-cap',
-      sourceLabel: replaySourceLabel,
-    },
-  });
+  }));
   useEffect(() => {
     elapsedSecRef.current = elapsedSec;
   }, [elapsedSec]);
@@ -850,50 +699,24 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     ) return null;
     const representative = localScene.representative;
     const scale = localScene.substrate.worldUnitsPerKm;
-    const acceptedPositionKm = representative.user.positionKm;
-    const draftPositionKm: readonly [number, number] = selectedUe === null
-      ? acceptedPositionKm
-      : [selectedUe.x / scale, -selectedUe.z / scale];
-    const beamCenterKm = representative.cell.centerKm;
-    const maxRadiusKm = localScene.substrate.cellRadiusKm * .96;
-    const directionVector = [
-      acceptedPositionKm[0] - beamCenterKm[0],
-      acceptedPositionKm[1] - beamCenterKm[1],
-    ] as const;
-    const directionLength = Math.hypot(directionVector[0], directionVector[1]);
-    const direction = directionLength > 1e-12
-      ? [directionVector[0] / directionLength, directionVector[1] / directionLength] as const
-      : undefined;
-    const angleInput = {
+    const derived = deriveVisualLabUeGeometryControls({
       satelliteDistanceKm: snapshot.serving.distanceKm,
       satelliteElevationDeg: snapshot.serving.elevationDeg,
-      beamCenterKm,
-      userPositionKm: draftPositionKm,
-      maxRadiusKm,
-      direction,
-    } as const;
-    const acceptedAngleRad = offAxisAngleRadForVisualLabUe({
-      satelliteDistanceKm: angleInput.satelliteDistanceKm,
-      satelliteElevationDeg: angleInput.satelliteElevationDeg,
-      beamCenterKm,
-      userPositionKm: acceptedPositionKm,
+      beamCenterKm: representative.cell.centerKm,
+      acceptedPositionKm: representative.user.positionKm,
+      maxRadiusKm: localScene.substrate.cellRadiusKm * .96,
+      worldUnitsPerKm: scale,
+      selectedUeWorldPosition: selectedUe,
     });
-    const draftAngleRad = offAxisAngleRadForVisualLabUe(angleInput);
-    const maxPositionKm = positionForVisualLabUeOffAxisAngle(angleInput, Math.PI);
-    const maxAngleRad = offAxisAngleRadForVisualLabUe({
-      satelliteDistanceKm: angleInput.satelliteDistanceKm,
-      satelliteElevationDeg: angleInput.satelliteElevationDeg,
-      beamCenterKm,
-      userPositionKm: maxPositionKm,
-    });
+    if (derived === null) return null;
     return {
-      acceptedAngleDeg: degreesFromRadians(acceptedAngleRad),
-      draftAngleDeg: degreesFromRadians(draftAngleRad),
-      maxAngleDeg: Math.max(degreesFromRadians(maxAngleRad), .01),
-      hasDraft: selectedUe !== null,
+      acceptedAngleDeg: derived.acceptedAngleDeg,
+      draftAngleDeg: derived.draftAngleDeg,
+      maxAngleDeg: derived.maxAngleDeg,
+      hasDraft: derived.hasDraft,
       onAngleChange: (angleDeg: number): void => {
-        const positionKm = positionForVisualLabUeOffAxisAngle(angleInput, radiansFromDegrees(angleDeg));
-        setSelectedUe({ x: positionKm[0] * scale, z: -positionKm[1] * scale });
+        const positionKm = positionForVisualLabUeOffAxisAngle(derived.angleInput, radiansFromDegrees(angleDeg));
+        setSelectedUe({ x: positionKm[0] * derived.scale, z: -positionKm[1] * derived.scale });
         scheduleUeRecompute(representative.user.index, positionKm);
         setFocus('geometry');
       },
@@ -917,10 +740,27 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     }
     setCaptureStatus(lab.presentation.locale === 'zh-Hant' ? '正在建立論文圖…' : 'Building the paper figure…');
     try {
-      const width = 1600;
-      const height = 900;
-      const headerHeight = 112;
-      const footerHeight = 116;
+      const figureModel = buildVisualLabFigureExportModel({
+        locale: lab.presentation.locale,
+        theme: lab.presentation.theme,
+        view,
+        density,
+        focus,
+        title: copy.shell.title,
+        constellation: displayAcceptedSource.constellation,
+        instantTaipei: lab.accepted.identity.instantTaipei,
+        selectedSatelliteId: lab.accepted.identity.selectedSatelliteId,
+        candidateSatelliteId: lab.accepted.identity.candidateSatelliteId,
+        selectedTlePath: lab.accepted.identity.selectedTlePath,
+        metrics: lab.canonical === null ? null : {
+          sinrDb: lab.canonical.serving.sinrDb,
+          systemPowerW: lab.canonical.power.systemPowerW,
+          totalThroughputBps: lab.canonical.throughput.totalRateBps,
+          instantaneousEeBitsPerJ: lab.canonical.ee.instantaneousBitsPerJ,
+        },
+        offAxisAngleRad: localScene?.render.beam.offAxisAngleRad ?? null,
+      });
+      const { width, height, headerHeight, footerHeight } = figureModel;
       const output = document.createElement('canvas');
       output.width = width;
       output.height = height;
@@ -933,52 +773,26 @@ export function UnifiedVisualLabPrototype(): ReactElement {
       context.drawImage(sourceCanvas, 0, headerHeight, width, sceneHeight);
       context.fillStyle = light ? '#24343c' : '#edf6f5';
       context.font = '600 34px "Noto Serif TC", Georgia, serif';
-      context.fillText(copy.shell.title, 48, 54);
+      context.fillText(figureModel.title, 48, 54);
       context.font = '500 20px "Noto Sans TC", system-ui, sans-serif';
       context.fillStyle = light ? '#586a70' : '#a9bdbe';
-      context.fillText(`${displayAcceptedSource.constellation === 'starlink' ? 'Starlink' : 'OneWeb'} · ${lab.accepted.identity.instantTaipei.replace('T', ' ').slice(0, 19)} · TLE / SGP4`, 48, 88);
-      const canonical = lab.canonical;
-      const metricText = canonical === null
-        ? ''
-        : lab.presentation.locale === 'zh-Hant'
-          ? `SINR ${canonical.serving.sinrDb?.toFixed(2) ?? '—'} dB   |   系統功率 ${canonical.power.systemPowerW?.toFixed(3) ?? '—'} W   |   總吞吐量 ${canonical.throughput.totalRateBps === null ? '—' : `${(canonical.throughput.totalRateBps / 1_000_000).toFixed(2)} Mbit/s`}   |   瞬時 EE ${canonical.ee.instantaneousBitsPerJ === null ? '—' : `${(canonical.ee.instantaneousBitsPerJ / 1_000_000).toFixed(2)} Mbit/J`}`
-          : `SINR ${canonical.serving.sinrDb?.toFixed(2) ?? '—'} dB   |   System power ${canonical.power.systemPowerW?.toFixed(3) ?? '—'} W   |   Total throughput ${canonical.throughput.totalRateBps === null ? '—' : `${(canonical.throughput.totalRateBps / 1_000_000).toFixed(2)} Mbit/s`}   |   Instantaneous EE ${canonical.ee.instantaneousBitsPerJ === null ? '—' : `${(canonical.ee.instantaneousBitsPerJ / 1_000_000).toFixed(2)} Mbit/J`}`;
+      context.fillText(figureModel.sourceLine, 48, 88);
       context.fillStyle = light ? '#24343c' : '#edf6f5';
       context.font = '600 23px "Noto Sans TC", system-ui, sans-serif';
-      context.fillText(metricText, 48, height - 68);
+      context.fillText(figureModel.metricText, 48, height - 68);
       context.fillStyle = light ? '#6a777a' : '#92a7a8';
       context.font = '500 17px "Noto Sans TC", system-ui, sans-serif';
-      const offAxisAngleDeg = localScene === null
-        ? null
-        : localScene.render.beam.offAxisAngleRad * 180 / Math.PI;
-      const angleText = offAxisAngleDeg === null
-        ? ''
-        : lab.presentation.locale === 'zh-Hant'
-          ? `離軸角 θ ${offAxisAngleDeg.toFixed(2)}°   ·   `
-          : `Off-axis angle θ ${offAxisAngleDeg.toFixed(2)}°   ·   `;
-      context.fillText(`${angleText}${lab.accepted.identity.selectedSatelliteId ?? '—'} → ${lab.accepted.identity.candidateSatelliteId ?? '—'}   ·   archived TLE / SGP4`, 48, height - 34);
+      context.fillText(figureModel.footerText, 48, height - 34);
       const png = await canvasPng(output);
-      const profileId = `visual-lab-${view}-${lab.presentation.theme}-${lab.presentation.locale}`;
       const result = await downloadVisualLabFigureBundle({
         snapshot: lab,
-        figureId: profileId,
-        figureProfile: {
-          profileId,
-          theme: lab.presentation.theme,
-          locale: lab.presentation.locale,
-          viewport: { width, height, devicePixelRatio: 1 },
-          cameraPreset: view === 'earth' ? 'global-overview' : focus === 'handover' ? 'handover-focus' : 'ntpu-focus',
-          layerPreset: density === 'full' ? 'full' : focus === 'energy' ? 'energy-story' : focus === 'handover' ? 'handover' : 'minimal',
-        },
+        figureId: figureModel.profileId,
+        figureProfile: figureModel.figureProfile,
         capturedPng: { bytes: png, mediaType: 'image/png' },
-        caption: lab.presentation.locale === 'zh-Hant'
-          ? `${displayAcceptedSource.constellation === 'starlink' ? 'Starlink' : 'OneWeb'} archived-TLE／SGP4 在 NTPU 多波束場景中的鏈路與能源狀態。`
-          : `${displayAcceptedSource.constellation === 'starlink' ? 'Starlink' : 'OneWeb'} archived-TLE/SGP4 link and energy state in the NTPU multi-beam scene.`,
-        claimBoundary: lab.presentation.locale === 'zh-Hant'
-          ? '本圖為 archived-TLE／SGP4 與 canonical 模型投影，不是即時遙測或實測節能成效。'
-          : 'This figure is an archived-TLE/SGP4 canonical model projection, not live telemetry or measured energy savings.',
-        sourceLocators: [lab.accepted.identity.selectedTlePath],
-        equationLocators: ['ADR-003 canonical EE closure'],
+        caption: figureModel.caption,
+        claimBoundary: figureModel.claimBoundary,
+        sourceLocators: figureModel.sourceLocators,
+        equationLocators: figureModel.equationLocators,
       });
       setCaptureBundle(result.bundle);
       if (result.write.status !== 'written') throw new Error(result.write.reason ?? 'The figure bundle could not be downloaded');
@@ -1175,7 +989,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     void session.dispatch({ type: 'applySource' });
   };
 
-  const startDemoHandoverReplay = async (kind: DemoHandoverKind): Promise<void> => {
+  const startDemoHandoverReplay = async (kind: VisualLabDemoHandoverKind): Promise<void> => {
     await closeActiveReplay();
     const next = Object.freeze({ kind, elapsedMs: 0 });
     demoReplayRef.current = next;
