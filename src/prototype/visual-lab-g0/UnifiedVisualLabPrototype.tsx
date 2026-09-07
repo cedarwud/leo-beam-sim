@@ -49,13 +49,14 @@ import {
 } from '../../visualLab/guidedReplay';
 import type { VisualLabInspectTarget } from './presentation/visualLabPresentationContract';
 import {
-  buildVisualLabCaptureBundle,
   captureCanvasToWebm,
-  createLocalDownloadArtifactWriter,
-  downloadVisualLabClipArchive,
-  createPhase1UploadAdapter,
   type VisualLabCaptureBundle,
 } from '../../visualLab/export';
+import {
+  downloadVisualLabFigureBundle,
+  uploadVisualLabFigureBundle,
+} from './figureBundle';
+import { buildVisualLabReplayProvenance, downloadVisualLabReplayBundle } from './replayBundleExport';
 import {
   drawVisualLabClipFrame,
   VISUAL_LAB_CLIP_HEIGHT,
@@ -958,7 +959,8 @@ export function UnifiedVisualLabPrototype(): ReactElement {
       context.fillText(`${angleText}${lab.accepted.identity.selectedSatelliteId ?? '—'} → ${lab.accepted.identity.candidateSatelliteId ?? '—'}   ·   archived TLE / SGP4`, 48, height - 34);
       const png = await canvasPng(output);
       const profileId = `visual-lab-${view}-${lab.presentation.theme}-${lab.presentation.locale}`;
-      const bundle = buildVisualLabCaptureBundle(session, {
+      const result = await downloadVisualLabFigureBundle({
+        snapshot: lab,
         figureId: profileId,
         figureProfile: {
           profileId,
@@ -978,12 +980,11 @@ export function UnifiedVisualLabPrototype(): ReactElement {
         sourceLocators: [lab.accepted.identity.selectedTlePath],
         equationLocators: ['ADR-003 canonical EE closure'],
       });
-      setCaptureBundle(bundle);
-      const result = await createLocalDownloadArtifactWriter().write(bundle);
-      if (result.status !== 'written') throw new Error(result.reason ?? 'The figure bundle could not be downloaded');
+      setCaptureBundle(result.bundle);
+      if (result.write.status !== 'written') throw new Error(result.write.reason ?? 'The figure bundle could not be downloaded');
       setCaptureStatus(lab.presentation.locale === 'zh-Hant'
-        ? `已下載資料包，內含 ${result.artifacts.length} 個圖稿與資料檔。`
-        : `Downloaded one bundle containing ${result.artifacts.length} figure and data files.`);
+        ? `已下載資料包，內含 ${result.write.artifacts.length} 個圖稿與資料檔。`
+        : `Downloaded one bundle containing ${result.write.artifacts.length} figure and data files.`);
     } catch (error) {
       setCaptureStatus(error instanceof Error ? error.message : String(error));
     }
@@ -1058,71 +1059,31 @@ export function UnifiedVisualLabPrototype(): ReactElement {
         ? storyState.stories.find(story => story.storyId === storyState.activeStoryId) ?? null
         : null;
       const storySource = activeCompiledStory?.descriptor.source ?? null;
-      const provenance = {
-        analysisRunId: captureAnalysisRunId,
-        frame: captureStart.identity.frameId,
-        story: activeReplayId,
-        runtime: activeReplayRuntime === 'story'
-          ? 'visual-lab-story-runtime-v1'
-          : activeReplayRuntime === 'guided'
-            ? 'visual-lab-guided-replay-v1'
-            : 'visual-lab-causal-replay-v1',
-        identityScope: activeReplayRuntime === 'guided'
-          ? 'controlled-a-b-with-accepted-handover-sequence'
-          : activeReplayRuntime === 'causal' ? 'controlled-a-b-sequence' : 'accepted-story-anchors',
-        constellation: captureStart.identity.constellation,
-        source: captureStart.identity.selectedTlePath,
-        ...((activeReplayRuntime === 'story' || activeReplayRuntime === 'guided') && storyState.activeStoryId !== null
-          ? { runtimeStoryId: storyState.activeStoryId }
-          : {}),
-        ...(storySource?.kind === 'inter-handover' && storySource.eventId !== null
-          ? {
-              handoverKind: 'inter-handover',
-              eventId: storySource.eventId,
-              fromSatelliteId: storySource.fromSatelliteId ?? 'unavailable',
-              toSatelliteId: storySource.toSatelliteId ?? 'unavailable',
-            }
-          : {}),
-        ...(storySource?.kind === 'intra-handover' && storySource.traceId !== null
-          ? {
-              handoverKind: 'intra-handover',
-              traceId: storySource.traceId,
-              userId: storySource.from?.userId ?? 'unavailable',
-              satelliteId: storySource.from?.satelliteId ?? 'unavailable',
-              fromBeamId: String(storySource.from?.beamId ?? 'unavailable'),
-              toBeamId: String(storySource.to?.beamId ?? 'unavailable'),
-            }
-          : {}),
-        ...(comparisonBaseline?.interval.analysisRunId
-          ? {
-              baselineAnalysisRunId: comparisonBaseline.interval.analysisRunId,
-              baselineFrameId: comparisonBaseline.frameId,
-            }
-          : {}),
-        ...(comparisonCandidate?.interval.analysisRunId
-          ? {
-              candidateAnalysisRunId: comparisonCandidate.interval.analysisRunId,
-              candidateFrameId: comparisonCandidate.frameId,
-            }
-          : {}),
-        ...((activeReplayRuntime === 'causal' || activeReplayRuntime === 'guided') && causalParameterChange !== null
-          ? {
-              changedParameterKey: causalParameterChange.key,
-              changedParameterBaseline: String(causalParameterChange.baseline),
-              changedParameterCandidate: String(causalParameterChange.candidate),
-              comparisonClassification: lab.comparison.classification ?? 'unavailable',
-              frameComparisonGate: lab.comparison.frame.availability,
-              evaluationComparisonGate: lab.comparison.evaluation.availability,
-            }
-          : {}),
-        ...(activeReplayRuntime === 'guided'
-          ? {
-              baselineStoryRuntimeId: guidedReplay.baselineStoryRuntimeId ?? 'unavailable',
-              candidateStoryRuntimeId: guidedReplay.candidateStoryRuntimeId ?? 'unavailable',
-              annotationMode: guidedReplay.annotationMode,
-            }
-          : {}),
-      };
+      const provenance = buildVisualLabReplayProvenance({
+        accepted: {
+          analysisRunId: captureAnalysisRunId,
+          frameId: captureStart.identity.frameId,
+          constellation: captureStart.identity.constellation,
+          selectedTlePath: captureStart.identity.selectedTlePath,
+        },
+        storyId: activeReplayId,
+        runtime: activeReplayRuntime,
+        activeStoryId: storyState.activeStoryId,
+        storySource,
+        comparison: {
+          baseline: comparisonBaseline,
+          candidate: comparisonCandidate,
+          parameterChange: causalParameterChange,
+          classification: lab.comparison.classification,
+          frameGate: lab.comparison.frame.availability,
+          evaluationGate: lab.comparison.evaluation.availability,
+        },
+        guided: guidedReplay.open ? {
+          baselineStoryRuntimeId: guidedReplay.baselineStoryRuntimeId,
+          candidateStoryRuntimeId: guidedReplay.candidateStoryRuntimeId,
+          annotationMode: guidedReplay.annotationMode,
+        } : null,
+      });
       const capture = await captureCanvasToWebm({
         canvas: outputCanvas,
         durationMs: activeReplayRuntime === 'guided' ? VISUAL_LAB_GUIDED_REPLAY_TOTAL_DURATION_MS : 4_200,
@@ -1167,7 +1128,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
         setCaptureStatus(lab.presentation.locale === 'zh-Hant' ? '回放錄製已取消。' : 'Replay recording was cancelled.');
         return;
       }
-      const result = await downloadVisualLabClipArchive({
+      const result = await downloadVisualLabReplayBundle({
         capture,
         clipId: activeReplayId,
         title: activeReplayTitle,
@@ -1197,12 +1158,12 @@ export function UnifiedVisualLabPrototype(): ReactElement {
       return;
     }
     setCaptureStatus(lab.presentation.locale === 'zh-Hant' ? '正在上傳一期平台…' : 'Uploading to the Phase-1 platform…');
-    const adapter = createPhase1UploadAdapter({
+    const result = await uploadVisualLabFigureBundle({
+      bundle: captureBundle,
       endpoint: phase1Endpoint,
       schemaId: phase1SchemaId,
       fetcher: async (endpoint, init) => fetch(endpoint, init),
     });
-    const result = await adapter.upload(captureBundle);
     setCaptureStatus(result.status === 'uploaded'
       ? (lab.presentation.locale === 'zh-Hant' ? '一期平台已回傳有效 receipt。' : 'The Phase-1 platform returned a valid receipt.')
       : result.reason ?? (lab.presentation.locale === 'zh-Hant' ? '上傳失敗。' : 'Upload failed.'));

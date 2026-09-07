@@ -36,7 +36,6 @@ import {
   type CellReassignment,
 } from './useCellSchedule';
 import { sceneGeometryFromProfile } from './SceneGeometry';
-import { liveSimToScene } from '../showcase/liveSimToScene';
 import { useSimStatePublisher } from './useSimStatePublisher';
 import {
   buildMultiCandidateScenePresentation,
@@ -77,8 +76,6 @@ import {
 } from '../homepage/controller/homepageAccentPalette';
 import {
   filterHomepageBeamItems as filterHomepageBeamItemsBySatellite,
-  resolveHomepageBeamVisibility,
-  type HomepageBeamIdentity,
 } from '../homepage/controller/homepageBeamVisibility';
 import { resolveHomepageSceneGeometryPolicy } from '../homepage/controller/homepageSceneGeometryPolicy';
 import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
@@ -160,7 +157,6 @@ import {
   advanceHandoverPresentation,
   createIdleHandoverPresentationView,
   createHandoverPresentationState,
-  type HandoverPresentationEvent,
   type HandoverPresentationSnapshot,
 } from './handoverPresentationOwner';
 import {
@@ -258,6 +254,21 @@ import { useSinrLiveCellBeamConeItems } from './useSinrLiveCellBeamConeItems';
 import { useSinrLiveCandidateBeamConeItems } from './useSinrLiveCandidateBeamConeItems';
 import { useSinrLiveCinemaInterServingFanConeItems } from './useSinrLiveCinemaInterServingFanConeItems';
 import { useSinrLiveCellNonServingConeItems } from './useSinrLiveCellNonServingConeItems';
+import { resolveAcceptedSatelliteIdentityColor } from './acceptedSatelliteIdentityColor';
+import type { SceneFrameResolutionInput } from './sceneFrameResolver';
+import { useSceneFrame } from './useSceneFrame';
+import type { MultiCandidateSatelliteColorsInput } from './multiCandidateSatelliteColors';
+import { useMultiCandidateSatelliteColors } from './useMultiCandidateSatelliteColors';
+import type { RenderedLiveSatelliteMarkersInput } from './renderedLiveSatelliteMarkers';
+import { useRenderedLiveSatelliteMarkers } from './useRenderedLiveSatelliteMarkers';
+import type { HandoverPresentationCandidateInput } from './handoverPresentationCandidate';
+import { useHandoverPresentationCandidate } from './useHandoverPresentationCandidate';
+import type { BeamInfoItemsInput } from './beamInfoItems';
+import {
+  type HomepageSceneBeamVisibilityInput,
+} from './homepageSceneBeamVisibility';
+import { useHomepageBeamVisibility } from './useHomepageBeamVisibility';
+import { useBeamInfoItems } from './useBeamInfoItems';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -267,56 +278,6 @@ function lookupSatWorldPos(
   const sat = satellites.find(candidate => candidate.id === satId);
   return sat ? sat.worldPos : null;
 }
-
-/**
- * The handover carrier keeps its existing opacity/envelope, but colour now
- * identifies the already-resolved satellite/beam rather than the serving or
- * candidate role.  Missing geometry is an honest fallback only; normal live
- * handover events carry both IDs.
- */
-
-/**
- * The accepted presentation allocation is the colour authority while a
- * candidate episode is on stage.  The ambient scene still has a deterministic
- * fallback for satellites that are outside that snapshot, but displayed
- * candidates must not be re-hashed independently of the rail allocation.
- */
-function resolveAcceptedSatelliteIdentityColor(
-  snapshot: AcceptedHandoverPresentationSnapshot | null | undefined,
-  satelliteId: string,
-  fallback: string,
-): string {
-  return snapshot?.plan.identityAllocation.identitiesBySatelliteId[satelliteId]?.cssColor
-    ?? fallback;
-}
-
-/** Resolve a one-based link-budget beam identity from the accepted snapshot. */
-
-
-/**
- * Resolve the accepted identity for an earth-fixed cell.  The live cell lane
- * stores a zero-based cell id while the accepted candidate plan stores the
- * corresponding one-based link-budget beam id, so all transition carriers use
- * this adapter instead of accidentally hashing the cell id a second time.
- */
-
-
-function homepageBeamIdentityFromCell(
-  satelliteId: string | null | undefined,
-  cellId: number | null | undefined,
-  beamId: number | null | undefined = null,
-): HomepageBeamIdentity | null {
-  if (
-    typeof satelliteId !== 'string'
-    || satelliteId.trim().length === 0
-    || cellId === null
-    || cellId === undefined
-    || !Number.isInteger(cellId)
-  ) return null;
-  return { satelliteId, cellId, beamId };
-}
-
-
 
 function ScenePresentationCanvasTelemetry({
   plan,
@@ -1417,48 +1378,17 @@ function SceneRenderContent({
   // P1d: project the live SimFrame → NormalizedSceneFrame at the boundary.
   // useBeamViz now consumes only (frame, geometry) — sim/profile stay
   // confined to MainScene.
-  const sceneFrame = useMemo(() => {
-    if (propSceneFrame) return propSceneFrame;
-    const projected = liveSimToScene(sim, sceneGeometry, {
-      source: simSource === 'archived-tle' ? 'archived-tle' : 'walker',
-    });
-    if (simSource !== 'archived-tle') return projected;
-    if (archivedTleFrameIdentity === undefined) {
-      throw new Error('archived TLE renderer requires immutable frame provenance');
-    }
-    return {
-      ...projected,
-      sceneSource: 'archived-tle' as const,
-      provenance: {
-        kind: 'archived-tle' as const,
-        sourceKind: 'ARCHIVED_TLE' as const,
-        propagationModel: archivedTleFrameIdentity.provenance.propagationModel,
-        archiveId: archivedTleFrameIdentity.provenance.archiveId,
-        frameId: archivedTleFrameIdentity.frameId,
-        note: 'Projection of one accepted immutable SGP4/canonical analysis frame.',
-      },
-      claimBoundary: {
-        kind: 'archived-tle' as const,
-        storyKind: 'canonical-tle-sinr-ee' as const,
-        allowedClaims: [
-          'archived TLE SGP4 geometry',
-          'canonical same-frame SINR, throughput, power and EE projection',
-          'canonical 3 dB / 30 s handover trace',
-        ],
-        forbiddenClaims: [
-          'live ephemeris',
-          'multi-satellite RF interference',
-          'synthetic handover events',
-          'physical energy saving',
-        ],
-      },
-      evidenceStatus: {
-        kind: 'archived-tle' as const,
-        status: 'accepted-immutable-frame' as const,
-        notes: ['candidate is comparison-only and never an active interference owner'],
-      },
-    };
-  }, [archivedTleFrameIdentity, propSceneFrame, sceneGeometry, sim, simSource]);
+  const sceneFrameInput = useMemo<SceneFrameResolutionInput>(
+    () => ({
+      archivedTleFrameIdentity,
+      propSceneFrame,
+      sceneGeometry,
+      sim,
+      simSource,
+    }),
+    [archivedTleFrameIdentity, propSceneFrame, sceneGeometry, sim, simSource],
+  );
+  const { sceneFrame } = useSceneFrame({ sceneFrameInput });
   const naturalHandoverProtagonistUeId = resolveNaturalHandoverProtagonistId({
     simSource,
     canonicalPrimaryUeId: sim.sinrLiveCells?.primaryUeId,
@@ -2249,52 +2179,38 @@ function SceneRenderContent({
       phaseOffset: particleIndex / SPINE_PARTICLES_PER_BEAM,
     })));
   }, [multiCandidateCentralOverlayActive, multiCandidateSceneRenderPlan, sceneFrame.ues]);
-  const multiCandidateSatelliteColorById = useMemo(() => {
-    const colors = new Map<string, string>();
-    const setIfAbsent = (satelliteId: string, color: string | undefined): void => {
-      if (color !== undefined && !colors.has(satelliteId)) colors.set(satelliteId, color);
-    };
-    // Seed from the accepted allocation first.  A candidate can sit outside
-    // the ambient `displaySats` cap, yet still be promoted into the central
-    // shortlist from `coneApexWorldById`.  If we only coloured displaySats,
-    // that promoted GLB fell back to the hash palette while the rail used the
-    // collision-resolved accepted colour.
-    const allocation = acceptedHandoverPresentation?.plan.identityAllocation;
-    for (const identity of Object.values(allocation?.assignments ?? {})) {
-      setIfAbsent(
-        identity.satelliteId,
-        resolveSceneSatelliteColor(identity.satelliteId, identity.cssColor),
-      );
-    }
-    for (const instruction of multiCandidateCandidateReviewRenderPlan?.instructions ?? []) {
-      setIfAbsent(
-        instruction.satelliteId,
-        resolveSceneSatelliteColor(instruction.satelliteId, instruction.satelliteColor),
-      );
-    }
-    // The ambient field and the established handover carrier share one stable
-    // satellite identity source. When no accepted token exists, fall back to
-    // the deterministic identity resolver; never overwrite an accepted token.
-    for (const satellite of viz.displaySats) {
-      setIfAbsent(
-        satellite.id,
-        resolveSceneSatelliteColor(
-          satellite.id,
-          resolveAcceptedSatelliteIdentityColor(
-            acceptedHandoverPresentation,
-            satellite.id,
-            colorForServingSatellite(satellite.id).markerColor,
-          ),
+  const multiCandidateSatelliteColorsInput = useMemo<MultiCandidateSatelliteColorsInput>(
+    () => ({
+      acceptedSatelliteIdentities: Object.values(
+        acceptedHandoverPresentation?.plan.identityAllocation.assignments ?? {},
+      ).map(identity => ({
+        satelliteId: identity.satelliteId,
+        cssColor: identity.cssColor,
+      })),
+      candidateSatelliteIdentities: (multiCandidateCandidateReviewRenderPlan?.instructions ?? [])
+        .map(instruction => ({
+          satelliteId: instruction.satelliteId,
+          satelliteColor: instruction.satelliteColor,
+        })),
+      ambientSatelliteIds: viz.displaySats.map(satellite => satellite.id),
+      resolveSceneSatelliteColor,
+      resolveAmbientFallbackColor: satelliteId => resolveSceneSatelliteColor(
+        satelliteId,
+        resolveAcceptedSatelliteIdentityColor(
+          acceptedHandoverPresentation,
+          satelliteId,
+          colorForServingSatellite(satelliteId).markerColor,
         ),
-      );
-    }
-    return colors;
-  }, [
-    acceptedHandoverPresentation,
-    multiCandidateCandidateReviewRenderPlan,
-    resolveSceneSatelliteColor,
-    viz.displaySats,
-  ]);
+      ),
+    }),
+    [
+      acceptedHandoverPresentation,
+      multiCandidateCandidateReviewRenderPlan,
+      resolveSceneSatelliteColor,
+      viz.displaySats,
+    ],
+  );
+  const { multiCandidateSatelliteColorById } = useMultiCandidateSatelliteColors({ multiCandidateSatelliteColorsInput });
   const multiCandidateBeamColorBySatelliteCell = useMemo(() => {
     const colors = new Map<string, string>();
     for (const instruction of multiCandidateSceneRenderPlan?.instructions ?? []) {
@@ -2514,64 +2430,26 @@ function SceneRenderContent({
     multiCandidateSceneVisualActive,
     renderedCandidateSatelliteId,
   ]);
-  const renderedLiveSatelliteMarkers = useMemo<readonly {
-    readonly id: string;
-    readonly world: THREE.Vector3;
-    readonly satelliteTintColor?: string;
-  }[]>(() => {
-    // Preserve the established homepage satellite field. Candidate authority
-    // adds any missing inspected/evaluated satellite; it never replaces the
-    // original marker set with only the shortlisted rows.
-    const markers: {
-      id: string;
-      world: THREE.Vector3;
-      satelliteTintColor?: string;
-    }[] = viz.displaySats.map(marker => {
-      // The ambient marker may already be inside `viz.displaySats`; do not let
-      // that common path bypass the stable spacecraft identity colour.  During
-      // an accepted episode the plan allocation can override the fallback.
-      const identityColor = multiCandidateSatelliteColorById.get(marker.id)
-        ?? resolveSceneSatelliteColor(marker.id, colorForServingSatellite(marker.id).markerColor);
-      return identityColor === undefined
-        ? marker
-        : { ...marker, satelliteTintColor: identityColor };
-    });
-    if (handoverMarkerSatelliteIds.size === 0) return markers;
-    const displayedSatelliteIds = [...handoverMarkerSatelliteIds];
-    const existingIds = new Set(markers.map(marker => marker.id));
-    for (const satelliteId of displayedSatelliteIds) {
-      if (existingIds.has(satelliteId)) continue;
-      const existing = viz.displaySats.find(satellite => satellite.id === satelliteId);
-      if (existing !== undefined) {
-        // An event pair can already be inside the ambient cap. Preserve its
-        // position/model, but let the accepted episode identity colour win so
-        // source and target read consistently whether or not they needed a
-        // marker-list expansion.
-        const identityColor = multiCandidateSatelliteColorById.get(satelliteId)
-          ?? resolveSceneSatelliteColor(satelliteId, colorForServingSatellite(satelliteId).markerColor);
-        markers.push({ ...existing, satelliteTintColor: identityColor });
-        existingIds.add(satelliteId);
-        continue;
-      }
-      const apex = viz.coneApexWorldById.get(satelliteId);
-      if (apex === undefined) continue;
-      markers.push({
-        id: satelliteId,
-        world: new THREE.Vector3(apex.x, apex.y, apex.z),
-        satelliteTintColor: multiCandidateSatelliteColorById.get(satelliteId)
-          ?? resolveSceneSatelliteColor(satelliteId, colorForServingSatellite(satelliteId).markerColor),
-      });
-      existingIds.add(satelliteId);
-    }
-    return markers;
-  }, [
-    acceptedHandoverPresentation,
-    handoverMarkerSatelliteIds,
-    multiCandidateSatelliteColorById,
-    resolveSceneSatelliteColor,
-    viz.coneApexWorldById,
-    viz.displaySats,
-  ]);
+  const renderedLiveSatelliteMarkersInput = useMemo<RenderedLiveSatelliteMarkersInput>(
+    () => ({
+      displaySats: viz.displaySats,
+      handoverMarkerSatelliteIds,
+      identityColorBySatelliteId: multiCandidateSatelliteColorById,
+      coneApexWorldById: viz.coneApexWorldById,
+      resolveFallbackColor: satelliteId => resolveSceneSatelliteColor(
+        satelliteId,
+        colorForServingSatellite(satelliteId).markerColor,
+      ),
+    }),
+    [
+      handoverMarkerSatelliteIds,
+      multiCandidateSatelliteColorById,
+      resolveSceneSatelliteColor,
+      viz.coneApexWorldById,
+      viz.displaySats,
+    ],
+  );
+  const { renderedLiveSatelliteMarkers } = useRenderedLiveSatelliteMarkers({ renderedLiveSatelliteMarkersInput });
   // Camera ownership is deliberately absent from the comparison projection.
   // The homepage keeps the scene-configured initial pose and OrbitControls; a
   // candidate episode may add markers/cones, but it cannot fit, track, tween,
@@ -2890,206 +2768,78 @@ function SceneRenderContent({
     return null;
   }, [sim.simTimeSec, sim.sinrLiveCells]);
 
-  const handoverPresentationCandidate = useMemo<HandoverPresentationEvent | null>(() => {
-    const endpoint = (
-      satId: string | null,
-      cellId: number | null,
-      satelliteWorldById: ReadonlyMap<string, { readonly x: number; readonly y: number; readonly z: number }>,
-      beamId: number | null | undefined = null,
-    ) => satId === null || cellId === null
-      ? null
-      : {
-        satId,
-        cellId,
-        beamId,
-        drawable: sinrLiveCellPlacementById.has(cellId) && satelliteWorldById.has(satId),
-      };
+  const handoverPresentationCandidateInput = useMemo<HandoverPresentationCandidateInput>(
+    () => ({
+      authority: {
+        active: multiCandidateAuthorityActive,
+        candidate: authorityHandoverPresentationCandidate,
+        centralOverlayActive: multiCandidateCentralOverlayActive,
+        decisionAuthorityPresent: multiCandidateDecisionAuthorityPresent,
+        acceptedPresentation: acceptedHandoverPresentation,
+      },
+      manual: {
+        active: manualHandoverActive,
+        requested: manualHandoverRequested,
+        requestId: runtime.manualHandoverRequestId,
+        displayMs: manualHandoverDisplayMs,
+        event: manualHandoverEvent,
+        beamRecord: manualHandoverBeamRecord,
+      },
+      natural: {
+        event: recentPrimaryHandoverEvent,
+        source: simSource,
+        satelliteWorldById: viz.coneApexWorldById,
+      },
+      cinema: {
+        ready: cinemaHandoverReady,
+        armed: handoverCinemaArmed,
+        candidate: cinemaPairCandidate,
+        satelliteWorldById: cinemaInterSatelliteWorldById,
+      },
+      placementByCellId: sinrLiveCellPlacementById,
+      durations: {
+        naturalIntraMs: homepageVisualIdentity
+          ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+          : beamDisplaySpec.triggeredIntraSustainMs,
+        naturalInterMs: homepageVisualIdentity
+          ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+          : resolveHandoverCinemaDisplayMs('inter'),
+        cinemaIntraMs: homepageVisualIdentity
+          ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+          : resolveHandoverCinemaDisplayMs('intra'),
+        cinemaInterMs: homepageVisualIdentity
+          ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+          : resolveHandoverCinemaDisplayMs('inter'),
+      },
+      teachingLectureActive: runtime.teachingLectureKind != null,
+    }),
+    [
+      acceptedHandoverPresentation,
+      authorityHandoverPresentationCandidate,
+      beamDisplaySpec.triggeredIntraSustainMs,
+      cinemaHandoverReady,
+      cinemaInterSatelliteWorldById,
+      cinemaPairCandidate,
+      handoverCinemaArmed,
+      homepageVisualIdentity,
+      manualHandoverActive,
+      manualHandoverBeamRecord,
+      manualHandoverDisplayMs,
+      manualHandoverEvent,
+      manualHandoverRequested,
+      multiCandidateAuthorityActive,
+      multiCandidateCentralOverlayActive,
+      multiCandidateDecisionAuthorityPresent,
+      recentPrimaryHandoverEvent,
+      runtime.manualHandoverRequestId,
+      runtime.teachingLectureKind,
+      simSource,
+      sinrLiveCellPlacementById,
+      viz.coneApexWorldById,
+    ],
+  );
+  const { handoverPresentationCandidate } = useHandoverPresentationCandidate({ handoverPresentationCandidateInput });
 
-    const manualCandidate = (): HandoverPresentationEvent | null => {
-      if (!manualHandoverActive || manualHandoverEvent === null) return null;
-      const fromBeamId = manualHandoverBeamRecord?.servingLinkSample?.beamId ?? null;
-      const toBeamId = manualHandoverBeamRecord?.intraCandidateLinkSample?.beamId ?? null;
-      const from = endpoint(
-        manualHandoverEvent.fromSatId,
-        manualHandoverEvent.fromCellId,
-        viz.coneApexWorldById,
-        fromBeamId,
-      );
-      const to = endpoint(
-        manualHandoverEvent.toSatId,
-        manualHandoverEvent.toCellId,
-        viz.coneApexWorldById,
-        toBeamId,
-      );
-      if (from === null || to === null) return null;
-      return {
-        eventId: `manual:${runtime.manualHandoverRequestId ?? 'unknown'}`,
-        source: 'manual',
-        kind: manualHandoverEvent.kind,
-        ueId: manualHandoverEvent.ueId,
-        sourceTimeSec: manualHandoverEvent.sourceTimeSec,
-        from,
-        to,
-        durationMs: manualHandoverDisplayMs,
-        fromSinrDb: manualHandoverEvent.fromSinrDb,
-        toSinrDb: manualHandoverEvent.toSinrDb,
-        deltaDb: manualHandoverEvent.deltaDb,
-      };
-    };
-
-    // A lecture owns the viewport for its whole run, and it paints its own two
-    // cones from its own layer. NOTHING may be admitted here: not a live
-    // authority switch, not a forced-continuity replacement when the serving
-    // spacecraft sets, not an armed cinema pair -- and not the manual cue
-    // either, whose satellite-identity colours would fight the lecture's
-    // role colours on the same two links.
-    if (runtime.teachingLectureKind != null) return null;
-
-    // When candidate authority has an actual switching event, it takes precedence.
-    if (authorityHandoverPresentationCandidate !== null) {
-      return authorityHandoverPresentationCandidate;
-    }
-
-    // Once the accepted decision snapshot exists, the decision engine owns the
-    // complete handover lifecycle.  The retained Walker event is only a
-    // compatibility fallback for lanes/frames that have no decision authority;
-    // allowing it through here would jump straight to the old switch animation
-    // while the authoritative frame is still evaluating candidates.
-    const multiCandidateAuthorityOwnsLifecycle = multiCandidateDecisionAuthorityPresent
-      || (multiCandidateAuthorityActive
-        && acceptedHandoverPresentation?.decision !== null
-        && acceptedHandoverPresentation?.decision !== undefined);
-
-    // During an accepted decision episode, both the candidate review and the
-    // eventual switch are governed by the same decision engine.  The retained
-    // Walker event stream remains a fallback only when no accepted decision
-    // snapshot owns this frame (for example an archived/legacy lane).
-    const naturalCandidate = (multiCandidateAuthorityOwnsLifecycle
-      || multiCandidateCentralOverlayActive
-      || recentPrimaryHandoverEvent === null)
-      ? null
-      : (() => {
-        const from = endpoint(
-          recentPrimaryHandoverEvent.fromSatId,
-          recentPrimaryHandoverEvent.fromCellId,
-          viz.coneApexWorldById,
-          recentPrimaryHandoverEvent.fromBeamId,
-        );
-        const to = endpoint(
-          recentPrimaryHandoverEvent.toSatId,
-          recentPrimaryHandoverEvent.toCellId,
-          viz.coneApexWorldById,
-          recentPrimaryHandoverEvent.toBeamId,
-        );
-        if (from === null || to === null) return null;
-        return {
-          eventId: `${simSource}:${recentPrimaryHandoverEvent.ueId}:${recentPrimaryHandoverEvent.sourceTimeSec}:${recentPrimaryHandoverEvent.kind}`,
-          source: simSource === 'archived-tle' ? 'tle' : 'walker',
-          kind: recentPrimaryHandoverEvent.kind,
-          ueId: recentPrimaryHandoverEvent.ueId,
-          sourceTimeSec: recentPrimaryHandoverEvent.sourceTimeSec,
-          from,
-          to,
-          // The normalized owner uses the longer inter envelope for both the
-          // live Walker story and the explicit cinema story. This keeps the
-          // source beam visible until the candidate actually arrives.
-          durationMs: recentPrimaryHandoverEvent.kind === 'inter'
-            ? homepageVisualIdentity
-              ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
-              : resolveHandoverCinemaDisplayMs('inter')
-            : homepageVisualIdentity
-              ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
-              : beamDisplaySpec.triggeredIntraSustainMs,
-        } satisfies HandoverPresentationEvent;
-      })();
-
-    // An intra request is never allowed to replace a source-backed inter event,
-    // regardless of whether the request came from the automatic scheduler or a
-    // button. This is the render-time half of the shared admission gate; App's
-    // ref gate covers the parent-effect half.
-    if (
-      manualHandoverEvent?.kind === 'intra'
-      && naturalCandidate?.kind === 'inter'
-    ) return naturalCandidate;
-
-    const manual = manualCandidate();
-    if (manual !== null) return manual;
-
-    // A manual request owns the viewport even if its endpoints fail the
-    // drawable check. Fail closed: suppress natural visual events instead of
-    // allowing an unrelated live handover to replace the requested story.
-    if (manualHandoverRequested) return null;
-
-    if (cinemaHandoverReady && cinemaPairCandidate !== null) {
-      const from = endpoint(
-        cinemaPairCandidate.fromSatId,
-        cinemaPairCandidate.fromCellId,
-        cinemaInterSatelliteWorldById,
-        cinemaPairCandidate.fromBeamId,
-      );
-      const to = endpoint(
-        cinemaPairCandidate.toSatId,
-        cinemaPairCandidate.toCellId,
-        cinemaInterSatelliteWorldById,
-        cinemaPairCandidate.toBeamId,
-      );
-      if (from !== null && to !== null) {
-        return {
-          eventId: `cinema:${cinemaPairCandidate.eventId}`,
-          source: 'cinema',
-          kind: cinemaPairCandidate.kind,
-          ueId: cinemaPairCandidate.ueId,
-          sourceTimeSec: cinemaPairCandidate.sourceTimeSec,
-          from,
-          to,
-          durationMs: homepageVisualIdentity
-            ? cinemaPairCandidate.kind === 'inter'
-              ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
-              : HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
-            : resolveHandoverCinemaDisplayMs(cinemaPairCandidate.kind),
-        };
-      }
-    }
-
-    // Once the director button is armed, the natural retention buffer is no
-    // longer allowed to become a second presentation owner. Until the exact
-    // cinema frame lands, keep the current serving field and suppress all
-    // stale handover overlays; after it lands, the cinema branch above owns it.
-    if (handoverCinemaArmed) return null;
-
-    // A natural inter event is the first visible owner for this frame. This
-    // ordering matters on the warm-start frame: the parent automatic-intra
-    // effect must not turn a simultaneous natural intra cue into the owner
-    // before the inter pair has acquired the presentation lock. Once an owner
-    // is active, advanceHandoverPresentation still prevents any candidate from
-    // preempting it.
-    return naturalCandidate;
-  }, [
-    beamDisplaySpec.triggeredIntraSustainMs,
-    authorityHandoverPresentationCandidate,
-    cinemaHandoverReady,
-    cinemaInterSatelliteWorldById,
-    cinemaPairCandidate,
-    handoverCinemaArmed,
-    homepageVisualIdentity,
-    manualHandoverRequested,
-    manualHandoverActive,
-    manualHandoverEvent,
-    manualHandoverBeamRecord,
-    manualHandoverDisplayMs,
-    multiCandidateAuthorityActive,
-    multiCandidateDecisionAuthorityPresent,
-    acceptedHandoverPresentation,
-    multiCandidateCentralOverlayActive,
-    recentPrimaryHandoverEvent,
-    runtime.manualHandoverRequestId,
-    runtime.teachingLectureKind,
-    sim.perUePositions,
-    sim.sinrLiveCells,
-    simSource,
-    sinrLiveCellPlacementById,
-    viz.coneApexWorldById,
-  ]);
 
   const handoverPresentationStateRef = useRef(createHandoverPresentationState());
   const handoverPresentationSourceRef = useRef(simSource);
@@ -3262,68 +3012,16 @@ function SceneRenderContent({
   // by the current story. A satellite-level allow-list was too broad: it let
   // every beam in a selected satellite's fan flash on and off as the live frame
   // changed. This gate is display-only and cannot change the decision.
-  const homepageBeamVisibility = useMemo(
-    () => resolveHomepageBeamVisibility({
-      servingBeam: homepageBeamIdentityFromCell(
-        displayHeroRecord?.servingSatId ?? primaryServingRecord?.servingSatId,
-        displayHeroRecord?.cellId ?? primaryServingRecord?.cellId,
-        displayHeroRecord?.beamId ?? primaryServingRecord?.servingBeamId,
-      ),
-      preparedCandidateBeam: homepageBeamIdentityFromCell(
-        renderedCandidateSatelliteId ?? primaryServingRecord?.pendingTargetSatId,
-        displayHeroRecord?.cellId ?? primaryServingRecord?.cellId,
-        handoverPresentationCandidate?.to.beamId
-          ?? primaryServingRecord?.intraCandidateLinkSample?.beamId
-          ?? null,
-      ),
-      presentationFromBeam: homepageBeamIdentityFromCell(
-        presentedHandoverPairCandidate?.fromSatId
-          ?? handoverPresentationCandidate?.from.satId
-          ?? handoverAuthorityJoin?.transition?.from.satelliteId,
-        presentedHandoverPairCandidate?.fromCellId
-          ?? handoverPresentationCandidate?.from.cellId
-          ?? (handoverAuthorityJoin?.transition?.from.beamId === undefined
-            ? null
-            : cellIdFromLinkBudgetBeamId(handoverAuthorityJoin.transition.from.beamId)),
-        presentedHandoverPairCandidate?.fromBeamId
-          ?? handoverPresentationCandidate?.from.beamId
-          ?? handoverAuthorityJoin?.transition?.from.beamId
-          ?? null,
-      ),
-      presentationToBeam: homepageBeamIdentityFromCell(
-        presentedHandoverPairCandidate?.toSatId
-          ?? handoverPresentationCandidate?.to.satId
-          ?? handoverAuthorityJoin?.transition?.to.satelliteId,
-        presentedHandoverPairCandidate?.toCellId
-          ?? handoverPresentationCandidate?.to.cellId
-          ?? (handoverAuthorityJoin?.transition?.to.beamId === undefined
-            ? null
-            : cellIdFromLinkBudgetBeamId(handoverAuthorityJoin.transition.to.beamId)),
-        presentedHandoverPairCandidate?.toBeamId
-          ?? handoverPresentationCandidate?.to.beamId
-          ?? handoverAuthorityJoin?.transition?.to.beamId
-          ?? null,
-      ),
-      cinemaFromBeam: homepageBeamIdentityFromCell(
-        cinemaPairCandidate?.fromSatId,
-        cinemaPairCandidate?.fromCellId,
-        cinemaPairCandidate?.fromBeamId,
-      ),
-      cinemaToBeam: homepageBeamIdentityFromCell(
-        cinemaPairCandidate?.toSatId,
-        cinemaPairCandidate?.toCellId,
-        cinemaPairCandidate?.toBeamId,
-      ),
-      recentFromBeam: homepageBeamIdentityFromCell(
-        recentPrimaryHandoverEvent?.fromSatId,
-        recentPrimaryHandoverEvent?.fromCellId,
-        recentPrimaryHandoverEvent?.fromBeamId,
-      ),
-      recentToBeam: homepageBeamIdentityFromCell(
-        recentPrimaryHandoverEvent?.toSatId,
-        recentPrimaryHandoverEvent?.toCellId,
-        recentPrimaryHandoverEvent?.toBeamId,
-      ),
+  const homepageSceneBeamVisibilityInput = useMemo<HomepageSceneBeamVisibilityInput>(
+    () => ({
+      displayHeroRecord,
+      primaryServingRecord,
+      renderedCandidateSatelliteId,
+      presentedHandoverPairCandidate,
+      handoverPresentationCandidate,
+      handoverAuthorityJoin,
+      cinemaPairCandidate,
+      recentPrimaryHandoverEvent,
     }),
     [
       cinemaPairCandidate,
@@ -3342,6 +3040,7 @@ function SceneRenderContent({
       renderedCandidateSatelliteId,
     ],
   );
+  const { homepageBeamVisibility } = useHomepageBeamVisibility({ homepageSceneBeamVisibilityInput });
   const restrictHomepageBeamItems = useCallback(
     (items: readonly SinrLiveCellBeamConeRenderItem[]): readonly SinrLiveCellBeamConeRenderItem[] => (
       homepageVisualIdentity
@@ -3913,56 +3612,35 @@ function SceneRenderContent({
   // fill with the ordinary serving fan. Deduplicate by satellite/cell so one
   // label still corresponds to one visible beam rather than stacking callouts
   // from overlapping display layers.
-  const beamInfoItems = useMemo(() => {
-    const itemsByBeam = new Map<string, SinrLiveCellBeamConeRenderItem>();
-    for (const item of [
-      ...additiveCinemaHandoverPairConeItems,
-      ...additiveTriggeredIntraConeItems,
-      ...authorityHandoverPairConeItems,
-      ...sinrLiveCellBeamConeItems,
-    ]) {
-      // Display-only fan completion has no UE/SINR sample. Keep it in the
-      // geometry layers, but never promote it to an information card.
-      if (item.displayOnly === true) continue;
-      // An intra handover can keep one geographic cell while changing the
-      // beam identity. The beam id is part of the visual join; deduplicating
-      // only by cell used to hide one side of that exact source -> target pair.
-      const key = `${item.satId}/${item.cellId}/${item.beamId ?? cellLinkBudgetBeamId(item.cellId)}`;
-      if (!itemsByBeam.has(key)) itemsByBeam.set(key, item);
-    }
-    const allItems = [...itemsByBeam.values()];
-    // During the accepted homepage handover beat, the scene should expose the
-    // same two endpoint beams that the rail compares. Keep the normal Beam
-    // Info roster outside that beat, but do not create a second item owner for
-    // the event pair.
-    if (
-      homepageVisualIdentity
-      && (multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
-      && handoverPresentation.active
-      && handoverPresentation.event !== null
-    ) {
-      const event = handoverPresentation.event;
-      const endpointKeys = new Set([
-        `${event.from.satId}/${event.from.cellId}/${event.from.beamId ?? cellLinkBudgetBeamId(event.from.cellId)}`,
-        `${event.to.satId}/${event.to.cellId}/${event.to.beamId ?? cellLinkBudgetBeamId(event.to.cellId)}`,
-      ]);
-      const pairItems = allItems.filter(item => endpointKeys.has(
-        `${item.satId}/${item.cellId}/${item.beamId ?? cellLinkBudgetBeamId(item.cellId)}`,
-      ));
-      return pairItems.length > 0 ? pairItems : allItems;
-    }
-    return allItems;
-  }, [
-    additiveCinemaHandoverPairConeItems,
-    additiveTriggeredIntraConeItems,
-    authorityHandoverPairConeItems,
-    handoverPresentation.active,
-    handoverPresentation.event,
-    homepageVisualIdentity,
-    multiCandidateCentralOverlayActive,
-    multiCandidateIdentityTransitionActive,
-    sinrLiveCellBeamConeItems,
-  ]);
+  const beamInfoItemsInput = useMemo<BeamInfoItemsInput<SinrLiveCellBeamConeRenderItem>>(
+    () => ({
+      layers: {
+        additiveCinemaHandoverPair: additiveCinemaHandoverPairConeItems,
+        additiveTriggeredIntra: additiveTriggeredIntraConeItems,
+        authorityHandoverPair: authorityHandoverPairConeItems,
+        serving: sinrLiveCellBeamConeItems,
+      },
+      presentation: {
+        homepageVisualIdentity,
+        multiCandidateCentralOverlayActive,
+        multiCandidateIdentityTransitionActive,
+        active: handoverPresentation.active,
+        event: handoverPresentation.event,
+      },
+    }),
+    [
+      additiveCinemaHandoverPairConeItems,
+      additiveTriggeredIntraConeItems,
+      authorityHandoverPairConeItems,
+      handoverPresentation.active,
+      handoverPresentation.event,
+      homepageVisualIdentity,
+      multiCandidateCentralOverlayActive,
+      multiCandidateIdentityTransitionActive,
+      sinrLiveCellBeamConeItems,
+    ],
+  );
+  const { beamInfoItems } = useBeamInfoItems({ beamInfoItemsInput });
   const homepageHandoverBeamInfoActive = homepageVisualIdentity
     && (multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
     && handoverPresentation.active

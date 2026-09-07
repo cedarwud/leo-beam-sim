@@ -49,7 +49,6 @@ import {
   type HandoverPolicyTuningState,
 } from './handoverPolicyTuning';
 import {
-  applySignalTuning,
   createSignalTuningState,
   getSignalTuningEvidenceKey,
   getSignalTuningResetKey,
@@ -59,7 +58,6 @@ import {
 import {
   applySceneTopology,
   createSceneTopologyState,
-  applyLegacyConstellationPreset,
   getSceneTopologyResetKey,
   hasSceneTopologyOverrides,
   type SceneTopologyState,
@@ -167,10 +165,12 @@ import {
   type RightSidebarTab,
 } from './app/appRuntimeModel';
 import {
-  applyTrainingEnvAxesToProfile,
   envAxesFromTrainingRunMetadata,
   seedTripletFromTrainingRunMetadata,
 } from './app/trainingEnvAxesProfileAdapter';
+import {
+  type WalkerSignalProfileInput,
+} from './app/walkerSignalProfile';
 import {
   APP_EPOCH_MS,
   LIVE_SIM_TIMELINE_DURATION_SEC,
@@ -187,6 +187,9 @@ import {
   liveWalkerHandoverEventIndexToRailEvents,
   selectDirectorHandoverEvents,
 } from './app/liveWalkerHandoverRailAdapter';
+import {
+  type WalkerHandoverRailSelectionInput,
+} from './app/walkerHandoverRailSelection';
 import {
   buildArtifactHandoverRailEvents,
   buildModqnHandoverRailEvents,
@@ -253,14 +256,20 @@ import {
 } from './prototype/visual-lab-g0/visualLabWorkspace';
 import type { VisualLabFocus, VisualLabView } from './prototype/visual-lab-g0/VisualLabScene';
 import {
-  degreesFromRadians,
-  offAxisAngleRadForVisualLabUe,
-  positionForVisualLabUeOffAxisAngle,
   radiansFromDegrees,
 } from './prototype/visual-lab-g0/visualLabUeGeometry';
+import {
+  positionForWalkerVisualLabUeAngle,
+  type WalkerVisualLabUeGeometryInput,
+} from './app/walkerVisualLabUeGeometry';
+import type { WalkerIntraTeachingDisplayInput } from './app/walkerIntraTeachingDisplay';
 import { focusForVisualLabInput } from './prototype/visual-lab-g0/visualLabInputFocus';
 import './prototype/visual-lab-g0/UnifiedVisualLabPrototype.scss';
 import './AppWalkerSandboxReskin.scss';
+import { useWalkerVisualLabGeometry } from './app/useWalkerVisualLabGeometry';
+import { useWalkerSignalProfile } from './app/useWalkerSignalProfile';
+import { useWalkerHandoverRail } from './app/useWalkerHandoverRail';
+import { useWalkerIntraTeachingDisplay } from './app/useWalkerIntraTeachingDisplay';
 
 interface HandoverPolicyRuntimeState {
   profileId: string;
@@ -534,27 +543,20 @@ export function AppWalkerSandbox() {
     () => liveSceneTopologyControlsEnabled ? sceneTopology : createSceneTopologyState(),
     [liveSceneTopologyControlsEnabled, sceneTopology],
   );
-  const signalTunedProfile = useMemo(() => {
-    const signalProfile = applySignalTuning(baseProfile, signalTuning);
-    const trainingProfile = applyTrainingEnvAxesToProfile(
-      signalProfile,
-      selectedTrainingEnvAxes,
-      selectedTrainingSeedTriplet,
-    );
-    // Manual scene controls are the last live-sim layer, so changing a beam or
-    // satellite count remains effective even when a training environment is
-    // loaded. Artifact lanes pass an empty topology above.
-    return applySceneTopology(
-      applyLegacyConstellationPreset(trainingProfile, activeSceneTopology.constellation),
-      activeSceneTopology,
-    );
-  }, [
+  const signalProfileInput = useMemo<WalkerSignalProfileInput>(() => ({
+    baseProfile,
+    signalTuning,
+    selectedTrainingEnvAxes,
+    selectedTrainingSeedTriplet,
+    activeSceneTopology,
+  }), [
     activeSceneTopology,
     baseProfile,
     selectedTrainingEnvAxes,
     selectedTrainingSeedTriplet,
     signalTuning,
   ]);
+  const { signalTunedProfile } = useWalkerSignalProfile({ signalProfileInput });
   const effectiveProfile = useMemo(
     () => applyHandoverPolicyTuning(signalTunedProfile, appliedHandoverPolicy),
     [signalTunedProfile, appliedHandoverPolicy],
@@ -1820,12 +1822,15 @@ export function AppWalkerSandbox() {
     timelineDurationSec,
   ]);
 
-  const handoverRailEvents = useMemo(() => {
-    if (sceneSource === 'artifact-replay') return artifactHandoverRailEvents;
-    if (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview') return liveWalkerHandoverRailEvents;
-    if (sceneLane === 'modqn-replay-proof') return modqnHandoverRailEvents;
-    return liveObservedHandoverRailEvents;
-  }, [
+  const handoverRailSelectionInput = useMemo<WalkerHandoverRailSelectionInput>(() => ({
+    scene: { sceneSource, sceneLane },
+    events: {
+      artifact: artifactHandoverRailEvents,
+      liveObserved: liveObservedHandoverRailEvents,
+      liveWalker: liveWalkerHandoverRailEvents,
+      modqn: modqnHandoverRailEvents,
+    },
+  }), [
     artifactHandoverRailEvents,
     liveObservedHandoverRailEvents,
     liveWalkerHandoverRailEvents,
@@ -1833,6 +1838,7 @@ export function AppWalkerSandbox() {
     sceneLane,
     sceneSource,
   ]);
+  const { handoverRailEvents } = useWalkerHandoverRail({ handoverRailSelectionInput });
 
   const requestLiveTimelineSeek = useCallback((request: LiveTimelineSeekRequest) => {
     // The archived-TLE homepage has no live Walker seek path. Keep every
@@ -2086,51 +2092,13 @@ export function AppWalkerSandbox() {
   // directly here would make the candidate card jump to a different cell before
   // the animation ends. This is a presentation snapshot only; formula evidence
   // and serving state remain the live model values.
-  const intraTeachingDisplayState = useMemo<SimState>(() => {
-    const presentation = visibleManualHandoverActive && manualHandoverRequest?.kind === 'intra'
-      ? manualHandoverRequest.intraPresentation
-      : null;
-    if (presentation === null || presentation === undefined) return simState;
-    return {
-      ...simState,
-      panelPrimary: {
-        ...simState.panelPrimary,
-        role: 'serving',
-        satId: presentation.sourceSatId,
-        beamId: null,
-        sinrDb: presentation.servingSinrDb,
-        elevationDeg: presentation.elevationDeg,
-        rangeKm: presentation.rangeKm,
-        status: 'live',
-      },
-      panelComparison: {
-        ...simState.panelComparison,
-        role: 'pending',
-        satId: presentation.sourceSatId,
-        beamId: null,
-        sinrDb: presentation.candidateSinrDb,
-        elevationDeg: presentation.elevationDeg,
-        rangeKm: presentation.rangeKm,
-        status: 'live',
-      },
-      servingSatId: presentation.sourceSatId,
-      servingBeamId: null,
-      servingCellId: presentation.sourceCellId,
-      servingElevationDeg: presentation.elevationDeg,
-      servingRangeKm: presentation.rangeKm,
-      pendingTargetSatId: presentation.sourceSatId,
-      pendingTargetBeamId: null,
-      pendingTargetSinrDb: presentation.candidateSinrDb,
-      comparisonSatId: presentation.sourceSatId,
-      comparisonBeamId: null,
-      comparisonElevationDeg: presentation.elevationDeg,
-      comparisonRangeKm: presentation.rangeKm,
-      comparisonSinrDb: presentation.candidateSinrDb,
-      comparisonKind: 'pending',
-      sinrDeltaDb: presentation.deltaSinrDb,
-      sinrDb: presentation.servingSinrDb,
-    };
-  }, [manualHandoverRequest, simState, visibleManualHandoverActive]);
+  const intraTeachingDisplayInput = useMemo<WalkerIntraTeachingDisplayInput>(() => ({
+    simState,
+    visibleManualHandoverActive,
+    manualHandoverKind: manualHandoverRequest?.kind ?? null,
+    intraPresentation: manualHandoverRequest?.intraPresentation ?? null,
+  }), [manualHandoverRequest, simState, visibleManualHandoverActive]);
+  const { intraTeachingDisplayState } = useWalkerIntraTeachingDisplay({ intraTeachingDisplayInput });
   const intraTeachingComparisonCellId = visibleManualHandoverActive && manualHandoverRequest?.kind === 'intra'
     ? manualHandoverRequest.intraPresentation?.targetCellId ?? null
     : null;
@@ -2478,7 +2446,7 @@ export function AppWalkerSandbox() {
     setVlabRefSelectedUe(null);
     void vlabRefSession.dispatch({ type: 'resetRepresentativeUeFrameOptions' });
   }, [vlabRefSession]);
-  const vlabRefUeGeometryControls: VisualLabUeGeometryControls | null = useMemo(() => {
+  const vlabRefUeGeometryInput = useMemo<WalkerVisualLabUeGeometryInput | null>(() => {
     if (
       vlabRefSnapshot === null
       || vlabRefLocalScene?.representative.availability !== 'available'
@@ -2490,57 +2458,39 @@ export function AppWalkerSandbox() {
       || vlabRefLocalScene.substrate.worldUnitsPerKm <= 0
     ) return null;
     const representative = vlabRefLocalScene.representative;
-    const scale = vlabRefLocalScene.substrate.worldUnitsPerKm;
-    const acceptedPositionKm = representative.user.positionKm;
-    const draftPositionKm: readonly [number, number] = vlabRefSelectedUe === null
-      ? acceptedPositionKm
-      : [vlabRefSelectedUe.x / scale, -vlabRefSelectedUe.z / scale];
-    const beamCenterKm = representative.cell.centerKm;
-    const maxRadiusKm = vlabRefLocalScene.substrate.cellRadiusKm * .96;
-    const directionVector = [
-      acceptedPositionKm[0] - beamCenterKm[0],
-      acceptedPositionKm[1] - beamCenterKm[1],
-    ] as const;
-    const directionLength = Math.hypot(directionVector[0], directionVector[1]);
-    const direction = directionLength > 1e-12
-      ? [directionVector[0] / directionLength, directionVector[1] / directionLength] as const
-      : undefined;
-    const angleInput = {
-      satelliteDistanceKm: vlabRefSnapshot.serving.distanceKm,
-      satelliteElevationDeg: vlabRefSnapshot.serving.elevationDeg,
-      beamCenterKm,
-      userPositionKm: draftPositionKm,
-      maxRadiusKm,
-      direction,
-    } as const;
-    const acceptedAngleRad = offAxisAngleRadForVisualLabUe({
-      satelliteDistanceKm: angleInput.satelliteDistanceKm,
-      satelliteElevationDeg: angleInput.satelliteElevationDeg,
-      beamCenterKm,
-      userPositionKm: acceptedPositionKm,
-    });
-    const draftAngleRad = offAxisAngleRadForVisualLabUe(angleInput);
-    const maxPositionKm = positionForVisualLabUeOffAxisAngle(angleInput, Math.PI);
-    const maxAngleRad = offAxisAngleRadForVisualLabUe({
-      satelliteDistanceKm: angleInput.satelliteDistanceKm,
-      satelliteElevationDeg: angleInput.satelliteElevationDeg,
-      beamCenterKm,
-      userPositionKm: maxPositionKm,
-    });
     return {
-      acceptedAngleDeg: degreesFromRadians(acceptedAngleRad),
-      draftAngleDeg: degreesFromRadians(draftAngleRad),
-      maxAngleDeg: Math.max(degreesFromRadians(maxAngleRad), .01),
-      hasDraft: vlabRefSelectedUe !== null,
+      link: {
+        satelliteDistanceKm: vlabRefSnapshot.serving.distanceKm,
+        satelliteElevationDeg: vlabRefSnapshot.serving.elevationDeg,
+      },
+      geometry: {
+        beamCenterKm: representative.cell.centerKm,
+        acceptedPositionKm: representative.user.positionKm,
+        cellRadiusKm: vlabRefLocalScene.substrate.cellRadiusKm,
+        worldUnitsPerKm: vlabRefLocalScene.substrate.worldUnitsPerKm,
+      },
+      representativeUserIndex: representative.user.index,
+      selectedUeWorldPosition: vlabRefSelectedUe,
+    };
+  }, [vlabRefLocalScene, vlabRefSelectedUe, vlabRefSnapshot]);
+  const { vlabRefUeGeometry } = useWalkerVisualLabGeometry({ vlabRefUeGeometryInput });
+  const vlabRefUeGeometryControls: VisualLabUeGeometryControls | null = useMemo(() => {
+    if (vlabRefUeGeometry === null) return null;
+    const { angleInput, scale } = vlabRefUeGeometry;
+    return {
+      acceptedAngleDeg: vlabRefUeGeometry.acceptedAngleDeg,
+      draftAngleDeg: vlabRefUeGeometry.draftAngleDeg,
+      maxAngleDeg: vlabRefUeGeometry.maxAngleDeg,
+      hasDraft: vlabRefUeGeometry.hasDraft,
       onAngleChange: (angleDeg: number): void => {
-        const positionKm = positionForVisualLabUeOffAxisAngle(angleInput, radiansFromDegrees(angleDeg));
+        const positionKm = positionForWalkerVisualLabUeAngle(vlabRefUeGeometry, radiansFromDegrees(angleDeg));
         setVlabRefSelectedUe({ x: positionKm[0] * scale, z: -positionKm[1] * scale });
-        vlabRefScheduleUeRecompute(representative.user.index, positionKm);
+        vlabRefScheduleUeRecompute(vlabRefUeGeometry.representativeUserIndex, positionKm);
         vlabRefSetFocus('geometry');
       },
       onReset: vlabRefResetUeProbe,
     };
-  }, [vlabRefLocalScene, vlabRefResetUeProbe, vlabRefScheduleUeRecompute, vlabRefSelectedUe, vlabRefSetFocus, vlabRefSnapshot]);
+  }, [vlabRefResetUeProbe, vlabRefScheduleUeRecompute, vlabRefSetFocus, vlabRefUeGeometry]);
   const vlabRefUi = vlabRefLab.presentation.locale === 'zh-Hant' ? {
     modulesAria: '可逐步加入的分析模組',
     fieldAria: '場域切換',
