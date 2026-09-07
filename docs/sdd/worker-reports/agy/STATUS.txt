@@ -1,0 +1,18 @@
+R2 rc=0 bytes=8308
+R3 rc=0 bytes=7080
+R4 rc=0 bytes=11576
+T7 rc=1 bytes=82
+T3 rc=1 bytes=82
+T2 rc=1 bytes=94
+T5 rc=0 bytes=5448
+T1 rc=0 bytes=6778
+T6 rc=0 bytes=6463
+T8 rc=0 bytes=6156
+T9 rc=0 bytes=7820
+T4 rc=0 bytes=6059
+R1 rc=0 bytes=9376
+ALL DONE
+T3 rc=0 bytes=6104
+T7 rc=0 bytes=7778
+T2 rc=0 bytes=5822
+RETRY DONE

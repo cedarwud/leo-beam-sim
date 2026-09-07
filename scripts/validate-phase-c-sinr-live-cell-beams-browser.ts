@@ -122,38 +122,15 @@ async function main(): Promise<void> {
 
     // ── G2c ambient live-handover PULSE (the SINGLE handover-visual layer, C3) ──
     // The bright, age-faded handover cones fire only AFTER the cold-attach warm-up
-    // (pingPongGuardSec 30 + TTT 3.5, ≈ 42s to the first handover burst at the dense
-    // demo start). Crank playback to 20x so that warm-up elapses in a few seconds of
-    // wall time, then poll for the pulse to light a real handover. The proof is
-    // `pulse > 0` with the director NEVER armed in this run — the pulse mounts on its
-    // own always-on flag, not a manual cinema arm (C3 collapsed the director cinema's
-    // candidate highlight + pair cone INTO this pulse, so it is the only HO layer).
-    const fastButton = page.locator('[data-testid="timeline-speed-20x"]').first();
-    if (await fastButton.count()) await fastButton.click();
-    // Pulse retention is four SIMULATION seconds. At 20x that can be only
-    // 200 ms of wall time, so the old 700 ms sampling loop could step cleanly
-    // over a valid pulse. Poll the same exact positive control atomically at
-    // 50 ms; this changes no runtime or pass criterion, only removes aliasing.
-    const pulseHandle = await page.waitForFunction(
-      () => {
-        const canvas = document.querySelector('canvas[data-camera-position]');
-        if (!canvas) return false;
-        const pulse = Number(canvas.getAttribute('data-sinr-live-handover-pulse-cone-count') || 0);
-        const pulseRendered = Number(canvas.getAttribute('data-sinr-live-handover-pulse-cone-rendered-count') || 0);
-        return pulse > 0 && pulseRendered > 0 ? { pulse, pulseRendered } : false;
-      },
-      undefined,
-      { timeout: 90000, polling: 50 },
-    );
-    const { pulse, pulseRendered } = await pulseHandle.jsonValue() as {
-      readonly pulse: number;
-      readonly pulseRendered: number;
-    };
-    // The pulse fires with NO director arm anywhere in this run — it is the always-on
-    // ambient handover layer, mounted on its own flag (not a manual cinema).
-    assert.ok(pulse > 0, `live-handover pulse lights real handovers WITHOUT a director arm — always-on ambient layer (data-sinr-live-handover-pulse-cone-count=${pulse})`);
-    assert.ok(pulseRendered > 0, `live-pulse cones actually render (mesh-derived data-sinr-live-handover-pulse-cone-rendered-count=${pulseRendered})`);
-    console.log(`[sinr-live-cell-beams] live pulse: count=${pulse}, meshRendered=${pulseRendered} fired with NO director arm`);
+    // The ambient handover-pulse sub-section was removed from this homepage gate.
+    // The homepage deliberately suppresses the legacy natural-pulse carrier
+    // (shouldSuppressLegacyPrimaryHandover = homepageVisualIdentity === true &&
+    // lane === 'sinr-live', and that flag is pathname === '/'), so requiring
+    // data-sinr-live-handover-pulse-cone-count > 0 here could never pass on '/'.
+    // The pulse contract is NOT lost: validate-phase-c-handover-pulse-render-browser.ts
+    // drives it on /legacy, where the carrier does render, and asserts the stricter
+    // settled count == rendered. This gate keeps its own subject -- the homepage
+    // cell-truth cones and their non-leak guarantees below.
 
     // No artifact-lane leak onto the live lane.
     assert.equal(await page.locator('[data-testid="artifact-satellite-compass"]').count(), 0, 'artifact compass must not leak onto the live lane');
@@ -161,7 +138,7 @@ async function main(): Promise<void> {
 
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);
-    console.log('[sinr-live-cell-beams] PASS — cell-truth cones at fixed cell centres + UEs off-axis + decoupled live-handover pulse on sinr-live (DATA SOURCE = live SINR engine)');
+    console.log('[sinr-live-cell-beams] PASS — cell-truth cones at fixed cell centres + UEs off-axis on sinr-live, no artifact-lane leak (DATA SOURCE = live SINR engine; the handover pulse is covered by validate:phase-c:handover-pulse:render:browser on /legacy)');
   } finally {
     await browser.close();
   }

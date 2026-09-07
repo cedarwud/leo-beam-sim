@@ -1,0 +1,7 @@
+A3 rc=0 bytes=7492
+A4 rc=0 bytes=8446
+A1 rc=0 bytes=9327
+A2 rc=0 bytes=9468
+A6 rc=0 bytes=9252
+A5 rc=0 bytes=9556
+ALL DONE

@@ -7,6 +7,7 @@ import { chromium, type Browser, type Page } from '@playwright/test';
 import {
   SIX_ACTS_ACT5_HREF,
   SIX_ACTS_ACT6_HREF,
+  SIX_ACTS_VISIBLE_ROUTES,
 } from '../src/course/nav/sixActsRoutes.ts';
 
 const BASE_URL = process.env.APP_URL ?? process.argv[2] ?? 'http://127.0.0.1:3000';
@@ -21,10 +22,41 @@ async function openAct(page: Page, act: 5 | 6): Promise<void> {
 
 async function assertStageNavigation(page: Page, act: 5 | 6): Promise<void> {
   const nav = page.getByTestId('six-acts-stage-nav');
-  assert.equal(await nav.locator('.six-acts-nav__acts a').count(), 6);
-  assert.equal(await nav.locator('a[href="/"]').count(), 1);
+  // Derived, not hardcoded: the registry publishes Acts 1-4 and marks 5/6
+  // hiddenFromNavigation (src/course/nav/sixActsRoutes.ts), a split locked by
+  // sixActsRoutes.test.ts. Reading the registry keeps this gate correct the next
+  // time an act is published or withdrawn.
+  assert.equal(await nav.locator('.six-acts-nav__acts a').count(), SIX_ACTS_VISIBLE_ROUTES.length);
+  // count() does not wait, so a raw CSS probe can sample the stage nav before the
+  // home link is attached and report 0 for a link that src/course/nav/SixActsNav.tsx
+  // does render (variant === 'stage' emits <a class="six-acts-nav__stage-home"
+  // href="/" aria-label="回首頁">). Wait on the accessible name, then verify the
+  // resolved pathname -- still a real, clickable public link, no state injection.
+  const home = nav.getByRole('link', { name: '回首頁' });
+  await home.waitFor({ state: 'attached', timeout: 30_000 });
+  assert.equal(await home.count(), 1, 'stage nav exposes exactly one home link');
+  assert.equal(
+    new URL(await home.getAttribute('href') ?? '', page.url()).pathname,
+    '/',
+    'stage nav home link resolves to the homepage',
+  );
+  // aria-current can only mark a link the nav actually renders. Acts 5/6 are
+  // hiddenFromNavigation, so on those stages there is no link to mark and the old
+  // unconditional `count() === 1` asserted something the registry forbids. Derive the
+  // expectation instead: published act -> exactly one current link carrying its label;
+  // withdrawn act -> exactly zero. The withdrawn branch is a real assertion, not a
+  // skip: republishing an act without revisiting this gate turns it red.
+  const actIsPublished = SIX_ACTS_VISIBLE_ROUTES.some(entry => entry.actLabel === String(act));
   const current = nav.locator('a[aria-current="page"]');
-  assert.equal(await current.count(), 1);
+  if (!actIsPublished) {
+    assert.equal(
+      await current.count(),
+      0,
+      `act ${act} is hiddenFromNavigation, so no stage nav link may claim aria-current`,
+    );
+    return;
+  }
+  assert.equal(await current.count(), 1, `act ${act} marks exactly one stage nav link current`);
   assert.equal(await current.locator('em').innerText(), String(act));
   assert.equal(await current.locator('em').evaluate(node => getComputedStyle(node).color), 'rgb(255, 255, 255)');
 }

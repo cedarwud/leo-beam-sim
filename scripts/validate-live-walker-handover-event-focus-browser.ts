@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+// QUARANTINED 2026-09-07 — same root cause as validate-phase-c-handover-cinema-browser.ts
+// and validate-phase-c-director-cinematic-live-browser.ts (both QUARANTINED 2026-06-20).
+// The 49db65d right-sidebar restore removed the live-tab handoverEventRail as a parked,
+// non-functional feature ("rebuild later"), so this gate hard-fails waiting for
+// [data-testid="handover-event-rail"], which only src/ui/HandoverEventRail.tsx renders and
+// nothing mounts on the live lane. Script kept + still runnable manually; already absent
+// from every aggregate chain in package.json, matching the two gates above. Re-arm it when
+// the live-lane handover rail is rebuilt -- this is a parked feature, NOT a product
+// regression, and NOT a gate to retire.
 
 import assert from 'node:assert/strict';
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';

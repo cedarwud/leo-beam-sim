@@ -1,0 +1,8 @@
+Y5 rc=0
+Y6 rc=0
+Y7 rc=0
+Y2 rc=0
+Y1 rc=0
+Y4 rc=0
+Y3 rc=0
+ALL DONE

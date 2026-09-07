@@ -1,0 +1,5 @@
+G1 rc=0
+G2 rc=0
+G3 rc=0
+G4 rc=0
+ALL DONE

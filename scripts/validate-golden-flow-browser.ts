@@ -713,7 +713,11 @@ async function main(): Promise<void> {
         assert.equal(await rail.getAttribute('data-active-angle'), 'off-axis');
         assert.match(await rail.getAttribute('aria-label') ?? '', /兩者均由左往右呈現/);
         assert.equal(await page.getByTestId('golden-flow-angle-power-ee').count(), 1);
-        assert.match(await page.getByTestId('golden-flow-angle-power-ee').innerText(), /方向圖 F\(θ\).*增益變化 ΔGᵀ.*所需功率 P′.*相對 EE/s);
+        // The middle term was renamed 所需功率 P′ -> 理想補償功率需求 P′. That wording is
+        // owned by src/prototype/golden-flow/goldenFlowPresentationRegression.test.ts,
+        // which actively REJECTS the old phrasing, so this gate follows it rather than
+        // pinning retired copy.
+        assert.match(await page.getByTestId('golden-flow-angle-power-ee').innerText(), /方向圖 F\(θ\).*增益變化 ΔGᵀ.*理想補償功率需求 P′.*相對 EE/s);
       }
       if (beat.id === 'consequence') {
         assert.equal(await page.getByTestId('golden-flow-angle-formula').count(), 1, 'consequence: formulas appear only with the explanation');
@@ -776,14 +780,20 @@ async function main(): Promise<void> {
         `${beat.id}: candidate/threshold/TTT/trace/commit/receipt panels are mutually exclusive`,
       );
 
-      const controlEvaluationElapsedSec = Number(
-        await page.locator('main').getAttribute('data-control-evaluation-elapsed-sec'),
-      );
-      assert.ok(Number.isFinite(controlEvaluationElapsedSec), `${beat.id}: control evaluation time is exposed`);
-      const expectedControls = goldenFlowControlsAvailable(beat, controlEvaluationElapsedSec).join(',');
+      // Read elapsed + visible-controls in ONE evaluate. The component updates
+      // reviewWallElapsedSec every animation frame and emits both datasets from the
+      // same render, so two separate getAttribute calls can straddle a re-render:
+      // on the 6.000s control-availability boundary the first read returns 5.999
+      // (expected set: []) while the second already reads 'replay,next'. That torn
+      // read, not a product fault, is what made this gate red.
+      const controlSnapshot = await page.locator('main').evaluate(element => ({
+        elapsedSec: Number((element as HTMLElement).dataset.controlEvaluationElapsedSec),
+        visibleControls: (element as HTMLElement).dataset.visibleControls ?? '',
+      }));
+      assert.ok(Number.isFinite(controlSnapshot.elapsedSec), `${beat.id}: control evaluation time is exposed`);
       assert.equal(
-        await page.locator('main').getAttribute('data-visible-controls'),
-        expectedControls,
+        controlSnapshot.visibleControls,
+        goldenFlowControlsAvailable(beat, controlSnapshot.elapsedSec).join(','),
         `${beat.id}: only beat-authorized controls are exposed`,
       );
       assert.equal(

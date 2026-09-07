@@ -1,3 +1,12 @@
+// QUARANTINED 2026-09-07 — the public homepage deliberately does not mount
+// LaneExperienceBar (scripts/validate-frontend-scene-lane-governance.ts asserts App must
+// NOT import or mount it), so this gate necessarily stalls waiting for
+// [data-testid="lane-experience-bar"]. That evidence proves the PUBLIC ENTRY is hidden --
+// not that the feature was removed for good: the component is deliberately kept in the
+// unreferenced allowlist and the handoff records it as retained for internal proof
+// tooling. Per the park-vs-retire line already set by the director/cinema gates, the
+// script and its npm key are KEPT. Re-arm when a supported MODQN/proof entry returns.
+// Do NOT make this green via localStorage, hidden state or URL injection.
 /**
  * S1 durable browser gate: the top-level LaneExperienceBar + the in-MODQN
  * ModqnViewToggle sub-nav together navigate all four scene lanes IN-APP. After

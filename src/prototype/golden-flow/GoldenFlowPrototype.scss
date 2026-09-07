@@ -1156,6 +1156,15 @@ body,
 @media (max-width: 360px) {
   .golden-flow-mobile-identities strong { font-size: 1rem; }
   .golden-flow-ue-handle-label > div { min-width: 112px; }
+  // 320px: the axis-guide card overlapped the draggable UE handle by 125x25px.
+  // The handle is the only interactive element in this beat -- shrinking it would
+  // break the drag the lesson asks for -- so the passive guide yields instead,
+  // following this block's existing "hide secondary copy, tighten the card" pattern
+  // (cf. the trace note / world labels below). Scoped to .golden-flow-axis-guide,
+  // NOT .golden-flow-primary-cue: that class is shared by the pair / threshold / ttt
+  // cards in other beats (15 usages) and overriding it would move all of them.
+  .golden-flow-axis-guide { padding: 6px 10px; }
+  .golden-flow-axis-guide__header span { display: none; }
   .golden-flow-angle-readout { top: 13rem; }
   .golden-flow[data-beat="trace"] .golden-flow-trace__note,
   .golden-flow[data-beat="trace"] .golden-flow-trace__heading strong { display: none; }
@@ -2569,6 +2578,11 @@ body,
   .golden-flow-angle-power-ee__values > i { display: none; }
   .golden-flow-angle-power-ee__values > div { padding: 7px 8px; }
   .golden-flow-angle-power-ee span { font-size: 1rem; }
+  // The note is the one long string in this block that the mobile typography pass
+  // missed: it stayed at .92rem (14.72px) and broke the >=16 CSS px contract that
+  // validate-golden-flow-browser enforces at 390x844. Same 1rem convergence as its
+  // sibling spans above -- no scientific content changes.
+  .golden-flow-angle-power-ee__note { font-size: 1rem; }
   .golden-flow-angle-power-ee strong { font-size: 1.05rem; }
   .golden-flow-angle-power-ee__formula { grid-template-columns: minmax(0, 1fr); }
 

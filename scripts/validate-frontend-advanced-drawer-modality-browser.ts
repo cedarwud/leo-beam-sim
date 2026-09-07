@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+// QUARANTINED 2026-09-07 — the only entry step this gate has is clicking a
+// LaneExperienceBar segment that the public homepage no longer mounts. The contract it
+// actually protects -- the Advanced drawer is non-modal, draws no scrim, and leaves the
+// timeline operable -- has NOT been repealed: the drawer still mounts conditionally on the
+// MODQN lane and governance still requires this npm key to exist. Entry parked, protection
+// still live, so this is a quarantine and not a retirement. Fix the entry step once a
+// supported public entry returns; do not bypass the public interaction by setting React
+// state directly.
 // Frontend — Advanced setup drawer MODALITY behavior gate (MODQN lane).
 //
 // History: the MODQN Advanced drawer used to be a left-anchored MODAL with a

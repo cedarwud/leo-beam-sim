@@ -55,6 +55,13 @@ interface SharedHomepageSnapshot {
   readonly railBackgroundColor: string;
 }
 
+// The serving row renders exactly these metric cells. EE is deliberately excluded:
+// HomepageBeamRail filters it out of the metric grid
+// (src/ui/homepage/HomepageBeamRail.tsx:381) and presents it via EeProgressSummary
+// under data-testid="homepage-beam-ee-progress". Both the predicate and the count
+// assertion read this one list so they cannot drift apart again.
+const SERVING_ROW_METRIC_FIELDS = ['powerW', 'throughputBps', 'sinrDb'] as const;
+
 function assertHomepageRailPresentation(shared: SharedHomepageSnapshot): void {
   assert.ok(
     [shared.centerSystemPowerW, shared.centerThroughputBps, shared.centerSinrDb, shared.centerEeBitsPerJoule]
@@ -71,7 +78,11 @@ function assertHomepageRailPresentation(shared: SharedHomepageSnapshot): void {
     shared.railMetricTexts.some(text => /\b\d+(?:\.\d+)?\s+[kMG](?:bit\/s|bit\/J)\b/.test(text)),
     'homepage rail must expose compact k/M/G rate or EE units',
   );
-  assert.equal(shared.railMetricTexts.length, 4, 'homepage serving row must expose all four current metric cells');
+  assert.equal(
+    shared.railMetricTexts.length,
+    SERVING_ROW_METRIC_FIELDS.length,
+    `homepage serving row must expose its ${SERVING_ROW_METRIC_FIELDS.length} metric cells (EE lives in homepage-beam-ee-progress)`,
+  );
 }
 
 async function assertWalkerHomepage(page: Page): Promise<void> {
@@ -218,13 +229,35 @@ async function assertNaturalHomepageTimeline(page: Page): Promise<void> {
   }
 }
 
+// Both waits below used to fail as a bare `Timeout 30000ms exceeded`, which cannot say
+// whether the primary callout never appeared or which one of the join conditions never
+// settled. The predicate now records the FIRST unmet condition on window before
+// returning false, and the catch re-throws with that name. Conditions and their order
+// are unchanged, so this reports better without asserting less.
+//
+// The reason is stashed on window rather than returned: waitForFunction resolves on any
+// truthy value, so returning a reason string would make the very first poll "pass".
+declare global {
+  interface Window { __walkerPredicateFailure?: string }
+}
+
+async function readPredicateFailure(page: Page): Promise<string> {
+  const reason = await page.evaluate(() => window.__walkerPredicateFailure ?? '');
+  return reason === '' ? 'no condition was recorded (predicate never ran)' : reason;
+}
+
 async function assertSharedWalkerSnapshot(page: Page): Promise<SharedHomepageSnapshot> {
-  await page.waitForFunction(
-    () => document.querySelector('[data-testid="beam-callout"][data-beam-primary="1"]') !== null,
-    undefined,
-    { timeout: 30_000 },
-  );
-  await page.waitForFunction(() => {
+  try {
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="beam-callout"][data-beam-primary="1"]') !== null,
+      undefined,
+      { timeout: 30_000 },
+    );
+  } catch {
+    throw new Error('shared Walker snapshot stage 1: the primary beam callout never mounted');
+  }
+  try {
+  await page.waitForFunction((fields: readonly string[]) => {
     const rail = document.querySelector<HTMLElement>('[data-testid="homepage-beam-rail"]');
     const host = document.querySelector<HTMLElement>('[data-homepage-rail-snapshot-id]');
     const scene = document.querySelector<HTMLElement>('[data-testid="leo-main-scene"]');
@@ -233,40 +266,64 @@ async function assertSharedWalkerSnapshot(page: Page): Promise<SharedHomepageSna
     const servingRow = rail?.querySelector<HTMLElement>(
       '[aria-labelledby="homepage-serving-beam-title"] [data-testid="homepage-beam-row"]',
     ) ?? null;
-    const metricFields = ['powerW', 'throughputBps', 'sinrDb', 'energyEfficiencyBitsPerJoule'];
-    return rail !== null
-      && host !== null
-      && scene !== null
-      && center !== null
-      && canvas !== null
-      && servingRow !== null
-      && rail.dataset.snapshotId !== ''
-      && rail.dataset.sourceFrameId !== ''
-      && rail.dataset.phase !== ''
-      && host.dataset.homepageRailSnapshotId === rail.dataset.snapshotId
-      && host.dataset.homepageRailSourceFrameId === rail.dataset.sourceFrameId
-      && host.dataset.homepageRailPhase === rail.dataset.phase
-      && scene.dataset.acceptedHandoverSnapshotId === rail.dataset.snapshotId
-      && scene.dataset.acceptedHandoverSourceFrameId === rail.dataset.sourceFrameId
-      && scene.dataset.acceptedHandoverPhase === rail.dataset.phase
-      && servingRow.dataset.snapshotId === rail.dataset.snapshotId
-      && servingRow.dataset.sourceFrameId === rail.dataset.sourceFrameId
-      && rail.querySelector<HTMLElement>('[data-active-data-link-count]')?.dataset.activeDataLinkCount === '1'
-      && scene.dataset.acceptedHandoverActiveDataLinkCount === '1'
-      && (canvas.dataset.multiCandidateSceneRenderStatus !== 'active'
-        || (canvas.dataset.multiCandidateSceneAcceptedSnapshotId === rail.dataset.snapshotId
-          && canvas.dataset.multiCandidateSceneAcceptedSourceFrameId === rail.dataset.sourceFrameId))
-      && servingRow.dataset.satelliteId === center.dataset.angleAwareFrameSatId
-      && servingRow.dataset.beamId === center.dataset.angleAwareFrameBeamId
-      && center.dataset.angleAwareFrameTimeSec !== ''
-      && center.dataset.angleAwareFrameSinrDb !== ''
-      && center.dataset.angleAwareFrameThroughputBps !== ''
-      && center.dataset.angleAwareFrameSystemPowerW !== ''
-      && center.dataset.angleAwareFrameEeBitsPerJoule !== ''
-      && metricFields.every(field => (
-        servingRow.querySelector('[data-testid="homepage-beam-metric-' + field + '"]')?.textContent ?? ''
-      ).trim() !== '');
-  }, undefined, { timeout: 30_000 });
+    // EE is deliberately NOT one of the row's metric cells: HomepageBeamRail filters it
+    // out of the metric grid (src/ui/homepage/HomepageBeamRail.tsx:381) and presents it
+    // through EeProgressSummary instead (data-testid="homepage-beam-ee-progress").
+    // Asserting an EE cell here required an element the rail is designed not to render,
+    // so this gate could never pass. The EE contract is kept -- it moved to the surface
+    // that actually carries it, checked below.
+    const metricFields = fields;
+    const checks: readonly (readonly [string, () => boolean])[] = [
+      ['rail element', () => rail !== null],
+      ['rail host element', () => host !== null],
+      ['scene element', () => scene !== null],
+      ['primary callout element', () => center !== null],
+      ['scene canvas', () => canvas !== null],
+      ['serving beam row', () => servingRow !== null],
+      ['rail snapshotId is set', () => rail!.dataset.snapshotId !== ''],
+      ['rail sourceFrameId is set', () => rail!.dataset.sourceFrameId !== ''],
+      ['rail phase is set', () => rail!.dataset.phase !== ''],
+      ['host joins rail snapshotId', () => host!.dataset.homepageRailSnapshotId === rail!.dataset.snapshotId],
+      ['host joins rail sourceFrameId', () => host!.dataset.homepageRailSourceFrameId === rail!.dataset.sourceFrameId],
+      ['host joins rail phase', () => host!.dataset.homepageRailPhase === rail!.dataset.phase],
+      ['scene joins rail snapshotId', () => scene!.dataset.acceptedHandoverSnapshotId === rail!.dataset.snapshotId],
+      ['scene joins rail sourceFrameId', () => scene!.dataset.acceptedHandoverSourceFrameId === rail!.dataset.sourceFrameId],
+      ['scene joins rail phase', () => scene!.dataset.acceptedHandoverPhase === rail!.dataset.phase],
+      ['serving row joins rail snapshotId', () => servingRow!.dataset.snapshotId === rail!.dataset.snapshotId],
+      ['serving row joins rail sourceFrameId', () => servingRow!.dataset.sourceFrameId === rail!.dataset.sourceFrameId],
+      ['rail active data-link count is 1', () => rail!.querySelector<HTMLElement>('[data-active-data-link-count]')?.dataset.activeDataLinkCount === '1'],
+      ['scene active data-link count is 1', () => scene!.dataset.acceptedHandoverActiveDataLinkCount === '1'],
+      ['canvas multi-candidate accepted join', () => canvas!.dataset.multiCandidateSceneRenderStatus !== 'active'
+        || (canvas!.dataset.multiCandidateSceneAcceptedSnapshotId === rail!.dataset.snapshotId
+          && canvas!.dataset.multiCandidateSceneAcceptedSourceFrameId === rail!.dataset.sourceFrameId)],
+      ['serving row satellite matches callout', () => servingRow!.dataset.satelliteId === center!.dataset.angleAwareFrameSatId],
+      ['serving row beam matches callout', () => servingRow!.dataset.beamId === center!.dataset.angleAwareFrameBeamId],
+      ['callout frame time is set', () => center!.dataset.angleAwareFrameTimeSec !== ''],
+      ['callout frame SINR is set', () => center!.dataset.angleAwareFrameSinrDb !== ''],
+      ['callout frame throughput is set', () => center!.dataset.angleAwareFrameThroughputBps !== ''],
+      ['callout frame system power is set', () => center!.dataset.angleAwareFrameSystemPowerW !== ''],
+      ['callout frame EE is set', () => center!.dataset.angleAwareFrameEeBitsPerJoule !== ''],
+      ['serving row exposes the EE progress summary', () => {
+        const ee = rail!.querySelector<HTMLElement>('[data-testid="homepage-beam-ee-progress"]');
+        return ee !== null && (ee.textContent ?? '').trim() !== '';
+      }],
+      ...metricFields.map(field => [
+        'serving row metric text is non-empty: ' + field,
+        () => (servingRow!.querySelector('[data-testid="homepage-beam-metric-' + field + '"]')?.textContent ?? '').trim() !== '',
+      ] as const),
+    ];
+    for (const [name, holds] of checks) {
+      if (!holds()) {
+        window.__walkerPredicateFailure = name;
+        return false;
+      }
+    }
+    window.__walkerPredicateFailure = undefined;
+    return true;
+  }, [...SERVING_ROW_METRIC_FIELDS], { timeout: 30_000 });
+  } catch {
+    throw new Error(`shared Walker snapshot stage 2: unmet condition -- ${await readPredicateFailure(page)}`);
+  }
   const shared = await page.evaluate(() => {
     const rail = document.querySelector<HTMLElement>('[data-testid="homepage-beam-rail"]');
     const railHost = document.querySelector<HTMLElement>('[data-homepage-rail-snapshot-id]');
@@ -745,14 +802,13 @@ async function exercisePublicWalkerScenarioControls(page: Page): Promise<void> {
     { timeout: 30_000 },
   );
   await assertSharedWalkerSnapshot(page);
-  await page.locator('[data-testid="scenario-data-candidate-follow-serving"]').click();
-  await page.waitForFunction(
-    () => document.querySelector<HTMLCanvasElement>('[data-testid="leo-main-scene"] canvas')?.dataset.beamBudgetCandidate === '7',
-    undefined,
-    { timeout: 30_000 },
-  );
-  assert.equal(await canvas.getAttribute('data-beam-budget-serving'), '7');
-  await assertSharedWalkerSnapshot(page);
+  // The "candidate follows serving" control was retired when the candidate beam count
+  // became a real candidate-fan budget rather than a selected-link scalar, and
+  // src/ui/SignalTuningPanel.formula.test.tsx:142 now asserts the testid must NOT be
+  // rendered. Driving it here was a stale test artifact, not a product regression --
+  // restoring the control would break that negative contract. Nothing else is lost:
+  // beamBudgetServing === '7' is already asserted by the waitForFunction above, and
+  // the shared-snapshot check still runs immediately below.
 
   const defaultFocusFrame = await assertSharedWalkerSnapshot(page);
   await page.locator('label[for="scenario-data-focus-cell-1"]').click();

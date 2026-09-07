@@ -113,7 +113,7 @@ interface SampleTelemetry {
 
 interface FlowEvidence {
   readonly kind: 'intra' | 'inter';
-  readonly buttonCount: number | null;
+  readonly clickTargetSec: number | null;
   readonly samples: readonly SampleTelemetry[];
   readonly phases: readonly string[];
   readonly sceneSnapshotIds: readonly string[];
@@ -465,50 +465,52 @@ function assertTypographyAndLayout(sample: SampleTelemetry, label: string): void
   );
 }
 
-async function waitForButtonReady(page: Page, kind: 'intra' | 'inter'): Promise<import('@playwright/test').Locator> {
-  const button = page.locator(`[data-testid="director-${kind}-focus"]`).first();
-  await button.waitFor({ state: 'visible', timeout: READY_TIMEOUT_MS });
+// The homepage quick buttons are NOT the surface this gate may drive. They own a
+// scripted teaching story rather than an index seek (src/App.tsx:3373,3413) and the
+// homepage deliberately hides their event count, because "the number of indexed rows
+// is not user-facing evidence" (src/App.tsx:4085). Requiring a positive indexed count
+// from them made this gate assert across its own live-truth boundary.
+//
+// The source-backed public surface is the timeline marker: selected from the real
+// Walker event index (src/App.tsx:2501) and rendered with its own source/target times
+// (src/ui/TimelineBar.tsx:338-342). assertNaturalTimelineMarkers already locks their
+// owner, horizon, claim kind and one-per-kind contract before we touch them.
+async function waitForMarkerReady(page: Page, kind: 'intra' | 'inter'): Promise<import('@playwright/test').Locator> {
+  const marker = page.locator(`[data-marker-kind="${kind}"][data-click-target-sec]`).first();
+  await marker.waitFor({ state: 'visible', timeout: READY_TIMEOUT_MS });
   await page.waitForFunction(
     expectedKind => {
-      const element = document.querySelector<HTMLButtonElement>(`[data-testid="director-${expectedKind}-focus"]`);
+      const element = document.querySelector<HTMLButtonElement>(`[data-marker-kind="${expectedKind}"][data-click-target-sec]`);
       return element !== null && !element.disabled && !document.querySelector('[data-testid="handover-index-building"]');
     },
     kind,
     { timeout: READY_TIMEOUT_MS },
   );
-  return button;
+  return marker;
 }
 
 async function runFlow(page: Page, kind: 'intra' | 'inter'): Promise<FlowEvidence> {
-  const button = await waitForButtonReady(page, kind);
-  const buttonCountLabel = await button.textContent();
-  assert.match(buttonCountLabel ?? '', new RegExp(`Next ${kind === 'intra' ? 'Intra' : 'Inter'}`), `${kind}: current Next button copy is missing`);
+  const marker = await waitForMarkerReady(page, kind);
+  assert.equal(
+    await page.locator(`[data-marker-kind="${kind}"][data-click-target-sec]`).count(),
+    1,
+    `${kind}: homepage exposes exactly one source-backed timeline marker of this kind`,
+  );
   const before = await collectAlignedTelemetry(page, `${kind} pre-action`);
   assertWalkerSource(before);
   assertNaturalTimelineMarkers(before, `${kind} pre-action`);
   const selectedSpeed = Number(before.selectedSpeed);
-  const buttonCount = Number(buttonCountLabel?.match(/(\d+)\s*$/)?.[1] ?? NaN);
-  const buttonTitle = await button.getAttribute('title');
-  const realIntraTrigger = kind === 'intra'
-    && !Number.isFinite(buttonCount)
-    && buttonTitle === 'Trigger a real same-satellite intra handover';
+  const clickTargetSec = Number(await marker.getAttribute('data-click-target-sec'));
   assert.ok(
-    (Number.isFinite(buttonCount) && buttonCount >= 1) || realIntraTrigger,
-    `${kind}: current Next button must expose a positive indexed-event count or the explicit real intra-trigger contract`,
+    Number.isFinite(clickTargetSec) && clickTargetSec >= 0,
+    `${kind}: timeline marker must expose a finite click target derived from the Walker event index`,
   );
-  await button.click();
-  if (realIntraTrigger) {
-    await page.waitForFunction(() => {
-      const sceneProbe = document.querySelector<HTMLElement>('[data-testid="render-isolation-probe"]');
-      return Boolean(sceneProbe?.dataset.manualHandoverRequestId)
-        || document.querySelector('[data-testid="manual-handover-status"]') !== null;
-    }, undefined, { timeout: 15_000 });
-  } else {
-    await page.waitForFunction(() => {
-      const root = document.querySelector<HTMLElement>('.leo-app-shell');
-      return root?.dataset.liveTimelineSeekTarget !== '' || root?.dataset.liveDirectorFocusEventId !== '';
-    }, undefined, { timeout: 15_000 });
-  }
+  await marker.click();
+  await page.waitForFunction(
+    expected => document.querySelector<HTMLElement>('.leo-app-shell')?.dataset.liveTimelineSeekTarget === expected,
+    clickTargetSec.toFixed(3),
+    { timeout: 15_000 },
+  );
 
   const samples: SampleTelemetry[] = [before];
   const screenshots: string[] = [];
@@ -619,7 +621,7 @@ async function runFlow(page: Page, kind: 'intra' | 'inter'): Promise<FlowEvidenc
 
   return {
     kind,
-    buttonCount: Number.isFinite(buttonCount) ? buttonCount : null,
+    clickTargetSec: Number.isFinite(clickTargetSec) ? clickTargetSec : null,
     samples,
     phases,
     sceneSnapshotIds: [...new Set(samples.map(sample => sample.scene?.acceptedHandoverSnapshotId ?? '').filter(Boolean))],

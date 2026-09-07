@@ -1,0 +1,6 @@
+W-B rc=0 answer=641
+W-E rc=0 answer=674
+W-C rc=0 answer=684
+W-F rc=0 answer=347
+W-G rc=0 answer=1296
+ALL DONE
