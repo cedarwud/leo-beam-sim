@@ -42,8 +42,6 @@ import {
   guidedReplayReturnProgress,
   isGuidedHandoverPhase,
   VISUAL_LAB_GUIDED_REPLAY_TOTAL_DURATION_MS,
-  type VisualLabGuidedReplayPhase,
-  type VisualLabGuidedReplayProgress,
   type VisualLabGuidedReplayNormalizedAnchorMap,
 } from '../../visualLab/guidedReplay';
 import type { VisualLabInspectTarget } from './presentation/visualLabPresentationContract';
@@ -70,6 +68,10 @@ import {
   type VisualLabDemoHandoverKind,
   type VisualLabDemoReplayState,
 } from './visualLabDemoDirection';
+import {
+  deriveVisualLabDemoHandoverView,
+  VISUAL_LAB_DEMO_HANDOVER_DURATION_MS,
+} from './visualLabDemoHandoverView';
 import { buildVisualLabFigureExportModel } from './visualLabFigureExportModel';
 import {
   DEFAULT_VISUAL_LAB_INPUTS,
@@ -91,6 +93,7 @@ import {
   radiansFromDegrees,
 } from './visualLabUeGeometry';
 import { deriveVisualLabUeGeometryControls } from './visualLabUeGeometryControls';
+import { deriveVisualLabStoryInspectPlan } from './visualLabStoryInspectPlan';
 import { canonicalHandoverPresentation } from './visualLabHandoverPresentation';
 import { advanceVisualLabPlayback } from './visualLabPlaybackClock';
 import {
@@ -125,31 +128,6 @@ const GUIDED_REPLAY_ANNOTATION_ANCHORS: VisualLabGuidedReplayNormalizedAnchorMap
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
-
-interface DemoHandoverView {
-  readonly phase: VisualLabGuidedReplayPhase;
-  readonly beat: 'before' | 'decision' | 'after';
-  readonly progress: VisualLabGuidedReplayProgress;
-}
-
-/**
- * Presentation-only fallback clock.  It makes the two handover stories
- * playable when the accepted run has no candidate-rich trace, without
- * changing the canonical frame, SINR, power, throughput, or EE values.
- */
-function demoHandoverView(elapsedMs: number): DemoHandoverView {
-  const elapsed = Math.max(0, Number.isFinite(elapsedMs) ? elapsedMs : 0);
-  // This is a short teaching clock, not the canonical 30 s TLE decision
-  // clock.  The candidate qualifies in a few seconds so the handover can be
-  // read without waiting for a low-elevation tail.
-  if (elapsed < 1_000) return { phase: 'baseline', beat: 'before', progress: guidedReplayProgress('baseline', elapsed) };
-  if (elapsed < 2_800) return { phase: 'intervention', beat: 'before', progress: guidedReplayProgress('intervention', elapsed - 1_000) };
-  if (elapsed < 5_200) return { phase: 'before', beat: 'before', progress: guidedReplayProgress('before', elapsed - 2_800) };
-  if (elapsed < 6_800) return { phase: 'decision', beat: 'decision', progress: guidedReplayProgress('decision', elapsed - 5_200) };
-  return { phase: 'after', beat: 'after', progress: guidedReplayProgress('after', elapsed - 6_800) };
-}
-
-const DEMO_HANDOVER_DURATION_MS = 12_000;
 
 function focusFromResult(resultFocus: VisualLabResultFocus): Exclude<VisualLabFocus, 'none'> {
   if (resultFocus === 'handover' || resultFocus === 'candidate-link') return 'handover';
@@ -245,7 +223,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
     ? guidedReplayReturnProgress(guidedReplay.phase, guidedReplay.progress.phaseElapsedMs)
     : null;
   const storyDirection = deriveVisualLabStorySceneDirection(storyState, storyOpen || guidedHandoverActive);
-  const demoReplayView = demoReplay === null ? null : demoHandoverView(demoReplay.elapsedMs);
+  const demoReplayView = demoReplay === null ? null : deriveVisualLabDemoHandoverView(demoReplay.elapsedMs);
   const causalParameterKey: VisualLabInputKey = causalReplay.storyId === 'beamwidth'
     ? 'theta3dbRad'
     : 'beamPowerCapW';
@@ -552,7 +530,7 @@ export function UnifiedVisualLabPrototype(): ReactElement {
       const deltaMs = Math.max(0, now - previousTickAt);
       previousTickAt = now;
       const nextElapsedMs = current.elapsedMs + deltaMs;
-      if (nextElapsedMs >= DEMO_HANDOVER_DURATION_MS) {
+      if (nextElapsedMs >= VISUAL_LAB_DEMO_HANDOVER_DURATION_MS) {
         demoReplayRef.current = null;
         setDemoReplay(null);
         setSimpleReplayKind(null);
@@ -1025,25 +1003,10 @@ export function UnifiedVisualLabPrototype(): ReactElement {
   };
 
   const handleStoryInspect = (target: VisualLabInspectTarget): void => {
-    if (target === 'scene') {
-      openModule('scene');
-      setView('service');
-      setFocus('geometry');
-      return;
-    }
-    if (target === 'handover') {
-      openModule('scene');
-      setView('service');
-      setFocus('handover');
-      return;
-    }
-    if (target === 'power' || target === 'energy-efficiency') {
-      openModule('power');
-      setFocus('energy');
-      return;
-    }
-    openModule('sinr');
-    setFocus(target === 'throughput' ? 'handover' : 'geometry');
+    const plan = deriveVisualLabStoryInspectPlan(target);
+    openModule(plan.module);
+    if (plan.explicitView !== null) setView(plan.explicitView);
+    setFocus(plan.focus);
   };
 
   const stepTime = (deltaSec: number): void => {

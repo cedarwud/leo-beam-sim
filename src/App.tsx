@@ -50,7 +50,6 @@ import {
   type HandoverPolicyTuningState,
 } from './handoverPolicyTuning';
 import {
-  applySignalTuning,
   createSignalTuningState,
   getSignalTuningEvidenceKey,
   getSignalTuningResetKey,
@@ -58,9 +57,7 @@ import {
   type SignalTuningState,
 } from './signalTuning';
 import {
-  applySceneTopology,
   createSceneTopologyState,
-  applyLegacyConstellationPreset,
   getSceneTopologyResetKey,
   hasSceneTopologyOverrides,
   type SceneTopologyState,
@@ -113,6 +110,7 @@ import {
   normalizeEeThresholdKbitPerJoule,
 } from './engine/handover/eeThreshold';
 import type { TeachingLinkSnapshot } from './ui/TeachingPanelDock';
+import { deriveCanonicalTeachingLinkSnapshot } from './app/canonicalTeachingLinkSnapshot';
 import { WalkerResultsRail } from './ui/signal-tuning/WalkerResultsRail';
 import { useHomepageCanonicalAnalysis } from './ui/signal-tuning/useHomepageCanonicalAnalysis';
 import type { MainTabKey } from './ui/signal-tuning/types';
@@ -193,10 +191,10 @@ import {
   type RightSidebarTab,
 } from './app/appRuntimeModel';
 import {
-  applyTrainingEnvAxesToProfile,
   envAxesFromTrainingRunMetadata,
   seedTripletFromTrainingRunMetadata,
 } from './app/trainingEnvAxesProfileAdapter';
+import { deriveWalkerSignalTunedProfile } from './app/walkerSignalProfile';
 import {
   LIVE_SIM_TIMELINE_DURATION_SEC,
   buildAppRuntimeConfig,
@@ -760,21 +758,13 @@ export function App() {
     () => liveSceneTopologyControlsEnabled ? sceneTopology : createSceneTopologyState(),
     [liveSceneTopologyControlsEnabled, sceneTopology],
   );
-  const signalTunedProfile = useMemo(() => {
-    const signalProfile = applySignalTuning(baseProfile, signalTuning);
-    const trainingProfile = applyTrainingEnvAxesToProfile(
-      signalProfile,
-      selectedTrainingEnvAxes,
-      selectedTrainingSeedTriplet,
-    );
-    // Manual scene controls are the last live-sim layer, so changing a beam or
-    // satellite count remains effective even when a training environment is
-    // loaded. Artifact lanes pass an empty topology above.
-    return applySceneTopology(
-      applyLegacyConstellationPreset(trainingProfile, activeSceneTopology.constellation),
-      activeSceneTopology,
-    );
-  }, [
+  const signalTunedProfile = useMemo(() => deriveWalkerSignalTunedProfile({
+    baseProfile,
+    signalTuning,
+    selectedTrainingEnvAxes,
+    selectedTrainingSeedTriplet,
+    activeSceneTopology,
+  }), [
     activeSceneTopology,
     baseProfile,
     selectedTrainingEnvAxes,
@@ -977,37 +967,10 @@ export function App() {
       energyEfficiencyBitsPerJoule: terms?.energyEfficiencyBitsPerJoule ?? null,
     };
   }, [isRootHomepage, simState]);
-  const canonicalTeachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(() => {
-    const frame = homepageCanonicalAnalysis.frame;
-    const link = frame?.links[0] ?? null;
-    if (frame === null || link === null) {
-      return {
-        ueId: null,
-        servingSatelliteId: null,
-        candidateSatelliteId: null,
-        timeSec: null,
-        thetaDeg: null,
-        transmitGainLinear: null,
-        sinrDb: null,
-        throughputMbps: null,
-        systemPowerW: null,
-        energyEfficiencyBitsPerJoule: null,
-      };
-    }
-    return {
-      ueId: link.userId,
-      servingSatelliteId: link.satelliteId,
-      candidateSatelliteId: frame.candidateLink?.satelliteId ?? null,
-      timeSec: frame.runAnchor?.elapsedSec ?? null,
-      thetaDeg: link.offAxisAngleRad * (180 / Math.PI),
-      transmitGainLinear:
-        frame.canonical.transmitGainUb[link.userIndex]?.[link.beamId] ?? null,
-      sinrDb: link.sinrDb,
-      throughputMbps: link.rateBps / 1e6,
-      systemPowerW: frame.power.systemPowerW,
-      energyEfficiencyBitsPerJoule: frame.ee.instantaneousBitsPerJ,
-    };
-  }, [homepageCanonicalAnalysis.frame]);
+  const canonicalTeachingLinkSnapshot = useMemo<TeachingLinkSnapshot>(
+    () => deriveCanonicalTeachingLinkSnapshot(homepageCanonicalAnalysis.frame),
+    [homepageCanonicalAnalysis.frame],
+  );
   const teachingLinkSnapshot = isArchivedTleSceneActive
     ? canonicalTeachingLinkSnapshot
     : walkerTeachingLinkSnapshot;

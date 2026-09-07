@@ -58,7 +58,6 @@ import {
 import {
   colorForServingBeam,
   colorForServingSatellite,
-  emphasizeIntraHandoverColor,
 } from '../constants/servingColour';
 import {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
@@ -126,7 +125,6 @@ import {
   type BeamDisplaySpec,
 } from './beamDisplaySpec';
 import {
-  SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
   cellLinkBudgetBeamId,
   cellIdFromLinkBudgetBeamId,
   resolvePrimaryCellServingRecord,
@@ -274,6 +272,15 @@ import { resolveHandoverMarkerSatelliteIds } from './handoverMarkerSatelliteIds'
 import { resolveHomepageIntraCellAnchor } from './homepageIntraCellAnchor';
 import { resolveSinrLiveCellTruthSpineParticlePlans } from './sinrLiveCellTruthSpineParticlePlans';
 import { resolveLatchedAuthorityTransition } from './latchedAuthorityTransition';
+import {
+  resolveCandidateDisplayCellFrame,
+  resolveCinemaInterDisplayCellFrame,
+} from './sceneDisplayCellFrames';
+import {
+  resolveRecentInterHandoverEvent,
+  resolveRecentPrimaryHandoverEvent,
+} from './recentHandoverPresentationEvent';
+import { resolveAdditiveHandoverConeColoring } from './additiveHandoverConeColoring';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -2390,28 +2397,14 @@ function SceneRenderContent({
     renderedCandidateSatelliteId,
     runtime,
   ]);
-  const candidateDisplayCellFrame = useMemo(() => {
-    if (
-      simSource !== 'archived-tle'
-      || renderedCandidateSatelliteId === null
-      || renderedCandidateSatelliteId === undefined
-      || sim.sinrLiveCells === undefined
-    ) {
-      return sim.sinrLiveCells;
-    }
-    // The immutable TLE frame defines a same-instant comparison satellite.
-    // Supply its seven display beams only to the candidate resolver; pending
-    // and committed state still come exclusively from frame.handover.
-    return {
-      ...sim.sinrLiveCells,
-      illuminatedBeams: sim.sinrLiveCells.cells.map(cell => ({
-        satId: renderedCandidateSatelliteId,
-        cellId: cell.cellId,
-        frequencyIndex: cell.frequencyIndex,
-        serving: false,
-      })),
-    };
-  }, [renderedCandidateSatelliteId, sim.sinrLiveCells, simSource]);
+  const candidateDisplayCellFrame = useMemo(
+    () => resolveCandidateDisplayCellFrame({
+      source: sim.sinrLiveCells,
+      sceneSource: simSource,
+      candidateSatelliteId: renderedCandidateSatelliteId,
+    }),
+    [renderedCandidateSatelliteId, sim.sinrLiveCells, simSource],
+  );
   const manualHandoverEvent = useMemo(
     () => runtime.manualHandoverRequestId === undefined || runtime.manualHandoverKind === undefined
       ? null
@@ -2643,52 +2636,26 @@ function SceneRenderContent({
     ],
   );
 
-  const recentPrimaryHandoverEvent = useMemo<SinrLiveCellHandoverEvent | null>(() => {
-    const events = sim.sinrLiveCells?.recentHandoverEvents;
-    const currentSimTimeSec = sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec;
-    const protagonistUeId = naturalHandoverProtagonistUeId;
-    if (!events || !protagonistUeId || !Number.isFinite(currentSimTimeSec)) return null;
-    let latestPrimaryEvent: SinrLiveCellHandoverEvent | null = null;
-    for (let index = events.length - 1; index >= 0; index -= 1) {
-      const event = events[index];
-      if (
-        event.ueId !== protagonistUeId
-        || event.fromSatId === null
-        || event.fromCellId === null
-      ) continue;
-      const ageSec = currentSimTimeSec - event.sourceTimeSec;
-      if (ageSec < 0 || ageSec >= SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC) continue;
-      // Keep an inter story authoritative for the whole retention window even
-      // if the classifier also reports a newer same-UE intra transition. The
-      // presentation owner is wall-clock paced, so allowing the latest array
-      // item to win would replace the visible inter pair mid-animation.
-      if (event.kind === 'inter') return event;
-      latestPrimaryEvent ??= event;
-    }
-    return latestPrimaryEvent;
-  }, [naturalHandoverProtagonistUeId, sim.simTimeSec, sim.sinrLiveCells]);
+  const recentPrimaryHandoverEvent = useMemo<SinrLiveCellHandoverEvent | null>(
+    () => resolveRecentPrimaryHandoverEvent({
+      events: sim.sinrLiveCells?.recentHandoverEvents,
+      primaryUeId: naturalHandoverProtagonistUeId,
+      simTimeSec: sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec,
+    }),
+    [naturalHandoverProtagonistUeId, sim.simTimeSec, sim.sinrLiveCells],
+  );
 
   // The model retains background-UE events for telemetry too. They do not own
   // the protagonist's camera story, but a real inter event anywhere still
   // blocks a new intra teaching request and suppresses an intra pulse so the
   // viewport cannot show two handover kinds at once.
-  const recentAnyInterHandoverEvent = useMemo<SinrLiveCellHandoverEvent | null>(() => {
-    const events = sim.sinrLiveCells?.recentHandoverEvents;
-    const currentSimTimeSec = sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec;
-    if (!events || !Number.isFinite(currentSimTimeSec)) return null;
-    for (let index = events.length - 1; index >= 0; index -= 1) {
-      const event = events[index];
-      const ageSec = currentSimTimeSec - event.sourceTimeSec;
-      if (
-        event.kind === 'inter'
-        && event.fromSatId !== null
-        && event.fromCellId !== null
-        && ageSec >= 0
-        && ageSec < SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC
-      ) return event;
-    }
-    return null;
-  }, [sim.simTimeSec, sim.sinrLiveCells]);
+  const recentAnyInterHandoverEvent = useMemo<SinrLiveCellHandoverEvent | null>(
+    () => resolveRecentInterHandoverEvent({
+      events: sim.sinrLiveCells?.recentHandoverEvents,
+      simTimeSec: sim.sinrLiveCells?.simTimeSec ?? sim.simTimeSec,
+    }),
+    [sim.simTimeSec, sim.sinrLiveCells],
+  );
 
   const handoverPresentationCandidateInput = useMemo<HandoverPresentationCandidateInput>(
     () => ({
@@ -3045,30 +3012,13 @@ function SceneRenderContent({
   // display-only two-satellite fan frame from the already-published earth-fixed cells.
   // This keeps the anchored source satellite's other beams visible even when the live
   // frame has moved on to the target satellite. It is never passed back to the model.
-  const cinemaInterDisplayCellFrame = useMemo(() => {
-    if (presentedHandoverPairCandidate?.kind !== 'inter' || sim.sinrLiveCells === undefined) {
-      return sim.sinrLiveCells;
-    }
-    const sourceSatId = presentedHandoverPairCandidate.fromSatId;
-    const targetSatId = presentedHandoverPairCandidate.toSatId;
-    return {
-      ...sim.sinrLiveCells,
-      illuminatedBeams: sim.sinrLiveCells.cells.flatMap(cell => [
-        {
-          satId: sourceSatId,
-          cellId: cell.cellId,
-          frequencyIndex: cell.frequencyIndex,
-          serving: false,
-        },
-        {
-          satId: targetSatId,
-          cellId: cell.cellId,
-          frequencyIndex: cell.frequencyIndex,
-          serving: false,
-        },
-      ]),
-    };
-  }, [presentedHandoverPairCandidate, sim.sinrLiveCells]);
+  const cinemaInterDisplayCellFrame = useMemo(
+    () => resolveCinemaInterDisplayCellFrame({
+      source: sim.sinrLiveCells,
+      pairCandidate: presentedHandoverPairCandidate,
+    }),
+    [presentedHandoverPairCandidate, sim.sinrLiveCells],
+  );
 
   // SEMANTIC scene focus (docs/sinr-live-semantic-beam-colour-sdd.md): the broad serving
   // fan / non-serving / footprint / callout / pulse layers focus to the HERO serving
@@ -3432,65 +3382,28 @@ function SceneRenderContent({
         : handoverPresentation.event === null ? null : 'natural',
     presentationView: handoverPresentation,
   });
-  const additiveHandoverPulseConeItems = useMemo(
-    () => {
-      const filtered = sinrLiveCellPulseConeItems.filter(item => !(multiCandidateCentralOverlayActive
-        && authorityPresentationCommitObserved
-        && item.kind === 'inter'
-        && item.role === 'handoverSource'));
-      // The ordinary live pulse already carries the stable item identity colour.
-      // Only the optional central comparison overlay may substitute its reserved
-      // plan token; the accepted transition itself must not recolour the pulse.
-      if (!multiCandidateCentralOverlayActive) return filtered;
-      return filtered.map(item => ({
-        ...item,
-        color: multiCandidateBeamColorBySatelliteCell.get(`${item.satId}/${item.cellId}`)
-          ?? resolveServingIdentityColor(item.satId, item.cellId, HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR),
-      }));
-    },
+  const {
+    pulseItems: additiveHandoverPulseConeItems,
+    triggeredIntraItems: additiveTriggeredIntraConeItems,
+    cinemaPairItems: additiveCinemaHandoverPairConeItems,
+  } = useMemo(
+    () => resolveAdditiveHandoverConeColoring({
+      pulseItems: sinrLiveCellPulseConeItems,
+      triggeredIntraItems: triggeredIntraConeItems,
+      cinemaPairItems: sinrLiveCinemaHandoverPairConeItems,
+      centralOverlayActive: multiCandidateCentralOverlayActive,
+      authorityPresentationCommitObserved,
+      beamColorBySatelliteCell: multiCandidateBeamColorBySatelliteCell,
+      presentationPairKind: presentedHandoverPairCandidate?.kind,
+    }),
     [
-      multiCandidateCentralOverlayActive,
       authorityPresentationCommitObserved,
       multiCandidateBeamColorBySatelliteCell,
+      multiCandidateCentralOverlayActive,
+      presentedHandoverPairCandidate?.kind,
       sinrLiveCellPulseConeItems,
-    ],
-  );
-  const additiveTriggeredIntraConeItems = useMemo(
-    () => !multiCandidateCentralOverlayActive
-      ? triggeredIntraConeItems
-      : triggeredIntraConeItems.map(item => ({
-        ...item,
-        color: emphasizeIntraHandoverColor(
-          multiCandidateBeamColorBySatelliteCell.get(`${item.satId}/${item.cellId}`)
-            ?? resolveServingIdentityColor(item.satId, item.cellId, HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR),
-          item.renderKey?.endsWith('-trig-to') === true ? 'target' : 'source',
-        ),
-      })),
-    [
-      multiCandidateCentralOverlayActive,
-      multiCandidateBeamColorBySatelliteCell,
-      triggeredIntraConeItems,
-    ],
-  );
-  const additiveCinemaHandoverPairConeItems = useMemo(
-    () => !multiCandidateCentralOverlayActive
-      ? sinrLiveCinemaHandoverPairConeItems
-      : sinrLiveCinemaHandoverPairConeItems.map(item => ({
-        ...item,
-        color: presentedHandoverPairCandidate?.kind === 'intra'
-          ? emphasizeIntraHandoverColor(
-            multiCandidateBeamColorBySatelliteCell.get(`${item.satId}/${item.cellId}`)
-              ?? resolveServingIdentityColor(item.satId, item.cellId, HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR),
-            item.renderKey?.endsWith('-from') === true ? 'source' : 'target',
-          )
-          : multiCandidateBeamColorBySatelliteCell.get(`${item.satId}/${item.cellId}`)
-            ?? resolveServingIdentityColor(item.satId, item.cellId, HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR),
-      })),
-    [
-      multiCandidateCentralOverlayActive,
-      multiCandidateBeamColorBySatelliteCell,
       sinrLiveCinemaHandoverPairConeItems,
-      presentedHandoverPairCandidate,
+      triggeredIntraConeItems,
     ],
   );
   // Beam Info is an explicit inspection control. During an inter story the
