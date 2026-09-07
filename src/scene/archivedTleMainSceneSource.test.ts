@@ -2,6 +2,22 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('./MainScene.tsx', import.meta.url), 'utf8');
+const frameResolverSource = await readFile(
+  new URL('./sceneFrameResolver.ts', import.meta.url),
+  'utf8',
+);
+const extractedLayerSources = await Promise.all([
+  'SceneGroundUeLayer.tsx',
+  'SceneCellPresentationLayers.tsx',
+  'SceneBeamLoadLayers.tsx',
+  'SceneHandoverMotionLayers.tsx',
+  'SceneSatelliteMarkerLayer.tsx',
+  'SceneMultiCandidateLayer.tsx',
+  'SceneAcceptedHandoverCue.tsx',
+  'SceneSinrLiveBeamLayers.tsx',
+  'SceneIntraGroundShockwave.tsx',
+  'SceneHandoverToastLayer.tsx',
+].map(fileName => readFile(new URL(`./${fileName}`, import.meta.url), 'utf8')));
 
 assert.doesNotMatch(
   source,
@@ -22,6 +38,7 @@ assert.ok(liveStart >= 0 && archivedStart > liveStart && renderStart > archivedS
 const liveWrapper = source.slice(liveStart, archivedStart);
 const archivedWrapper = source.slice(archivedStart, renderStart);
 const sharedRenderer = source.slice(renderStart, source.indexOf('interface MainSceneProps'));
+const sharedRenderSurface = [sharedRenderer, ...extractedLayerSources].join('\n');
 
 assert.match(liveWrapper, /useSimulation\(/, 'only the live source wrapper owns Walker simulation');
 assert.doesNotMatch(
@@ -46,11 +63,16 @@ assert.match(
   /sceneSource=\{sceneFrame\.sceneSource\}/,
   'the shared canvas telemetry must read the normalized source discriminator',
 );
-assert.match(sharedRenderer, /sceneSource: 'archived-tle' as const/);
-assert.match(sharedRenderer, /status: 'accepted-immutable-frame' as const/);
+assert.match(frameResolverSource, /sceneSource: 'archived-tle' as const/);
+assert.match(frameResolverSource, /status: 'accepted-immutable-frame' as const/);
 assert.match(
-  sharedRenderer,
-  /liveSimToScene\(sim, sceneGeometry, \{\s*source: simSource === 'archived-tle' \? 'archived-tle' : 'walker'/,
+  frameResolverSource,
+  /const projectLiveFrame = input\.projectLiveFrame \?\? liveSimToScene/,
+  'the normalized projection seam must use the live adapter by default',
+);
+assert.match(
+  frameResolverSource,
+  /source: input\.simSource === 'archived-tle' \? 'archived-tle' : 'walker'/,
   'the normalized projection seam must receive an explicit producer identity',
 );
 
@@ -67,7 +89,7 @@ for (const originalRenderer of [
   'HandoverToastOverlay',
 ]) {
   assert.match(
-    sharedRenderer,
+    sharedRenderSurface,
     new RegExp(`<${originalRenderer}\\b`),
     `the shared renderer must retain ${originalRenderer}`,
   );
