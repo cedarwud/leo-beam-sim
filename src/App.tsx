@@ -335,6 +335,13 @@ import {
   type SixActsTeachingReceipt,
 } from './ui/SixActsTeachingOverlay';
 import { SimulationSourceToggle } from './ui/SimulationSourceToggle';
+import { SixActsTopEntry } from './ui/SixActsTopEntry';
+import { ArchivedTleBoundaryNote } from './ui/ArchivedTleBoundaryNote';
+import { HomepageBeamRailWaiting } from './ui/HomepageBeamRailWaiting';
+import { GlobalLocaleToggleSlot } from './ui/GlobalLocaleToggleSlot';
+import { HomepageCanonicalRightRail } from './ui/HomepageCanonicalRightRail';
+import { useLeftSidebar } from './app/useLeftSidebar';
+import { useDirectorModes } from './app/useDirectorModesQ1';
 
 /**
  * One lecture's own scene endpoints.
@@ -529,10 +536,8 @@ export function App() {
   const incrementRescalarizeFallback = useCallback(() => {
     setRescalarizeFallbackCount(c => c + 1);
   }, []);
-  const [leftSidebarTab, setLeftSidebarTab] = useState<LeftSidebarTab>(
-    () => getDefaultLeftSidebarTabForMode(initialRuntime.handoverMode),
-  );
-  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+  const { leftSidebarTab, setLeftSidebarTab, leftSidebarCollapsed, setLeftSidebarCollapsed } = useLeftSidebar({ initialRuntime });
+  
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('live');
   // The live homepage keeps the Scenario tab selected while a topology edit
   // rebuilds the Walker source/index. Without this small UI-only handoff, the
@@ -2670,36 +2675,13 @@ export function App() {
     timelineRailDescriptor.timeline.axisKind,
   ]);
 
-  const directorFocusEnabled = useMemo(
-    () =>
-      sceneSource === 'live-sim'
-      && isWalkerSceneActive
-      && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
-      && (
-        timelineRailDescriptor.rail.sourceOwner === 'live-walker'
-        || timelineRailDescriptor.rail.sourceOwner === 'sinr-live-cell-truth'
-      )
-      && timelineRailDescriptor.rail.horizonKind === 'live-walker-window',
-    [
-      sceneSource,
-      isWalkerSceneActive,
-      sceneLane,
-      timelineRailDescriptor.rail.sourceOwner,
-      timelineRailDescriptor.rail.horizonKind,
-    ],
-  );
+  const { directorFocusEnabled, directorInterEnabled, directorCinematicEnabled, directorCinematicInterEnabled, directorCinematicIntraEnabled } = useDirectorModes({ artifactHandoverRailEvents, handoverRailEvents, isWalkerSceneActive, liveWalkerDirectorHandoverEventsForButtons, liveWalkerHandoverEventIndexBuilding, replayController, sceneLane, sceneSource, showcaseError, showcaseLoading, timelineRailDescriptor });
 
   // G1 / Rule#8: a focus button is offered only when the source-backed rail
   // actually carries a handover event of that kind. While a left-side control
   // is rebuilding the index, the old snapshot stays visible but is not
   // actionable; this keeps the scene/rail/button source identity atomic.
-  const directorInterEnabled = useMemo(
-    () => directorFocusEnabled
-      && !liveWalkerHandoverEventIndexBuilding
-      && handoverRailEvents.some(event => event.kind === 'inter')
-      && liveWalkerDirectorHandoverEventsForButtons.some(event => event.kind === 'inter'),
-    [directorFocusEnabled, handoverRailEvents, liveWalkerDirectorHandoverEventsForButtons, liveWalkerHandoverEventIndexBuilding],
-  );
+  
   // ITEM #C honesty: since the cell-truth cinema migration (e7a08dc) the sinr-live
   // Director focus is real live SINR cell-truth (`live-truth`) — the SINR values ARE
   // the live earth-fixed cell-truth engine output, not a forecast — and an
@@ -2715,26 +2697,9 @@ export function App() {
   // may own replay speed + display-only UE focus + replay controls
   // (frontend-render-governance.md "Artifact replay may keep ... replay speed ...
   // and display-only UE focus/filter controls").
-  const directorCinematicEnabled = useMemo(
-    () =>
-      sceneSource === 'artifact-replay'
-      && replayController !== null
-      && !showcaseLoading
-      && showcaseError === null,
-    [sceneSource, replayController, showcaseLoading, showcaseError],
-  );
-  const directorCinematicInterEnabled = useMemo(
-    () => directorCinematicEnabled
-      && replayController !== null
-      && artifactHandoverRailEvents.some(event => event.kind === 'inter'),
-    [artifactHandoverRailEvents, directorCinematicEnabled, replayController],
-  );
-  const directorCinematicIntraEnabled = useMemo(
-    () => directorCinematicEnabled
-      && replayController !== null
-      && artifactHandoverRailEvents.some(event => event.kind === 'intra'),
-    [artifactHandoverRailEvents, directorCinematicEnabled, replayController],
-  );
+  
+  
+  
   // The next-event buttons prefer the source-backed index. If the current
   // parameter set has no indexed same-satellite row, keep Next Intra
   // actionable through the existing real UE-jog path rather than leaving a
@@ -3904,15 +3869,7 @@ export function App() {
             showAllSurfaces={homepageRailShowAllSurfaces}
           />
         ) : (
-          <div
-            role="status"
-            data-testid="homepage-beam-rail-waiting"
-            data-homepage-rail-snapshot-id=""
-            data-homepage-rail-source-frame-id=""
-            data-homepage-rail-phase=""
-          >
-            Waiting for the first accepted homepage snapshot.
-          </div>
+          <HomepageBeamRailWaiting />
         )}
       </section>
     )
@@ -4039,25 +3996,7 @@ export function App() {
       {/* Way into the six-acts teaching line, in the top band where the eye
           lands. The corner launcher alone was too easy to miss on a full
           engineering dashboard — which is exactly what happened. */}
-      <a
-        href="/course/six-acts"
-        data-testid="six-acts-top-entry"
-        style={{
-          flex: '0 0 auto',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          height: 34,
-          padding: '0 14px',
-          borderRadius: 8,
-          background: '#76ead7',
-          color: '#052027',
-          fontWeight: 700,
-          fontSize: 13,
-          textDecoration: 'none',
-          whiteSpace: 'nowrap',
-        }}
-      >◎ 教學實驗</a>
+      <SixActsTopEntry />
       {HOMEPAGE_SIMULATION_SOURCE_SWITCH_VISIBLE && sceneLane === 'sinr-live' && (
         <SimulationSourceToggle
           value={simulationSource}
@@ -4121,12 +4060,7 @@ export function App() {
         onNextInter={handleQuickInter}
       />
       </div>
-      <div
-        data-testid="global-locale-toggle-slot"
-        style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}
-      >
-        <LocaleToggle />
-      </div>
+      <GlobalLocaleToggleSlot />
       </div>
       {/* P3 slice-2: the a2↔b1 replay-arm toggle-slam. Only on the recorded
           proof lane; swaps which producer window the field displays (red sea ⇄
@@ -4273,19 +4207,7 @@ export function App() {
                   onReset={handleResetHandoverPolicy}
                 />
               ) : (
-                <section
-                  className="leo-replay-truth-summary leo-archived-tle-boundary-note"
-                  data-testid="archived-tle-handover-policy-boundary"
-                  aria-label="Archived TLE handover policy"
-                >
-                  <strong>Canonical archived-TLE handover</strong>
-                  <span>
-                    Fixed 3 dB / 30 s trace; Walker policy controls are not applicable.
-                    {homepageCanonicalAnalysis.frame?.handover?.reason
-                      ? ` Current trace: ${homepageCanonicalAnalysis.frame.handover.reason}`
-                      : ' Trace unavailable until an accepted frame is published.'}
-                  </span>
-                </section>
+                <ArchivedTleBoundaryNote homepageCanonicalAnalysis={homepageCanonicalAnalysis} />
               )}
               parameterSection={
                 isWalkerSceneActive ? (
@@ -4488,11 +4410,7 @@ export function App() {
           aria-hidden={!shellChromeVisibility.rightSidebar}
         >
           {isArchivedTleSceneActive ? (
-            <HomepageRightRail
-              analysis={homepageCanonicalAnalysis}
-            >
-              <HomepageCanonicalServingComparison frame={homepageCanonicalAnalysis.frame} />
-            </HomepageRightRail>
+            <HomepageCanonicalRightRail homepageCanonicalAnalysis={homepageCanonicalAnalysis} />
           ) : teachingStageKind !== null && teachingLecture.frame !== null ? (
             <HandoverTeachingRail
               frame={teachingLecture.frame}
