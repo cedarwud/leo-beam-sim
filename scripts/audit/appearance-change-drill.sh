@@ -50,12 +50,19 @@ converged_count=0
 frontier_count=0
 regressions=0
 unexpected_passes=0
+# A drill that could not be APPLIED measured nothing. It is neither a pass nor a
+# fail, and bucketing it as either is how a board starts lying: an unappliable
+# expect_fail drill was being reported as "unexpectedly passed — decision has
+# converged", which invites flipping it to expect_pass and permanently recording
+# a convergence that was never observed. Invalid is its own outcome.
+invalid_count=0
 mismatches=0
 
 converged_prompts=()
 frontier_prompts=()
 regression_prompts=()
 unexpected_pass_prompts=()
+invalid_prompts=()
 
 # How many rows of the pinned photograph differ. 0 means the edit was inert.
 # Did the edit actually reach the rendered output?
@@ -149,13 +156,8 @@ drill() {
     echo "  ✗ SKIP — characterization test is not green before the drill;"
     echo "           a drill against a red baseline proves nothing."
     mismatches=$((mismatches + 1))
-    if [ "$expect" = "expect_pass" ]; then
-      regressions=$((regressions + 1))
-      regression_prompts+=("$prompt (baseline red)")
-    else
-      unexpected_passes=$((unexpected_passes + 1))
-      unexpected_pass_prompts+=("$prompt (baseline red)")
-    fi
+    invalid_count=$((invalid_count + 1))
+    invalid_prompts+=("$prompt (baseline red — nothing was measured)")
     return
   fi
 
@@ -176,13 +178,8 @@ drill() {
     cp "$backup" "$target"
     rm -f "$backup"
     mismatches=$((mismatches + 1))
-    if [ "$expect" = "expect_pass" ]; then
-      regressions=$((regressions + 1))
-      regression_prompts+=("$prompt (edit failed)")
-    else
-      unexpected_passes=$((unexpected_passes + 1))
-      unexpected_pass_prompts+=("$prompt (edit failed)")
-    fi
+    invalid_count=$((invalid_count + 1))
+    invalid_prompts+=("$prompt (anchor did not match — the drill is stale, not the code)")
     return
   fi
 
@@ -328,9 +325,13 @@ drill expect_pass "$MARKERS" "把衛星標記的 fallback 身分色換成另一�
 # does own this decision in one file. It is here because NOTHING PINS IT: flipping
 # `shouldRetainCandidateRoster` leaves railPresentationCharacterization at fail 0
 # and the whole appearance suite at fail 0. A single-file change nobody can see is
-# not a converged decision, it is an unguarded one. Flip this to expect_pass when
-# the rail characterization actually covers the roster-retention rule.
-drill expect_fail "$RAIL" "候選軌有換手故事時要保留那一組候選卡片" \
+# not a converged decision, it is an unguarded one.
+#
+# 2026-09-08: FLIPPED to expect_pass. The rail characterization now does cover the
+# roster-retention rule — the drill moves 2 rows in one file, measured, not assumed.
+# The paragraph above is kept because it records why this was ever a frontier, and
+# what specifically had to become true for it to stop being one.
+drill expect_pass "$RAIL" "候選軌有換手故事時要保留那一組候選卡片" \
 "  const shouldRetainCandidateRoster = handoverStory !== null;" \
 "  const shouldRetainCandidateRoster = handoverStory === null;" \
 "$RAIL_TEST"
@@ -343,9 +344,13 @@ drill expect_fail "$FINAL_COLOUR" "改一支波束最終顏色的 precedence 順
     ?? homepageColor?.color
     ?? source.identity.satellite.threeColor;"
 
+# Anchor repaired 2026-09-08. The old anchor was an inline ternary arm; the
+# decision has since been given a named owner, `markerColorForBeam`. The drill
+# had been silently unappliable for some time and was being MIS-REPORTED as an
+# unexpected pass — see the invalid_count bucket above, added for exactly this.
 drill expect_fail "$SHADE_MAPPING" "改 beam id 怎麼對應到深淺階，handover link 也要跟著換" \
-"    : colorForServingBeam(satId, beam.beamId).markerColor;" \
-"    : colorForServingBeam(satId, beam.beamId + 1).markerColor;"
+"  return colorForServingBeam(satId, beamId).markerColor;" \
+"  return colorForServingBeam(satId, beamId + 1).markerColor;"
 
 echo "────────────────────────────────────────────────────────────"
 echo "APPEARANCE CONVERGENCE FRONTIER SUMMARY"
@@ -359,6 +364,9 @@ if [ "$unexpected_passes" -gt 0 ]; then
 fi
 if [ "$regressions" -gt 0 ]; then
   echo "    - Regressions (expected pass, failed!)    : $regressions"
+fi
+if [ "$invalid_count" -gt 0 ]; then
+  echo "    - INVALID (measured nothing, fix drill)   : $invalid_count"
 fi
 echo
 if [ "${#converged_prompts[@]}" -gt 0 ]; then
@@ -382,6 +390,14 @@ if [ "${#unexpected_pass_prompts[@]}" -gt 0 ]; then
   done
   echo
 fi
+if [ "${#invalid_prompts[@]}" -gt 0 ]; then
+  echo "INVALID drills ($invalid_count) — these measured NOTHING; do not read them as"
+  echo "either converged or frontier, and do not update expectations from them:"
+  for item in "${invalid_prompts[@]}"; do
+    echo "  ⁇ $item"
+  done
+  echo
+fi
 if [ "${#regression_prompts[@]}" -gt 0 ]; then
   echo "Regressions ($regressions):"
   for item in "${regression_prompts[@]}"; do
@@ -396,6 +412,11 @@ if [ "$mismatches" -ne 0 ]; then
   if [ "$unexpected_passes" -gt 0 ]; then
     echo "  Notice: $unexpected_passes drill(s) expected to fail actually passed."
     echo "          The frontier has moved; update expectations once confirmed."
+  fi
+  if [ "$invalid_count" -gt 0 ]; then
+    echo "  Notice: $invalid_count drill(s) could not be applied at all."
+    echo "          Their anchors have drifted from the code. Repair the anchor;"
+    echo "          do NOT reinterpret an unmeasured drill as a result."
   fi
   if [ "$regressions" -gt 0 ]; then
     echo "  Notice: $regressions drill(s) expected to pass failed. This is a regression."
