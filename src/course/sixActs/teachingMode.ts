@@ -138,7 +138,6 @@ export const SIX_ACTS_TEACHING_HIDDEN_SURFACES: readonly string[] = Object.freez
   'signal-tuning-tabs',
   'scene-topology-overrides',
   'scene-visual-scale-overrides',
-  'modqn-replay-controls',
   'beam-hop-diagnostics',
 ]);
 

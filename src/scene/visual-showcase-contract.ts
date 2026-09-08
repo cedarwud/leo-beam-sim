@@ -38,7 +38,6 @@ export type {
   VisualShowcaseHandoverPhaseSource,
   VisualShowcaseHandoverState,
   VisualShowcaseLinkSample,
-  VisualShowcaseModqnDecision,
   VisualShowcaseProfile,
   VisualShowcaseProvenance,
   VisualShowcaseSatelliteEntity,

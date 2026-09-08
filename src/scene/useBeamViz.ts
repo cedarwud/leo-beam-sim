@@ -303,10 +303,6 @@ export function useBeamViz(
     const beamFrequencyReuseCount = geometry.beamFrequencyReuseCount ?? 1;
     const visualBeamColorSource: VisualBeamTarget['visualColorSource'] =
       beamFrequencyReuseCount <= 1 ? 'satellite' : 'frequency';
-    const showModqnCandidateBeams =
-      runtime.appMode === 'modqn-demo'
-      && servingSatId === null;
-
     // -------------------------------------------------------------------
     // End P1d local alias block.
     // -------------------------------------------------------------------
@@ -318,7 +314,7 @@ export function useBeamViz(
       maxBeamSats: MAX_BEAM_SATS,
     } = resolveBeamVizDisplayCaps(displayCaps);
     const mode = runtime.presentationMode;
-    const beamDensity = runtime.appMode === 'modqn-demo' ? 'all' : runtime.beamDensity;
+    const beamDensity = runtime.beamDensity;
     const calloutCap = resolveConeBeamCalloutCap(beamDensity, runtime.viewport);
     const centralBias = centralBiasWeight(mode);
     const approachHoldSec = Math.max(
@@ -541,20 +537,16 @@ export function useBeamViz(
     const displayAssignmentsBySatId = displayAssignmentsBySatIdNumeric;
 
     const shownSatIds = new Set(shownSatsWithIdentity.map(sat => sat.id));
-    const beamSatIdOrder = (
-      runtime.appMode === 'modqn-demo'
-        ? [servingSatId]
-        : [
-            servingSatId,
-            pendingTargetSatId,
-            recentHoTargetSatId,
-            recentHoSourceSatId,
-            committedInterEvent?.toSatId ?? null,
-            committedInterEvent?.fromSatId ?? null,
-            ...approachSatIds,
-            ...rankedCandidates.map(sat => sat.id),
-          ]
-    ).filter((satId): satId is string => satId !== null);
+    const beamSatIdOrder = [
+      servingSatId,
+      pendingTargetSatId,
+      recentHoTargetSatId,
+      recentHoSourceSatId,
+      committedInterEvent?.toSatId ?? null,
+      committedInterEvent?.fromSatId ?? null,
+      ...approachSatIds,
+      ...rankedCandidates.map(sat => sat.id),
+    ].filter((satId): satId is string => satId !== null);
     const beamSatIds = new Set<string>();
     for (const satId of beamSatIdOrder) {
       if (!shownSatIds.has(satId)) continue;
@@ -781,9 +773,7 @@ export function useBeamViz(
         const isPrimary = spec.beamId === primaryBeamId;
         if (!isPrimary && !beamCell) return [];
 
-        const isScheduledActive =
-          scheduledActiveBeamIds.includes(spec.beamId)
-          || (showModqnCandidateBeams && isPrimary);
+        const isScheduledActive = scheduledActiveBeamIds.includes(spec.beamId);
         // Anchor event-focused beam groups to the primary beam so common-mode
         // steering translation does not read as sideways "sliding".
         const beamOffsetEastKm = beamCell?.offsetEastKm ?? anchorOffsetEastKm;
@@ -893,48 +883,6 @@ export function useBeamViz(
       }
 
       satBeams = cappedSatBeams;
-    }
-
-    if (showModqnCandidateBeams && satBeams.size === 0) {
-      const sliceLimit = runtime.appMode === 'modqn-demo' ? 1 : MAX_BEAM_SATS;
-      for (const sat of shownSatsWithIdentity.slice(0, sliceLimit)) {
-        const layout = shellLayouts.get(sat.shellId);
-        if (!layout) continue;
-
-        const scale = kmToWorldScaleForLayout(layout);
-        const offsets = generateBeamOffsetsKm(
-          layout.footprintRadiusKm * Math.sqrt(3),
-          MAX_BEAMS_PER_SATELLITE,
-        );
-        if (offsets.length === 0) continue;
-
-        satBeams.set(
-          sat.id,
-          offsets.map((beam) => {
-            const frequency = resolveBeamFrequencyIndex({
-              beamId: beam.beamId,
-              frequencyReuse: beamFrequencyReuseCount,
-            });
-            return {
-              beamId: beam.beamId,
-              groundX: sat.world.x + beam.dEastKm * scale,
-              groundZ: sat.world.z - beam.dNorthKm * scale,
-              isServing: false,
-              isScheduledActive: true,
-              isPrimary: beam.beamId === 1,
-              showBeam: true,
-              ...frequency,
-              satelliteTintColor: sat.satelliteTintColor,
-              satelliteGlyph: sat.satelliteGlyph,
-              satelliteVisualIndex: sat.satelliteVisualIndex,
-              visualColorSource: visualBeamColorSource,
-              loadRatio: 0,
-              isTransitioningSource: false,
-              sinrDb: null,
-            } satisfies VisualBeamTarget;
-          }),
-        );
-      }
     }
 
     const sinrLabels = [...beamSatIds]

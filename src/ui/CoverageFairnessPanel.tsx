@@ -1,7 +1,7 @@
 import type { FrameCoverage, WindowServedFractionStats } from '../showcase/coverageFairness';
 import type { ReplayArm } from './ReplayArmToggle';
 
-// P3 slice-2 B · coverage / Gini / Lorenz surfaces for the modqn-replay-proof lane.
+// Coverage / Gini / Lorenz surfaces for a recorded replay-proof lane.
 //
 // DISPLAY-ONLY. Every number here is aggregated by the pure `coverageFairness.ts`
 // from producer `served` / `starved` truth baked into the recorded window. These

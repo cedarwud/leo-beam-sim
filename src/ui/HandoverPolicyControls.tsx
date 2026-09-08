@@ -36,7 +36,15 @@ import { HelpPopover } from './common/HelpPopover';
 import { txBi } from './signal-tuning/labels';
 import { srOnlyStyle } from './signal-tuning/styles';
 
-type NumericHandoverPolicyField = Exclude<keyof HandoverPolicyTuningState, 'policy' | 'modqnWeights' | 'modqnNetworkParams'>;
+type NumericHandoverPolicyField =
+  | 'offsetDb'
+  | 'triggerTimeSec'
+  | 'pingPongGuardSec'
+  | 'sinrSmoothingSec'
+  | 'intraSwitchTimeSec'
+  | 'maxIntraSwitchesPerServingEpoch'
+  | 'pendingTargetHoldSec'
+  | 'sinrThresholdDb';
 
 /**
  * How long the panel waits, after the last slider movement, before applying.

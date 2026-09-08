@@ -16,10 +16,6 @@ import type { UeMobilityMode, UeMobilityParams } from '../engine/ue/multiUeMobil
 import type { AppExperienceMode } from '../app/appExperienceMode';
 import type { GlyphKind } from '../contracts/glyphTypes';
 import type { VisualBeamTarget } from './beamTargetTypes';
-import type {
-  ModqnVisualLayerFlags,
-  ModqnVisualLayerPreset,
-} from './modqnVisualLayers';
 import type { ModqnCellServiceReadout } from './modqnServiceMap';
 import type { SinrLiveCellFrame } from './sinrLiveCellModel';
 import type { PaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
@@ -237,13 +233,6 @@ export interface RuntimeConfig {
   ueMobilityMode?: UeMobilityMode;
   ueMobilityParams?: UeMobilityParams;
   enableUeTrails?: boolean;
-  modqnVisualLayerPreset?: ModqnVisualLayerPreset;
-  modqnVisualLayers?: ModqnVisualLayerFlags;
-  // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
-  // family (parked OFF by default; App threads
-  // `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` OR the `?modqnServiceAllocation=1`
-  // override). Consumed only by the `modqn-live-cell-preview` lane render plan.
-  modqnServiceAllocationEnabled?: boolean;
 }
 
 export interface LinkBudgetTerms {
@@ -382,6 +371,7 @@ export interface SimState {
     servingCellId: number | null;
     sinrDb: number | null;
   }>;
+  /** Compatibility boundary for the protected MODQN HUD until Wave 2. */
   modqnCellServiceReadout?: ModqnCellServiceReadout;
   /**
    * Live cell-truth paper-style EE. This is intentionally separate from the
@@ -424,7 +414,7 @@ export interface SimState {
   servingBeamId: number | null;
   /**
    * Earth-fixed cell id serving the PRIMARY UE on the sinr-live cell lane (S5-2b);
-   * null on steered/MODQN lanes (no cell model). The typed cell unit the InfoPanel
+   * null on steered lanes (no cell model). The typed cell unit the InfoPanel
    * shows when `servingBeamId` is null — the top-level analogue of the per-UE
    * `servingCellId` (S4-2 pun retirement). The ACTIVE SERVING label sat is the
    * cell-truth primary serving sat, matching the cones (no steered divergence).
@@ -605,7 +595,7 @@ export interface VizFrame {
    * beyond the top-12 display cap still gets a cone — the connected-sat-has-beam
    * must-hold (display cap applied at DRAW, never at TRUTH; consolidation S5).
    * `displaySats` stays the top-12 slice, so satellite tint / cell schedule /
-   * markers / MODQN-lane cones are unchanged (no geometry-trace churn).
+   * markers / replay-lane cones are unchanged (no geometry-trace churn).
    *
    * NOT separately captured by validate:s0:geometry-trace (its serialiser snapshots
    * `displaySats`, not this map) — intentionally exempt: each entry is the SAME

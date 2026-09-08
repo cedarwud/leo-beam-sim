@@ -14,11 +14,6 @@ const baseInput: WalkerTimelineSeekInput = {
   targetSec: 50,
   timeline: {
     durationSec: 100,
-    axisKind: 'source-time',
-    axisDurationSec: 100,
-  },
-  rail: {
-    axisDurationSec: 100,
   },
   live: {
     windowStartSec: 40,
@@ -44,29 +39,6 @@ assert.deepEqual(
   }),
   { kind: 'artifact-replay', targetSec: 0 },
   'artifact replay keeps its own source-time controller',
-);
-
-assert.deepEqual(
-  resolveWalkerTimelineSeek({
-    ...baseInput,
-    scene: { ...baseInput.scene, lane: 'modqn-live-cell-preview' },
-    timeline: { ...baseInput.timeline, axisKind: 'display-stretched', axisDurationSec: 30 },
-    targetSec: 80,
-  }),
-  { kind: 'display-stretched', targetSec: 30 },
-  'a display-stretched axis clamps against its presentation duration',
-);
-
-assert.deepEqual(
-  resolveWalkerTimelineSeek({
-    ...baseInput,
-    scene: { ...baseInput.scene, lane: 'modqn-replay-proof' },
-    timeline: { ...baseInput.timeline, durationSec: 10 },
-    rail: { axisDurationSec: 100 },
-    targetSec: 5,
-  }),
-  { kind: 'modqn-replay-proof', targetSec: 50 },
-  'the proof lane maps source time onto its stretched rail axis',
 );
 
 assert.deepEqual(

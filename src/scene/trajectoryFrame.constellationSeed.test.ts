@@ -37,8 +37,6 @@ test('all shipped profiles state the legacy-preserving Walker constellation seed
     'hobs-2024-paper-default',
     'hobs-2024-tr38811-research',
     'hobs-2024-mobile-demo-aircraft',
-    'modqn-1sat-7beam',
-    'modqn-4sat-7beam-paper-faithful',
   ];
 
   for (const profileId of shippedProfileIds) {

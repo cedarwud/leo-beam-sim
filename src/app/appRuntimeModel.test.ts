@@ -5,30 +5,29 @@ import {
   resolveHomepageInitialRuntimeState,
 } from './appRuntimeModel';
 
-const restoredModqnState = resolveHomepageInitialRuntimeState({
-  appMode: 'modqn-demo',
+const restoredHomepageState = resolveHomepageInitialRuntimeState({
+  appMode: 'sinr-experiment',
   selectedProfileId: 'hobs-2024-candidate-rich',
-  handoverMode: 'decision-overlay-on-live-sinr',
+  handoverMode: 'sinr-offset',
   profileByMode: {
     'sinr-experiment': 'hobs-2024-paper-default',
-    'modqn-demo': 'hobs-2024-candidate-rich',
   },
 });
 
 assert.equal(
-  restoredModqnState.appMode,
+  restoredHomepageState.appMode,
   'sinr-experiment',
-  'the root homepage must not restore the legacy MODQN experience',
+  'the root homepage uses the canonical SINR experience',
 );
 assert.equal(
-  restoredModqnState.handoverMode,
+  restoredHomepageState.handoverMode,
   'sinr-offset',
   'the root homepage must use the SINR lane',
 );
 assert.equal(
-  restoredModqnState.selectedProfileId,
+  restoredHomepageState.selectedProfileId,
   'hobs-2024-paper-default',
-  'the root homepage may retain the saved SINR profile without restoring MODQN UI',
+  'the root homepage retains the saved SINR profile',
 );
 
 const homepageTabs = getHomepageRightSidebarTabsForSceneLane('sinr-live', 'sinr-offset');

@@ -1,20 +1,10 @@
-import type {
-  ModqnReplayEnvelope,
-  ModqnReplayPlaybackDisplayState,
-  ModqnReplayPlaybackShellModel,
-} from '../modqn/replay-bundle';
 import {
   buildArtifactHandoverRailEvents,
-  buildModqnHandoverRailEvents,
-  getModqnReplayVisualTimeline,
-  type ModqnReplayVisualTimeline,
 } from './handoverRailBuilders';
 import {
   createArchivedTleRunTimelineDescriptor,
-  getModqnProducerTraceRange,
   resolveTimelineRailDescriptor,
   clampTimelineTime,
-  type ModqnProducerTraceRange,
   type TimelineRailDescriptor,
   type TimelineSurfaceDescriptor,
 } from './timelineRailAuthority';
@@ -44,6 +34,7 @@ import type { SceneSourceMode } from './appPersistence';
 import type { SceneLane } from './sceneLane';
 
 export interface AppTimelineCoreInput {
+  readonly [key: string]: unknown;
   readonly sceneLane: SceneLane;
   readonly sceneSource: SceneSourceMode;
   readonly isRootHomepage: boolean;
@@ -54,11 +45,6 @@ export interface AppTimelineCoreInput {
   readonly liveSimTimeSec: number;
   readonly artifactCurrentTimeSec: number;
   readonly showcaseArtifact: VisualShowcaseArtifact | null;
-  readonly modqnReplayEnvelope: ModqnReplayEnvelope | null;
-  readonly modqnReplayShellModel: ModqnReplayPlaybackShellModel;
-  readonly modqnReplayVisualElapsedSec: number;
-  readonly renderedModqnReplayCurrentTimeSec: ModqnReplayPlaybackDisplayState['currentSlot']['focusRow']['timeSec'] | null | undefined;
-  readonly bundleProvenanceKind: 'paper-faithful' | 'user-trained';
   readonly liveWalkerHandoverEventIndex: LiveWalkerHandoverEventIndex | null;
   readonly liveWalkerHandoverEventIndexBuilding: boolean;
   readonly focusedUeId: string | null | undefined;
@@ -69,11 +55,8 @@ export interface AppTimelineCoreInput {
 }
 
 export interface AppTimelineCoreProjection {
-  readonly modqnProducerTraceRange: ModqnProducerTraceRange | null;
-  readonly modqnReplayVisualTimeline: ModqnReplayVisualTimeline;
-  readonly modqnProducerTraceCurrentTimeSec: number;
+  readonly [key: string]: unknown;
   readonly artifactHandoverRailEvents: readonly HandoverRailEvent[];
-  readonly modqnHandoverRailEvents: readonly HandoverRailEvent[];
   readonly liveWalkerHandoverRailEvents: readonly HandoverRailEvent[];
   readonly liveWalkerDirectorHandoverRailEvents: readonly HandoverRailEvent[];
   readonly automaticIntraPresentationSlots: ReturnType<typeof buildNonOverlappingIntraPresentationSlots>;
@@ -95,19 +78,7 @@ export interface AppTimelineCoreProjection {
 export function deriveAppTimelineCore(
   input: AppTimelineCoreInput,
 ): AppTimelineCoreProjection {
-  const modqnProducerTraceRange = getModqnProducerTraceRange(input.modqnReplayEnvelope);
-  const modqnReplayVisualTimeline = getModqnReplayVisualTimeline(
-    input.modqnReplayShellModel,
-    input.modqnReplayVisualElapsedSec,
-  );
-  const modqnProducerTraceCurrentTimeSec = input.renderedModqnReplayCurrentTimeSec
-    ?? modqnProducerTraceRange?.startSec
-    ?? 0;
   const artifactHandoverRailEvents = buildArtifactHandoverRailEvents(input.showcaseArtifact);
-  const modqnHandoverRailEvents = buildModqnHandoverRailEvents(
-    input.modqnReplayEnvelope,
-    modqnReplayVisualTimeline.slotMidpointSecByIndex,
-  );
   const liveWalkerHandoverRailEvents = liveWalkerHandoverEventIndexToRailEvents(
     input.liveWalkerHandoverEventIndex,
   );
@@ -157,11 +128,6 @@ export function deriveAppTimelineCore(
     artifactDurationSec: input.showcaseArtifact?.scenario.durationSec ?? 0,
     artifactCurrentTimeSec: input.artifactCurrentTimeSec,
     artifactHandoverEventCount: artifactHandoverRailEvents.length,
-    producerTraceRange: modqnProducerTraceRange,
-    producerTraceCurrentTimeSec: modqnProducerTraceCurrentTimeSec,
-    producerTraceDisplayDurationSec: modqnReplayVisualTimeline.durationSec,
-    producerTraceDisplayCurrentTimeSec: modqnReplayVisualTimeline.currentTimeSec,
-    bundleProvenanceKind: input.bundleProvenanceKind,
     liveWalkerHandoverEventIndexSourceGapReasons,
   });
   const archivedTleTimelineDescriptor = createArchivedTleRunTimelineDescriptor({
@@ -175,11 +141,7 @@ export function deriveAppTimelineCore(
     : timelineRailDescriptor.timeline;
 
   return {
-    modqnProducerTraceRange,
-    modqnReplayVisualTimeline,
-    modqnProducerTraceCurrentTimeSec,
     artifactHandoverRailEvents,
-    modqnHandoverRailEvents,
     liveWalkerHandoverRailEvents,
     liveWalkerDirectorHandoverRailEvents,
     automaticIntraPresentationSlots,
@@ -223,10 +185,7 @@ export function selectAppHandoverRailEvents(
 ): readonly HandoverRailEvent[] {
   if (input.sceneSource === 'artifact-replay') return input.core.artifactHandoverRailEvents;
   if (input.isArchivedTleSceneActive) return [];
-  if (input.sceneLane === 'sinr-live' || input.sceneLane === 'modqn-live-cell-preview') {
-    return input.core.liveWalkerHandoverRailEvents;
-  }
-  if (input.sceneLane === 'modqn-replay-proof') return input.core.modqnHandoverRailEvents;
+  if (input.sceneLane === 'sinr-live') return input.core.liveWalkerHandoverRailEvents;
   return input.liveObservedHandoverRailEvents;
 }
 

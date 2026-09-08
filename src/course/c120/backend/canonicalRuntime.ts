@@ -23,16 +23,16 @@ function configuredPath(name: string, fallback: string): string {
   return configured === undefined || configured.trim() === '' ? fallback : resolve(configured);
 }
 
-const C120_DEFAULT_MODQN_ROOT = resolve(homedir(), 'papers/modqn-paper-reproduction');
+const C120_DEFAULT_RUNTIME_ROOT = resolve(homedir(), 'papers/c120-canonical-runtime');
 export const C120_DEFAULT_CANONICAL_RUNTIME_PATH =
   configuredPath(
     'C120_CANONICAL_RUNTIME_PATH',
-    resolve(C120_DEFAULT_MODQN_ROOT, 'src/modqn_paper_reproduction/runtime/angle_aware_ee.py'),
+    resolve(C120_DEFAULT_RUNTIME_ROOT, 'runtime/angle_aware_ee.py'),
   );
 export const C120_DEFAULT_GOLDEN_FIXTURE_PATH =
   configuredPath(
     'C120_GOLDEN_FIXTURE_PATH',
-    resolve(C120_DEFAULT_MODQN_ROOT, 'tests/fixtures/angle-aware-ee-v1/golden-vectors.json'),
+    resolve(C120_DEFAULT_RUNTIME_ROOT, 'fixtures/angle-aware-ee-v1/golden-vectors.json'),
   );
 export const C120_CANONICAL_UNITS = Object.freeze({
   angle: 'rad',
@@ -529,7 +529,7 @@ function pythonBridgeRunner(pythonExecutable: string, timeoutMs: number): C120Pi
 function defaultPythonExecutable(): string {
   const configured = process.env.C120_PYTHON;
   if (configured !== undefined && configured.trim() !== '') return resolve(configured);
-  const preferred = resolve(C120_DEFAULT_MODQN_ROOT, '.venv/bin/python');
+  const preferred = resolve(C120_DEFAULT_RUNTIME_ROOT, '.venv/bin/python');
   return existsSync(preferred) ? preferred : 'python3';
 }
 

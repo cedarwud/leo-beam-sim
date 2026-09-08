@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, type JSX, type ReactNode } from 'react';
-import { MiniRewardCurve } from '../../ui/modqn-controls/MiniRewardCurve';
-import type { TrainingProgressEvent } from '../../modqn/training-trigger/types';
 import {
   resolveTelemetryStatus,
   useLiveTelemetry,
+  type TrainingProgressEvent,
   type TelemetryStatus,
 } from './liveTelemetryStore';
 import {
@@ -246,7 +245,7 @@ export function LiveTelemetryPanel({
             role="img"
             aria-label="Evolving reward curve: episode-by-episode scalar reward trend"
           >
-            <MiniRewardCurve rewards={rewardSeries} />
+            <output aria-label="Reward samples">{rewardSeries.join(', ')}</output>
           </div>
         ) : (
           <SourceGap>requires producer change</SourceGap>

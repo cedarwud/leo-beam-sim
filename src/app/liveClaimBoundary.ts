@@ -28,9 +28,7 @@ export const LIVE_SIM_CLAIM_BOUNDARY_INPUT: ClaimBoundaryBannerInput = {
       'Ch5-aligned live U/gamma EE projection (display-only; not paper reproduction)',
     ],
     forbiddenClaims: [
-      'Multi-Catfish-MODQN effectiveness',
       'Catfish-EE',
-      'general EE-MODQN superiority',
       'active-TX EE recovery',
       'physical energy saving',
     ],

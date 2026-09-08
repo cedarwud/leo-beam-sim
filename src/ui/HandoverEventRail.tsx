@@ -4,13 +4,11 @@ import { formatTimelineTime } from './TimelineBar';
 export type HandoverRailEventKind = 'intra' | 'inter';
 export type HandoverRailEventSource =
   | 'artifact-replay'
-  | 'modqn-replay'
   | 'live-observed'
   | 'live-walker'
   | 'sinr-live-cell-truth';
 export type HandoverRailSourceOwner =
   | 'artifact-replay'
-  | 'modqn-producer-trace'
   | 'live-walker'
   | 'sinr-live-cell-truth';
 export type HandoverRailHorizonKind = 'artifact-scenario' | 'producer-trace' | 'live-walker-window';
@@ -97,12 +95,11 @@ function kindLabel(kind: HandoverRailEventKind): string {
 }
 
 // Retained for the source-labeling contract: scene-lane-governance +
-// handover-story-layer source-pin these label strings (e.g. 'producer trace').
+// handover-story-layer source-pin these label strings.
 // The source-ordered list that displayed it was retired, so it reads as unused
 // to tsc/orphan-scan — do NOT delete; the validators assert the body strings.
 function sourceLabel(source: HandoverRailEventSource): string {
   if (source === 'artifact-replay') return 'artifact';
-  if (source === 'modqn-replay') return 'producer trace';
   if (source === 'sinr-live-cell-truth') return 'SINR cell truth';
   if (source === 'live-walker') return 'live scene';
   return 'observed';

@@ -191,11 +191,8 @@ function generateRandomRectangleUePositions(params: {
   const anchorPrimary = primaryAnchorMode === 'observer';
   const positions: UePosition[] = anchorPrimary ? [primary] : [];
 
-  // Source: modqn-paper-reproduction/src/modqn_paper_reproduction/env/step.py
-  // _generate_user_positions(... distribution="uniform-rectangle", width_km, height_km)
-  // with ASSUME-MODQN-REP-022's 200 km x 90 km area. SINR keeps slot 0 as the
-  // live observer anchor; MODQN can render slot 0 from the distribution so
-  // display layout follows the training UE area instead of display needs.
+  // Generate the configured uniform-rectangle distribution while preserving
+  // the observer anchor when the live path requests it.
   for (let i = anchorPrimary ? 1 : 0; i < ueCount; i += 1) {
     const eastKm = centerEastKm + (rng() - 0.5) * area.widthKm;
     const northKm = centerNorthKm + (rng() - 0.5) * area.heightKm;

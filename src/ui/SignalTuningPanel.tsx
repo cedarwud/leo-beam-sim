@@ -882,8 +882,7 @@ export function SignalTuningPanel({
           the shape of the simulated world, and changing it restarts the run
           instead of recomputing a term.
 
-          `appMode` is still forwarded for the MODQN serving-candidate selector;
-          the live scene topology controls themselves are available in every
+          The live scene topology controls themselves are available in every
           live app mode.
         */}
         {mainTab === 'scene' && (

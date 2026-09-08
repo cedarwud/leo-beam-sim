@@ -14,8 +14,6 @@ function createInput(): WalkerSignalProfileInput {
   return {
     baseProfile,
     signalTuning: createSignalTuningState(baseProfile),
-    selectedTrainingEnvAxes: undefined,
-    selectedTrainingSeedTriplet: undefined,
     activeSceneTopology: createSceneTopologyState(),
   };
 }

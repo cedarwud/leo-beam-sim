@@ -10,7 +10,6 @@
 @use './status-panels';
 @use './timeline-bar';
 @use './algorithm-dock';
-@use './modqn';
 @use './sidebar';
 @use './handover-policy';
 @use './sinr-panel';
@@ -41,19 +40,6 @@ body {
 canvas {
   display: block;
   outline: none;
-}
-
-.modqn-offscreen {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-  pointer-events: none;
 }
 
 .leo-app-shell {
@@ -960,16 +946,6 @@ canvas {
   .leo-six-acts-ttt__progress {
     transition: none;
   }
-}
-
-// Temporary MODQN declutter (先隱藏 for the visual overhaul): hide the in-scene
-// top-right preview/warning HUD only. The sidebars stay. This card renders only
-// in the modqn-live-cell-preview lane (App gate), so hiding the class hides it
-// exactly there and nowhere else. Display-only (CLAUDE.md Rule#2) and reversible
-// — the JSX render gate is untouched, so the scene-lane-governance source pins
-// stay green; only visibility changes.
-.leo-modqn-scene-hud {
-  display: none;
 }
 
 // Compact horizontal quick-control row (4 display checkboxes) — a thin toolbar
@@ -1961,7 +1937,7 @@ canvas {
 }
 
 // G1-CONTROLBAR-ADV: non-modal inline disclosure variant of the Advanced drawer
-// (SINR-live display/camera). Unlike the MODQN modal drawer there is NO scrim —
+// (SINR-live display/camera). Unlike the modal drawer there is NO scrim —
 // it expands in-flow at the foot of the left aside so the scene + timeline stay
 // interactive while display controls are adjusted.
 .leo-inline-drawer {
@@ -2096,7 +2072,7 @@ canvas {
   min-width: 0;
 }
 
-.leo-algorithm-dashboard__curve-wrap .leo-modqn-mini-reward-curve {
+.leo-algorithm-dashboard__curve-wrap {
   width: 100%;
   max-width: 100%;
 }

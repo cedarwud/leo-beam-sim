@@ -1,6 +1,8 @@
-import { isActiveStatus } from '../../modqn/training-trigger/jobsPolling';
-import type { TrainingProgressEvent } from '../../modqn/training-trigger/types';
-import type { LiveTelemetryEntry } from './liveTelemetryStore';
+import {
+  isActiveStatus,
+  type LiveTelemetryEntry,
+  type TrainingProgressEvent,
+} from './liveTelemetryStore';
 
 export interface LiveEpisodeProgress {
   readonly episode: number;

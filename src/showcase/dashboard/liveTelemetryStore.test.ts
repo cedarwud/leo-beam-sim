@@ -3,7 +3,6 @@
  * P1 unit test: Plane-A live telemetry store + INV-2 staleness resolver.
  * Run: `npm run validate:phase-d:live-telemetry-store`.
  */
-import type { TrainingProgressEvent } from '../../modqn/training-trigger/types';
 import {
   HEARTBEAT_INTERVAL_MS,
   OFFLINE_AFTER_MS,
@@ -14,6 +13,7 @@ import {
   reconcileTelemetry,
   resetTelemetryStore,
   getTelemetrySnapshot,
+  type TrainingProgressEvent,
 } from './liveTelemetryStore';
 
 let passed = 0;

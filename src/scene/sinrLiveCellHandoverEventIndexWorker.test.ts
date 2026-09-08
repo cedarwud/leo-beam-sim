@@ -312,7 +312,7 @@ test('worker runtime reports a scheduler failure instead of stranding the reques
 
 test('builder preview is a non-complete 0-60 prefix with the full config identity', () => {
   const input: BuildSinrLiveCellHandoverEventIndexInput = {
-    profile: loadProfile('modqn-1sat-7beam'),
+    profile: loadProfile('hobs-2024-paper-default'),
     epochUtcMs: Date.parse('2026-08-16T00:00:00.000Z'),
     simStepSec: 60,
     ueCount: 1,
@@ -370,7 +370,7 @@ test('builder preview is a non-complete 0-60 prefix with the full config identit
 
 test('worker-drained builder is equivalent to the one-shot event-index builder', () => {
   const input: BuildSinrLiveCellHandoverEventIndexInput = {
-    profile: loadProfile('modqn-1sat-7beam'),
+    profile: loadProfile('hobs-2024-paper-default'),
     epochUtcMs: Date.parse('2026-08-16T00:00:00.000Z'),
     simStepSec: 7200,
     ueCount: 1,

@@ -2,7 +2,7 @@
 /**
  * Model gate for the r1 energy-efficiency term rendered beside the live SINR.
  *
- * Asserts the CONTRACT against `modqn-paper-reproduction`, not source text:
+ * Asserts the formula contract against the reference model, not source text:
  *
  *  A. Reference parity — reproduce the reference's own two-step r1 EE credit
  *     (`env/family_b_step.py::_compute_rewards`: rate = b_alloc/load·log2(1+γ),

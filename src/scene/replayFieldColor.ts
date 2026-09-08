@@ -1,8 +1,8 @@
 /**
  * Recorded-replay served/starved field colour (P2 replay stage) — pure, display-only.
  *
- * The MODQN replay STAGE (`modqn-replay-proof` lane) colours each recorded UE by a
- * LIFE/DEATH encoding: a served UE renders GREEN, a starved UE renders RED. This is
+ * The recorded replay stage colours each recorded UE by a LIFE/DEATH encoding: a
+ * served UE renders GREEN, a starved UE renders RED. This is
  * the sim's signature "red sea → green" beat — the abstract coverage improvement made
  * instantly visible, one dot per person.
  *

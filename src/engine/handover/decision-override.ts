@@ -1,28 +1,16 @@
-// MODQN ω-Handover S4 — omega-heuristic decision override.
+// Optional weighted handover decision override.
 //
-// SDD §4.4: heuristic-mode disclosure rule item 3 — the scoring function MUST
-// be named `computeHeuristicNotPaperScore` (this exact name). The bundle
-// parser MUST never produce `omega-heuristic` mode; this file is only
-// consulted at runtime when the user explicitly picks the mode via the
-// sidebar selector. See SDD §3.4 for the score-function spec and §6.1 row
-// "omega-heuristic" for the mode-behavior contract.
-//
-// References:
-//   * docs/modqn-omega-handover-sdd.md §3.4  ω-heuristic score form
-//   * docs/modqn-omega-handover-sdd.md §4.4  binding disclosure rules
-//   * docs/modqn-omega-handover-sdd.md §6.1  mode-behavior matrix
-//   * docs/modqn-omega-handover-sdd.md §9.5  S4 acceptance
-//
-// This function is NOT paper MODQN. It is a closed-form scalar score over
-// live candidates parameterized by user-chosen ω. The selected beam still
-// flows through HandoverManager for trigger-time and ping-pong-guard timing
-// (SDD §3.4); only the argmax choice is overridden.
 import type { HandoverDecisionOverrideInput } from './handover-manager';
-import type { RuntimeOmegaState } from '../../modqn/runtimeControls';
+
+export interface WeightedDecisionState {
+  readonly throughput: number;
+  readonly handover: number;
+  readonly loadBalance: number;
+}
 
 export interface HeuristicScoreInput {
-  /** User-chosen ω vector this tick (from the sidebar Apply state). */
-  readonly omega: RuntimeOmegaState;
+  /** User-chosen weights for this tick. */
+  readonly omega: WeightedDecisionState;
   /** Smoothed candidate beams visible this tick (engine pipeline output). */
   readonly candidates: HandoverDecisionOverrideInput['candidates'];
   /** Current serving snapshot — used to detect `isSwitch`. */
@@ -38,14 +26,9 @@ export interface HeuristicScoreResult {
 }
 
 /**
- * SDD §4.4 heuristic-mode disclosure rule item 3.
+ * Compute a closed-form weighted score over live candidates.
  *
- * This function is NOT paper MODQN. It is a closed-form scalar score over
- * live candidates parameterized by user-chosen ω. Used only when
- * `handoverMode === 'omega-heuristic'`. The bundle parser must never produce
- * this mode (item 3).
- *
- * Score formula (SDD §3.4 / §6.1 row "omega-heuristic"):
+ * Score formula:
  *
  *     score(a) = ω_throughput · normSINR(a)
  *              − ω_handover   · isSwitch(a)
@@ -56,9 +39,8 @@ export interface HeuristicScoreResult {
  *     normLoad(a) = 0 (placeholder — see "load metric" note below)
  *
  * The returned `{satId, beamId}` is the argmax over the candidate set. The
- * caller (useSimulation override callback) maps that into the
- * `HandoverDecisionOverride` contract; trigger-time, dwell, and ping-pong-
- * guard timing remain engine-side and untouched.
+ * caller maps that into the `HandoverDecisionOverride` contract; trigger-time,
+ * dwell, and ping-pong-guard timing remain engine-side.
  *
  * Load metric note (S4 scope):
  *   LinkSample does NOT carry a per-beam load / busy-count field today
@@ -72,20 +54,14 @@ export interface HeuristicScoreResult {
  *   pipeline and is out of scope here.
  *
  * Empty / single-candidate handling:
- *   * Empty candidates → returns `null` so the caller defers to sinr-offset
- *     (matches reScalarize's null-on-empty convention).
+ *   * Empty candidates → returns `null` so the caller defers to sinr-offset.
  *   * Single candidate → returns that candidate. Score is the throughput
  *     term only (no normalization division-by-zero because max == self).
  *
- * SINR linearization:
- *   `sinrLinear(a) = 10^(sinrDb(a) / 10)`. We use the engine-smoothed
- *   `sinrDb` directly from the LinkSample (the smoothing already happens
- *   inside HandoverManager.smoothCandidates before the override is
- *   consulted; this matches the SDD §3.4 "score over current beams"
- *   semantics).
+ * SINR linearization uses the engine-smoothed `sinrDb` from each LinkSample.
  *
- * Returns `null` when no candidates are available (SDD §5.3 / CLAUDE.md §5:
- * do not synthesize beams; defer to sinr-offset).
+ * Returns `null` when no candidates are available; callers then defer to the
+ * built-in SINR-offset policy.
  */
 export function computeHeuristicNotPaperScore(
   input: HeuristicScoreInput,

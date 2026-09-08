@@ -163,7 +163,7 @@ check('buildCinemaCandidateDetail resolves cell-truth event source, cell ids, UE
 });
 
 check('buildCinemaCandidateDetail is lane-gated to sinr-live (S1)', () => {
-  const otherLanes: SceneLane[] = ['modqn-live-cell-preview', 'modqn-replay-proof', 'artifact-replay'];
+  const otherLanes: SceneLane[] = ['artifact-replay'];
   for (const lane of otherLanes) {
     assertNull(buildCinemaCandidateDetail(index([ev()]), 'evt-inter-1', lane), `lane ${lane}`);
   }

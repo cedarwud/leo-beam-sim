@@ -7,7 +7,7 @@
  *
  * Honesty (governance Rule#6, CLAUDE.md §3 / SDD §9):
  * - It is lane-truthful and stamped `data-claim-kind="sinr-offset"`. It NEVER
- *   mentions MODQN / producer and NEVER claims this is decision proof — the only
+ *   mentions producer and NEVER claims this is decision proof — the only
  *   rule it states is the live SINR-offset handover policy.
  * - Every SINR value comes from the live handover index (real SINR truth); the
  *   panel fabricates nothing. Per-row provenance is stamped `live`.
@@ -132,8 +132,8 @@ export function SinrOffsetExplainer({ candidate, visible }: SinrOffsetExplainerP
         data-claim="sinr-offset"
       >
         {model.sourceOwner === 'sinr-live-cell-truth'
-          ? 'sinrLiveCells · sinr-offset (not MODQN)'
-          : 'live SINR · sinr-offset (not MODQN)'}
+          ? 'sinrLiveCells · sinr-offset'
+          : 'live SINR · sinr-offset'}
       </div>
     </div>
   );

@@ -87,9 +87,7 @@ export function resolveProfileRectangleAreaKm(profile: Profile): { widthKm: numb
     return undefined;
   }
 
-  // Source: modqn-paper-reproduction/docs/modqn-reproduction-assumption-register.md
-  // ASSUME-MODQN-REP-022: uniform-rectangle sampling inside 200 km x 90 km;
-  // StepConfig carries these as user_area_width_km/user_area_height_km.
+  // Uniform-rectangle sampling is carried by the profile's area dimensions.
   return {
     widthKm: distribution.areaWidthKm,
     heightKm: distribution.areaHeightKm,

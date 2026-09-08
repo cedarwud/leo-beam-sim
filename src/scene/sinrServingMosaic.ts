@@ -8,10 +8,9 @@
  * together.
  *
  * Governance / honesty (frontend-render-governance.md §6/§8/§9, SDD §3.1):
- * - This is a DISTINCT SINR-serving visualisation, NOT the MODQN cell overlay
- *   (`deriveModqnServiceMap`). It is lane-owned to `sinr-live` and must never be
- *   mounted on a MODQN lane. Its colour is its own encoding; it carries the
- *   `sinr-serving` claim and never claims MODQN/producer truth.
+ * - This is a distinct SINR-serving visualization. It is lane-owned to
+ *   `sinr-live` and its colour is its own encoding; it carries the
+ *   `sinr-serving` claim.
  * - Display-only (Rule#6): it only assigns a marker colour derived from the
  *   already-computed serving (satId, beamId). It reads no SINR for the colour
  *   and alters no SINR, handover, decision, or geometry truth.
@@ -23,7 +22,7 @@
 
 import { colorForServingBeam, colorForServingSatellite } from '../constants/servingColour';
 
-/** Unserved marker colours — shared with the MODQN idle palette for coherence. */
+/** Unserved marker colours for the SINR-serving palette. */
 export const SINR_SERVING_UNSERVED_COLOR = '#64748b';
 export const SINR_SERVING_UNSERVED_EMISSIVE = '#334155';
 

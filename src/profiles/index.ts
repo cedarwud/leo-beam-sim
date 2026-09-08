@@ -3,20 +3,12 @@ import paperDefaultJson from './hobs-2024-paper-default.json';
 import candidateRichJson from './hobs-2024-candidate-rich.json';
 import tr38811ResearchJson from './hobs-2024-tr38811-research.json';
 import mobileDemoAircraftJson from './hobs-2024-mobile-demo-aircraft.json';
-import modqn1Sat7BeamJson from './modqn-1sat-7beam.json';
-import modqn4Sat7BeamPaperFaithfulJson from './modqn-4sat-7beam-paper-faithful.json';
-
-export const MODQN_1SAT_7BEAM_PROFILE_ID = 'modqn-1sat-7beam' as const;
-export const MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID =
-  'modqn-4sat-7beam-paper-faithful' as const;
 
 const profileEntries = [
   ['hobs-2024-candidate-rich', candidateRichJson as Profile],
   ['hobs-2024-paper-default', paperDefaultJson as Profile],
   ['hobs-2024-tr38811-research', tr38811ResearchJson as Profile],
   ['hobs-2024-mobile-demo-aircraft', mobileDemoAircraftJson as Profile],
-  [MODQN_1SAT_7BEAM_PROFILE_ID, modqn1Sat7BeamJson as Profile],
-  [MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID, modqn4Sat7BeamPaperFaithfulJson as Profile],
 ] as const;
 
 export const profiles: Record<string, Profile> = Object.fromEntries(profileEntries);
@@ -48,10 +40,6 @@ export function getProfileLabel(profile: Profile): string {
       return 'HOBS + TR 38.811 Research';
     case 'hobs-2024-mobile-demo-aircraft':
       return 'HOBS Aircraft Mobile Demo';
-    case MODQN_1SAT_7BEAM_PROFILE_ID:
-      return 'MODQN 1-sat 7-beam (replay)';
-    case MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID:
-      return 'MODQN paper-faithful 4-sat 7-beam';
     default:
       return profile.id;
   }

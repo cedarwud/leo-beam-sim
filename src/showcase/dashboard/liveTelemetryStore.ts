@@ -2,7 +2,7 @@
  * Plane-A live training telemetry store (Master SDD v2 §3.1 / §3.4 / §3.5 INV-2).
  *
  * A tiny `useSyncExternalStore`-backed module store that holds the latest
- * SSE `TrainingProgressEvent` per job plus the timestamps needed for INV-2
+ * streamed progress events per job plus the timestamps needed for INV-2
  * staleness. It is fed by the single existing `EventSource` owner
  * (`JobsPanel`, P2) via `publishTelemetryEvent`; this module opens NO second
  * stream. The snapshot is referentially stable until a new event arrives, so
@@ -11,15 +11,29 @@
  * pure `resolveTelemetryStatus`, keeping the snapshot stable.
  */
 import { useSyncExternalStore } from 'react';
-import type { JobStatus, TrainingProgressEvent } from '../../modqn/training-trigger/types';
-import { isActiveStatus } from '../../modqn/training-trigger/jobsPolling';
+export type JobStatus = 'queued' | 'running' | 'paused' | 'done' | 'completed' | 'failed' | 'cancelled' | 'expired';
+
+export type TrainingProgressEvent = {
+  readonly id: number;
+  readonly jobId: string;
+  readonly tsMs: number;
+  readonly type: 'queued' | 'heartbeat' | 'progress' | 'done' | 'failed' | 'cancelled';
+  readonly status: JobStatus;
+  readonly episode?: number;
+  readonly episodeBudget?: number;
+  readonly metrics?: Record<string, number>;
+};
+
+export function isActiveStatus(status: JobStatus): boolean {
+  return status === 'queued' || status === 'running' || status === 'paused';
+}
 
 export type TelemetryStatus = 'live' | 'stalled' | 'offline';
 
 /**
  * Thresholds reconciled to the producer's 10 s heartbeat cadence
- * (`modqn-paper-reproduction` api.py:817 / worker.py:248). Master SDD v2 §7 G2
- * mentions a loose "3 s" that predates the 10 s heartbeat fact in §3.5 INV-2;
+ * The producer heartbeat cadence is 10 s. The Master SDD's loose "3 s"
+ * threshold predates that cadence;
  * at a 10 s cadence a 3 s silence is normal, so "offline" must allow for a
  * couple of missed beats. These are tunable display constants (no truth
  * impact); the final polish pass may revisit them.

@@ -1,10 +1,10 @@
 /**
- * R1 energy efficiency (η) — the MODQN reward-surface EE term, computed live
+ * R1 energy efficiency (η) — a reward-surface EE term, computed live
  * from the SINR this simulator already renders.
  *
  * ## Provenance — the formula is ported, not invented
  *
- * Source of truth: `modqn-paper-reproduction` (the paper reproduction repo).
+ * The formula is kept explicit here so the live display has one local source.
  * Three call sites there agree on one value, and this module reproduces it:
  *
  * 1. `env/family_b_step.py` (rate, ~L740):
@@ -28,10 +28,7 @@
  *
  * This is a property of the reference formula, not a simplification made here.
  * It is also what makes this term safe to render on the live lane: it needs no
- * per-beam UE count, so it never has to consume `ModqnServiceMap`'s
- * `ueCountByCellId` — that projection is `claimKind: 'overlay-demo'` and would
- * have dragged demo-grade provenance into a displayed number (see
- * `src/scene/beamLoadContention.ts` for why that projection is not beam truth).
+ * per-beam UE count, so it remains independent of display-only load overlays.
  *
  * ## Scope of the claim (binding)
  *

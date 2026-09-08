@@ -1,35 +1,31 @@
-import { HANDOVER_MODE_STORAGE_KEY, type RuntimeHandoverMode } from '../modqn/runtimeControls';
+// The open string tail on the public mode type keeps retained downstream
+// modules type-checkable until their second-wave removal. This module itself
+// only accepts and produces the canonical value below.
+export type RuntimeHandoverMode = 'sinr-offset';
 
-export const APP_EXPERIENCE_MODES = ['sinr-experiment', 'modqn-demo'] as const;
+export const APP_EXPERIENCE_MODES = ['sinr-experiment'] as const;
 
-export type AppExperienceMode = (typeof APP_EXPERIENCE_MODES)[number];
+export type AppExperienceMode = (typeof APP_EXPERIENCE_MODES)[number] | (string & {});
 
 export const DEFAULT_APP_EXPERIENCE_MODE: AppExperienceMode = 'sinr-experiment';
 export const APP_MODE_STORAGE_KEY = 'leo-beam-sim.app-mode.v1';
 export const PROFILE_BY_MODE_STORAGE_KEY = 'leo-beam-sim.profile-by-app-mode.v1';
 
 export const APP_MODE_HANDOVER_MAP: Readonly<
-  Record<AppExperienceMode, Extract<RuntimeHandoverMode, 'sinr-offset' | 'decision-overlay-on-live-sinr'>>
+  Record<string, 'sinr-offset'>
 > = {
   'sinr-experiment': 'sinr-offset',
-  'modqn-demo': 'decision-overlay-on-live-sinr',
 };
 
-// MODQN consolidation: the MODQN live page reuses the SINR scene render directly, so
-// it opens on the SAME candidate-rich 100-UE-spread profile as sinr-experiment (the
-// paper-faithful 4sat/7beam profile is clustered → 0 multi-beam cones). The MODQN
-// proof is the Q-value sidebar (Family-B envelope), not the live scene's geometry.
-export const APP_MODE_DEFAULT_PROFILE: Readonly<Record<AppExperienceMode, string>> = {
+export const APP_MODE_DEFAULT_PROFILE: Readonly<Record<string, string>> = {
   'sinr-experiment': 'hobs-2024-candidate-rich',
-  'modqn-demo': 'hobs-2024-candidate-rich',
 };
 
 export function isAppExperienceMode(value: unknown): value is AppExperienceMode {
-  return typeof value === 'string' && APP_EXPERIENCE_MODES.includes(value as AppExperienceMode);
+  return value === 'sinr-experiment';
 }
 
-export function appModeForRuntimeHandover(mode: RuntimeHandoverMode): AppExperienceMode | null {
-  if (mode === 'decision-overlay-on-live-sinr') return 'modqn-demo';
+export function appModeForRuntimeHandover(mode: string): AppExperienceMode | null {
   if (mode === 'sinr-offset') return 'sinr-experiment';
   return null;
 }
@@ -44,28 +40,12 @@ export function readPersistedAppMode(): AppExperienceMode {
     return DEFAULT_APP_EXPERIENCE_MODE;
   }
 
-  try {
-    const legacyHandoverMode = window.localStorage.getItem(HANDOVER_MODE_STORAGE_KEY);
-    const migrated = (
-      legacyHandoverMode === 'sinr-offset'
-      || legacyHandoverMode === 'decision-overlay-on-live-sinr'
-      || legacyHandoverMode === 'omega-heuristic'
-    )
-      ? appModeForRuntimeHandover(legacyHandoverMode) ?? DEFAULT_APP_EXPERIENCE_MODE
-      : DEFAULT_APP_EXPERIENCE_MODE;
-    try {
-      window.localStorage.setItem(APP_MODE_STORAGE_KEY, migrated);
-    } catch {
-      // Storage can be unavailable in private or embedded browser contexts.
-    }
-    return migrated;
-  } catch {
-    return DEFAULT_APP_EXPERIENCE_MODE;
-  }
+  return DEFAULT_APP_EXPERIENCE_MODE;
 }
 
 export function persistAppMode(mode: AppExperienceMode): void {
   if (typeof window === 'undefined') return;
+  if (!isAppExperienceMode(mode)) return;
 
   try {
     window.localStorage.setItem(APP_MODE_STORAGE_KEY, mode);
@@ -112,16 +92,9 @@ export function resolveProfileForAppMode(
   stored: ProfileByMode,
   isKnownProfileId: (id: string) => boolean,
 ): string {
-  // MODQN consolidation: the MODQN live page reuses the SINR scene render directly, so
-  // it ALWAYS uses the candidate-rich default profile — never an independently-persisted
-  // one. A stale persisted `modqn-demo -> paper-faithful` (the old default, saved by any
-  // earlier MODQN visit) renders the DEGENERATE clustered scene (served=0, no beam
-  // cones). Ignoring it here fixes existing browsers without a manual cache clear.
-  if (mode === 'modqn-demo') return APP_MODE_DEFAULT_PROFILE[mode];
   const storedProfileId = stored[mode];
   if (storedProfileId !== undefined && isKnownProfileId(storedProfileId)) {
     return storedProfileId;
   }
-  return APP_MODE_DEFAULT_PROFILE[mode];
+  return APP_MODE_DEFAULT_PROFILE[mode] ?? APP_MODE_DEFAULT_PROFILE['sinr-experiment'];
 }
-

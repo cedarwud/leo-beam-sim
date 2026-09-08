@@ -31,7 +31,7 @@ function lerpWorldPos(a: WorldPos, b: WorldPos, alpha: number): WorldPos {
  *   `(latDeg, lonDeg) -> worldPos` projection is non-linear in geo coords
  *   (cos(refLat) East-North conversion); lerping in geo and re-projecting would
  *   give a different intermediate worldPos than lerping the projected worldPos
- *   pair. The validator at scripts/validate-modqn-visual-showcase-p3-
+ *   pair. The interpolation validator at scripts/validate-visual-showcase-p3-
  *   interpolation-space.ts asserts this distinction.
  *
  * All non-positional state fields are preserved from the preceding discrete frame (f0)

@@ -13,8 +13,8 @@
  * 2026-06-03 render-truth audit caught. It renders nothing for the real
  * producer source (or before the header is known / the fetch failed closed).
  *
- * Display-only: it reads a transport header, never SINR / handover / MODQN /
- * reward / geometry truth. See `docs/showcase-render-truth-fix-backlog.md`
+ * Display-only: it reads a transport header, never SINR / handover / reward /
+ * geometry truth. See `docs/showcase-render-truth-fix-backlog.md`
  * FIX-1 and `docs/showcase-render-truth-audit-2026-06-03.md` (A2/A4).
  *
  * The decision function is exported separately so a unit/string validator can

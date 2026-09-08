@@ -29,11 +29,10 @@
  *
  * Serving truth = `frame.sinrLiveCells` (S-cells-1/2: per-cell serving sat by
  * SINR + the sinr-offset `HandoverManager`). It is **NOT** the round-robin
- * `useCellSchedule` / `cellScheduler` (codex BLOCK-3) — that display oracle stays
- * MODQN-lane-only (`CellBeamCones.tsx`) and is untouched here. This component
- * never imports it.
+ * `useCellSchedule` / `cellScheduler` (codex BLOCK-3). This component never
+ * imports that display-only schedule.
  *
- * NOT MODQN/paper proof — leo's OWN live SINR-offset surface at 550 km (§7).
+ * This is leo's own live SINR-offset surface at 550 km (§7).
  */
 import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
 import { useThree } from '@react-three/fiber';

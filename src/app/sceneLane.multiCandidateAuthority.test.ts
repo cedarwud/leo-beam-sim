@@ -11,8 +11,6 @@ test('multi-candidate authority is enabled only on the homepage Walker lane', ()
   assert.equal(shouldEnableHomepageMultiCandidateAuthority('sinr-live'), true);
 
   const zeroDriftLanes: readonly SceneLane[] = [
-    'modqn-live-cell-preview',
-    'modqn-replay-proof',
     'artifact-replay',
   ];
   for (const lane of zeroDriftLanes) {
@@ -34,8 +32,6 @@ test('the legacy SINR manager is suppressed only on the homepage sinr-live lane'
   assert.equal(shouldSuppressLegacyPrimaryHandover('sinr-live', false), false);
   assert.equal(shouldSuppressLegacyPrimaryHandover('sinr-live', undefined), false);
   const nonHomepageLanes: readonly SceneLane[] = [
-    'modqn-live-cell-preview',
-    'modqn-replay-proof',
     'artifact-replay',
   ];
   for (const lane of nonHomepageLanes) {

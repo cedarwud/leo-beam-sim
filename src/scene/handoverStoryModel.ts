@@ -10,7 +10,6 @@ import type {
 export type HandoverStorySource =
   | 'sinr-live'
   | 'profile-derived-demo'
-  | 'modqn-replay-proof'
   | 'artifact-owned'
   | 'source-gap';
 
@@ -145,9 +144,9 @@ export function deriveProfileHandoverStoryModel({
       distanceSqToFocus(a, focusWorld) - distanceSqToFocus(b, focusWorld)
       || a.cellId - b.cellId
     ));
-  // MODQN live-cell preview uses the cell schedule as a slot/beam preview only.
-  // Source-backed primary-UE handover events live in the live Walker event index,
-  // so foreground event arcs here would imply proof this model does not own.
+  // The cell schedule is a slot/beam preview only. Source-backed primary-UE
+  // handover events live in the live Walker event index, so foreground event
+  // arcs here would imply proof this model does not own.
   const events: HandoverStoryEvent[] = [];
 
   return {

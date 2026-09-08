@@ -2,9 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  getModqnReplayPlaybackFallbackShellModel,
-} from '../modqn/replay-bundle';
-import {
   LIVE_WALKER_HANDOVER_EVENT_INDEX_DURATION_SEC,
   type LiveWalkerHandoverEvent,
   type LiveWalkerHandoverEventIndex,
@@ -79,11 +76,6 @@ function baseInput(overrides: Partial<AppTimelineCoreInput> = {}): AppTimelineCo
     liveSimTimeSec: 480,
     artifactCurrentTimeSec: 0,
     showcaseArtifact: null,
-    modqnReplayEnvelope: null,
-    modqnReplayShellModel: getModqnReplayPlaybackFallbackShellModel(),
-    modqnReplayVisualElapsedSec: 0,
-    renderedModqnReplayCurrentTimeSec: null,
-    bundleProvenanceKind: 'paper-faithful',
     liveWalkerHandoverEventIndex: null,
     liveWalkerHandoverEventIndexBuilding: false,
     focusedUeId: 'live-ue-0',
@@ -104,7 +96,6 @@ test('derives one coherent live timeline core across replay, index, and descript
   assert.equal(core.activeTimelineDescriptor, core.timelineRailDescriptor.timeline);
   assert.equal(core.timelineDurationSec, 7200);
   assert.equal(core.timelineCurrentTimeSec, 30);
-  assert.ok(core.modqnReplayVisualTimeline.durationSec > 0);
   assert.deepEqual(core.liveWalkerHandoverRailEvents, []);
 });
 
@@ -172,13 +163,9 @@ test('selects the active rail owner without rebuilding an event source', () => {
     isArchivedTleSceneActive: false, core, liveObservedHandoverRailEvents: observed,
   }), core.liveWalkerHandoverRailEvents);
   assert.equal(selectAppHandoverRailEvents({
-    sceneSource: 'live-sim', sceneLane: 'modqn-live-cell-preview',
+    sceneSource: 'live-sim', sceneLane: 'artifact-replay',
     isArchivedTleSceneActive: false, core, liveObservedHandoverRailEvents: observed,
-  }), core.liveWalkerHandoverRailEvents);
-  assert.equal(selectAppHandoverRailEvents({
-    sceneSource: 'live-sim', sceneLane: 'modqn-replay-proof',
-    isArchivedTleSceneActive: false, core, liveObservedHandoverRailEvents: observed,
-  }), core.modqnHandoverRailEvents);
+  }), observed);
   assert.equal(selectAppHandoverRailEvents({
     sceneSource: 'live-sim', sceneLane: 'sinr-live',
     isArchivedTleSceneActive: true, core, liveObservedHandoverRailEvents: observed,

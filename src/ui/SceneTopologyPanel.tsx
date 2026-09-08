@@ -18,7 +18,7 @@ interface SceneTopologyPanelProps {
 }
 
 /**
- * The MODQN live-cell lane reuses the live scene, but does not mount the full
+ * The live-cell lane reuses the live scene, but does not mount the full
  * SINR/EE tuning panel. Keep the scene topology controls available there too,
  * otherwise a persisted beam override can be active while its clear button is
  * unreachable. Recorded artifact lanes deliberately do not mount this panel.

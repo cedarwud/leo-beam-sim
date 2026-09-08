@@ -1,17 +1,13 @@
 type Vector3Tuple = [number, number, number];
 
 export const NTPU_OBSERVER = {
-  // Source: PAP-2024-MORL-MULTIBEAM user-area statement and
-  // modqn-paper-reproduction/configs/modqn-paper-baseline.paper-faithful-follow-on.resolved.yaml.
-  name: 'MODQN Baseline Ground Point',
+  name: 'NTPU Reference Ground Point',
   latitude: 40,
   longitude: 116,
   altitude: 0,             // 米
 };
 
-export const MODQN_PAPER_USER_AREA_KM = {
-  // Source: modqn-paper-reproduction/docs/modqn-reproduction-assumption-register.md
-  // ASSUME-MODQN-REP-022: uniform-rectangle sampling inside 200 km x 90 km.
+export const NTPU_USER_AREA_KM = {
   widthKm: 200,
   heightKm: 90,
 };
@@ -54,7 +50,7 @@ export interface InscribedPaperUserArea {
 }
 
 export function resolveInscribedPaperUserArea(config: NTPUSceneConfig): InscribedPaperUserArea {
-  const targetAspect = MODQN_PAPER_USER_AREA_KM.widthKm / MODQN_PAPER_USER_AREA_KM.heightKm;
+  const targetAspect = NTPU_USER_AREA_KM.widthKm / NTPU_USER_AREA_KM.heightKm;
   const boundsWidth = config.scene.measuredBoundsWu.width * config.scene.scale;
   const boundsDepth = config.scene.measuredBoundsWu.depth * config.scene.scale;
   const boundsAspect = boundsWidth / boundsDepth;
@@ -64,7 +60,7 @@ export function resolveInscribedPaperUserArea(config: NTPUSceneConfig): Inscribe
   return {
     widthWu,
     depthWu,
-    kmPerWorldUnit: MODQN_PAPER_USER_AREA_KM.widthKm / widthWu,
+    kmPerWorldUnit: NTPU_USER_AREA_KM.widthKm / widthWu,
   };
 }
 

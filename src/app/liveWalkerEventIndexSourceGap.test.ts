@@ -32,9 +32,4 @@ test('passes through source gaps outside the live index surface', () => {
     sceneSource: 'artifact-replay',
     indexSourceGapReasons: sourceGaps,
   }), sourceGaps);
-  assert.deepEqual(resolveLiveWalkerEventIndexSourceGapReasons({
-    ...liveInput,
-    sceneLane: 'modqn-replay-proof',
-    indexSourceGapReasons: sourceGaps,
-  }), sourceGaps);
 });

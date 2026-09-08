@@ -167,41 +167,6 @@ function hasIntraHandoverPresentationChanged(
     || hasNumericDelta(previous.rangeKm, next.rangeKm);
 }
 
-function hasModqnCellServiceReadoutChanged(
-  previous: SimState['modqnCellServiceReadout'],
-  next: SimState['modqnCellServiceReadout'],
-): boolean {
-  if (!previous || !next) return previous !== next;
-  if (
-    previous.slotIndex !== next.slotIndex
-    || previous.slotSec !== next.slotSec
-    || previous.nextSlotIndex !== next.nextSlotIndex
-    || previous.servingCount !== next.servingCount
-    || previous.visibleSatelliteCount !== next.visibleSatelliteCount
-    || previous.cellCount !== next.cellCount
-    || previous.activeCellCount !== next.activeCellCount
-    || previous.idleCellCount !== next.idleCellCount
-    || previous.nextActiveCellCount !== next.nextActiveCellCount
-    || previous.nextIdleCellCount !== next.nextIdleCellCount
-    || previous.nextChangedCellCount !== next.nextChangedCellCount
-    || previous.servedUeCount !== next.servedUeCount
-    || previous.idleUeCount !== next.idleUeCount
-  ) {
-    return true;
-  }
-  if (previous.satelliteSummaries.length !== next.satelliteSummaries.length) return true;
-  return previous.satelliteSummaries.some((previousSummary, index) => {
-    const nextSummary = next.satelliteSummaries[index];
-    return nextSummary === undefined
-      || previousSummary.satId !== nextSummary.satId
-      || previousSummary.satVisualIndex !== nextSummary.satVisualIndex
-      || previousSummary.markerColor !== nextSummary.markerColor
-      || previousSummary.activeCellCount !== nextSummary.activeCellCount
-      || (previousSummary.activeBeamIds ?? []).join(',') !== (nextSummary.activeBeamIds ?? []).join(',')
-      || previousSummary.servedUeCount !== nextSummary.servedUeCount;
-  });
-}
-
 function hasPaperEnergyEfficiencySummaryChanged(
   previous: NonNullable<SimState['livePaperEnergyEfficiency']>['loadSummary'] | null,
   next: NonNullable<SimState['livePaperEnergyEfficiency']>['loadSummary'] | null,
@@ -421,10 +386,6 @@ export function hasUiStateChanged(previous: SimState | null, next: SimState): bo
     || hasVisualFrequencyDiagnosticsChanged(
       previous.visualFrequencyDiagnostics,
       next.visualFrequencyDiagnostics,
-    )
-    || hasModqnCellServiceReadoutChanged(
-      previous.modqnCellServiceReadout,
-      next.modqnCellServiceReadout,
     )
     || hasPaperEnergyEfficiencyChanged(
       previous.livePaperEnergyEfficiency,

@@ -16,7 +16,7 @@
  *     and needs no lane-matrix change (it is still lane-OWNED: App.tsx mounts it
  *     only on `sceneLane === 'artifact-replay'`).
  *   - Display-only: it reads the already-projected `worldPos` and never alters
- *     SINR / handover / MODQN / reward / geometry truth.
+ *     SINR / handover / reward / geometry truth.
  *   - HONEST: it renders ONLY the real azimuth + ring radius and labels itself
  *     "azimuth only … no elevation/Earth-rotation". It never synthesises the
  *     overhead Y dimension (that fabrication is exactly what Option B was

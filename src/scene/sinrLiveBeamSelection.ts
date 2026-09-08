@@ -27,7 +27,6 @@ import type { VizFrame } from './types';
  */
 export interface SteeredMountPlanFlags {
   readonly showLiveBeamCones: boolean;
-  readonly showCellOverlay: boolean;
   readonly showSinrLiveCellBeams: boolean;
 }
 
@@ -54,8 +53,8 @@ export interface SinrLiveVisibleBeamInput {
  *    which is precisely what the connected-sat-has-beam must-hold flip measures.
  *  - Steered render (the current / parked path): the steered `<SatelliteBeams>`
  *    mount predicate — `displaySats ∩ beamSatIds ∩ (satBeams.length > 0)` —
- *    returning the empty set when the steered cones are off (no live beam cones,
- *    or the MODQN cell overlay owns the lane).
+   *    returning the empty set when the steered cones are off (no live beam cones,
+   *    or the cell-truth lane owns the lane).
  *
  * Byte-identity guarantee (S5-1): with `coneSatIds` undefined this is
  * value-identical to the legacy `resolveSteeredVisibleBeamSatIds` for EVERY input
@@ -67,7 +66,7 @@ export function resolveSinrLiveVisibleBeamSatIds(input: SinrLiveVisibleBeamInput
   if (plan.showSinrLiveCellBeams) {
     return new Set(coneSatIds ?? []);
   }
-  if (!plan.showLiveBeamCones || plan.showCellOverlay) {
+  if (!plan.showLiveBeamCones) {
     return new Set();
   }
   const visible = new Set<string>();

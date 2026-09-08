@@ -11,8 +11,8 @@
  *
  * Validation steps (SDD §9 P1 exit criteria, §7 New modules):
  *   (a) `schemaVersion === 'visual-showcase-v1'`
- *   (b) `scenario.profile` is recognised (currently: 'modqn-multi-ue';
- *       'baseline-one-ue' accepted as v1.0 backward-compat)
+ *   (b) `scenario.profile` is recognised;
+ *       'baseline-one-ue' remains accepted as v1.0 backward-compat
  *   (c) `provenance.claimBoundary` present
  *   (d) every `timeline[].handoverState.kind` is a non-empty string (Q5: load
  *       blocks on absent kind — adapter MUST NOT fall back to ID-comparison

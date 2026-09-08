@@ -127,7 +127,7 @@ export function createReplayPanelSimState(input: {
   };
 
   return {
-    profileId: showcaseArtifact?.scenario.id ?? 'modqn-1sat-7beam',
+    profileId: showcaseArtifact?.scenario.id ?? 'hobs-2024-candidate-rich',
     formulaFamilyLabel: 'SNR (no interference)',
     satelliteVisualIdentityById: {},
     physicalServing,

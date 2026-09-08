@@ -1,6 +1,6 @@
 /**
  * coverageFairness — pure, display-only coverage / fairness aggregation for the
- * modqn-replay-proof lane (P3 slice-2 B). NO render / three / react import.
+ * replay-proof lane (P3 slice-2 B). NO render / three / react import.
  *
  * The recorded producer windows bake per-UE COVERAGE truth (`served` / `starved`
  * from the kpiOverlay step-trace) into every timeline frame. This module only
@@ -20,7 +20,7 @@
  *
  * Verified (scratchpad probe, controller oracle): over the two H2 scene windows
  * this reproduces a2 mean 0.9968 / min 0.9792 / Gini 0.0025 and b1 mean 0.2600 /
- * min 0.0000 / Gini 0.7400 exactly. `validate:modqn:coverage-fairness` pins it.
+ * min 0.0000 / Gini 0.7400 exactly. The coverage validator pins it.
  */
 
 /** Minimal structural UE shape — both `NormalizedUe` and a raw producer timeline

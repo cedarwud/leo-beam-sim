@@ -1,16 +1,12 @@
 import type {
-  ModqnTrainingSceneCoverageStatus,
-  ModqnTrainingSceneTraceField,
-} from '../../modqn/training-scene-trace';
-import { getCurrentTrainingSceneTraceCoverage } from '../../modqn/training-scene-trace';
-import type {
   VisualShowcaseArtifact,
   VisualShowcaseDecisionFrame,
   VisualShowcaseEvent,
   VisualShowcaseHandoverState,
-  VisualShowcaseModqnDecision,
   VisualShowcaseSeries,
 } from '../../scene/visual-showcase-contract';
+
+type DashboardInventoryField = string;
 
 export type DashboardSeriesPlane = 'visual-showcase-v1';
 export type DashboardSeriesProvenanceStatus =
@@ -21,7 +17,7 @@ export type DashboardSeriesProvenanceStatus =
 export interface DashboardSeriesProvenance {
   readonly plane: DashboardSeriesPlane;
   readonly status: DashboardSeriesProvenanceStatus;
-  readonly inventoryField: ModqnTrainingSceneTraceField;
+  readonly inventoryField: DashboardInventoryField;
 }
 
 export interface DashboardValueSeries<TValue> {
@@ -148,7 +144,7 @@ export type DashboardSeriesChannelKey = keyof Omit<DashboardSeriesModel, 'plane'
 
 export interface DashboardSeriesChannelSpec {
   readonly key: DashboardSeriesChannelKey;
-  readonly inventoryField: ModqnTrainingSceneTraceField;
+  readonly inventoryField: DashboardInventoryField;
 }
 
 export const DASHBOARD_SERIES_CHANNEL_SPECS = [
@@ -165,6 +161,17 @@ export const DASHBOARD_SERIES_CHANNEL_SPECS = [
 
 const SOURCE_GAP_PROVENANCE: DashboardSeriesProvenanceStatus = 'source-gap';
 
+const DASHBOARD_INVENTORY_STATUS: Readonly<Record<DashboardInventoryField, DashboardSeriesProvenanceStatus>> = {
+  'step.reward': 'producer-backed',
+  'environment.objectiveWeights': 'producer-backed',
+  'step.selectedAction': 'producer-backed',
+  'step.policyDiagnostics': 'partial-producer-backed',
+  'step.selectedServing': 'producer-backed',
+  'step.handoverEvent': 'partial-producer-backed',
+  'environment.channelModel': 'partial-producer-backed',
+  'step.energyEfficiencyTerms': 'partial-producer-backed',
+};
+
 function emptySeries<TValue>(source: string | null = null): DashboardValueSeries<TValue> {
   return {
     source,
@@ -173,28 +180,8 @@ function emptySeries<TValue>(source: string | null = null): DashboardValueSeries
   };
 }
 
-function inventoryStatusFor(
-  field: ModqnTrainingSceneTraceField,
-): DashboardSeriesProvenanceStatus {
-  const coverage = getCurrentTrainingSceneTraceCoverage('visual-showcase-v1')
-    .find(item => item.field === field);
-  if (coverage === undefined) {
-    return SOURCE_GAP_PROVENANCE;
-  }
-  return toDashboardProvenanceStatus(coverage.status);
-}
-
-function toDashboardProvenanceStatus(
-  status: ModqnTrainingSceneCoverageStatus,
-): DashboardSeriesProvenanceStatus {
-  if (
-    status === 'producer-backed'
-    || status === 'partial-producer-backed'
-    || status === 'source-gap'
-  ) {
-    return status;
-  }
-  return SOURCE_GAP_PROVENANCE;
+function inventoryStatusFor(field: DashboardInventoryField): DashboardSeriesProvenanceStatus {
+  return DASHBOARD_INVENTORY_STATUS[field] ?? SOURCE_GAP_PROVENANCE;
 }
 
 export function getDashboardSeriesChannelExpectedStatus(
@@ -259,25 +246,6 @@ function mapDecisionFrame(frame: VisualShowcaseDecisionFrame): DashboardDecision
     ...(frame.decisionActionValidityMask === undefined
       ? {}
       : { decisionActionValidityMask: [...frame.decisionActionValidityMask] }),
-  };
-}
-
-function mapTimelineDecision(
-  tSec: number,
-  decision: VisualShowcaseModqnDecision,
-): DashboardTimelineDecision {
-  return {
-    tSec,
-    actionIndex: decision.actionIndex,
-    actionLabel: decision.actionLabel,
-    previousSatelliteId: decision.previousSatelliteId,
-    previousBeamId: decision.previousBeamId,
-    selectedSatelliteId: decision.selectedSatelliteId,
-    selectedBeamId: decision.selectedBeamId,
-    selectedActionScore: decision.selectedActionScore,
-    runnerUpActionScore: decision.runnerUpActionScore,
-    scoreMargin: decision.scoreMargin,
-    diagnosticsRef: decision.diagnosticsRef,
   };
 }
 
@@ -386,8 +354,7 @@ export function buildDashboardSeriesModel(
   );
   const rewardPrimary = hasValues(rewardFromSeries) ? rewardFromSeries : rewardFromTimeline;
   const decisionFrames = artifact.diagnostics?.decisionFrames.map(mapDecisionFrame) ?? [];
-  const timelineDecisions = artifact.timeline.map(frame =>
-    mapTimelineDecision(frame.tSec, frame.modqnDecision));
+  const timelineDecisions: readonly DashboardTimelineDecision[] = [];
   const handoverStates = artifact.timeline.map(frame =>
     mapHandoverState(frame.tSec, frame.handoverState));
   const handoverEvents = artifact.events.filter(isHandoverEvent).map(mapHandoverEvent);

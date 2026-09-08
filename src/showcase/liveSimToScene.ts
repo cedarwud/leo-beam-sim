@@ -529,7 +529,7 @@ export function liveSimToScene(
     }
   }
 
-  // Live: no per-UE MODQN decisions.
+  // Live: no per-UE policy decisions.
   const perUeDecisions: NormalizedUeDecision[] = [];
 
   // Project `displayAssignments` (active beam assignments for display) and
@@ -579,7 +579,7 @@ export function liveSimToScene(
     claimBoundary: {
       kind: 'live-stub',
       storyKind: 'live-sinr-sim',
-      // Live path makes no MODQN / Multi-Catfish EE-EFFECTIVENESS claims. The
+      // Live path makes no Multi-Catfish EE-EFFECTIVENESS claims. The
       // two live EE readouts below are rendered quantities: r1 is the
       // reward-surface ratio B_alloc·log2(1+γ)/P_beam, while paper-style EE
       // uses live cell truth + the profile-backed load-dependent power surface
@@ -594,9 +594,9 @@ export function liveSimToScene(
         'Ch5-aligned live U/gamma EE projection (display-only; not paper reproduction)',
       ],
       forbiddenClaims: [
-        'Multi-Catfish-MODQN effectiveness',
+        'Multi-Catfish effectiveness',
         'Catfish-EE',
-        'general EE-MODQN superiority',
+        'general EE superiority',
         'active-TX EE recovery',
         'physical energy saving',
       ],

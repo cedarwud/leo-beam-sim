@@ -6,7 +6,7 @@
  * Honesty / governance (frontend-render-governance.md Rule#6, CLAUDE.md §3):
  * - Everything here is built ONLY from the real live-walker handover event index
  *   (`sinr-live` lane), which is computed from live SINR truth. There is NO
- *   producer/MODQN dependency and NO fabrication: the SINR values are carried
+ *   producer dependency and NO fabrication: the SINR values are carried
  *   verbatim from the engine `HandoverEvent`.
  * - The claim is `sinr-offset` / `profile-derived-forecast`, NEVER producer proof.
  * - These are pure functions (no React, no DOM) so the SINR math + lane-gating can
@@ -76,7 +76,7 @@ export function buildCinemaCandidateDetail(
 ): CinemaCandidateDetail | null {
   if (index === null || eventId === null) return null;
   // S1 builds the candidate story on the live SINR lane only (real SINR, no
-  // producer dependency). The MODQN / artifact variants are later slices.
+  // producer dependency).
   if (sceneLane !== 'sinr-live') return null;
   const event = index.events.find(e => e.id === eventId);
   if (event === undefined) return null;
@@ -154,7 +154,7 @@ function beamLabel(satId: string, beamId: number | null, cellId: number | null):
  * Build the SINR explainer model (the "why this beam won, in SINR terms").
  * Pure projection of the candidate detail: two rows (serving + winner), the
  * recorded delta, and the offset threshold. It NEVER invents a SINR value and
- * NEVER references MODQN/producer — the only decision rule it states is the live
+ * NEVER references producer — the only decision rule it states is the live
  * SINR-offset policy.
  */
 export function decideSinrOffsetExplainer(

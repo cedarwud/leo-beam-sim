@@ -13,7 +13,7 @@ import type { HandoverDecision, HandoverEvent, IntraSwitchPreview, ServingState 
 /**
  * Input contract for a {@link HandoverDecisionOverride}.
  *
- * SDD §5.3 (`docs/modqn-omega-handover-sdd.md`): the override receives the
+ * The override receives the
  * same inputs as the engine — candidate beams, current serving, masks/ΔSINR
  * versus serving — and either picks a target beam or returns `null` to defer
  * to sinr-offset. Trigger timing, dwell, and ping-pong-guard remain

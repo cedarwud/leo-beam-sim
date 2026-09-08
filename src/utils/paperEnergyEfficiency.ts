@@ -116,7 +116,7 @@ function beamKey(ue: Pick<PaperEnergyEfficiencyUe, 'servingSatId' | 'cellId'>): 
 /**
  * Compute the Chapter 5-style EE surface from live cell truth.
  *
- * This deliberately does not consume `ModqnServiceMap.ueCountByCellId`:
+ * This deliberately does not consume display-only service-map counts:
  * that projection is an `overlay-demo` claim. The live per-beam load is
  * measured here from the serving `(satellite, earth-fixed cell)` assignments
  * already carried by `SinrLiveCellFrame.ues`.

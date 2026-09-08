@@ -59,7 +59,7 @@ import {
 const REFERENCE_FRAME_LAGGED_INTERFERENCE_W = 0;
 const TRAJECTORY_HALF_WINDOW_SEC = 30 * 60;
 const TRAJECTORY_STEP_SEC = 5 * 60;
-const CANONICAL_AUTHORITY = '/home/u24/papers/modqn-paper-reproduction/docs/ADR-003-canonical-ee-closure.md';
+const CANONICAL_AUTHORITY = 'leo-beam-sim/canonical-simulator-contract';
 
 function freeze<T>(value: T): T {
   return Object.freeze(value);

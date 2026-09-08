@@ -1,6 +1,6 @@
 import type { ReplayArm } from './ReplayArmToggle';
 
-// P3 slice-2 C(+D) · honesty-disclosure panel for the modqn-replay-proof lane.
+// Honesty-disclosure panel for a recorded replay-proof lane.
 //
 // Pays down the one-page consolidation OPEN OBLIGATION: the recorded proof lane
 // must DISCLOSE what it is and is not, so a committee cannot misread the demo. The
@@ -59,9 +59,9 @@ const DISCLOSURE_LINES: readonly DisclosureLine[] = [
   },
 ];
 
-// slice-2 D · the fields of the producer manifest.json this panel surfaces. Read
-// read-only through the /modqn-bundles sceneOnly route (staged beside each scene
-// window by build-h2-scene-payload.mjs). Partial — only the display fields.
+// The fields of the producer manifest.json this panel surfaces. Read-only
+// through the sceneOnly route (staged beside each scene window by the payload
+// builder). Partial — only the display fields.
 export interface ReplayArmManifest {
   readonly arm?: string;
   readonly armWhy?: string;
@@ -132,7 +132,7 @@ function ProvenanceSection({ manifest }: { manifest: ReplayArmManifest | null | 
           <>
             <span className="leo-honesty-panel__prov-key">producer</span>
             <span className="leo-honesty-panel__prov-val">
-              {manifest.producerRepo ?? 'modqn-paper-reproduction'} @ {manifest.producerHead}
+              {manifest.producerRepo ?? 'unknown producer'} @ {manifest.producerHead}
             </span>
           </>
         ) : null}

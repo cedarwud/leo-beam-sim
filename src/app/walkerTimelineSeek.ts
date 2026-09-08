@@ -1,4 +1,4 @@
-import { clampTimelineTime, type TimelineSurfaceAxisKind } from './timelineRailAuthority';
+import { clampTimelineTime } from './timelineRailAuthority';
 import type { SceneSourceMode } from './appPersistence';
 import type { SceneLane } from './sceneLane';
 
@@ -10,12 +10,8 @@ export interface WalkerTimelineSeekInput {
   };
   readonly targetSec: number;
   readonly timeline: {
+    readonly [key: string]: unknown;
     readonly durationSec: number;
-    readonly axisKind: TimelineSurfaceAxisKind;
-    readonly axisDurationSec: number;
-  };
-  readonly rail: {
-    readonly axisDurationSec: number;
   };
   readonly live: {
     readonly windowStartSec: number;
@@ -26,8 +22,6 @@ export interface WalkerTimelineSeekInput {
 export type WalkerTimelineSeekResolution =
   | { readonly kind: 'archived-tle'; readonly targetSec: number }
   | { readonly kind: 'artifact-replay'; readonly targetSec: number }
-  | { readonly kind: 'display-stretched'; readonly targetSec: number }
-  | { readonly kind: 'modqn-replay-proof'; readonly targetSec: number }
   | {
       readonly kind: 'live-walker';
       readonly sourceTargetSec: number;
@@ -53,23 +47,6 @@ export function resolveWalkerTimelineSeek(
 
   if (input.scene.source === 'artifact-replay') {
     return { kind: 'artifact-replay', targetSec };
-  }
-
-  if (input.timeline.axisKind === 'display-stretched') {
-    return {
-      kind: 'display-stretched',
-      targetSec: clampTimelineTime(targetSec, input.timeline.axisDurationSec),
-    };
-  }
-
-  if (input.scene.lane === 'modqn-replay-proof') {
-    const visualTargetSec = input.timeline.durationSec > 0 && input.rail.axisDurationSec > 0
-      ? (targetSec / input.timeline.durationSec) * input.rail.axisDurationSec
-      : targetSec;
-    return {
-      kind: 'modqn-replay-proof',
-      targetSec: clampTimelineTime(visualTargetSec, input.rail.axisDurationSec),
-    };
   }
 
   return {

@@ -30,14 +30,13 @@ function createInput(
       artifact: [event('artifact')],
       liveObserved: [event('observed')],
       liveWalker: [event('walker')],
-      modqn: [event('modqn')],
     },
   };
 }
 
 test('artifact source takes precedence over every scene lane', () => {
   const selected = selectWalkerHandoverRailEvents(
-    createInput('artifact-replay', 'modqn-replay-proof'),
+    createInput('artifact-replay', 'artifact-replay'),
   );
 
   assert.deepEqual(selected.map(item => item.id), ['artifact']);
@@ -47,14 +46,6 @@ test('live and replay lanes select their owning rail event source', () => {
   assert.deepEqual(
     selectWalkerHandoverRailEvents(createInput('live-sim', 'sinr-live')).map(item => item.id),
     ['walker'],
-  );
-  assert.deepEqual(
-    selectWalkerHandoverRailEvents(createInput('live-sim', 'modqn-live-cell-preview')).map(item => item.id),
-    ['walker'],
-  );
-  assert.deepEqual(
-    selectWalkerHandoverRailEvents(createInput('live-sim', 'modqn-replay-proof')).map(item => item.id),
-    ['modqn'],
   );
   assert.deepEqual(
     selectWalkerHandoverRailEvents(createInput('live-sim', 'artifact-replay')).map(item => item.id),

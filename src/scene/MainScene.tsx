@@ -26,12 +26,6 @@ import type { HandoverTeachingSceneStory } from '../viz/HandoverTeachingBeamCone
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
-import {
-  CELL_SCHEDULE_VIZ_SLOT_SEC,
-  DEFAULT_SERVING_COUNT,
-  useCellSchedule,
-  type CellReassignment,
-} from './useCellSchedule';
 import { sceneGeometryFromProfile } from './SceneGeometry';
 import { useSimStatePublisher } from './useSimStatePublisher';
 import {
@@ -88,13 +82,6 @@ import { SatelliteMarker } from '../viz/SatelliteMarker';
 import { SPINE_PARTICLES_PER_BEAM } from '../viz/SpineParticles';
 import { SceneGroundUeLayer } from './SceneGroundUeLayer';
 import { GroundScene } from '../viz/GroundScene';
-import { buildReplayServedStarvedColorMap } from './replayFieldColor';
-import {
-  resolveCellBeamConeItems,
-  resolveCellBeamConeRenderCount,
-  resolveCellBeamConeSatelliteCount,
-} from '../viz/CellBeamCones';
-import { SceneCellPresentationLayers } from './SceneCellPresentationLayers';
 import {
   type SinrLiveCellBeamConeRenderItem,
   type SinrLiveCinemaHandoverCandidate,
@@ -151,7 +138,6 @@ import {
   SINR_LIVE_ARCHIVED_DISPLAY_CELL_COUNT,
 } from './sinrLiveCellRuntime';
 import { createSinrLiveBeamDisplayFrame } from './sinrLiveBeamDisplayFrame';
-import { SceneBeamLoadLayers } from './SceneBeamLoadLayers';
 import { SceneSatelliteMarkerLayer } from './SceneSatelliteMarkerLayer';
 import { SceneMultiCandidateLayer } from './SceneMultiCandidateLayer';
 import { SceneSinrLiveBeamLayers } from './SceneSinrLiveBeamLayers';
@@ -193,24 +179,11 @@ import {
   resolveSceneLaneRenderPlan,
   resolveSceneLaneUeMarkerShape,
 } from './sceneLaneRenderPlan';
-import { deriveProfileHandoverStoryModel } from './handoverStoryModel';
-import {
-  buildModqnCellServiceReadout,
-  deriveModqnServiceMap,
-  EMPTY_MODQN_SERVICE_MAP,
-} from './modqnServiceMap';
 import {
   buildSinrServingUeColorMap,
   buildSinrServingUeColorMapFromCells,
 } from './sinrServingMosaic';
-import {
-  deriveBeamLoadContention,
-  EMPTY_BEAM_LOAD_CONTENTION,
-} from './beamLoadContention';
-import {
-  DEFAULT_MODQN_VISUAL_LAYER_PRESET,
-  resolveModqnVisualLayers,
-} from './modqnVisualLayers';
+import { EMPTY_BEAM_LOAD_CONTENTION } from './beamLoadContention';
 import { resolveDirectorFocusPose } from './directorFocusPose';
 import { LIVE_CINEMATIC_CAMERA_ENABLED } from '../app/appRuntimeConfig';
 import type { SimulationAnalysisFrame, SimulatorConstellation } from '../simulator/types';
@@ -381,7 +354,6 @@ interface ArtifactSceneContentProps {
 }
 
 const CAMERA_TWEEN_DURATION_MS = 600;
-const MAX_PROFILE_DERIVED_HANDOVER_CUES = 3;
 /**
  * The central candidate layer follows the authoritative pre-selection phase
  * rather than a second wall-clock timer.  The engine's TTT/selection clocks
@@ -802,26 +774,6 @@ function formatScenePosition(position: readonly [number, number, number] | undef
   return position ? position.map(value => value.toFixed(2)).join(',') : '';
 }
 
-function selectProfileDerivedHandoverCues(
-  reassignments: readonly CellReassignment[],
-): readonly CellReassignment[] {
-  const selected: CellReassignment[] = [];
-  const push = (candidate: CellReassignment | undefined) => {
-    if (!candidate) return;
-    if (selected.some(existing => existing.cellId === candidate.cellId)) return;
-    selected.push(candidate);
-  };
-
-  push(reassignments.find(reassignment => reassignment.kind === 'intra'));
-  push(reassignments.find(reassignment => reassignment.kind === 'inter'));
-  for (const reassignment of reassignments) {
-    if (selected.length >= MAX_PROFILE_DERIVED_HANDOVER_CUES) break;
-    push(reassignment);
-  }
-
-  return selected;
-}
-
 function ArtifactSceneContent({
   runtime,
   visualScaleMultipliers,
@@ -863,15 +815,6 @@ function ArtifactSceneContent({
     () => sceneFrame.satellites.filter(satellite => satellite.visible),
     [sceneFrame.satellites],
   );
-  // P2 replay stage: on the modqn-replay-proof lane the recorded field is the sim's
-  // red/green LIFE-DEATH signal (starved UE = red, served = green), from the recorded
-  // per-UE SINR. The plain artifact-replay lane keeps its neutral markers.
-  const isReplayStage = sceneLane === 'modqn-replay-proof';
-  const replayFieldColorById = useMemo(
-    () => (isReplayStage ? buildReplayServedStarvedColorMap(sceneFrame.ues) : null),
-    [isReplayStage, sceneFrame.ues],
-  );
-
   return (
     <BaseSceneLayout
       sceneConfig={sceneConfig}
@@ -889,9 +832,6 @@ function ArtifactSceneContent({
         simTimeSec={sceneFrame.tSec}
         appMode={runtime.appMode}
         sceneLaneSourceCompatible={
-          // P2: use the ONE source-compat authority so the recorded modqn-replay-proof
-          // stage (also artifact-backed) reads compatible, not just the artifact-replay
-          // lane. Was hardcoded to `sceneLane === 'artifact-replay'`.
           isSceneLaneSourceCompatible({ sceneLane, sceneSource: sceneFrame.sceneSource }) ? '1' : '0'
         }
         liveSimulationEnabled="0"
@@ -944,11 +884,6 @@ function ArtifactSceneContent({
         beamBudgetServing=""
         beamBudgetCandidate=""
         beamHoppingEnabled="0"
-        modqnVisualLayerPreset=""
-        modqnServiceMapEnabled="0"
-        modqnServedUeCount={0}
-        modqnIdleUeCount={0}
-        modqnHandoverCuesVisible="0"
         handoverStoryLayer="artifact-owned"
         handoverStoryVisible="0"
         handoverStorySource=""
@@ -966,18 +901,13 @@ function ArtifactSceneContent({
           ues={sceneFrame.ues
             .filter((u) => u.worldPos !== undefined)
             .map((u) => {
-              const color = replayFieldColorById?.get(u.id);
               return {
                 id: u.id,
                 worldPos: u.worldPos as readonly [number, number, number],
-                markerColor: color?.markerColor,
-                markerEmissive: color?.markerEmissive,
               };
             })}
           ueMarkerMultiplier={visualScaleMultipliers.ueMarkerMultiplier}
           markerShape={ueMarkerShape}
-          unlitMarkers={isReplayStage}
-          colorTelemetryAttr={isReplayStage ? 'replayFieldColorCount' : undefined}
         />
       )}
       {(presentationPlan.visible['selected-satellite']
@@ -1018,15 +948,13 @@ function SceneContent(props: SceneContentProps) {
     onLiveSeekLanded?.(seekRequestKey);
   }, [onLiveSeekLanded]);
   const sceneConfig = useMemo(() => (
-    (runtime.appMode === 'sinr-experiment' || sceneLane === 'modqn-live-cell-preview')
-      ? NTPU_CONFIG
-      : NTPU_LARGE_CONFIG
-  ), [runtime.appMode, sceneLane]);
+    runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
+  ), [runtime.appMode]);
   const paperUserArea = useMemo(
     () => resolveInscribedPaperUserArea(sceneConfig),
     [sceneConfig],
   );
-  const useEarthFixedCellTruth = sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview';
+  const useEarthFixedCellTruth = sceneLane === 'sinr-live';
   const sim = useSimulation(
     profile,
     runtime.replay,
@@ -1080,11 +1008,8 @@ function ArchivedTleSceneContent({
   ...renderProps
 }: ArchivedTleSceneContentProps) {
   const sceneConfig = useMemo(() => (
-    (renderProps.runtime.appMode === 'sinr-experiment'
-      || renderProps.sceneLane === 'modqn-live-cell-preview')
-      ? NTPU_CONFIG
-      : NTPU_LARGE_CONFIG
-  ), [renderProps.runtime.appMode, renderProps.sceneLane]);
+    renderProps.runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
+  ), [renderProps.runtime.appMode]);
   const paperUserArea = useMemo(
     () => resolveInscribedPaperUserArea(sceneConfig),
     [sceneConfig],
@@ -1241,23 +1166,16 @@ function SceneRenderContent({
   const lastDirectorCommandAtRef = useRef<number | null>(null);
   const directorSnapshotRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const directorFocusOrbitRef = useRef<DirectorFocusOrbitState | null>(null);
-  // MODQN consolidation: the MODQN live page reuses the SINR scene render directly, so
-  // it uses the SAME scene config as sinr-experiment (NTPU_CONFIG: same GLB, scale,
-  // satellite altitude, visualAlpha, and CAMERA that the SINR cell-truth cones are tuned
-  // for). On NTPU_LARGE_CONFIG the larger frame + top-down camera left the faint cones
-  // out of view. The MODQN replay/artifact lanes keep NTPU_LARGE_CONFIG.
   const sceneConfig = useMemo(() => (
-    (runtime.appMode === 'sinr-experiment' || sceneLane === 'modqn-live-cell-preview')
-      ? NTPU_CONFIG
-      : NTPU_LARGE_CONFIG
-  ), [runtime.appMode, sceneLane]);
+    runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
+  ), [runtime.appMode]);
   const paperUserArea = useMemo(
     () => resolveInscribedPaperUserArea(sceneConfig),
     [sceneConfig],
   );
   const handoverTriggerTimeSec = canonicalHandoverTttSec
     ?? profile.handover.triggerTimeSec;
-  const useEarthFixedCellTruth = sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview';
+  const useEarthFixedCellTruth = sceneLane === 'sinr-live';
   const ueTrailHistory = useUeTrailHistory({
     enabled: simSource === 'live'
       && runtime.enableUeTrails === true
@@ -1396,17 +1314,15 @@ function SceneRenderContent({
     profile.beamHopping,
     visualScaleMultipliers,
     // S5-2 PHASE A: cones un-parked → retire the UE-anchor on the LIVE SINR-scene
-    // lanes (true = anchor OFF) so beams keep true earth-fixed positions and UEs
-    // render off-centre. MODQN consolidation: modqn-live-cell-preview reuses the SINR
-    // scene render, so it also disables the anchor (anchor-ON squashed all beams onto
-    // the primary UE → no visible cones).
-    sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview',
+    // lane (true = anchor OFF) so beams keep true earth-fixed positions and UEs
+    // render off-centre.
+    sceneLane === 'sinr-live',
   );
   const worldUnitsPerKm = 1 / (sceneGeometry.kmPerWorldUnit ?? paperUserArea.kmPerWorldUnit);
   // The physical projection is nearly circular for the high-elevation hero link
   // (e.g. 81° gives only a 1.02 axis ratio). Legacy `/` is the teaching surface,
   // so exaggerate only the displayed tilt while keeping the model's real axis/theta
-  // and power recurrence untouched. `/simulator` and MODQN preview stay physical.
+  // and power recurrence untouched. `/simulator` stays physical.
   const sinrLiveEllipseTiltExaggeration = sceneLane === 'sinr-live' ? 3 : 1;
   // S-cells-3: ground placements of the FIXED earth-fixed cells for the cell-truth
   // beam cones. Built from the SAME `buildSinrLiveCellLayout(profile)` the runtime
@@ -1428,45 +1344,6 @@ function SceneRenderContent({
     useEarthFixedCellTruth,
     worldUnitsPerKm,
   ]);
-  const cellSchedule = useCellSchedule({
-    // ADR-005/SDD: the archived-TLE homepage never mounts the legacy cell
-    // hopping scheduler. The shared renderer receives an empty, shape-stable
-    // schedule while canonical seven-cell truth comes from the accepted frame.
-    enabled: simSource === 'live',
-    simTimeSec: sceneFrame.tSec,
-    altitudeKm: sceneGeometry.shellAltitudeKm,
-    beamwidth3dBRad: sceneGeometry.beamwidth3dBRad,
-    centerLatDeg: profile.orbit.observerLatDeg ?? 40,
-    centerLonDeg: profile.orbit.observerLonDeg ?? 116,
-    worldUnitsPerKm,
-    satellites: viz.displaySats.map(satellite => ({
-      id: satellite.id,
-      latDeg: satellite.latDeg,
-      lonDeg: satellite.lonDeg,
-      altitudeKm: sceneGeometry.shellAltitudeKm,
-    })),
-    slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC,
-    servingCount: runtime.cellServingCount ?? DEFAULT_SERVING_COUNT,
-  });
-  const satelliteTintById = useMemo(
-    () => new Map(viz.displaySats.map((satellite, index) => [
-      satellite.id,
-      satelliteTint(satellite.id, index),
-    ])),
-    [viz.displaySats],
-  );
-  const satelliteWorldById = useMemo(
-    () => new Map(viz.displaySats.map(satellite => [
-      satellite.id,
-      { x: satellite.world.x, y: satellite.world.y, z: satellite.world.z },
-    ])),
-    [viz.displaySats],
-  );
-  const cellHoCounts = useMemo(() => ({
-    total: cellSchedule.cellReassignments.length,
-    inter: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'inter').length,
-    intra: cellSchedule.cellReassignments.filter(reassignment => reassignment.kind === 'intra').length,
-  }), [cellSchedule.cellReassignments]);
   const recentHoActive =
     sim.recentHoSourceSatId !== null
     || sim.recentHoTargetSatId !== null;
@@ -1480,14 +1357,8 @@ function SceneRenderContent({
     paused,
     reducedMotion: runtime.reducedMotion,
     recentHoActive,
-    // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
-    // family (parked OFF by default; `?modqnServiceAllocation=1` / producer un-park
-    // flips it). The render plan AND-s it with `showCellOverlay`.
-    modqnServiceAllocationEnabled: runtime.modqnServiceAllocationEnabled ?? false,
   });
   const {
-    showCellOverlay,
-    showModqnServiceAllocation,
     showLiveSceneEffects,
     showUav,
     showLiveBeamCones,
@@ -1498,7 +1369,6 @@ function SceneRenderContent({
     showGroundRipple,
     showHandoverToastOverlay,
     handoverStoryLayerPolicy,
-    showProfileHandoverStoryLayer,
     showCinematicSpotlight,
     showSinrServingMosaic,
     showSinrLiveCellBeams,
@@ -1516,42 +1386,13 @@ function SceneRenderContent({
     const raf = requestAnimationFrame(() => setAfterFirstPaint(true));
     return () => cancelAnimationFrame(raf);
   }, []);
-  const modqnVisualLayerPreset = runtime.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET;
-  const modqnVisualLayers = runtime.modqnVisualLayers ?? resolveModqnVisualLayers(modqnVisualLayerPreset);
-  // S-FLAG-2: the MODQN service-allocation overlay family (service map + readout +
-  // legend + diagnostics grid, per-cell UE-count badges, phase-3 beam-load
-  // cylinder + upload particles) is PARKED behind `showModqnServiceAllocation`
-  // (producer-readiness gate, default OFF) instead of `showCellOverlay`. The
-  // degenerate producer baseline makes the all-UE allocation meaningless noise;
-  // the code + data path stays intact so the producer un-park (or
-  // `?modqnServiceAllocation=1`) revives the whole family in one move. The default
-  // MODQN-LIVE surface keeps the hex cell overlay + cones + sat markers + cinema +
-  // HUD; only this family is parked.
-  const beamLoadContentionEnabled = showModqnServiceAllocation && modqnVisualLayers.serviceMap;
-  const modqnServiceMap = useMemo(
-    () => showModqnServiceAllocation && modqnVisualLayers.serviceMap
-      ? deriveModqnServiceMap({
-        ues: sceneFrame.ues,
-        schedule: cellSchedule,
-        satelliteTintById,
-      })
-      : EMPTY_MODQN_SERVICE_MAP,
-    [
-      cellSchedule,
-      modqnVisualLayers.serviceMap,
-      satelliteTintById,
-      sceneFrame.ues,
-      showModqnServiceAllocation,
-    ],
-  );
   // SINR-serving mosaic (S2 → S-cells-4c): on `sinr-live` colour every UE marker
-  // by its serving beam — a DISTINCT SINR-serving layer, never the MODQN cell
-  // overlay (`deriveModqnServiceMap`). The serving truth is the EARTH-FIXED CELL
+  // by its serving beam. The serving truth is the EARTH-FIXED CELL
   // model (`sim.sinrLiveCells.ues`), so a UE is coloured ("connected") ONLY when
   // its cell is lit + served and grey otherwise — consistent with the cones, which
   // now also draw the cell truth. Falls back to the steered serving only if the
-  // cell truth is absent (never on a healthy sinr-live frame). Inert on every
-  // MODQN/artifact lane via the render-plan gate.
+  // cell truth is absent (never on a healthy sinr-live frame). Inert on artifact
+  // lanes via the render-plan gate.
   const sinrServingColorById = useMemo(
     () => {
       if (!showSinrServingMosaic) return null;
@@ -1562,72 +1403,8 @@ function SceneRenderContent({
     },
     [showSinrServingMosaic, sim.sinrLiveCells, sceneFrame.ues],
   );
-  // The sinr-serving mosaic COLOUR primitive is shared with the MODQN cell-preview
-  // lane (consolidation: MODQN renders like SINR — governance-locked
-  // showSinrServingMosaic=true on `modqn-live-cell-preview`). But the sinr-serving
-  // mosaic COLOUR TELEMETRY attr is a sinr-live lane PROOF — it stays
-  // sinr-live-owned (the mosaic gate contract pins it sinr-live-only), never
-  // threading onto the MODQN canvas. showSinrServingMosaic
-  // is `sinr-live OR cell-overlay`; exclude the cell-overlay lane for sinr-live-only.
-  const sinrServingTelemetryActive = showSinrServingMosaic && !showCellOverlay;
-  // Phase-3 beam-load contention source = the SAME per-UE (satId, beamIndex)
-  // cell-schedule assignment that `modqnServiceMap` already uses to colour the UE
-  // markers and emit the per-cell UE-count badges (`ueCountByCellId`). Provenance
-  // audit 2026-06-04 (FIX-7 finding #1): the earlier `sim.perUePositions` source
-  // is EMPTY in this lane — the modqn-demo 4-sat profile + decision-overlay live
-  // path acquires no per-UE HandoverManager serving (verified: even the primary
-  // `sim.serving.satId` is null), so the contention glow never fired. There is NO
-  // producer per-UE serving on the live cell lane (that exists only on the replay
-  // `allUeServingHistory` path), so the lane's authoritative displayed assignment
-  // is this profile-derived cell schedule. It is `source: 'profile-derived-demo'`
-  // / `claimKind: 'overlay-demo'` (NOT producer r3 proof): the glow is a per-UE
-  // visual encoding of the already-shown overlay-demo cell load, never a new claim.
-  // In the schedule each (satId, beamIndex) is used at most once per slot
-  // (cellScheduler `usedBeamKeys`), so grouping UEs by (satId, beamIndex) is 1:1
-  // with the display cells — the codex-S2 "one beam split across display cells"
-  // concern does not arise here. Idle/unknown UEs carry a null satId and stay
-  // unserved (load 0), so they never borrow a neighbour's load (INV-3).
-  const beamLoadContention = useMemo(
-    () => beamLoadContentionEnabled
-      ? deriveBeamLoadContention([...modqnServiceMap.ueById.values()].map(projection => ({
-        ueId: projection.ueId,
-        servingSatId: projection.satId,
-        servingBeamId: projection.beamIndex,
-      })))
-      : EMPTY_BEAM_LOAD_CONTENTION,
-    [beamLoadContentionEnabled, modqnServiceMap],
-  );
-  // Provenance audit 2026-06-04: count of UEs carrying live beam-load contention
-  // (>0 normalized load). Surfaced as canvas telemetry so a durable browser gate
-  // can prove the phase-3 contention actually fires on real live geometry, rather
-  // than only asserting the `<BeamLoadCylinder>` source string mounts (audit B4).
-  const beamLoadContentionUeCount = useMemo(
-    () => [...beamLoadContention.byUeId.values()].filter(v => (v.normalizedLoad ?? 0) > 0).length,
-    [beamLoadContention],
-  );
+  const sinrServingTelemetryActive = showSinrServingMosaic;
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
-  const focusedCellBeamConeUe = sceneFrame.ues[0] || null;
-  const focusBeamLoad = beamLoadContentionEnabled
-    ? beamLoadContention.byUeId.get(focusedCellBeamConeUe?.id ?? '')
-    : undefined;
-  const focusBeamLoadTint = focusedCellBeamConeUe?.servingSatelliteId
-    ? satelliteTintById.get(focusedCellBeamConeUe.servingSatelliteId)
-    : undefined;
-  const modqnCellServiceReadout = useMemo(
-    () => showModqnServiceAllocation && modqnVisualLayers.serviceMap
-      ? buildModqnCellServiceReadout({
-        schedule: cellSchedule,
-        serviceMap: modqnServiceMap,
-        slotSec: CELL_SCHEDULE_VIZ_SLOT_SEC,
-      })
-      : undefined,
-    [
-      cellSchedule,
-      modqnServiceMap,
-      modqnVisualLayers.serviceMap,
-      showModqnServiceAllocation,
-    ],
-  );
   const multiCandidateEpisodeId = acceptedHandoverPresentation?.episodeId
     ?? sim.handoverDecisionFrame?.episodeId
     ?? 'inactive';
@@ -1660,58 +1437,11 @@ function SceneRenderContent({
     latchedBeamSinrByKeyRef,
     onSimUpdate,
     enabled: simSource === 'live' && sceneFrame.sceneSource !== 'artifact-replay',
-    modqnCellServiceReadout,
     beamCountBySatellite: runtime.beamCountBySatellite,
     servingBeamCount: runtime.servingBeamCount,
     candidateBeamCount: runtime.candidateBeamCount,
     candidateInspectionPinnedKey: inspectedCandidateKey,
   });
-  const handoverStoryModel = useMemo(
-    () => showProfileHandoverStoryLayer && modqnVisualLayers.handoverStory
-      ? deriveProfileHandoverStoryModel({
-        sceneLane,
-        sceneFrame,
-        schedule: cellSchedule,
-        satelliteWorldById,
-      })
-      : null,
-    [
-      cellSchedule,
-      satelliteWorldById,
-      sceneFrame,
-      sceneLane,
-      modqnVisualLayers.handoverStory,
-      showProfileHandoverStoryLayer,
-    ],
-  );
-  const renderedCellBeamConeScope = showCellOverlay && modqnVisualLayers.beamCones
-    ? modqnVisualLayers.beamConeScope
-    : 'none';
-  const cellBeamConeInput = useMemo(() => ({
-    schedule: cellSchedule,
-    satelliteWorldById,
-    satelliteTintById,
-    focusedUe: focusedCellBeamConeUe,
-    beamConeScope: renderedCellBeamConeScope,
-    appMode: runtime.appMode,
-  }), [
-    cellSchedule,
-    focusedCellBeamConeUe,
-    renderedCellBeamConeScope,
-    runtime.appMode,
-    satelliteTintById,
-    satelliteWorldById,
-  ]);
-  const renderedCellBeamConeCount = showCellOverlay && modqnVisualLayers.beamCones
-    ? resolveCellBeamConeRenderCount({
-      ...cellBeamConeInput,
-    })
-    : 0;
-  const renderedCellBeamConeSatelliteCount = showCellOverlay && modqnVisualLayers.beamCones
-    ? resolveCellBeamConeSatelliteCount({
-      ...cellBeamConeInput,
-    })
-    : 0;
   // S-cells-3: cell-truth beam cones for the sinr-live lane. Serving comes from
   // `sim.sinrLiveCells` (SINR + HandoverManager truth, NOT the round-robin
   // scheduler). The render-count + serving-sat + off-axis values feed the durable
@@ -3276,38 +3006,6 @@ function SceneRenderContent({
     multiCandidateIdentityTransitionActive,
     handoverPresentationActive: handoverPresentation.active,
   });
-  const uploadParticlesEnabled =
-    showCellOverlay
-    && showModqnServiceAllocation
-    && modqnVisualLayerPreset === 'explain-handover'
-    && modqnVisualLayers.handoverStory;
-  const uploadParticleFocusCones = useMemo(
-    () => uploadParticlesEnabled
-      ? resolveCellBeamConeItems({
-        ...cellBeamConeInput,
-        beamConeScope: 'focus-satellite',
-      })
-      : [],
-    [
-      cellBeamConeInput,
-      uploadParticlesEnabled,
-    ],
-  );
-  const profileDerivedHandoverCues = useMemo(
-    () => selectProfileDerivedHandoverCues(cellSchedule.cellReassignments),
-    [cellSchedule.cellReassignments],
-  );
-  // Cell schedule churn is a profile-derived overlay cue, not primary-UE
-  // source-backed handover truth. It is hidden in the baseline preset and only
-  // appears in explicit explain/debug presets.
-  const showCellReassignmentEventArcs = modqnVisualLayers.handoverCues;
-  // The `modqn-replay-source-backed` story policy already requires the
-  // modqn-replay-proof lane on a live-sim frame, which is exactly what the retired
-  // `showReplayProofLayer` flag encoded — so gating on the policy alone is
-  // value-identical to the old `policy && showReplayProofLayer` (P3 slice-3: the
-  // dead board flag was removed).
-  const replayBackedHandoverStoryVisible =
-    handoverStoryLayerPolicy === 'modqn-replay-source-backed';
   const cinematicSpotlightActive = showCinematicSpotlight;
   const cinematicSpotlightTargets = useMemo(
     () => resolveCinematicSpotlightTargets({
@@ -3518,7 +3216,7 @@ function SceneRenderContent({
         otherHandoverCueUeCount={displayedUes.filter(u => u.isOtherHandover === true).length}
         otherHandoverSelectedUeIds={Array.from(selectedOtherHandoverUeIds).join(',')}
         renderedUeCount={displayedUes.filter(u => u.worldPos !== undefined).length}
-        beamLoadContentionUeCount={showModqnServiceAllocation ? beamLoadContentionUeCount : 0}
+        beamLoadContentionUeCount={0}
         visualSatelliteAltitude={String(sceneGeometry.visualSatelliteAltitude ?? '')}
         beamSatelliteCount={
           showSinrLiveCellBeams
@@ -3535,22 +3233,22 @@ function SceneRenderContent({
             // steered SatelliteBeams, so report the cones that actually render
             // (keeps this attr honest — it is not the suppressed steered count).
             ? renderedSinrLiveCellBeamConeCount
-            : showLiveBeamCones && !showCellOverlay
+            : showLiveBeamCones
               ? [...viz.satBeams.values()].reduce((count, beams) => count + beams.length, 0)
               : 0
         }
-        cellOverlaySlotIndex={showCellOverlay ? String(cellSchedule.slotIndex) : ''}
-        cellOverlayActiveCount={showCellOverlay ? String(cellSchedule.slot.assignments.length) : ''}
-        cellOverlayIdleCount={showCellOverlay ? String(cellSchedule.slot.idleCellIds.length) : ''}
-        cellOverlayCellCount={showCellOverlay ? String(cellSchedule.layout.count) : ''}
-        cellServingCount={showCellOverlay ? String(cellSchedule.servingCount) : ''}
-        cellVisibleCount={showCellOverlay ? String(cellSchedule.visibleCount) : ''}
-        cellHoReassignmentCount={showCellOverlay ? String(cellHoCounts.total) : ''}
-        cellHoInterCount={showCellOverlay ? String(cellHoCounts.inter) : ''}
-        cellHoIntraCount={showCellOverlay ? String(cellHoCounts.intra) : ''}
-        cellBeamConeCount={showCellOverlay ? String(renderedCellBeamConeCount) : ''}
-        cellBeamConeScope={showCellOverlay ? renderedCellBeamConeScope : ''}
-        cellBeamConeSatelliteCount={showCellOverlay ? String(renderedCellBeamConeSatelliteCount) : ''}
+        cellOverlaySlotIndex=""
+        cellOverlayActiveCount=""
+        cellOverlayIdleCount=""
+        cellOverlayCellCount=""
+        cellServingCount=""
+        cellVisibleCount=""
+        cellHoReassignmentCount=""
+        cellHoInterCount=""
+        cellHoIntraCount=""
+        cellBeamConeCount=""
+        cellBeamConeScope=""
+        cellBeamConeSatelliteCount=""
         sinrLiveCellBeamConeCount={showSinrLiveCellBeams ? String(renderedSinrLiveCellBeamConeCount) : ''}
         sinrLiveCellServingSatCount={showSinrLiveCellBeams ? String(renderedSinrLiveCellBeamConeSatelliteCount) : ''}
         sinrLiveCellServedCount={showSinrLiveCellBeams ? String(sinrLiveCellServedCount) : ''}
@@ -3594,22 +3292,15 @@ function SceneRenderContent({
         beamBudgetServing={String(sinrLiveBeamDisplayFrame.serving.configuredBeamCount)}
         beamBudgetCandidate={String(sinrLiveBeamDisplayFrame.candidate.configuredBeamCount)}
         beamHoppingEnabled={sinrLiveBeamDisplayFrame.beamHoppingEnabled ? '1' : '0'}
-        modqnVisualLayerPreset={showCellOverlay ? modqnVisualLayerPreset : ''}
-        modqnServiceMapEnabled={showModqnServiceAllocation && modqnVisualLayers.serviceMap ? '1' : '0'}
-        modqnServedUeCount={showModqnServiceAllocation ? modqnServiceMap.servedUeCount : 0}
-        modqnIdleUeCount={showModqnServiceAllocation ? modqnServiceMap.idleUeCount : 0}
-        modqnHandoverCuesVisible={showCellOverlay && showCellReassignmentEventArcs ? '1' : '0'}
         handoverStoryLayer={handoverStoryLayerPolicy}
-        handoverStoryVisible={handoverStoryModel || replayBackedHandoverStoryVisible ? '1' : '0'}
-        handoverStorySource={
-          handoverStoryModel?.source ?? (replayBackedHandoverStoryVisible ? 'modqn-replay-proof' : '')
-        }
-        handoverStoryNotBaselineProof={handoverStoryModel?.notBaselineProof ? '1' : '0'}
-        handoverStoryEventCount={handoverStoryModel?.events.length ?? 0}
-        handoverStoryAggregateEventCount={handoverStoryModel?.aggregateEventCount ?? 0}
-        handoverStoryActiveCount={handoverStoryModel?.activeSlots.length ?? 0}
-        handoverStoryInactiveCount={handoverStoryModel?.inactiveSlots.length ?? 0}
-        handoverStoryNextCount={handoverStoryModel?.nextSlots.length ?? 0}
+        handoverStoryVisible="0"
+        handoverStorySource=""
+        handoverStoryNotBaselineProof="0"
+        handoverStoryEventCount={0}
+        handoverStoryAggregateEventCount={0}
+        handoverStoryActiveCount={0}
+        handoverStoryInactiveCount={0}
+        handoverStoryNextCount={0}
         cameraPresetRef={cameraPresetRef}
         cameraTransitionRef={cameraTransitionRef}
         controlsRef={controlsRef}
@@ -3627,83 +3318,20 @@ function SceneRenderContent({
           markerMultiplier: visualScaleMultipliers.ueMarkerMultiplier,
           markerShape: ueMarkerShape,
           trailHistory: ueTrailHistory,
-          trailVisible: presentationPlan.visible['motion-guides'] && !showCellOverlay,
-          secondaryOpacity: presentationPlan.visible['load-overlays']
-            && showModqnServiceAllocation
-            && modqnVisualLayers.serviceMap ? 0.72 : 1.0,
-          secondaryScale: presentationPlan.visible['load-overlays']
-            && showModqnServiceAllocation
-            && modqnVisualLayers.serviceMap ? 0.72 : 1.0,
+          trailVisible: presentationPlan.visible['motion-guides'],
+          secondaryOpacity: 1.0,
+          secondaryScale: 1.0,
           colorTelemetryAttr: sinrServingTelemetryActive
             ? 'sinrServingMosaicColorCount'
             : undefined,
         }}
         appearance={{
           sinrServingColorById: sinrServingColorById,
-          modqnServiceByUeId: modqnServiceMap.ueById,
-          beamLoadContention,
-          beamLoadContentionEnabled,
+          beamLoadContention: EMPTY_BEAM_LOAD_CONTENTION,
+          beamLoadContentionEnabled: false,
           loadOverlaysVisible: presentationPlan.visible['load-overlays'],
           eventEffectsVisible: presentationPlan.visible['event-effects'],
           homepageVisualIdentity: homepageVisualIdentity === true,
-        }}
-      />
-      <SceneCellPresentationLayers
-        overlay={{
-          visible: presentationPlan.visible['ground-overlays']
-            && showCellOverlay
-            && modqnVisualLayers.activeCellOverlay,
-          schedule: cellSchedule,
-          satelliteTintById: satelliteTintById,
-          satelliteWorldById: satelliteWorldById,
-          showFootprints: modqnVisualLayers.footprintEllipses,
-          ueCountByCellId: modqnServiceMap.ueCountByCellId,
-          showUeCounts: modqnVisualLayers.ueCountBadges && showModqnServiceAllocation,
-        }}
-        story={{
-          visible: presentationPlan.visible['event-effects']
-            && showProfileHandoverStoryLayer
-            && modqnVisualLayers.handoverStory,
-          model: handoverStoryModel,
-          satelliteTintById: satelliteTintById,
-        }}
-        arcs={{
-          mounted: presentationPlan.visible['event-effects'] && showCellOverlay,
-          visible: showCellReassignmentEventArcs,
-          reassignments: profileDerivedHandoverCues,
-          satelliteWorldById: satelliteWorldById,
-        }}
-        beamCones={{
-          visible: presentationPlan.visible['serving-beams']
-            && showCellOverlay
-            && modqnVisualLayers.beamCones,
-          schedule: cellSchedule,
-          satelliteWorldById: satelliteWorldById,
-          satelliteTintById: satelliteTintById,
-          focusedUe: focusedCellBeamConeUe,
-          beamConeScope: modqnVisualLayers.beamConeScope,
-          appMode: runtime.appMode,
-        }}
-      />
-      <SceneBeamLoadLayers
-        cylinder={{
-          worldPos: focusedCellBeamConeUe?.worldPos,
-          normalizedLoad: focusBeamLoad?.normalizedLoad ?? 0,
-          load: focusBeamLoad?.load ?? 0,
-          tintColor: focusBeamLoadTint,
-          mounted: presentationPlan.visible['load-overlays']
-            && showCellOverlay
-            && modqnVisualLayers.handoverStory
-            && showModqnServiceAllocation,
-          visible: (focusBeamLoad?.load ?? 0) > 0,
-        }}
-        uploadParticles={{
-          visible: presentationPlan.visible['load-overlays'] && uploadParticlesEnabled,
-          focusCones: uploadParticleFocusCones,
-          beamLoadContention,
-          focusedUe: focusedCellBeamConeUe,
-          paused,
-          reducedMotion: runtime.reducedMotion,
         }}
       />
       {/* S-cells-4d: the old 20-hex green-disc paint is retired. The legacy SINR
@@ -4339,7 +3967,7 @@ export const MainScene = memo(function MainScene({
         // the existing camera-preset/director tween; pausing the producer is
         // separate from pausing the renderer.  The recorded proof lane remains
         // demand-driven as its own explicit performance policy.
-        frameloop={sceneLane === 'modqn-replay-proof' ? 'demand' : 'always'}
+        frameloop="always"
         // PERF (software-WebGL box, no GPU — SwiftShader/llvmpipe, ~3.5 FPS measured):
         // the bottleneck is FRAGMENT FILL, not mesh count. The ONE big motion win that does
         // NOT touch edge quality is dropping the SHADOW PASS (the whole scene re-rendered into

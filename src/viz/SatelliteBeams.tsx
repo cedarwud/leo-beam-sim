@@ -166,9 +166,8 @@ function BeamCone({
     preferIdentityColor: beam.visualColorSource === 'satellite',
   });
   const color = style.color;
-  // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.yaml
-  // paper §III φ1/φ2 distinguishes intra- vs inter-satellite handover, while
-  // no source-truth file specifies frequency-color semantics for MODQN.
+  // Paper §III φ1/φ2 distinguishes intra- vs inter-satellite handover; no
+  // source-truth file specifies frequency-colour semantics for this renderer.
   const loadIntensity = 0.45 + 0.55 * clampOpacity(beam.loadRatio ?? 0);
   const handoverRole = beam.handoverRole ?? null;
   const isHandoverSource = handoverRole === 'intraSource' || handoverRole === 'interSource';

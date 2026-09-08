@@ -76,7 +76,7 @@ export interface InvariantReport {
   /**
    * SatIds with at least one visibly mounted beam this frame, from the shared
    * `resolveSinrLiveVisibleBeamSatIds`: on the sinr-live lane (cones mounted,
-   * S5-2) this is the cone-rendered set (`coneSatIds`); on the steered/MODQN
+   * S5-2) this is the cone-rendered set (`coneSatIds`); on the steered
    * lanes it is the steered `<SatelliteBeams>` mount set.
    */
   readonly visibleBeamSatIds: ReadonlySet<string>;
@@ -99,7 +99,7 @@ export interface InvariantReport {
  *    illuminated beams. The steered `frame.serving` / `frame.perUePositions` are
  *    the OTHER oracle (the steered render that left this lane in S5-2); sourcing
  *    them here would claim sats the cones never beam and break the must-hold flip.
- *  - **Steered / MODQN lanes** (no cell truth): primary = `frame.serving`
+ *  - **Steered lanes** (no cell truth): primary = `frame.serving`
  *    (InfoPanel / SceneTelemetry), population = `deriveSinrServingMosaicAggregate`
  *    over the steered `perUePositions` — unchanged.
  *

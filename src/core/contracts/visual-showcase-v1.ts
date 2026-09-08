@@ -21,14 +21,13 @@
  * Forbidden:
  *   This file must NOT import React, Three.js, @react-three, @/viz, or @/app.
  *   It is a contract surface only; it does not compute SINR, handover,
- *   MODQN actions, rewards, or display geometry.
+ *   policy actions, rewards, or display geometry.
  */
 
 export const VISUAL_SHOWCASE_V1_SCHEMA_VERSION = 'visual-showcase-v1' as const;
 
 export const VISUAL_SHOWCASE_V1_PROFILE_VALUES = [
   'baseline-one-ue',
-  'modqn-multi-ue',
 ] as const;
 
 export const VISUAL_SHOWCASE_V1_DEFAULT_PROFILE = 'baseline-one-ue' as const;
@@ -67,7 +66,6 @@ export const VISUAL_SHOWCASE_V1_REQUIRED_SECTIONS = [
 export const VISUAL_SHOWCASE_V1_REQUIRED_TRUTH_OWNERSHIP_FIELDS = [
   'sinr',
   'handover',
-  'modqnAction',
   'reward',
   'geometry',
   'provenance',
@@ -127,7 +125,6 @@ export const VISUAL_SHOWCASE_V1_CONTRACT = {
     'links',
     'handoverState',
     'metrics',
-    'modqnDecision',
   ] as const,
   requiredSeries: VISUAL_SHOWCASE_V1_REQUIRED_SERIES,
   allowedBeamRoles: VISUAL_SHOWCASE_V1_ALLOWED_BEAM_ROLES,
@@ -165,7 +162,6 @@ export type VisualShowcaseHandoverPhaseSource =
 
 export type VisualShowcaseTruthOwner =
   | 'ntn-sim-core'
-  | 'modqn-paper-reproduction'
   | 'external-producer'
   | 'leo-beam-sim'
   | 'synthetic-validator-fixture';
@@ -188,7 +184,7 @@ export interface VisualShowcaseScenario {
 }
 
 export interface VisualShowcaseSourceRepo {
-  repoId: 'ntn-sim-core' | 'modqn-paper-reproduction' | string;
+  repoId: 'ntn-sim-core' | string;
   path: string;
   commit: string;
 }
@@ -247,7 +243,6 @@ export interface VisualShowcaseProvenance {
   };
   sourceRepos: VisualShowcaseSourceRepo[];
   ntnSimCoreCommit: string;
-  modqnPaperReproductionCommit: string;
   sourceCommits: Record<string, string>;
   sourceArtifactIds: string[];
   sourceArtifacts: VisualShowcaseSourceArtifact[];
@@ -395,7 +390,7 @@ export interface VisualShowcaseFrameMetrics {
   rewardVector: Record<string, number>;
 }
 
-export interface VisualShowcaseModqnDecision {
+interface RetiredDecisionCompatibility {
   actionIndex: number;
   actionLabel: string;
   previousSatelliteId: string;
@@ -410,6 +405,8 @@ export interface VisualShowcaseModqnDecision {
   diagnosticsRef: string;
 }
 
+export type VisualShowcaseModqnDecision = RetiredDecisionCompatibility;
+
 export interface VisualShowcaseTimelineFrame {
   tSec: number;
   sourceRefs: VisualShowcaseFrameSourceRefs;
@@ -419,7 +416,8 @@ export interface VisualShowcaseTimelineFrame {
   links: VisualShowcaseLinkSample[];
   handoverState: VisualShowcaseHandoverState;
   metrics: VisualShowcaseFrameMetrics;
-  modqnDecision: VisualShowcaseModqnDecision;
+  /** Compatibility field retained until the replay consumer is removed. */
+  modqnDecision?: VisualShowcaseModqnDecision;
 }
 
 export interface VisualShowcaseEvent {

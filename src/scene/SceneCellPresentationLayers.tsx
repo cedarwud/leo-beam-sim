@@ -31,7 +31,7 @@ export interface SceneCellPresentationLayersProps {
   readonly beamCones: CellBeamConeModel;
 }
 
-/** Renders the ground cell, handover-story, arc, and MODQN cone layers together. */
+/** Renders the ground cell, handover-story, arc, and cone layers together. */
 export function SceneCellPresentationLayers({
   overlay,
   story,

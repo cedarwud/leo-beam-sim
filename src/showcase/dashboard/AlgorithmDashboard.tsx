@@ -1,5 +1,4 @@
 import { useMemo, type JSX, type ReactNode } from 'react';
-import { MiniRewardCurve } from '../../ui/modqn-controls/MiniRewardCurve';
 import { AlgorithmFlowchart, type FlowchartTimeRef } from './AlgorithmFlowchart';
 import {
   buildDashboardSeriesModel,
@@ -283,7 +282,7 @@ export function AlgorithmDashboard({
         hasValue={rewardValues.length > 0}
       >
         <div className="leo-algorithm-dashboard__curve-wrap">
-          <MiniRewardCurve rewards={rewardValues} />
+          <output aria-label="Reward samples">{rewardValues.join(', ')}</output>
           {frameMarkerStyle ? (
             <span
               className="leo-algorithm-dashboard__frame-marker"

@@ -1,7 +1,7 @@
 /**
  * S1 coordinate authority — the single source for the spherical-Earth surface
  * scale constant. Previously this `111.32` literal was redeclared in 6 modules
- * (runtimeFrameStep, runtimeUeFrame, sinrLiveCellModel, modqnReplaySceneVisuals,
+ * (runtimeFrameStep, runtimeUeFrame, sinrLiveCellModel,
  * showcaseArtifactToScene, cellLayout); each redeclaration was a separate place
  * the value could silently drift. They now all import this one constant.
  *

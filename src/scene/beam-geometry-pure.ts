@@ -65,7 +65,7 @@ export function computeBeamGeometry(
   beamwidth3dBRad: number,
 ): BeamGeometry {
   const halfBeamRad = beamwidth3dBRad / 2;
-  // Paper beam footprint formula per modqn-training-truth-visualization-sdd
+  // Paper beam footprint formula for the training-truth visualization.
   // §5: radius_km = altitude_km * tan(theta3dB / 2). For the paper-faithful
   // profile (780 km, theta3dB = 2 deg) this yields ~13.6 km / ~581 km^2.
   const footprintRadiusKm = altitudeKm * Math.tan(halfBeamRad);

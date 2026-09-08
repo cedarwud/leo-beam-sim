@@ -1,7 +1,7 @@
 // Consolidation S0 — geometry trace capture + tolerance diff (shared harness).
 //
 // Generalizes the proven d6 golden-snapshot protocol
-// (scripts/validate-modqn-visual-showcase-p1e-d6-state-snapshot.ts): every
+// (the earlier visual-showcase state-snapshot validator): every
 // consolidation slice must prove before==after on DATA, not pixels. A trace
 // pairs, per fixed step:
 //   (a) TRUTH  — SimFrame fields (serving/pending/HO/satellites/per-UE/cell

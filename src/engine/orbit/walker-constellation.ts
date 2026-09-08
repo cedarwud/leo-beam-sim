@@ -165,10 +165,7 @@ export function generateWalkerConstellation(config: {
       const planePhaseOffset = (TWO_PI * p) / totalSats + phaseOffsetRad;
 
       for (let s = 0; s < shell.satsPerPlane; s++) {
-        // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml
-        // resolved_assumptions.orbit_layout.value.in_plane_spacing_deg = 90
-        // (ASSUME-MODQN-REP-001). Paper-faithful profiles disable this
-        // display-only clustering perturbation.
+        // Paper-faithful profiles disable this display-only clustering perturbation.
         const seed = ((p * 13 + s * 7 + phaseSeed * 17) % 100 + 100) % 100;
         const perturbation = shell.phasePerturbation === false
           ? 0

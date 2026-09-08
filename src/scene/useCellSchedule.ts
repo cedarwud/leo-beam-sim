@@ -13,12 +13,10 @@ import {
   type CellScheduleSlot,
   type SatellitePose,
 } from '../engine/cells/cellScheduler';
-import { MODQN_DEFAULT_SERVING_COUNT } from '../modqn/servingCount';
-
 /** Cosmetic viz slot pacing (seconds). NOT the backend training slot (SDD §5.5.1 0.5s). */
 export const CELL_SCHEDULE_VIZ_SLOT_SEC = 2.5;
-export const DEFAULT_SERVING_COUNT = MODQN_DEFAULT_SERVING_COUNT;
-/** Display-only cell overlay cap. MODQN action catalog truth is L x 7, not this scheduler cap. */
+export const DEFAULT_SERVING_COUNT = 8;
+/** Display-only cell overlay cap. */
 export const DISPLAY_CELL_SCHEDULE_MAX_ACTIVE_CELLS_PER_SLOT = 28;
 
 const MAX_SYNTHETIC_SATELLITES = 4;

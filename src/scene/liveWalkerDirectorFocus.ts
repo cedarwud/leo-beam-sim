@@ -3,8 +3,8 @@
  *
  * The artifact-replay lane's Director "cinematic" seeks the seekable replay to the
  * next handover window and frames the satellite pair (`resolveCinematicReplayWindow`
- * + `camera.requestInterFocus`). The LIVE WALKER lanes (`sinr-live`,
- * `modqn-live-cell-preview`) run a real multi-plane Walker constellation that
+ * + `camera.requestInterFocus`). The LIVE WALKER lane (`sinr-live`) runs a real
+ * multi-plane Walker constellation that
  * genuinely produces inter-satellite handovers; this resolver lets the live
  * Director button do the same seek-to-next-HO + sat-pair framing against the
  * validated live Walker handover event index
@@ -14,8 +14,8 @@
  * and returns its source-time seek target plus the involved satellite ids. It
  * fabricates no event, no time, and no horizon — the seek target is always a real
  * `sourceTimeSec` (SDD: "The bottom timeline seek target is always sourceTimeSec").
- * The claim stays `profile-derived-forecast` (sinr-live) or `overlay-demo`
- * (modqn-live-cell-preview), never producer proof. It reuses the proven artifact
+ * The claim stays `profile-derived-forecast` on the live lane, never producer
+ * proof. It reuses the proven artifact
  * selection (`resolveCinematicReplayWindow`) so the "next event at/after now,
  * deterministic tie-break, clamp to source duration" behaviour is identical and
  * single-sourced — the only difference is the live-honest type/claim wrapper.

@@ -23,7 +23,7 @@
  *   a 2D DOM HUD instead.
  *
  * Display-only: reads the post-`coordToWorld` `worldPos` projection; it does not
- * read or alter SINR, handover, MODQN, reward, or geometry truth. The exported
+ * read or alter SINR, handover, reward, or geometry truth. The exported
  * pure function is unit-tested without a React renderer
  * (`artifactSatelliteAzimuths.test.ts`).
  */

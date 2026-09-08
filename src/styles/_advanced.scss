@@ -2,9 +2,8 @@
 // scripts/_scss-split.mjs (families: advanced). Rules are
 // unchanged, only relocated. Verified render-equivalent (_scss-equiv.mjs) + screenshots.
 
-// S4: MODQN Advanced setup drawer. The trigger mirrors a sidebar tab button and
-// lives at the foot of the MODQN left aside; the overlay is a left-anchored
-// drawer holding the training / jobs / ω-weight power tools moved off the rail.
+// Advanced setup drawer. The trigger mirrors a sidebar tab button and the
+// overlay is a left-anchored drawer for secondary controls.
 .leo-advanced-setup {
   flex: 0 0 auto;
   margin-top: 8px;

@@ -53,8 +53,7 @@
   min-width: 100px;
 }
 
-.leo-control-bar__handover-mode-group,
-.leo-control-bar__modqn-layer-group {
+.leo-control-bar__handover-mode-group {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -74,8 +73,7 @@
   white-space: nowrap;
 }
 
-.leo-control-bar__handover-mode-button,
-.leo-control-bar__modqn-layer-button {
+.leo-control-bar__handover-mode-button {
   cursor: pointer;
   background: transparent;
   border: 1px solid transparent;
@@ -89,19 +87,13 @@
   min-width: 106px;
 }
 
-.leo-control-bar__modqn-layer-button {
-  min-width: 74px;
-}
-
-.leo-control-bar__handover-mode-button[aria-pressed="true"],
-.leo-control-bar__modqn-layer-button[aria-pressed="true"] {
+.leo-control-bar__handover-mode-button[aria-pressed="true"] {
   background: rgba(var(--leo-accent-rgb), 0.2);
   border-color: rgba(var(--leo-accent-rgb), 0.46);
   color: var(--leo-accent-strong);
 }
 
-.leo-control-bar__handover-mode-button:hover:not([aria-pressed="true"]):not(:disabled),
-.leo-control-bar__modqn-layer-button:hover:not([aria-pressed="true"]) {
+.leo-control-bar__handover-mode-button:hover:not([aria-pressed="true"]):not(:disabled) {
   background: rgba(var(--leo-accent-rgb), 0.08);
   color: var(--leo-accent-strong);
 }

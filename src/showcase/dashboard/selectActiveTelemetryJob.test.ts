@@ -3,8 +3,7 @@
  * P2 unit test: active Plane-A live telemetry selector + episode progress.
  * Run: `npm run validate:phase-d:live-telemetry-select`.
  */
-import type { TrainingProgressEvent } from '../../modqn/training-trigger/types';
-import type { LiveTelemetryEntry } from './liveTelemetryStore';
+import type { LiveTelemetryEntry, TrainingProgressEvent } from './liveTelemetryStore';
 import {
   resolveLiveEpisodeProgress,
   selectActiveTelemetryJob,

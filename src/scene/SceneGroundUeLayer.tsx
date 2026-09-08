@@ -6,7 +6,6 @@ import {
 } from '../homepage/controller/homepageAccentPalette';
 import type { BeamLoadContentionModel } from './beamLoadContention';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
-import type { ModqnUeServiceProjection } from './modqnServiceMap';
 import type { SinrServingMarkerColor } from './sinrServingMosaic';
 import type { UeTrailHistory } from './useUeTrailHistory';
 import { GroundScene, type GroundSceneUe } from '../viz/GroundScene';
@@ -31,7 +30,6 @@ export interface SceneGroundUeLayerMarkerOptions {
 
 export interface SceneGroundUeLayerAppearance {
   readonly sinrServingColorById?: ReadonlyMap<string, SinrServingMarkerColor> | null;
-  readonly modqnServiceByUeId: ReadonlyMap<string, Pick<ModqnUeServiceProjection, 'markerColor' | 'markerEmissive'>>;
   readonly beamLoadContention: BeamLoadContentionModel;
   readonly beamLoadContentionEnabled: boolean;
   readonly loadOverlaysVisible: boolean;
@@ -54,14 +52,10 @@ export function resolveGroundSceneUes({
     .filter(ue => ue.worldPos !== undefined)
     .map((ue, index) => {
       // The primary UE stays the focus anchor. Secondary markers use the
-      // measured serving mosaic first and the MODQN service map only as a
-      // display fallback when the mosaic has no colour for that UE.
+      // measured serving mosaic when it has a colour for that UE.
       const mosaic = index === 0
         ? undefined
         : appearance.sinrServingColorById?.get(ue.id);
-      const service = mosaic || !appearance.loadOverlaysVisible
-        ? undefined
-        : appearance.modqnServiceByUeId.get(ue.id);
       const contention = appearance.loadOverlaysVisible && appearance.beamLoadContentionEnabled
         ? appearance.beamLoadContention.byUeId.get(ue.id)?.normalizedLoad ?? 0
         : undefined;
@@ -75,12 +69,12 @@ export function resolveGroundSceneUes({
           ? '#facc15'
           : index === 0 && appearance.homepageVisualIdentity
             ? HOMEPAGE_PRIMARY_UE_MARKER_COLOR
-            : mosaic?.markerColor ?? service?.markerColor,
+            : mosaic?.markerColor,
         markerEmissive: isOtherHandover
           ? '#f59e0b'
           : index === 0 && appearance.homepageVisualIdentity
             ? HOMEPAGE_PRIMARY_UE_MARKER_EMISSIVE
-            : mosaic?.markerEmissive ?? service?.markerEmissive,
+            : mosaic?.markerEmissive,
         contention,
         isOtherHandover,
       };

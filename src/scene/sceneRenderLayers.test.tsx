@@ -77,7 +77,6 @@ test('ground UE layer resolves display styling before creating the renderer elem
       sinrServingColorById: new Map([
         ['ue-mosaic', { markerColor: '#0ea5e9', markerEmissive: '#0369a1' }],
       ]),
-      modqnServiceByUeId: new Map(),
       beamLoadContention,
       beamLoadContentionEnabled: true,
       loadOverlaysVisible: true,

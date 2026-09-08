@@ -764,9 +764,7 @@ export function stepRuntimeFrame(input: RuntimeFrameStepInput): RuntimeFrameStep
     primaryJogNorthKm,
     primaryFootprintRadiusKm: ueDistributionRadiusKm,
     ueWorldScale,
-    // Source: modqn-paper-reproduction/configs/modqn-paper-baseline.resolved-template.yaml
-    // resolved_assumptions.seed_and_rng_policy.value.mobility_seed = 7
-    // (ASSUME-MODQN-REP-018); profile surfaces it for deterministic playback.
+    // The profile surfaces the mobility seed for deterministic playback.
     seed: profile.ueDistribution?.seed,
     rectangleAreaKm,
     mode: ueDistributionMode,

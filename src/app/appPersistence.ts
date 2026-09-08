@@ -10,20 +10,14 @@ import {
   type SceneVisualScaleState,
 } from '../sceneVisualScale';
 import type { UeMobilityParams } from '../engine/ue/multiUeMobility';
-import { normalizePersistedModqnServingCount } from '../modqn/servingCount';
 import { isSupportedBeamLayoutCount } from '../core/beam/completeHexPresets';
 
 export type SceneSourceMode = 'live-sim' | 'artifact-replay';
 
 // Top-level view axis (orthogonal to the scene lane): 'scene' = the full-height
-// 3D viewport; 'dashboard' = the full-area MODQN algorithm pipeline / dashboard /
-// live-telemetry surface (was the squished bottom dock). Deep-linkable via
-// ?view=dashboard, mirroring the sceneSource URL pattern (no react-router).
-//
-// C5: the Dashboard view + ViewModeToggle were removed from App (the app always
-// renders the 3D scene). These ?view helpers are intentionally RETAINED but
-// currently UNUSED — kept for the future MODQN data-flow diagram project that
-// will revive a full-area surface. Do not wire them back without that project.
+// 3D viewport; 'dashboard' = a future full-area data-flow surface. Deep-linkable
+// via ?view=dashboard, mirroring the sceneSource URL pattern (no react-router).
+// These helpers remain display-only and are currently unused by the app shell.
 export type ViewMode = 'scene' | 'dashboard';
 
 export function readViewModeFromUrl(): ViewMode {
@@ -72,18 +66,6 @@ export function syncSceneSourceToUrl(mode: SceneSourceMode): void {
   } catch {
     // history / URL APIs can be unavailable in embedded browser contexts.
   }
-}
-
-// S-FLAG-2 dev/validator force-enable for the MODQN service-allocation overlay
-// family. The family is parked OFF in production (degenerate producer baseline,
-// `MODQN_SERVICE_ALLOCATION_PRODUCER_READY`); `?modqnServiceAllocation=1` un-parks
-// it at runtime so the render path stays provable (the phase-3 overlay-render
-// browser gate) without flipping the production default. Read-only: it never
-// writes the URL and never drives truth.
-export function readModqnServiceAllocationOverrideFromUrl(): boolean {
-  if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get('modqnServiceAllocation') === '1';
 }
 
 export function readSceneTopologyOverrides(): SceneTopologyState {
@@ -138,7 +120,7 @@ export function readSceneTopologyOverrides(): SceneTopologyState {
         ? record.candidateBeamCount
         : null,
       beamHoppingEnabled: record.beamHoppingEnabled === true,
-      cellServingCount: normalizePersistedModqnServingCount(record.cellServingCount),
+      cellServingCount: null,
       ueCount: typeof record.ueCount === 'number' ? record.ueCount : null,
       ueDistributionMode: record.ueDistributionMode === 'random'
         || record.ueDistributionMode === 'grid'

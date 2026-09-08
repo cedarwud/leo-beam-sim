@@ -12,7 +12,7 @@
  *     scene layer and the SINR explainer.
  *
  * Honesty: it owns no truth. The candidate detail is built ONLY from the real
- * `sinr-live` handover index (`buildCinemaCandidateDetail`) — no producer/MODQN
+ * `sinr-live` handover index (`buildCinemaCandidateDetail`) — no producer
  * dependency, no fabrication (governance Rule#6, CLAUDE.md §3).
  */
 import { useCallback, useMemo, useState } from 'react';

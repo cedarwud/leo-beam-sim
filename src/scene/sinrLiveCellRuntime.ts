@@ -29,7 +29,7 @@
  * visible scene does NOT change in S-cells-2; render reads this field in
  * S-cells-3.
  *
- * NOT MODQN/paper proof — leo's OWN live SINR-offset surface at 550 km (§7).
+ * Leo's OWN live SINR-offset surface at 550 km (§7).
  */
 
 import {
@@ -132,9 +132,8 @@ export function resolveSinrLivePhysicalBeamBudget(
  *
  * Applied ONLY through {@link buildSinrLiveCellLayout}, so it phases the SINR-live
  * cell TRUTH and the cones/markers that render from it — and, since both the
- * sinr-live and modqn-live-cell-preview lanes render via the shared
- * `showSinrBeamRender` path, BOTH inherit it from this one knob. The MODQN/producer
- * `useCellSchedule` geometry never passes a phase, so it is byte-identical.
+ * the sinr-live lane renders via the shared `showSinrBeamRender` path. The
+ * scheduler geometry never passes a phase, so it is byte-identical.
  */
 export const SINR_LIVE_CELL_PHASE_OFFSET_RADII = { east: 0.15, north: 0.30 } as const;
 
@@ -373,7 +372,7 @@ export function buildSinrLiveCellLayout(
     beamwidth3dBRad: profile.antenna.beamwidth3dBRad,
     cellCount,
     // Phase the lattice off the ENU origin so the protagonist UE is off-centre
-    // (beam-stage ①). One knob; sinr-live + modqn-live both inherit it.
+    // (beam-stage ①). One knob for the live SINR lane.
     phaseOffsetRadii: SINR_LIVE_CELL_PHASE_OFFSET_RADII,
   });
   if (cellCount === SINR_LIVE_SEVEN_CELL_AXIAL_COORDINATES.length) {

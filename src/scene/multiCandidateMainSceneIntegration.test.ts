@@ -918,7 +918,7 @@ test('multi-candidate comparison does not take ownership of the homepage camera'
 test('the paused producer keeps the established always-on render loop', () => {
   assert.match(
     source,
-    /frameloop=\{sceneLane === 'modqn-replay-proof' \? 'demand' : 'always'\}/,
+    /frameloop="always"/,
   );
 });
 

@@ -37,7 +37,6 @@ function buildRuntime(
     viewport: { width: 1280, height: 720 },
     sceneTopology,
     eeThresholdKbitPerJoule,
-    selectedTrainingEnvAxes: undefined,
   });
 }
 

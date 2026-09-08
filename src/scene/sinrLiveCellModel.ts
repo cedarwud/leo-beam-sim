@@ -32,8 +32,8 @@
  * the CQ3 fix at the truth layer (the steered-lattice `anchorToUe` re-snaps the
  * beam onto the UE and hides the real ~27.6 km off-axis).
  *
- * NOT MODQN/paper proof: this is leo's OWN live SINR-offset surface at 550 km,
- * not the producer's 780 km / 2° baseline and not MODQN decisions (§7).
+ * This is leo's OWN live SINR-offset surface at 550 km, not a producer
+ * decision trace (§7).
  */
 
 import { computeGeometricOffAxisDeg } from '../engine/signal/beam-gain';

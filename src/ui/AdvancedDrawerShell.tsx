@@ -1,12 +1,12 @@
 // G1-CONTROLBAR-ADV — shared opt-in Advanced drawer shell.
 //
-// The MODQN lane (AdvancedSetupDrawer) hosts its non-default controls behind an
+// The advanced setup lane hosts its non-default controls behind an
 // opt-in "⚙ Advanced" trigger at the foot of the left aside (north star: 少按鈕 /
 // 直覺 / 零學習 — the default surface stays the scene, not a control panel). This
 // shell owns the trigger button, the open/close + focus management, and two
 // render modalities; the lane mounts its own content as children and picks one.
 //
-// modal=false (current MODQN choice): a non-modal inline disclosure rendered
+// modal=false: a non-modal inline disclosure rendered
 //   in-flow in the aside. NO scrim — the scene and timeline stay live while the
 //   drawer is open. Chosen because the advanced tools are degenerate-data power
 //   tools you rarely touch live, so dimming the whole viewport added no value.
@@ -27,7 +27,7 @@ interface AdvancedDrawerShellProps {
   readonly dialogTitle: string;
   readonly dialogAriaLabel: string;
   readonly closeAriaLabel?: string;
-  /** true = modal scrim drawer (MODQN); false = non-modal inline disclosure (SINR-live). Default true. */
+  /** true = modal scrim drawer; false = non-modal inline disclosure. Default true. */
   readonly modal?: boolean;
   readonly children: ReactNode;
 }

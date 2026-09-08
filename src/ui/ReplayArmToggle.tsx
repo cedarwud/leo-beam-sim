@@ -1,8 +1,8 @@
 import type { KeyboardEvent } from 'react';
 
-// P3 slice-2 · a2↔b1 replay-arm toggle-slam.
+// a2↔b1 replay-arm toggle.
 //
-// The modqn-replay-proof lane plays a RECORDED producer window (served/starved
+// The replay-proof lane plays a RECORDED producer window (served/starved
 // per-UE coverage truth baked in). This segmented control swaps WHICH arm's
 // window the lane fetches — b1 (basic learned-argmax → red sea) ⇄ a2 (smart
 // coordinated auction → all-green). App owns the `replayArm` state and points

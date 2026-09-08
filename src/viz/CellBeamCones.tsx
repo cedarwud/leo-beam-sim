@@ -1,9 +1,10 @@
 import type { JSX } from 'react';
 import * as THREE from 'three';
 import type { CellAssignment } from '../engine/cells/cellScheduler';
-import type { ModqnBeamConeScope } from '../scene/modqnVisualLayers';
 import type { CellScheduleViz } from '../scene/useCellSchedule';
 import type { WorldPoint } from './CellFootprints';
+
+export type CellBeamConeScope = 'none' | 'all-serving-satellites' | 'focus-satellite';
 
 export interface CellBeamConesProps {
   readonly schedule: CellScheduleViz;
@@ -17,7 +18,7 @@ export interface CellBeamConesProps {
     readonly targetBeamId: string | null;
     readonly worldPos?: readonly [number, number, number];
   } | null;
-  readonly beamConeScope?: ModqnBeamConeScope;
+  readonly beamConeScope?: CellBeamConeScope;
   readonly appMode?: string;
 }
 
@@ -100,7 +101,7 @@ export function CellBeamCones(props: CellBeamConesProps): JSX.Element | null {
 }
 
 /**
- * Pick one focus satellite for the modqn-demo cell lane: the focused UE's
+ * Pick one focus satellite for the focused cell lane: the focused UE's
  * serving satellite if it is actually in the current schedule, else the
  * satellite serving the most cells this slot (deterministic tie-break by
  * satId ascending). Returns null when there are no assignments.
@@ -138,7 +139,7 @@ export function resolveCellBeamConeItems({
   beamConeScope,
   appMode,
 }: Omit<CellBeamConesProps, 'visible'>): readonly CellBeamConeRenderItem[] {
-  const resolvedScope = beamConeScope ?? (appMode === 'modqn-demo' ? 'focus-satellite' : 'all-serving-satellites');
+  const resolvedScope = beamConeScope ?? 'all-serving-satellites';
   if (resolvedScope === 'none') return [];
 
   const placementByCellId = new Map(schedule.placements.map(placement => [placement.cellId, placement]));
@@ -187,7 +188,7 @@ export function resolveCellBeamConeSatelliteCount(input: Omit<CellBeamConesProps
   return new Set(resolveCellBeamConeItems(input).map(item => item.assignment.satId)).size;
 }
 
-export function resolveCellBeamConeOpacity(scope?: ModqnBeamConeScope): number {
+export function resolveCellBeamConeOpacity(scope?: CellBeamConeScope): number {
   if (scope === 'all-serving-satellites') return SERVICE_ALLOCATION_CONE_OPACITY;
   if (scope === 'focus-satellite') return FOCUS_CONE_OPACITY;
   return DEFAULT_CONE_OPACITY;

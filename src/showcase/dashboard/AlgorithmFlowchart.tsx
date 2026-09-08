@@ -166,7 +166,7 @@ function AlgorithmFlowchartComponent({
       data-testid="algorithm-flowchart"
       data-pulse-driver="raf"
       role="img"
-      aria-label="MODQN decision pipeline"
+      aria-label="Decision pipeline"
       viewBox="0 0 360 42"
       preserveAspectRatio="xMidYMid meet"
     >

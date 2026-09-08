@@ -177,8 +177,8 @@ check('all shipped profiles carry the same explicit current comparison anchor', 
     'hobs-2024-paper-default',
     'hobs-2024-tr38811-research',
     'hobs-2024-mobile-demo-aircraft',
-    'modqn-1sat-7beam',
-    'modqn-4sat-7beam-paper-faithful',
+    'hobs-2024-candidate-rich',
+    'hobs-2024-tr38811-research',
   ]) {
     const profile = loadProfile(profileId);
     if (profile.energyEfficiency?.paper.publishedReferenceMbitsPerJoule !== 596.92) {

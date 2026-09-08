@@ -6,9 +6,9 @@
  *   baseline — pick the candidate with the highest rate R.
  *   eco      — pick the candidate with the highest R / P^N.
  *
- * That is the paper's first change to MODQN (the first reward moves from
- * throughput to angle-aware energy efficiency) expressed as one knob, with no
- * training required. The panel control is literally "rank by R or by R/P^N".
+ * That is the first change from throughput to angle-aware energy efficiency
+ * expressed as one knob, with no training required. The panel control is
+ * literally "rank by R or by R/P^N".
  *
  * Two things an arm must NOT be, both structurally impossible here:
  *
@@ -50,7 +50,7 @@ export const SIX_ACTS_ARMS: readonly SixActsArmSpec[] = Object.freeze([
     rankBy: 'rate-per-system-power',
     formula: 'R_{u,s,v} / P^N',
     labelZhHant: '選能效最大的候選',
-    whyZhHant: '本論文對 MODQN 的第一個改動：把「傳得快」換成「每焦耳傳得多」。同一組畫面、同一組物理，只換排序依據。',
+    whyZhHant: '本論文的第一個改動：把「傳得快」換成「每焦耳傳得多」。同一組畫面、同一組物理，只換排序依據。',
   }),
 ]);
 

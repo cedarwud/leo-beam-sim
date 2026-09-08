@@ -2,7 +2,7 @@
  * Platform payload construction for Act 6.
  *
  * The wire shape is fixed by the historical exporter
- * (`upload_baseline_modqn_platform.py`): one flat `data[]` of
+ * (the historical platform exporter): one flat `data[]` of
  * `{type, channel, value, timestamp}` objects. This module owns the mapping
  * from run telemetry to that shape, the documented numeric bounds, and the
  * local JSON/CSV export — nothing here performs I/O.

@@ -1,9 +1,8 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { createObserverContext } from '../engine/orbit';
 import {
   HandoverManager,
-  type HandoverDecisionOverride,
 } from '../engine/handover/handover-manager';
 import type { Profile } from '../profiles/types';
 import type { UeDistributionMode, UePrimaryAnchorMode } from '../engine/ue/multiUeState';
@@ -36,20 +35,8 @@ import {
 import { planSeekSettle, SEEK_SETTLE_MAX_STEP_SEC } from './seekSettle';
 import { isMultiCandidateWarmStartFrame } from './multiCandidateWarmStart';
 import { resolveInitialReplayWarmupSec } from './replayStartPolicy';
-import { reScalarize } from '../modqn/replay-bundle/rescalarize';
-import { computeHeuristicNotPaperScore } from '../engine/handover/decision-override';
 import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../engine/handover/eeThreshold';
-import {
-  ModqnEnvelopeContext,
-  ModqnHandoverModeContext,
-} from '../modqn/runtimeContext';
-import type { ReScalarizeResult } from '../modqn/replay-bundle/rescalarize';
 
-// S3: HandoverManager subclass that injects the S3 decisionOverride ref on
-// every `.update()` call so stepRuntimeFrame (src/scene/runtimeFrameStep.ts,
-// which is FROZEN this slice) picks up the override without modification.
-// When `overrideRef.current` is null the call is byte-equivalent to the base
-// class — SDD §9.7 truth invariance is preserved for sinr-offset mode.
 /**
  * Exported for the suppression contract test. The homepage's EE authority
  * depends on this class refusing to commit, and that invariant reached
@@ -57,8 +44,6 @@ import type { ReScalarizeResult } from '../modqn/replay-bundle/rescalarize';
  * with no assertion anywhere.
  */
 export class S3HandoverManager extends HandoverManager {
-  // React MutableRefObject equivalent (plain object ref — no React dep needed).
-  overrideRef: { current: HandoverDecisionOverride | null } = { current: null };
   /**
    * The homepage cell-truth model owns the visible primary handover. The
    * legacy manager still supplies the initial serving link, but must not emit
@@ -86,7 +71,6 @@ export class S3HandoverManager extends HandoverManager {
     candidates: Parameters<HandoverManager['update']>[0],
     dt: Parameters<HandoverManager['update']>[1],
     simTimeMs: Parameters<HandoverManager['update']>[2],
-    explicitOverride?: HandoverDecisionOverride,
   ) {
     if (this.suppressPrimaryHandover && this.state.satId !== null) {
       // Keep the legacy state available to frozen frame plumbing, while the
@@ -102,44 +86,8 @@ export class S3HandoverManager extends HandoverManager {
       candidates,
       dt,
       simTimeMs,
-      explicitOverride ?? (this.overrideRef.current ?? undefined),
     );
   }
-}
-
-function resolveModqnReplayOverrideTarget(
-  input: Parameters<HandoverDecisionOverride>[0],
-  result: ReScalarizeResult,
-): { satId: string; beamId: number } | null {
-  const { candidates, serving, sortedBySinrDesc } = input;
-  const exactCandidate = candidates.find(
-    candidate => candidate.satId === result.satId && candidate.beamId === result.beamId,
-  );
-  if (exactCandidate) {
-    return { satId: exactCandidate.satId, beamId: exactCandidate.beamId };
-  }
-
-  // The producer artifact is a 1-satellite / 7-beam replay surface and names
-  // its selected satellite as `sat-0`. The live showcase scene may keep a richer
-  // visual profile, so preserve the producer's local beam choice while choosing
-  // the most relevant live satellite for the existing HandoverManager timing.
-  const sameServingSatCandidate = serving.satId === null
-    ? undefined
-    : candidates.find(candidate => (
-      candidate.satId === serving.satId
-      && candidate.beamId === result.beamId
-    ));
-  if (sameServingSatCandidate) {
-    return { satId: sameServingSatCandidate.satId, beamId: sameServingSatCandidate.beamId };
-  }
-
-  const bestVisibleLocalBeamCandidate = sortedBySinrDesc.find(candidate => candidate.beamId === result.beamId);
-  return bestVisibleLocalBeamCandidate === undefined
-    ? null
-    : {
-      satId: bestVisibleLocalBeamCandidate.satId,
-      beamId: bestVisibleLocalBeamCandidate.beamId,
-    };
 }
 
 export {
@@ -257,82 +205,6 @@ export function useSimulation(
   /** Root homepage only: cell truth owns primary handover decisions. */
   suppressLegacyPrimaryHandover = false,
 ): SimFrame {
-  // S3: read handover mode + current bundle envelope from contexts. When the
-  // mode contexts are absent (headless tests, pure SINR render) we fall back to
-  // sinr-offset behavior (no override installed — truth invariance preserved).
-  const { envelope, slotOffset } = useContext(ModqnEnvelopeContext);
-  const modeCtx = useContext(ModqnHandoverModeContext);
-  const { mode: handoverMode, omegaActive, incrementRescalarizeFallback } = modeCtx;
-
-  // Stable refs so the override closure (below) always reads the latest values
-  // from the current render without needing to be recreated.
-  const incrementFallbackRef = useRef(incrementRescalarizeFallback);
-  incrementFallbackRef.current = incrementRescalarizeFallback;
-  const envelopeRef = useRef(envelope);
-  envelopeRef.current = envelope;
-  const slotOffsetRef = useRef(slotOffset);
-  slotOffsetRef.current = slotOffset;
-  const handoverModeRef = useRef(handoverMode);
-  handoverModeRef.current = handoverMode;
-  const omegaActiveRef = useRef(omegaActive);
-  omegaActiveRef.current = omegaActive;
-
-  // Build the decisionOverride callback. It is stable (referentially) across
-  // renders and reads the latest values from refs at call time. When
-  // handoverMode is `sinr-offset` (or any unknown mode) the override returns
-  // null on every call, which is byte-equivalent to no-override
-  // (SDD §9.7 truth invariance).
-  //
-  // S4 (SDD §9.5): when handoverMode === 'omega-heuristic' the override
-  // consults `computeHeuristicNotPaperScore` over the live candidate set. The
-  // selected beam still flows through HandoverManager for trigger timing and
-  // ping-pong-guard timing (engine-side, unchanged); only the argmax step is
-  // replaced. The heuristic does NOT use re-scalarization or the bundle —
-  // SDD §4.4 item 3 forbids the bundle parser from emitting this mode.
-  const decisionOverride = useCallback<HandoverDecisionOverride>(input => {
-    const mode = handoverModeRef.current;
-
-    if (mode === 'decision-overlay-on-live-sinr') {
-      const env = envelopeRef.current;
-      if (!env) return null;
-
-      const safeSlot = Math.min(
-        Math.max(Math.trunc(slotOffsetRef.current), 0),
-        Math.max(env.replaySlots.length - 1, 0),
-      );
-      const slot = env.replaySlots[safeSlot] ?? env.replaySlots[0];
-      const row = slot?.rows[0];
-      if (!row) return null;
-
-      const diag = row.producerTruth.policyDiagnostics;
-      const candidates = diag?.topCandidates;
-      if (!candidates || candidates.length === 0) return null;
-
-      const omega = omegaActiveRef.current;
-      const result = reScalarize(candidates, omega);
-      if (!result) return null;
-
-      if (result.wasFallback) {
-        incrementFallbackRef.current();
-      }
-
-      return resolveModqnReplayOverrideTarget(input, result);
-    }
-
-    if (mode === 'omega-heuristic') {
-      const omega = omegaActiveRef.current;
-      const heuristicResult = computeHeuristicNotPaperScore({
-        omega,
-        candidates: input.candidates,
-        serving: input.serving,
-      });
-      if (!heuristicResult) return null;
-      return { satId: heuristicResult.satId, beamId: heuristicResult.beamId };
-    }
-
-    return null;
-  }, []); // deps intentionally empty — all mutable reads go through refs
-
   const observer = useMemo(
     () => createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg),
     [profile.orbit.observerLatDeg, profile.orbit.observerLonDeg],
@@ -515,18 +387,6 @@ export function useSimulation(
   const lastReplayStartColdResetKeyRef = useRef<string | null>(null);
   const [, setVersion] = useState(0);
 
-  const installDecisionOverride = useCallback(() => {
-    // MODQN consolidation: the MODQN live page reuses the SINR scene render directly,
-    // so the PRIMARY UE now runs the live SINR-offset serving (same as the 99
-    // secondaries) instead of the decision-overlay override. The override re-scalarized
-    // the DEGENERATE producer envelope (collapsed to ~1 beam / 0 multi-beam cones),
-    // which defeated the point of the scene. The MODQN proof is the Q-value sidebar
-    // (reads modqnReplayEnvelope directly), NOT a scene-driving override. The
-    // omega-heuristic path is unchanged.
-    hoManager.overrideRef.current =
-      handoverModeRef.current === 'omega-heuristic' ? decisionOverride : null;
-  }, [decisionOverride, hoManager]);
-
   // S3-2 / S4-1: one helper for both kinds of HO-manager time transition.
   //  - 'cold-start' (mount, profile change, signalReset, handoverReset): full
   //    reset() — fresh state, no serving carried. The signalReset entry point
@@ -621,7 +481,6 @@ export function useSimulation(
       }
       resetMobilityStates();
       runtimeStateRef.current = createRuntimeFrameStepState(reseatOffset);
-      installDecisionOverride();
       const { frame } = stepRuntimeFrame({
         profile,
         replay,
@@ -772,7 +631,6 @@ export function useSimulation(
       beamLayoutsByShellId,
       effectiveUeCount,
       hoManager,
-      installDecisionOverride,
       maxTimeSec,
       multiCandidateDecisionEnabled,
       observer,
@@ -915,16 +773,6 @@ export function useSimulation(
 
   useFrame((_, delta) => {
     if (trajectoryCache.length === 0) return;
-
-    // S3/S4: install or clear the override on the manager each frame so the
-    // ref is current at the moment hoManager.update() fires inside
-    // stepRuntimeFrame. The S3 invariant remains visible in source —
-    // `handoverModeRef.current === 'decision-overlay-on-live-sinr' ? decisionOverride : null` —
-    // and S4 widens the truthiness to also enable the override under
-    // `omega-heuristic`. In `sinr-offset` (or any unknown) mode the install
-    // resolves to null, which is byte-equivalent to base-class behavior
-    // (SDD §9.7 truth invariance).
-    installDecisionOverride();
 
     const windowLength = replay.windowLengthSec ?? 180; // Default keeps legacy short-window demos.
     if (

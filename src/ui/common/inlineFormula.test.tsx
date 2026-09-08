@@ -117,7 +117,7 @@ console.log('\n--- 5. false-positive guards ---');
 // itself preceded by a letter/digit/underscore. Every snake_case identifier
 // fails it; every real symbol in the catalog passes it.
 expectFormat('SCREAMING_SNAKE constant untouched', 'UI_TOKENS', 'UI_TOKENS');
-expectFormat('multi-part constant untouched', 'MODQN_H2_SCENE', 'MODQN_H2_SCENE');
+expectFormat('multi-part constant untouched', 'LEO_H2_SCENE', 'LEO_H2_SCENE');
 expectFormat('snake_case identifier untouched', 'data_source', 'data_source');
 expectFormat('three-part snake_case untouched', 'foo_bar_baz', 'foo_bar_baz');
 expectFormat('leading double underscore untouched', '__resetHelpPopoverStoreForTests', '__resetHelpPopoverStoreForTests');

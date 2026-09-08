@@ -21,8 +21,7 @@
  * No SINR/handover/geometry knowledge required — pure provenance read.
  *
  * The decision function `decideClaimBoundaryBanner` is exported separately
- * so the D8 unit test (`validate-modqn-visual-showcase-p1e-d8-forbidden-
- * claim.ts`) can exercise the gate without a React renderer.
+ * so the D8 unit test can exercise the gate without a React renderer.
  *
  * Integration point: this component consumes `NormalizedSceneFrame` and
  * can be placed next to `<InfoPanel>` in `App.tsx` once the host UI
@@ -158,7 +157,6 @@ export function decideClaimBoundaryBanner(
 
 export function ClaimBoundaryBanner(props: {
   frame: ClaimBoundaryBannerInput;
-  bundleProvenanceKind?: 'paper-faithful' | 'user-trained';
 }): ReactElement | null {
   const decision = decideClaimBoundaryBanner(props.frame);
   if (decision.kind === 'fallback') {
@@ -206,17 +204,6 @@ export function ClaimBoundaryBanner(props: {
         literal text — so a producer string can never be mangled or dropped.
       */}
       <strong className="claim-boundary-banner__title">{renderInlineFormula(decision.title)}</strong>
-      {props.bundleProvenanceKind === 'user-trained' ? (
-        <span className="claim-boundary-banner__chip claim-boundary-banner__chip--user-trained" data-testid="claim-boundary-banner-user-trained-chip">user-trained</span>
-      ) : null}
-      {props.bundleProvenanceKind === 'user-trained' ? (
-        <span
-          className="claim-boundary-banner__user-trained-disclaimer"
-          data-testid="claim-boundary-banner-user-trained-disclaimer"
-        >
-          User-trained MODQN replay · paperFaithful: false · do not cite as PAP-2024 baseline evidence
-        </span>
-      ) : null}
       <span className="claim-boundary-banner__subtitle">{renderInlineFormula(decision.subtitle)}</span>
       {decision.details.length > 0 && (
         <ul className="claim-boundary-banner__notes">

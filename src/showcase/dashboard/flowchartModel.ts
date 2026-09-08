@@ -43,7 +43,7 @@ export interface FlowchartEdgeBinding {
 // docs/flowchart-dock-landscape-relayout-sdd.md.
 export const FLOWCHART_NODES = [
   { id: 'state', label: 'State', title: 'State (UE / SINR / serving)', x: 26, y: 12 },
-  { id: 'qnet', label: 'Q-network', title: 'MODQN Q-network (per-objective heads)', x: 77, y: 12 },
+  { id: 'qnet', label: 'Q-network', title: 'Q-network (per-objective heads)', x: 77, y: 12 },
   { id: 'omega', label: 'ω scalarize', title: 'ω scalarization', x: 129, y: 12 },
   { id: 'mask', label: 'Action mask', title: 'Action validity mask', x: 180, y: 12 },
   { id: 'select', label: 'argmax → select', title: 'argmax → selected action', x: 231, y: 12 },

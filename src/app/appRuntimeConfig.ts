@@ -2,18 +2,10 @@ import type { AppExperienceMode } from './appExperienceMode';
 import { isSupportedBeamLayoutCount } from '../core/beam/completeHexPresets';
 import { DEFAULT_UE_MOBILITY_PARAMS } from '../engine/ue/multiUeMobility';
 import { normalizeEeThresholdKbitPerJoule } from '../engine/handover/eeThreshold';
-import type { EnvAxes } from '../modqn/training-trigger/types';
 import type { Profile } from '../profiles/types';
 import type { RuntimeConfig, BeamDensity } from '../scene/types';
 import type { SceneTopologyState } from '../sceneTopology';
-import { normalizeRuntimeModqnServingCount } from '../modqn/servingCount';
 import { resolvePresentationMode } from './appRuntimeModel';
-import { sceneTopologyFromTrainingEnvAxes } from './trainingEnvAxesProfileAdapter';
-import {
-  DEFAULT_MODQN_VISUAL_LAYER_PRESET,
-  resolveModqnVisualLayers,
-  type ModqnVisualLayerPreset,
-} from '../scene/modqnVisualLayers';
 
 export const APP_EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
 export const LIVE_SIM_TIMELINE_DURATION_SEC = 7200;
@@ -25,15 +17,14 @@ export const LIVE_SIM_TIMELINE_DURATION_SEC = 7200;
  * (candidate-beam highlight + timeline seek + slow-mo) plays IN PLACE without the
  * camera flying around. REVERSIBLE: flip to `true` to restore both.
  *
- * Scope: the LIVE scene (sinr-live + the MODQN live page, which reuses the SINR
- * render). The artifact-replay cinematic camera is a separate path and unaffected.
+ * Scope: the LIVE scene. The artifact-replay cinematic camera is a separate path
+ * and unaffected.
  * Only the camera POSITION mutation + the Spotlight UI toggle are gated — the
  * director FSM (`cinematicMode='director'`), the candidate highlight, the seek, and
  * the slow-mo are intentionally LEFT INTACT.
  */
 export const LIVE_CINEMATIC_CAMERA_ENABLED = false;
 
-const MODQN_PAPER_BASELINE_UE_COUNT = 100;
 // S2: sinr-live default UE population. `sceneTopology.ueCount` is null by
 // default, but the TopologyTab already SHOWS 100 as the effective default
 // (`topology.ueCount ?? DEFAULT_UE_COUNT`), so the runtime falling back to 1 was
@@ -49,6 +40,7 @@ type RuntimeVisualSettings = Pick<
 >;
 
 export interface AppRuntimeConfigInput {
+  readonly [key: string]: unknown;
   readonly appMode: AppExperienceMode;
   readonly effectiveProfile: Profile;
   readonly demoStartOffsetSec: number;
@@ -73,12 +65,6 @@ export interface AppRuntimeConfigInput {
   readonly eeThresholdKbitPerJoule?: number;
   /** The handover lecture currently running on the homepage, or null. */
   readonly teachingLectureKind?: 'intra' | 'inter' | null;
-  readonly selectedTrainingEnvAxes: EnvAxes | undefined;
-  readonly modqnVisualLayerPreset?: ModqnVisualLayerPreset;
-  // S-FLAG-2 producer-readiness gate for the MODQN service-allocation overlay
-  // family (parked OFF by default; `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` /
-  // `?modqnServiceAllocation=1`). Only meaningful on `modqn-demo`.
-  readonly modqnServiceAllocationEnabled?: boolean;
   /** Demo intra-handover jog: ENU offset (km) for the PRIMARY UE (button-toggled). */
   readonly primaryJogEastKm?: number;
   readonly primaryJogNorthKm?: number;
@@ -96,10 +82,6 @@ export interface AppRuntimeConfigInput {
 }
 
 export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConfig {
-  const trainingTopology = sceneTopologyFromTrainingEnvAxes(input.selectedTrainingEnvAxes);
-  const modqnVisualLayerPreset = input.appMode === 'modqn-demo'
-    ? input.modqnVisualLayerPreset ?? DEFAULT_MODQN_VISUAL_LAYER_PRESET
-    : undefined;
   const persistedGlobalBeamCount = input.sceneTopology.beamCountPerSatellite;
   const profileBeamCount = Math.trunc(input.effectiveProfile.beams.perSatellite);
   const fallbackSceneBeamCount = isSupportedBeamLayoutCount(profileBeamCount)
@@ -149,25 +131,14 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     beamHoppingEnabled: input.sceneTopology.beamHoppingEnabled,
     focusCellId: input.sceneTopology.focusCellId,
     ueCount: input.sceneTopology.ueCount
-      ?? (input.appMode === 'sinr-experiment'
-        ? SINR_LIVE_DEFAULT_UE_COUNT
-        : input.selectedTrainingEnvAxes?.nUsers ?? MODQN_PAPER_BASELINE_UE_COUNT),
-    cellServingCount: input.appMode === 'modqn-demo'
-      ? normalizeRuntimeModqnServingCount(input.sceneTopology.cellServingCount)
-      : undefined,
+      ?? SINR_LIVE_DEFAULT_UE_COUNT,
     // The legacy homepage has one intentional UE substrate: 100 users spread
     // across the same seven asymmetric earth-fixed cells used by the SINR
     // truth model. Do not let a stale topology override from an earlier UI
     // experiment silently switch `/` back to a map-wide random population.
     // Other lanes retain their existing topology-controlled distribution.
-    ueDistributionMode: input.appMode === 'sinr-experiment'
-      ? 'seven-cell-asymmetric'
-      : input.sceneTopology.ueDistributionMode
-        ?? (trainingTopology.ueDistributionMode ?? 'random'),
-    // MODQN consolidation: the MODQN live page reuses the SINR scene, so the primary
-    // UE is the centred 'observer' protagonist on BOTH modes. The old 'distribution'
-    // anchor (from the paper-faithful MODQN) placed the primary off-centre per the UE
-    // spread → the "主角在角落" orange dot in the lower-left corner.
+    ueDistributionMode: 'seven-cell-asymmetric',
+    // The primary UE is the centred 'observer' protagonist.
     uePrimaryAnchorMode: 'observer',
     // S2: the sinr-experiment profile (hobs-2024-candidate-rich) now carries a
     // uniform-rectangle `ueDistribution` (200x90 km user area), so the secondary
@@ -190,32 +161,13 @@ export function buildAppRuntimeConfig(input: AppRuntimeConfigInput): RuntimeConf
     manualHandoverTargetCellId: input.manualHandoverTargetCellId,
     manualHandoverServingSinrDb: input.manualHandoverServingSinrDb,
     manualHandoverCandidateSinrDb: input.manualHandoverCandidateSinrDb,
-    ueDistributionScope: input.appMode === 'modqn-demo' ? 'service-area' : 'beam-footprint',
-    ueDistributionRadiusKm: input.appMode === 'modqn-demo'
-      && input.selectedTrainingEnvAxes?.ueArea.distribution === 'uniform-circular'
-      ? input.selectedTrainingEnvAxes.ueArea.radiusKm
-      : undefined,
+    ueDistributionScope: 'beam-footprint',
     ueMobilityMode: input.sceneTopology.ueMobilityMode
-      ?? (input.appMode === 'sinr-experiment'
-        ? 'static'
-        : trainingTopology.ueMobilityMode ?? 'static'),
+      ?? 'static',
     ueMobilityParams: input.sceneTopology.ueMobilityParams
-      ?? (input.appMode === 'sinr-experiment'
-        ? DEFAULT_UE_MOBILITY_PARAMS
-        : trainingTopology.ueMobilityParams ?? DEFAULT_UE_MOBILITY_PARAMS),
+      ?? DEFAULT_UE_MOBILITY_PARAMS,
     enableUeTrails: input.sceneTopology.enableUeTrails !== null
       ? input.sceneTopology.enableUeTrails === true
-      : input.appMode === 'sinr-experiment'
-        ? false
-        : trainingTopology.enableUeTrails === true,
-    modqnVisualLayerPreset,
-    modqnVisualLayers: modqnVisualLayerPreset
-      ? resolveModqnVisualLayers(modqnVisualLayerPreset)
-      : undefined,
-    // S-FLAG-2: producer-readiness gate for the MODQN service-allocation overlay
-    // family. Only the `modqn-demo` lane consumes it; parked OFF by default.
-    modqnServiceAllocationEnabled: input.appMode === 'modqn-demo'
-      ? input.modqnServiceAllocationEnabled ?? false
-      : undefined,
+      : false,
   };
 }

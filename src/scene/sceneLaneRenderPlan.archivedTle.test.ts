@@ -9,10 +9,6 @@ assert.equal(isSceneLaneSourceCompatible({
   sceneSource: 'archived-tle',
 }), true);
 assert.equal(isSceneLaneSourceCompatible({
-  sceneLane: 'modqn-live-cell-preview',
-  sceneSource: 'archived-tle',
-}), false);
-assert.equal(isSceneLaneSourceCompatible({
   sceneLane: 'artifact-replay',
   sceneSource: 'archived-tle',
 }), false);

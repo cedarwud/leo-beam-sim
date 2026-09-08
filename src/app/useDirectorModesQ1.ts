@@ -33,7 +33,7 @@ export function useDirectorModes({ artifactHandoverRailEvents, handoverRailEvent
       () =>
         sceneSource === 'live-sim'
         && isWalkerSceneActive
-        && (sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview')
+        && sceneLane === 'sinr-live'
         && (
           timelineRailDescriptor.rail.sourceOwner === 'live-walker'
           || timelineRailDescriptor.rail.sourceOwner === 'sinr-live-cell-truth'

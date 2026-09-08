@@ -1,7 +1,7 @@
 // Phase 3 beam-load contention (the paper's r3 load-balance story: #UEs sharing
 // each serving beam). STEP 0 / INV-3: this is a COUNT of the per-UE serving
 // assignments the caller supplies — NOT display-invented queue depth, and NOT a
-// nearest-display-cell projection (ModqnServiceMap's `ueCountByCellId`) that can
+// nearest-display-cell projection (`ueCountByCellId`) that can
 // split UEs sharing one serving beam across different display cells and so
 // misrepresent beam load (codex S2 [P2]).
 //
@@ -9,19 +9,14 @@
 // adapts its lane's authoritative displayed serving into UeServingAssignment, and
 // the resulting load carries that lane's provenance, NOT a blanket producer
 // claim. Per-lane source:
-//   - artifact / MODQN replay (INTENDED producer-backed path, NOT yet wired):
+//   - artifact replay (INTENDED producer-backed path, NOT yet wired):
 //     `allUeServingHistory` (visual-showcase-v1) would carry producer truth and
 //     make this a producer r3 proof — but that field is presently a DOCUMENTED
-//     source gap (see `src/modqn/replay-source-gaps/`), so no live caller feeds
+//     source gap, so no live caller feeds
 //     it in today. Do not describe the replay branch as a shipped r3 proof.
-//   - modqn-live-cell-preview: the profile-derived cell-schedule per-UE
-//     (satId, beamIndex) assignment that `deriveModqnServiceMap` already uses to
-//     colour the markers and emit the UE-count badges. This is
-//     `source: 'profile-derived-demo'` / `claimKind: 'overlay-demo'`, NOT
-//     producer r3 — the live HandoverManager acquires no per-UE serving on the
-//     modqn-demo 4-sat decision-overlay path (provenance audit 2026-06-04 FIX-7
-//     finding #1: even the primary `sim.serving.satId` is null), so the dead
-//     `perUePositions` serving must not be used as the live source.
+//   - profile-derived demo: the caller supplies the displayed per-UE serving
+//     assignments. This is `source: 'profile-derived-demo'` /
+//     `claimKind: 'overlay-demo'`, not producer proof.
 // In the cell schedule each (satId, beamIndex) is used at most once per slot
 // (cellScheduler `usedBeamKeys`), so grouping by (satId, beamIndex) is 1:1 with
 // the display cells and does not hit the codex-S2 cell-splitting failure mode.

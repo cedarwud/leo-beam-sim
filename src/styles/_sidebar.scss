@@ -3,14 +3,13 @@
 // unchanged, only relocated. Verified render-equivalent (_scss-equiv.mjs) + screenshots.
 
 .leo-sidebar-tab-panel > .leo-sidebar-content-stack,
-.leo-sidebar-tab-panel > .leo-modqn-sidebar-stack,
 .leo-sidebar-tab-panel > .leo-live-status-stack {
   height: 100%;
   max-height: 100%;
 }
 
 .leo-sidebar-content-stack > *,
-.leo-modqn-sidebar-stack > * {
+.leo-live-status-stack > * {
   flex: 0 0 auto;
 }
 
@@ -160,7 +159,7 @@
   font-size: 19px;
 }
 
-// SINR / MODQN lane buttons stay put (user: "sinr/modqn 的按鈕…不動").
+// Lane buttons stay put.
 .leo-shell-left .leo-lane-experience-bar__label {
   font-size: 21px;
 }
@@ -169,15 +168,7 @@
   font-size: 17px;
 }
 
-.leo-shell-left .leo-modqn-advanced-controls__label,
-.leo-shell-left .leo-modqn-advanced-controls__header p,
 .leo-shell-left .leo-training-form__coverage-title,
-.leo-shell-left .leo-modqn-evidence-decision-trace__label,
-.leo-shell-left .leo-modqn-evidence-decision-trace__note,
-.leo-shell-left .leo-modqn-replay-panel__metrics span,
-.leo-shell-left .leo-modqn-replay-panel__metrics strong,
-.leo-shell-left .leo-modqn-replay-panel__beam,
-.leo-shell-left .leo-modqn-replay-panel__audit span,
 // `.leo-advanced-setup-trigger small` (in _advanced.scss, loaded after this
 // file) ties the bare `.leo-shell-left small` floor on specificity, so name the
 // trigger explicitly to win the trigger hint ("display · policy · training").

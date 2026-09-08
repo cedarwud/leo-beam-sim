@@ -11,7 +11,6 @@ export interface LiveWalkerEventIndexSourceGapInput {
 
 const LIVE_WALKER_EVENT_INDEX_LANES: readonly SceneLane[] = [
   'sinr-live',
-  'modqn-live-cell-preview',
 ];
 
 function isLiveWalkerEventIndexSurface(

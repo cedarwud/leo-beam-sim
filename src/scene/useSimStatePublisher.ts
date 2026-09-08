@@ -488,7 +488,7 @@ export function buildPublishedPerUePositions(
  * SINR/serving truth (the `s0:geometry-trace` golden snapshots SimFrame/VizFrame, not
  * these SimState fields, so no golden moves). When no lookup is provided (the pure unit
  * gate) they stay null. Off the cell lane the function returns the steered block
- * VERBATIM (byte-identical passthrough) so MODQN / artifact-replay lanes are untouched.
+ * VERBATIM (byte-identical passthrough) so artifact-replay lanes are untouched.
  * Exported pure (S4-3 pattern) so `validate:s5:infopanel-cone-coupling` drives the REAL
  * re-point.
  */
@@ -804,7 +804,6 @@ export function useSimStatePublisher({
   latchedBeamSinrByKeyRef,
   onSimUpdate,
   enabled = true,
-  modqnCellServiceReadout,
   beamCountBySatellite = {},
   servingBeamCount,
   candidateBeamCount,
@@ -828,7 +827,6 @@ export function useSimStatePublisher({
   latchedBeamSinrByKeyRef: MutableRefObject<Map<string, number>>;
   onSimUpdate: (state: SimState) => void;
   enabled?: boolean;
-  modqnCellServiceReadout?: SimState['modqnCellServiceReadout'];
   /** Presentation-only beam configuration shared with the legacy result rail. */
   beamCountBySatellite?: Readonly<Record<string, number>>;
   servingBeamCount?: number;
@@ -1481,7 +1479,6 @@ export function useSimStatePublisher({
       primaryUeId: sim.sinrLiveCells?.primaryUeId ?? null,
       visualFrequencyDiagnostics,
       perUePositions,
-      modqnCellServiceReadout,
       livePaperEnergyEfficiency,
       ch5DemoPaperEnergyEfficiency,
       canonicalEe,
@@ -1603,7 +1600,6 @@ export function useSimStatePublisher({
     homepageSourceFrame,
     handoverResetKey,
     measurementResetEpoch,
-    modqnCellServiceReadout,
     playbackSpeed,
     onSimUpdate,
     profile,

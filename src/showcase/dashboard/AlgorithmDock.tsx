@@ -16,7 +16,7 @@ export function AlgorithmDock({
   currentTimeSecRef = null,
 }: AlgorithmDockProps): JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
-  const title = mode === 'artifact' ? 'MODQN Algorithm Pipeline' : 'MODQN Live Training';
+  const title = mode === 'artifact' ? 'Algorithm Pipeline' : 'Live Training';
   const subtitle = mode === 'artifact' ? 'visual-showcase-v1 replay truth' : 'Plane-A SSE (episode-coarse)';
 
   return (
@@ -25,7 +25,7 @@ export function AlgorithmDock({
       data-testid="algorithm-dock"
       data-collapsed={collapsed ? 'true' : 'false'}
       data-mode={mode}
-      aria-label="MODQN algorithm pipeline dock"
+      aria-label="Algorithm pipeline dock"
     >
       <header className="leo-algorithm-dock__header">
         <div className="leo-algorithm-dock__title">

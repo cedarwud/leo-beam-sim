@@ -42,7 +42,7 @@ function series<TValue>(
 
 function truthRecord(note: string): VisualShowcaseTruthOwnershipRecord {
   return {
-    owner: 'modqn-paper-reproduction',
+    owner: 'synthetic-validator-fixture',
     sourceArtifacts: ['fixture-artifact'],
     sourcePaths: ['seriesModel.test.ts'],
     note,
@@ -61,42 +61,41 @@ function buildFixtureArtifact(): VisualShowcaseArtifact {
     artifactId: 'dashboard-series-test',
     scenario: {
       id: 'dashboard-series-test',
-      profile: 'modqn-multi-ue',
+      profile: 'baseline-one-ue',
       title: 'Dashboard series test',
       description: 'Minimal visual-showcase-v1 fixture for dashboard adapter tests.',
       durationSec: 60,
       defaultStartSec: 0,
       defaultPlaybackSpeed: 1,
       coordinateFrame: 'ecef-km',
-      storyKind: 'modqn-dashboard-test',
+      storyKind: 'dashboard-test',
       truthMode: 'producer-fixture',
     },
     provenance: {
       generatedAt: '2026-06-02T00:00:00.000Z',
       producer: {
-        name: 'modqn-paper-reproduction',
+        name: 'showcase-fixture',
         mode: 'fixture',
       },
       sourceRepos: [
         {
-          repoId: 'modqn-paper-reproduction',
-          path: '/home/u24/papers/modqn-paper-reproduction',
+          repoId: 'showcase-fixture',
+          path: 'fixture',
           commit: 'fixture',
         },
       ],
       ntnSimCoreCommit: 'fixture',
-      modqnPaperReproductionCommit: 'fixture',
       sourceCommits: {
-        'modqn-paper-reproduction': 'fixture',
+        'showcase-fixture': 'fixture',
       },
       sourceArtifactIds: ['fixture-artifact'],
       sourceArtifacts: [
         {
           id: 'fixture-artifact',
-          repoId: 'modqn-paper-reproduction',
+          repoId: 'showcase-fixture',
           path: 'fixture',
           role: 'test',
-          truthFields: ['sinr', 'handover', 'modqnAction', 'reward', 'geometry', 'provenance', 'series', 'display'],
+          truthFields: ['sinr', 'handover', 'reward', 'geometry', 'provenance', 'series', 'display'],
         },
       ],
       sourceSchemas: [
@@ -114,7 +113,7 @@ function buildFixtureArtifact(): VisualShowcaseArtifact {
         notes: [],
       },
       claimBoundary: {
-        storyKind: 'modqn-dashboard-test',
+        storyKind: 'dashboard-test',
         allowedClaims: ['test fixture only'],
         forbiddenClaims: ['research result'],
         source: 'seriesModel.test.ts',
@@ -128,7 +127,6 @@ function buildFixtureArtifact(): VisualShowcaseArtifact {
     truthOwnership: {
       sinr: truthRecord('SINR samples are fixture-owned.'),
       handover: truthRecord('Handover samples are fixture-owned.'),
-      modqnAction: truthRecord('MODQN action samples are fixture-owned.'),
       reward: truthRecord('Reward samples are fixture-owned.'),
       geometry: truthRecord('Geometry samples are fixture-owned.'),
       provenance: truthRecord('Provenance samples are fixture-owned.'),
@@ -249,20 +247,6 @@ function buildFixtureArtifact(): VisualShowcaseArtifact {
           loadBalance: 0.1 + index,
         },
       },
-      modqnDecision: {
-        actionIndex: index === 0 ? 3 : 4,
-        actionLabel: index === 0 ? 'switch to beam-b' : 'stay on beam-b',
-        previousSatelliteId: 'sat-a',
-        previousBeamId: 'beam-a',
-        selectedSatelliteId: index === 0 ? 'sat-b' : 'sat-b',
-        selectedBeamId: index === 0 ? 'beam-b' : 'beam-b',
-        validActionCount: 5,
-        selectedActionScore: index === 0 ? 0.9 : 0.8,
-        runnerUpActionScore: index === 0 ? 0.2 : 0.4,
-        scoreMargin: index === 0 ? 0.7 : 0.4,
-        decisionActionValidityMask: [true, true, true, true, true],
-        diagnosticsRef: `decision-${index}`,
-      },
     })),
     events: [
       {
@@ -320,7 +304,7 @@ function buildFixtureArtifact(): VisualShowcaseArtifact {
       })),
     },
     displayHints: {},
-  };
+  } as unknown as VisualShowcaseArtifact;
 }
 
 function channelProvenance(model: DashboardSeriesModel, key: DashboardSeriesChannelKey) {
@@ -406,7 +390,7 @@ console.log('seriesModel.test');
   assert.deepEqual(model.objectiveWeights.values, { throughput: 0.5, handover: 0.3, loadBalance: 0.2 });
   assert.deepEqual(model.selectedAction.actionIndex.values, [3, 4]);
   assert.deepEqual(model.selectedAction.selectedAction.values, [3, 4]);
-  assert.equal(model.selectedAction.timelineDecisions[0]?.actionLabel, 'switch to beam-b', 'timeline decision label');
+  assert.equal(model.selectedAction.timelineDecisions.length, 0, 'retired decision timeline is not consumed');
   assert.equal(model.selectedAction.decisionFrames[1]?.selectedActionIndex, 4, 'decision frame selected action');
   assert.deepEqual(model.actionScores.dense.values, [[0.1, 0.2, 0.9], [0.3, 0.8, 0.4]]);
   assert.deepEqual(model.actionScores.decisionFrames[0]?.actionScores, [0.1, 0.2, 0.9]);

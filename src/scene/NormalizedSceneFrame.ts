@@ -461,7 +461,7 @@ export interface NormalizedSceneFrame {
  * TODO P1e: liveSimToScene fills these from repo build info via UI prop
  * injection once the claim-boundary banner UI component lands. For now the
  * stubs carry static `allowedClaims` / `forbiddenClaims` lists that match
- * the live path's "no MODQN / Multi-Catfish / EE claims" boundary.
+ * the live path's no-training-claims boundary.
  */
 export interface LiveProvenanceStub {
   readonly kind: 'live-stub';

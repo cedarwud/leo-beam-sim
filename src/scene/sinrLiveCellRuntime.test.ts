@@ -7,7 +7,7 @@
  * This gate locks the WIRING CONTRACT, not the cell physics (that is the job of
  * `validate:phase-c:sinr-live-cells:model`). It asserts:
  *   1. the lane gate: the model factory returns `null` when the gate is off
- *      (the three MODQN/artifact lanes) → {@link attachSinrLiveCellFrame} is a
+ *      (the non-SINR/artifact lanes) → {@link attachSinrLiveCellFrame} is a
  *      no-op → the frame is byte-identical (other-lane ZERO-DRIFT, the whole
  *      point of the additive design);
  *   2. when the gate is on (sinr-live) the attach hangs a well-formed
@@ -197,7 +197,7 @@ check('the presentation coverage guard keeps a >12° cell reachable without chan
 
 // --- the lane gate (other-lane zero-drift) -----------------------------------
 
-check('gate OFF (the 3 MODQN/artifact lanes) → factory returns null', () => {
+check('gate OFF (non-SINR lanes) → factory returns null', () => {
   assertEqual(createSinrLiveCellModel(profile, false, EPOCH_MS), null, 'gate off → null model');
 });
 

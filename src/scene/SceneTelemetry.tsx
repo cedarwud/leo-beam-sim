@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { REPLAY_CANVAS_ATTRIBUTES } from './replayCanvasAttributes';
 import type { MultiCandidateSceneRenderStatus } from './multiCandidateSceneRenderStatus';
 
 function formatCameraVector(vector: THREE.Vector3): string {
@@ -100,11 +99,6 @@ export interface SceneTelemetryProps {
   beamBudgetServing: string;
   beamBudgetCandidate: string;
   beamHoppingEnabled: string;
-  modqnVisualLayerPreset: string;
-  modqnServiceMapEnabled: string;
-  modqnServedUeCount: string | number;
-  modqnIdleUeCount: string | number;
-  modqnHandoverCuesVisible: string;
 
   // Handover story dataset attributes
   handoverStoryLayer: string;
@@ -122,7 +116,7 @@ export interface SceneTelemetryProps {
   cameraTransitionRef?: React.RefObject<'idle' | 'animating'>;
   controlsRef: React.RefObject<OrbitControlsImpl | null>;
 
-  // Artifact replay boundary control
+  /** Compatibility boundary for the still-live replay cleanup caller. */
   shouldClearReplayAttributes?: boolean;
 }
 
@@ -199,11 +193,6 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.beamBudgetServing = props.beamBudgetServing;
     el.dataset.beamBudgetCandidate = props.beamBudgetCandidate;
     el.dataset.beamHoppingEnabled = props.beamHoppingEnabled;
-    el.dataset.modqnVisualLayerPreset = props.modqnVisualLayerPreset;
-    el.dataset.modqnServiceMapEnabled = props.modqnServiceMapEnabled;
-    el.dataset.modqnServedUeCount = String(props.modqnServedUeCount);
-    el.dataset.modqnIdleUeCount = String(props.modqnIdleUeCount);
-    el.dataset.modqnHandoverCuesVisible = props.modqnHandoverCuesVisible;
 
     el.dataset.handoverStoryLayer = props.handoverStoryLayer;
     el.dataset.handoverStoryVisible = props.handoverStoryVisible;
@@ -215,11 +204,6 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     el.dataset.handoverStoryInactiveCount = String(props.handoverStoryInactiveCount);
     el.dataset.handoverStoryNextCount = String(props.handoverStoryNextCount);
 
-    if (props.shouldClearReplayAttributes) {
-      REPLAY_CANVAS_ATTRIBUTES.forEach(attribute => {
-        el.removeAttribute(attribute);
-      });
-    }
   }, [
     gl.domElement,
     props.visibleSatelliteCount,
@@ -285,11 +269,6 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.beamBudgetServing,
     props.beamBudgetCandidate,
     props.beamHoppingEnabled,
-    props.modqnVisualLayerPreset,
-    props.modqnServiceMapEnabled,
-    props.modqnServedUeCount,
-    props.modqnIdleUeCount,
-    props.modqnHandoverCuesVisible,
     props.handoverStoryLayer,
     props.handoverStoryVisible,
     props.handoverStorySource,
@@ -299,7 +278,6 @@ export function SceneTelemetry(props: SceneTelemetryProps) {
     props.handoverStoryActiveCount,
     props.handoverStoryInactiveCount,
     props.handoverStoryNextCount,
-    props.shouldClearReplayAttributes,
   ]);
 
   // Handle dynamic real-time frame telemetry (camera updates on every R3F tick)

@@ -2,29 +2,6 @@ import type { SceneLane } from '../app/sceneLane';
 import type { RuntimeConfig } from './types';
 import type { NormalizedSceneFrame } from './NormalizedSceneFrame';
 
-/**
- * S-FLAG-2 producer-readiness gate for the MODQN-LIVE **service-allocation**
- * overlay family (the all-UE service map / readout / legend / diagnostics grid,
- * the per-cell UE-count badges, and the phase-3 beam-load cylinder + upload
- * particles). Every MODQN lane currently replays a DEGENERATE producer baseline
- * (100 UEs on one beam, 0 handovers, 1 satellite — see the baseline MODQN
- * producer-data defects report), so a map-wide "service allocation" is
- * meaningless noise that drowns the handover-cinema north star on the default
- * surface. The whole family is therefore PARKED OFF by default while the code +
- * data path stays intact (it is the G3 dense-Q proof scaffolding).
- *
- * Un-park trigger: the producer dense-Q export plus the four baseline-defect
- * fixes (spatial per-beam UE assignment / per-beam pattern+interference /
- * reward-scale normalization / real inter-intra HO events) land — see
- * `docs/handoff/producer-dense-q-export-request.md`. Flip this constant to `true`
- * (or wire a runtime producer-readiness signal into
- * `SceneLaneRenderPlanInput.modqnServiceAllocationEnabled`) to revive the whole
- * family in one move. A dev/validator force-enable exists via the
- * `?modqnServiceAllocation=1` URL override (App threads it into the input), so the
- * render path stays provable while the default stays parked.
- */
-export const MODQN_SERVICE_ALLOCATION_PRODUCER_READY = false;
-
 export interface SceneLaneRenderPlanInput {
   readonly sceneLane: SceneLane;
   readonly sceneSource: NormalizedSceneFrame['sceneSource'];
@@ -35,21 +12,12 @@ export interface SceneLaneRenderPlanInput {
   readonly paused: boolean;
   readonly reducedMotion: boolean;
   readonly recentHoActive: boolean;
-  /**
-   * S-FLAG-2 producer-readiness gate for the MODQN service-allocation overlay
-   * family. Optional; defaults to OFF (parked). App threads
-   * `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` OR the `?modqnServiceAllocation=1`
-   * dev/validator override here. Only ever un-parks the family on the
-   * `modqn-live-cell-preview` lane (it is AND-ed with `showCellOverlay`).
-   */
-  readonly modqnServiceAllocationEnabled?: boolean;
 }
 
 export type SceneLaneUeMarkerShape = 'sphere' | 'cylinder';
 export type HandoverStoryLayerPolicy =
   | 'sinr-live'
   | 'profile-derived-demo'
-  | 'modqn-replay-source-backed'
   | 'artifact-owned'
   | 'disabled';
 
@@ -62,19 +30,6 @@ export interface SceneLaneRenderPlan {
   readonly sourceCompatible: boolean;
   readonly isLiveScene: boolean;
   readonly isArtifactReplay: boolean;
-  readonly showCellOverlay: boolean;
-  /**
-   * S-FLAG-2: gates the MODQN-LIVE service-allocation overlay family (all-UE
-   * service map / readout / legend / diagnostics grid, per-cell UE-count badges,
-   * phase-3 beam-load cylinder + upload particles). `modqn-live-cell-preview`
-   * ONLY and PARKED OFF by default (degenerate producer baseline) — see
-   * `MODQN_SERVICE_ALLOCATION_PRODUCER_READY`. The default MODQN-LIVE surface
-   * keeps the hex cell overlay, cell beam cones, satellite markers, director
-   * cinema, and the scene HUD; only the service-allocation noise is parked. It is
-   * NOT the MODQN cell overlay itself (`showCellOverlay`) and never affects any
-   * SINR/replay/artifact lane.
-   */
-  readonly showModqnServiceAllocation: boolean;
   readonly showEarthFixedCells: boolean;
   readonly showEarthFixedCellLabels: boolean;
   readonly showUav: boolean;
@@ -93,10 +48,8 @@ export interface SceneLaneRenderPlan {
   /**
    * SINR-serving mosaic (S2). The ambient default on `sinr-live`: every UE
    * marker is coloured by its serving beam (by SINR), partitioning the ~100 UE
-   * dots into a coloured cell mosaic (G3). The COLOUR render is ALSO mounted on
-   * `modqn-live-cell-preview` (consolidation: MODQN renders like SINR — see the
-   * `showSinrBeamRender` assignment + the governance matrix); it stays inert on
-   * `modqn-replay-proof` and `artifact-replay`. The sinr-serving TELEMETRY/HUD
+   * dots into a coloured cell mosaic (G3). It stays inert on artifact-replay.
+   * The sinr-serving TELEMETRY/HUD
    * PROOF, by contrast, is gated tighter than this flag (sinr-live-owned). It is
    * the always-on ambient base, NOT director-gated (Rule#10 default = mosaic +
    * aggregate).
@@ -110,8 +63,7 @@ export interface SceneLaneRenderPlan {
    * `SatelliteBeams` cones on this lane (which glued a beam onto the UE), so the
    * UE renders visibly off-centre in its cell footprint. Lane-owned to
    * `sinr-live` ONLY and always-on (the ambient base, like the mosaic); a DISTINCT
-   * layer from the MODQN `showCellOverlay` cones — inert on every MODQN/artifact
-   * lane.
+   * layer from the legacy steered cones.
    */
   readonly showSinrLiveCellBeams: boolean;
   /**
@@ -122,7 +74,7 @@ export interface SceneLaneRenderPlan {
    * (`frame.sinrLiveCells.recentHandoverEvents`) flares its old/new cell cones
    * bright (intra vs inter coloured, C2) then fades them by age, with no seek and
    * no camera move. A distinct layer from the faint ambient serving field
-   * (`showSinrLiveCellBeams`); inert on every MODQN/artifact lane.
+   * (`showSinrLiveCellBeams`); inert on artifact-replay.
    */
   readonly showSinrLiveHandoverPulse: boolean;
   readonly effectiveCinematicMode: RuntimeConfig['cinematicMode'];
@@ -130,17 +82,9 @@ export interface SceneLaneRenderPlan {
 }
 
 export function isSceneLaneSourceCompatible(input: SceneLaneSourceCompatibilityInput): boolean {
-  // Recorded-replay lanes require an artifact-backed frame. `modqn-replay-proof`
-  // is the MODQN replay STAGE (P2): App feeds it the recorded dense-Q window via
-  // `showcaseArtifactToScene` (sceneSource==='artifact-replay'), so it is
-  // artifact-source-compatible like `artifact-replay`. The `live-sim` pin it USED
-  // to carry belonged to the live-overlay single-decision board (the
-  // `ModqnReplaySceneLayer`), clean-deleted in P3 slice-3; the recorded stage that
-  // replaced it plays a recording, not the live sim. `sinr-live` +
-  // `modqn-live-cell-preview` stay live-sim (negative controls: replay-proof/
-  // artifact + live-sim ⇒ false). Archived TLE is a peer simulation-shaped
-  // source only for sinr-live; it must never activate a MODQN live lane.
-  if (input.sceneLane === 'artifact-replay' || input.sceneLane === 'modqn-replay-proof') {
+  // Recorded-replay lanes require an artifact-backed frame. Archived TLE is a
+  // peer simulation-shaped source only for sinr-live.
+  if (input.sceneLane === 'artifact-replay') {
     return input.sceneSource === 'artifact-replay';
   }
 
@@ -152,10 +96,9 @@ export function isSceneLaneSourceCompatible(input: SceneLaneSourceCompatibilityI
 }
 
 export function resolveSceneLaneUeMarkerShape(sceneLane: SceneLane): SceneLaneUeMarkerShape {
-  // sinr-live AND the MODQN live page (which reuses the SINR scene render) use the
-  // slim cylinder marker so the live lanes read consistently; only the replay /
-  // artifact proof lanes keep the sphere marker.
-  return sceneLane === 'sinr-live' || sceneLane === 'modqn-live-cell-preview'
+  // The live SINR lane uses the slim cylinder marker; replay/artifact lanes keep
+  // the sphere marker.
+  return sceneLane === 'sinr-live'
     ? 'cylinder'
     : 'sphere';
 }
@@ -165,21 +108,8 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   const isLiveScene = sourceCompatible && input.sceneSource !== 'artifact-replay';
   const isArtifactReplay = sourceCompatible && input.sceneSource === 'artifact-replay';
   const showSinrLiveViewport = input.sceneLane === 'sinr-live' && isLiveScene;
-  const showCellOverlay = input.sceneLane === 'modqn-live-cell-preview' && isLiveScene;
-  const showProfileHandoverStoryLayer = showCellOverlay;
-  // MODQN consolidation (Step 2): the SINR-style beam render (steered cones +
-  // serving mosaic + live-handover pulse + live effects) now mounts on BOTH the
-  // live SINR lane AND the MODQN live-cell-preview lane, so MODQN renders beams
-  // like SINR (the MODQN decision overlay then highlights the chosen beam). The
-  // proof/artifact lanes stay inert.
-  const showSinrBeamRender = showSinrLiveViewport || showCellOverlay;
-  // S-FLAG-2: the MODQN service-allocation overlay family is `modqn-live-cell-preview`
-  // ONLY and parked OFF until the producer baseline is non-degenerate. Default OFF
-  // (`?? false`); App threads `MODQN_SERVICE_ALLOCATION_PRODUCER_READY` / the
-  // `?modqnServiceAllocation=1` override. Never un-parks on any non-cell lane
-  // (AND-ed with `showCellOverlay`).
-  const showModqnServiceAllocation =
-    showCellOverlay && (input.modqnServiceAllocationEnabled ?? false);
+  const showProfileHandoverStoryLayer = false;
+  const showSinrBeamRender = showSinrLiveViewport;
   const showLiveSceneEffects = showSinrBeamRender;
   const showCinematicSpotlight = showSinrLiveViewport && input.cinematicMode === 'spotlight';
   // Director focus is allowed on the live walker lanes (live-focus) and on the
@@ -187,13 +117,11 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // + display-only UE focus (frontend-render-governance.md), which is exactly what
   // the cinematic camera tween + slow-mo are. Replay-proof stays inert (Rule#8).
   const showDirectorFocus =
-    (showSinrLiveViewport || showCellOverlay || isArtifactReplay) && input.cinematicMode === 'director';
-  // SINR-serving mosaic (S2): sinr-live ONLY, always-on ambient default (NOT
-  // director-gated). It is a distinct SINR-serving layer, never the MODQN cell
-  // overlay — so it is inert on every MODQN/artifact lane.
+    (showSinrLiveViewport || isArtifactReplay) && input.cinematicMode === 'director';
+  // SINR-serving mosaic: sinr-live only, always-on ambient default.
   const showSinrServingMosaic = showSinrBeamRender;
   // SINR-live earth-fixed cell-truth CONES = the lane's PRIMARY beam render (see the
-  // `showSinrLiveCellBeams` field doc above). Mounts on BOTH live lanes via
+  // `showSinrLiveCellBeams` field doc above). Mounts on the live SINR lane via
   // `showSinrBeamRender`. HISTORY (de-staled 2026-06-18): the 2026-06-08
   // "S-cells-4 render reset" briefly PARKED these — that was REVERTED (un-parked
   // 2026-06-11) and the consolidation built ON them (serving-identity colour,
@@ -207,10 +135,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
   // overlay of the real per-frame handovers the cell model already classified, so it
   // mounts whenever the SINR-live viewport is shown, never waiting on a manual arm.
   const showSinrLiveHandoverPulse = showSinrBeamRender;
-  const showLiveSatelliteMarkers = isLiveScene && (
-    input.sceneLane === 'sinr-live'
-    || input.sceneLane === 'modqn-live-cell-preview'
-  );
+  const showLiveSatelliteMarkers = isLiveScene && input.sceneLane === 'sinr-live';
   const showLiveBeamCones = showSinrBeamRender;
   const showBeamCallouts = input.beamCalloutsEnabled && showLiveBeamCones;
   const showGroundRipple =
@@ -224,8 +149,6 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     sourceCompatible,
     isLiveScene,
     isArtifactReplay,
-    showCellOverlay,
-    showModqnServiceAllocation,
     // S-cells-4d: the legacy 20-hex steered-cover green-disc ground paint is
     // RETIRED. The earth-fixed cell story is now owned by the cell-truth beam
     // cones (`showSinrLiveCellBeams`), whose oblique footprints draw the real 37
@@ -240,10 +163,7 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     showBeamCallouts,
     showLiveSceneEffects,
     // Spine particles are a sinr-live AMBIENT effect (data streaming along the
-    // steered beams). The MODQN live page reuses the SINR scene for its multi-beam
-    // cones but is a PROOF surface, not the ambient experience — gate spine on
-    // `showSinrLiveViewport` (sinr-live only) so it does not inherit the streaming
-    // particles via the `showSinrBeamRender` OR that lights MODQN's cones.
+    // the steered beams).
     showSpineParticles:
       input.effectsEnabled.spineParticles
       && !input.paused
@@ -258,13 +178,9 @@ export function resolveSceneLaneRenderPlan(input: SceneLaneRenderPlanInput): Sce
     handoverStoryLayerPolicy:
       showSinrLiveViewport
         ? 'sinr-live'
-        : showProfileHandoverStoryLayer
-          ? 'profile-derived-demo'
-          : input.sceneLane === 'modqn-replay-proof' && isLiveScene
-            ? 'modqn-replay-source-backed'
-            : input.sceneLane === 'artifact-replay' && isArtifactReplay
-              ? 'artifact-owned'
-              : 'disabled',
+        : input.sceneLane === 'artifact-replay' && isArtifactReplay
+          ? 'artifact-owned'
+          : 'disabled',
     showProfileHandoverStoryLayer,
     showCinematicSpotlight,
     showDirectorFocus,

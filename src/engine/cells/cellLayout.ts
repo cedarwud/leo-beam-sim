@@ -37,9 +37,8 @@ export interface CellLayoutConfig {
    * centre by `cellRadius · offset` (so the offset is scale-free w.r.t. the beam
    * footprint). It lets a caller move a fixed ground point off a cell centre —
    * the SINR-live lane uses it so the ENU origin (= the observer-anchored
-   * protagonist UE) sits OFF cell-0's centre instead of dead-centre (beam-stage
-   * ① fix). Default = no shift, so every other caller (the MODQN/producer
-   * `useCellSchedule` round-robin geometry) is byte-identical.
+   * protagonist UE) sits OFF cell-0's centre instead of dead-centre. Default =
+   * no shift, so callers using the schedule geometry remain byte-identical.
    */
   readonly phaseOffsetRadii?: { readonly east: number; readonly north: number };
 }

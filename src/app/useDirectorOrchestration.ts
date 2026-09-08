@@ -49,6 +49,7 @@ export interface LiveTimelineSeekRequest {
 export const LIVE_DIRECTOR_SEEK_ARM_TIMEOUT_MS = 8_000;
 
 export interface UseDirectorOrchestrationParams {
+  readonly [key: string]: unknown;
   readonly camera: CameraControls;
   readonly playback: PlaybackControls;
   readonly replayController: ShowcaseReplayController | null;
@@ -69,7 +70,6 @@ export interface UseDirectorOrchestrationParams {
   readonly liveSimTimeSecRef: MutableRefObject<number>;
   readonly setLiveTimelineSeekRequest: (request: LiveTimelineSeekRequest) => void;
   readonly setLiveObservedHandoverRailEvents: (events: HandoverRailEvent[]) => void;
-  readonly setModqnReplayVisualElapsedSec: (sec: number) => void;
 }
 
 export interface DirectorOrchestration {
@@ -114,7 +114,6 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     liveSimTimeSecRef,
     setLiveTimelineSeekRequest,
     setLiveObservedHandoverRailEvents,
-    setModqnReplayVisualElapsedSec,
   } = params;
 
   // ITEM #C: the source-time of the live Walker handover event the Director focus
@@ -249,10 +248,6 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
             sourceHistoryReplay: true,
           });
           setLiveObservedHandoverRailEvents([]);
-          setModqnReplayVisualElapsedSec(clampTimelineTime(
-            focusTarget.seekTargetSec - liveTimelineWindowStartSec,
-            timelineDurationSec,
-          ));
         };
         if (reducedMotion) {
           runLiveFocusSeek();
@@ -288,7 +283,6 @@ export function useDirectorOrchestration(params: UseDirectorOrchestrationParams)
     currentTimeSecRef,
     setLiveObservedHandoverRailEvents,
     setLiveTimelineSeekRequest,
-    setModqnReplayVisualElapsedSec,
     timelineDurationSec,
   ]);
 

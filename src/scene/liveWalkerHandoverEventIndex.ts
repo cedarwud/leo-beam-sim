@@ -99,7 +99,7 @@ export interface LiveWalkerHandoverEvent {
    * verbatim from the engine `HandoverEvent` (the index already steps the real
    * sim to collect events; these were simply dropped before). `fromSinrDb` is
    * the serving (losing) candidate, `toSinrDb` the winner; both are live
-   * SINR-truth, NOT producer/MODQN values. Feeds the cinema SINR explainer.
+   * SINR-truth, not producer values. Feeds the cinema SINR explainer.
    */
   readonly fromSinrDb: number | null;
   readonly toSinrDb: number;

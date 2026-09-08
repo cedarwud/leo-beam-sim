@@ -223,18 +223,7 @@ export function sceneGeometryFromProfile(profile: LiveProfileGeometryInput): Sce
 const shellGeometryDefaults: ReadonlyMap<
   string,
   { altitudeKm: number; beamwidth3dBRad: number }
-> = new Map([
-  [
-    'modqn-baseline-leo',
-    {
-      // Matches `modqn-paper-reproduction` baseline MODQN training shell (550 km
-      // LEO, paper §IV.A) and `src/profiles/modqn-1sat-7beam.json` shell entry.
-      altitudeKm: 550,
-      // Paper antenna 3 dB beamwidth — matches modqn-1sat-7beam.json:beamwidth3dBRad.
-      beamwidth3dBRad: 0.058,
-    },
-  ],
-]);
+> = new Map();
 
 /**
  * Subset of the artifact used to build a replay `SceneGeometry`. We intentionally

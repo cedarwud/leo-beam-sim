@@ -1,6 +1,6 @@
 // windowReplayCue.ts — P3 slice-3 pure display adapter.
 //
-// Derives the modqn-replay-proof lane's cue from the SAME recorded window frame the
+// Derives the replay-proof lane's cue from the SAME recorded window frame the
 // scene renders, for a focus UE. It replaces the baseline JSONL decision (a single
 // `sat-0` row that had nothing to do with the on-screen window field) so the cue and
 // the scene tell one consistent story (frontend-change-contract Rule#6 — no lie).
@@ -8,7 +8,7 @@
 // DISPLAY-ONLY (Rule#7): it reads producer served / serving / target truth already
 // baked into the window frame and derives no channel metric, no scalarized objective,
 // no policy. A plain data->data function — NO React / Three / engine / scene / viz /
-// app import (locked by the purity assert in validate:modqn:coverage-fairness).
+// app import (locked by the coverage validator).
 
 export type WindowReplayCueEventKind =
   | 'intra-satellite-beam-switch'
