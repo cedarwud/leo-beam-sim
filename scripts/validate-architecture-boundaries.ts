@@ -110,11 +110,6 @@ const rules: readonly BoundaryRule[] = [
     forbiddenTargetPrefixes: ['src/ui', 'src/viz', 'src/app', 'src/scene', 'src/components'],
   },
   {
-    label: 'MODQN replay-bundle modules do not import UI, viz, app, scene, or component surfaces',
-    sourcePrefix: 'src/modqn/replay-bundle/',
-    forbiddenTargetPrefixes: ['src/ui', 'src/viz', 'src/app', 'src/scene', 'src/components'],
-  },
-  {
     label: 'scene contract/type modules do not import UI, viz, or component surfaces',
     sourcePrefix: 'src/scene/',
     forbiddenTargetPrefixes: ['src/ui', 'src/viz', 'src/components'],

@@ -13,19 +13,16 @@ import assert from 'node:assert/strict';
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
 import { APP_EPOCH_MS } from '../src/app/appRuntimeConfig.ts';
-import {
-  MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID,
-  loadProfile,
-} from '../src/profiles/index.ts';
+import { loadProfile } from '../src/profiles/index.ts';
 
 const APP_MODE_STORAGE_KEY = 'leo-beam-sim.app-mode.v1';
 const LIVE_WALKER_DURATION_SEC = '7200.000';
-const MODQN_PROFILE = loadProfile(MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID);
+const WALKER_PROFILE = loadProfile('hobs-2024-candidate-rich');
 const MODQN_DEMO_START_CACHE_KEY = [
   'demo_start',
-  MODQN_PROFILE.id,
+  WALKER_PROFILE.id,
   String(APP_EPOCH_MS),
-  String(JSON.stringify(MODQN_PROFILE.orbit.shells).length),
+  String(JSON.stringify(WALKER_PROFILE.orbit.shells).length),
 ].join('_');
 
 type AppMode = 'sinr-experiment' | 'modqn-demo';

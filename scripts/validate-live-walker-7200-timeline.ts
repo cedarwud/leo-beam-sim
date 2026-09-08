@@ -16,7 +16,7 @@ import {
   generateWalkerConstellation,
   propagateOrbitElement,
 } from '../src/engine/orbit/index.ts';
-import { MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID, loadProfile } from '../src/profiles/index.ts';
+import { loadProfile } from '../src/profiles/index.ts';
 import {
   SIM_DURATION_SEC,
   SIM_STEP_SEC,
@@ -56,7 +56,7 @@ function validatePackageScript(): void {
 }
 
 function validateRuntimeWindowAndCache(): ReturnType<typeof createTrajectoryCache> {
-  const profile = loadProfile(MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID);
+  const profile = loadProfile('hobs-2024-candidate-rich');
   const observer = createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg);
   const trajectoryCache = createTrajectoryCache(profile, observer, APP_EPOCH_MS);
   const maxTimeSec = getTrajectoryMaxTimeSec(trajectoryCache);
@@ -87,7 +87,7 @@ function validateRuntimeWindowAndCache(): ReturnType<typeof createTrajectoryCach
 }
 
 function validateOneSecondServingCoverage(): void {
-  const profile = loadProfile(MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID);
+  const profile = loadProfile('hobs-2024-candidate-rich');
   const observer = createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg);
   const elements = generateWalkerConstellation({
     shells: profile.orbit.shells,
@@ -141,7 +141,7 @@ function validateOneSecondServingCoverage(): void {
 }
 
 function validateEndOfWindowFrame(trajectoryCache: ReturnType<typeof createTrajectoryCache>): void {
-  const profile = loadProfile(MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID);
+  const profile = loadProfile('hobs-2024-candidate-rich');
   const observer = createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg);
   const sampleTimeSec = TWO_HOUR_TIMELINE_SEC - 1;
   const output = stepRuntimeFrame({

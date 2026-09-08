@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { APP_EPOCH_MS } from '../src/app/appRuntimeConfig.ts';
 import { DEFAULT_UE_MOBILITY_PARAMS } from '../src/engine/ue/multiUeMobility.ts';
-import { MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID, loadProfile } from '../src/profiles/index.ts';
+import { loadProfile } from '../src/profiles/index.ts';
 import {
   buildSinrLiveCellHandoverEventIndex,
   createSinrLiveCellHandoverEventIndexBuilder,
@@ -163,7 +163,7 @@ pass(`slice=7 (${chunked7.slices} slices) == one-shot`);
 
 // ---- Determinism + a second topology (cheap, low UE count) ----
 const altInput: BuildSinrLiveCellHandoverEventIndexInput = {
-  profile: loadProfile(MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID),
+  profile: loadProfile('hobs-2024-candidate-rich'),
   epochUtcMs: APP_EPOCH_MS,
   simStepSec: 30,
   ueCount: 6,

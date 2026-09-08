@@ -16,7 +16,6 @@ import type { UeMobilityMode, UeMobilityParams } from '../engine/ue/multiUeMobil
 import type { AppExperienceMode } from '../app/appExperienceMode';
 import type { GlyphKind } from '../contracts/glyphTypes';
 import type { VisualBeamTarget } from './beamTargetTypes';
-import type { ModqnCellServiceReadout } from './modqnServiceMap';
 import type { SinrLiveCellFrame } from './sinrLiveCellModel';
 import type { PaperEnergyEfficiency } from '../utils/paperEnergyEfficiency';
 import type { CanonicalEeInputErrorCode } from '../teaching/canonicalEnergyEfficiency';
@@ -371,8 +370,6 @@ export interface SimState {
     servingCellId: number | null;
     sinrDb: number | null;
   }>;
-  /** Compatibility boundary for the protected MODQN HUD until Wave 2. */
-  modqnCellServiceReadout?: ModqnCellServiceReadout;
   /**
    * Live cell-truth paper-style EE. This is intentionally separate from the
    * R1 reward-surface link metric: it prices each live (sat, earth-fixed-cell)

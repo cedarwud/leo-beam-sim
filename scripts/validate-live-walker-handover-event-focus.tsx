@@ -63,7 +63,7 @@ function liveWalkerEvents(): readonly HandoverRailEvent[] {
 }
 
 function renderRail(input?: {
-  readonly sourceOwner?: 'live-walker' | 'sinr-live-cell-truth' | 'modqn-producer-trace';
+  readonly sourceOwner?: 'live-walker' | 'sinr-live-cell-truth';
   readonly horizonKind?: 'live-walker-window' | 'producer-trace';
   readonly claimKind?: 'live-truth' | 'overlay-demo' | 'producer-proof';
   readonly durationSec?: number;
@@ -85,12 +85,12 @@ function renderRail(input?: {
           ? 'sinrLiveCells event index - cell truth'
           : sourceOwner === 'live-walker'
             ? 'MODQN overlay on live Walker - demo'
-            : 'Legacy producer trace'
+          : 'Live Walker timeline'
       }
       sourceOwner={sourceOwner}
       horizonKind={horizonKind}
       horizonLabel={
-        sourceOwner === 'modqn-producer-trace' ? 'Legacy producer trace 1s-10s' : 'Live Walker timeline 2 h'
+        'Live Walker timeline 2 h'
       }
       claimKind={claimKind}
       sourceStartSec={0}
@@ -185,19 +185,6 @@ function validateSinrCellTruthFocusMarkup(): void {
   console.log('PASS: SINR cell-truth rail can open the live-window slow-motion focus panel');
 }
 
-function validateNonLiveRailDoesNotFocus(): void {
-  const markup = renderRail({
-    sourceOwner: 'modqn-producer-trace',
-    horizonKind: 'producer-trace',
-    claimKind: 'producer-proof',
-    durationSec: 10,
-  });
-  assertContains(markup, 'data-focus-enabled="false"', 'producer rail root');
-  assertContains(markup, 'data-focus-open="false"', 'producer rail root');
-  assertNotContains(markup, 'data-testid="handover-event-slow-focus"', 'producer rail');
-  console.log('PASS: non-live Walker rail does not open live slow-motion focus');
-}
-
 function validateStaticBoundaries(): void {
   const railSource = readRepoFile('src/ui/HandoverEventRail.tsx');
   const sddSource = readRepoFile('docs/live-walker-handover-event-map-sdd.md');
@@ -246,5 +233,4 @@ validatePackageScript();
 validateFocusMath();
 validateLiveWalkerFocusMarkup();
 validateSinrCellTruthFocusMarkup();
-validateNonLiveRailDoesNotFocus();
 validateStaticBoundaries();

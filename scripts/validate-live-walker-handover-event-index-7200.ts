@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { APP_EPOCH_MS, LIVE_SIM_TIMELINE_DURATION_SEC } from '../src/app/appRuntimeConfig.ts';
 import { liveWalkerHandoverEventIndexToRailEvents } from '../src/app/liveWalkerHandoverRailAdapter.ts';
-import { MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID, loadProfile } from '../src/profiles/index.ts';
+import { loadProfile } from '../src/profiles/index.ts';
 import {
   buildLiveWalkerHandoverEventIndex,
   clampLiveWalkerEventSourceTimeSec,
@@ -234,7 +234,7 @@ assert.equal(
   'default event-index step should be 1s for deterministic first-slice validation',
 );
 
-const profile = loadProfile(MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID);
+const profile = loadProfile('hobs-2024-candidate-rich');
 const startedAtMs = Date.now();
 const index = buildLiveWalkerHandoverEventIndex({
   profile,
@@ -248,7 +248,7 @@ assert.equal(index.sourceOwner, 'live-walker', 'source owner must be live-walker
 assert.equal(index.horizonKind, 'live-walker-window', 'horizon kind must be live-walker-window');
 assert.equal(index.claimKind, 'overlay-demo', 'live preview claim must be overlay-demo, not producer-proof');
 assert.equal(index.durationSec, 7200, 'duration must be exactly 7200s');
-assert.equal(index.generation.profileId, MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID, 'profile id must match MODQN Walker profile');
+assert.equal(index.generation.profileId, 'hobs-2024-candidate-rich', 'profile id must match the selected Walker profile');
 assert.equal(index.generation.epochUtcMs, APP_EPOCH_MS, 'event index epoch must match app runtime epoch');
 assert.equal(index.generation.simStepSec, 1, 'event index generation step must be 1s');
 assert.equal(index.generation.runtimeFramePath, 'stepRuntimeFrame', 'event index must come from runtime frame path');

@@ -71,7 +71,6 @@ const viz = makeViz({
 
 const STEERED: SteeredMountPlanFlags = {
   showLiveBeamCones: true,
-  showCellOverlay: false,
   showSinrLiveCellBeams: false,
 };
 
@@ -95,16 +94,11 @@ check(
   'connectedSatBeamInvariant.resolveSteeredVisibleBeamSatIds delegates byte-identically (steered branch)',
 );
 
-// steered OFF: no live beam cones, OR the MODQN cell overlay owns the lane -> empty
+// steered OFF: no live beam cones -> empty
 check(
   resolveSinrLiveVisibleBeamSatIds({ viz, plan: { ...STEERED, showLiveBeamCones: false } }).size === 0,
   'steered off when showLiveBeamCones=false',
 );
-check(
-  resolveSinrLiveVisibleBeamSatIds({ viz, plan: { ...STEERED, showCellOverlay: true } }).size === 0,
-  'steered off when showCellOverlay=true (MODQN lane)',
-);
-
 // ---- (b) CONE branch + positive control ----
 const CONE: SteeredMountPlanFlags = { ...STEERED, showSinrLiveCellBeams: true };
 const coneSatIds = new Set(['X', 'Y', 'Z']);

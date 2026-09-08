@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { APP_EPOCH_MS } from '../src/app/appRuntimeConfig.ts';
 import { createObserverContext } from '../src/engine/orbit/index.ts';
-import { MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID, loadProfile } from '../src/profiles/index.ts';
+import { loadProfile } from '../src/profiles/index.ts';
 import {
   computeTrajectoryCache,
   createTrajectoryCache,
@@ -138,7 +138,7 @@ assert.equal(
 pass('shared memoized cache is read-only across the per-frame interpolation sweep');
 
 // ---- Second topology: determinism + memo hold on a different profile ----
-const altProfile = loadProfile(MODQN_4SAT_7BEAM_PAPER_FAITHFUL_PROFILE_ID);
+const altProfile = loadProfile('hobs-2024-candidate-rich');
 const altObserver = observerFor(altProfile);
 const altFresh = computeTrajectoryCache(altProfile, altObserver, APP_EPOCH_MS);
 const altMemoized = createTrajectoryCache(altProfile, altObserver, APP_EPOCH_MS);

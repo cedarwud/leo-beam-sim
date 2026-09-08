@@ -5,7 +5,7 @@ import { loadShowcaseArtifact } from '../src/showcase/loadShowcaseArtifact';
 import type { VisualShowcaseArtifact } from '../src/scene/visual-showcase-contract';
 
 export const PINNED_VISUAL_SHOWCASE_ARTIFACT_PATH =
-  '/home/u24/papers/modqn-paper-reproduction/artifacts/phase-01h-mp5-visual-showcase-cli-smoke-2026-05-22/visual-showcase-v1.json';
+  '/tmp/leo-beam-sim/visual-showcase-v1.json';
 
 export const PINNED_VISUAL_SHOWCASE_ARTIFACT_SHA256 =
   '0cfaf33e6b788e0722249dba12a7615275b0e3c6ee346662b2429b104ed383ef';
@@ -79,7 +79,7 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
     id: `sat-${satIndex}`,
     sourceId: `synthetic-sat-${satIndex}`,
     label: `S${satIndex + 1}`,
-    shellId: 'modqn-baseline-leo',
+    shellId: 'synthetic-validator-leo',
     roleHints: satIndex === 0 ? ['serving'] : ['context'],
   }));
 
@@ -112,10 +112,6 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
     const isSwitchFrame = frameIndex === 0;
     const servingBeamId = isSwitchFrame ? beamId(0, 3) : beamId(0, 1);
     const targetBeamId = isSwitchFrame ? beamId(0, 1) : null;
-    const actionIndex = selectedActionIndexForFrame(frameIndex);
-    const selectedActionScore = selectedScoreForFrame(frameIndex);
-    const runnerUpActionScore = runnerUpScoreForFrame(frameIndex);
-
     return {
       tSec,
       sourceRefs: {
@@ -239,20 +235,6 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
           loadBalance: 0.5,
         },
       },
-      modqnDecision: {
-        actionIndex,
-        actionLabel: isSwitchFrame ? 'switch to sat-0 beam-1' : 'stay on sat-0 beam-1',
-        previousSatelliteId: 'sat-0',
-        previousBeamId: isSwitchFrame ? beamId(0, 3) : beamId(0, 1),
-        selectedSatelliteId: 'sat-0',
-        selectedBeamId: beamId(0, 1),
-        validActionCount: 28,
-        selectedActionScore,
-        runnerUpActionScore,
-        scoreMargin: selectedActionScore - runnerUpActionScore,
-        decisionActionValidityMask: Array.from({ length: 28 }, () => true),
-        diagnosticsRef: `decision-${frameIndex}-ue-000`,
-      },
     };
   });
 
@@ -262,15 +244,15 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
     schemaVersion: 'visual-showcase-v1',
     artifactId: 'synthetic-validator-visual-showcase-v1',
     scenario: {
-      id: 'synthetic-validator-modqn-multi-ue',
-      profile: 'modqn-multi-ue',
-      title: 'Synthetic Validator MODQN Multi-UE Replay',
+      id: 'synthetic-validator-baseline-one-ue',
+      profile: 'baseline-one-ue',
+      title: 'Synthetic Validator Baseline Replay',
       description: 'Repo-local validator fallback used only when the pinned producer artifact is unavailable.',
       durationSec: 60,
       defaultStartSec: 0,
       defaultPlaybackSpeed: 1,
       coordinateFrame: 'eci-km-no-earth-rotation-proxy',
-      storyKind: 'modqn-handover-baseline',
+      storyKind: 'baseline-handover',
       truthMode: 'synthetic-validator-fixture',
     },
     provenance: {
@@ -286,21 +268,14 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
           commit: 'fixture:ntn-sim-core-validator',
         },
         {
-          repoId: 'modqn-paper-reproduction',
-          path: '/home/u24/papers/modqn-paper-reproduction',
-          commit: 'fixture:modqn-paper-reproduction-validator',
-        },
-        {
           repoId: 'leo-beam-sim',
           path: '/home/u24/papers/project/leo-beam-sim',
           commit: 'fixture:leo-beam-sim-validator',
         },
       ],
       ntnSimCoreCommit: 'fixture:ntn-sim-core-validator',
-      modqnPaperReproductionCommit: 'fixture:modqn-paper-reproduction-validator',
       sourceCommits: {
         'ntn-sim-core': 'fixture:ntn-sim-core-validator',
-        'modqn-paper-reproduction': 'fixture:modqn-paper-reproduction-validator',
         'leo-beam-sim': 'fixture:leo-beam-sim-validator',
       },
       sourceArtifactIds: ['synthetic-validator-visual-showcase-v1'],
@@ -310,7 +285,7 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
           repoId: 'leo-beam-sim',
           path: 'scripts/visualShowcaseValidatorFixture.ts',
           role: 'validator-only fallback visual-showcase-v1 artifact',
-          truthFields: ['sinr', 'handover', 'modqnAction', 'reward', 'geometry', 'provenance', 'series', 'display'],
+          truthFields: ['sinr', 'handover', 'reward', 'geometry', 'provenance', 'series', 'display'],
         },
       ],
       sourceSchemas: [
@@ -328,16 +303,14 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
         notes: ['Used only when the pinned producer artifact path is absent.'],
       },
       claimBoundary: {
-        storyKind: 'modqn-handover-baseline',
-        allowedClaims: ['baseline MODQN multi-UE replay artifact'],
+        storyKind: 'baseline-handover',
+        allowedClaims: ['baseline visual showcase replay artifact'],
         forbiddenClaims: [
           'Multi-Catfish not promoted',
           'Catfish-EE blocked',
-          'old EE-MODQN blocked',
           'learned association blocked',
           'HOBS optimizer behavior not claimed',
           'physical energy saving not claimed',
-          'full RA-EE-MODQN blocked',
           'do not claim live SINR recomputation',
         ],
         source: 'synthetic-validator-fixture',
@@ -356,7 +329,6 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
     truthOwnership: {
       sinr: buildTruthRecord('synthetic SNR samples owned by fixture', 'snr-no-interference'),
       handover: buildTruthRecord('handover kind is fixture-owned and must be passed through'),
-      modqnAction: buildTruthRecord('MODQN action fields are fixture-owned and must be passed through'),
       reward: buildTruthRecord('reward values are fixture-owned and must be passed through'),
       geometry: buildTruthRecord('geometry samples are fixture-owned display inputs'),
       provenance: buildTruthRecord('provenance is fixture-owned metadata'),
@@ -424,9 +396,9 @@ export function createSyntheticVisualShowcaseArtifact(): VisualShowcaseArtifact 
         values: timeline.map((frame) => frame.metrics.rewardScalar),
       },
       actionIndex: {
-        source: 'timeline.modqnDecision.actionIndex',
+        source: 'selectedActionIndex',
         timesSec: TIMES_SEC,
-        values: timeline.map((frame) => frame.modqnDecision.actionIndex),
+        values: TIMES_SEC.map((_, frameIndex) => selectedActionIndexForFrame(frameIndex)),
       },
       servingSatellite: {
         source: 'timeline.metrics.servingSatelliteId',

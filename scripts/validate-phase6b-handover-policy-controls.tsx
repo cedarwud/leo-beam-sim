@@ -276,50 +276,6 @@ function assertModeVisibility(): void {
   );
   assertNotContains(presentationText, 'Handover policy (effective)');
 
-  const modqnLiveStatusState = {
-    ...initialState,
-    panelComparison: {
-      ...initialState.panelComparison,
-      role: 'candidate' as const,
-      status: 'derived' as const,
-      satId: 'candidate-sat',
-      beamId: 2,
-      sinrDb: 12,
-    },
-    comparisonSatId: 'candidate-sat',
-    comparisonBeamId: 2,
-    comparisonSinrDb: 12,
-  };
-  const modqnLiveStatusText = decodeHtmlText(renderToStaticMarkup(
-    <InfoPanel
-      {...modqnLiveStatusState}
-      profile={profile}
-      handoverMode="decision-overlay-on-live-sinr"
-    />,
-  ));
-  // Re-pinned to current MODQN-overlay live-status copy (getLiveStatusModeCopy
-  // in src/ui/InfoPanel.tsx). The MODQN-overlay mode must still surface its serving
-  // caption + live Δ SINR + decision-timing gate in the BEAM DUEL, and must NOT show
-  // "replay evidence".
-  // W-restore 2026-06-20: the verbose HANDOVER MODE card (modeCopy.detail) + the
-  // DuelCard contextDetail (modeCopy.duelDetail) were removed in the older-tuning
-  // (49db65d) right-sidebar restore, so the long mode-explanation strings ('MODQN
-  // replay decision overlay' / 'serving beam displays the MODQN replay decision
-  // overlay') are no longer RENDERED — their two assertContains were dropped. The
-  // serving caption + labels below still render via the duel and stay pinned.
-  // NOTE (agent-M): the four needles below are still literal English copy. The
-  // MODQN-overlay live-status distinction ("the live SINR readout is a
-  // REFERENCE here, not the deciding authority") has no structural carrier on
-  // this surface — the duel card does not expose the runtime handover mode.
-  // Adding data-handover-mode={handoverMode} to the duel card in
-  // src/ui/info-panel/DuelCard.tsx (fed from InfoPanel) would let these become
-  // structural. Until then they stay, because dropping them would weaken the
-  // gate to nothing.
-  assertContains(modqnLiveStatusText, 'MODQN overlay serving link');
-  assertContains(modqnLiveStatusText, 'live SINR reference');
-  assertContains(modqnLiveStatusText, 'live Δ SINR');
-  assertContains(modqnLiveStatusText, 'decision timing threshold');
-  assertNotContains(modqnLiveStatusText, 'MODQN replay evidence');
 }
 
 function assertDraftApplySeparation(): void {
