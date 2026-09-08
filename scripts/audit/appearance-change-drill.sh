@@ -269,20 +269,16 @@ echo
 drill expect_pass "$MODIFIERS" "inter 換手的 target 也要有強調（原本完全沒有）" \
 "    target: {
       shade: null,
-      opacityFactor: 1,
       rationale: 'different satellites already differ in hue; the hue jump IS the inter cue'," \
 "    target: {
       shade: 'target',
-      opacityFactor: 1,
       rationale: 'owner asked for an explicit incoming-beam cue on inter as well as intra',"
 
 drill expect_pass "$MODIFIERS" "intra 換手的 source 不要再變暗了" \
 "    source: {
-      shade: 'source',
-      opacityFactor: 1," \
+      shade: 'source'," \
 "    source: {
-      shade: null,
-      opacityFactor: 1,"
+      shade: null,"
 
 drill expect_pass "$MODIFIERS" "換手兩側的透明度對比再拉開一點" \
 "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.62;" \
