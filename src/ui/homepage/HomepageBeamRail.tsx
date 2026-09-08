@@ -7,7 +7,6 @@ import type {
   HomepageBeamMetric,
   HomepageBeamMetricsProjection,
   HomepageHandoverPresentation,
-  HomepageHandoverStoryCellExample,
   HomepageHandoverStoryProjection,
   HomepagePlaybackTransportState,
   HomepageRailProjection,
@@ -18,19 +17,32 @@ import { resolveHomepageSatelliteDisplayName } from '../../homepage/controller/h
 import { formatHomepageEe } from '../../homepage/controller/homepageMetricFormatters';
 import { formatHomepageBeamCellLabel } from '../../homepage/controller/homepageBeamIdentity';
 import {
-  EE_THRESHOLD_MAX_KBIT_PER_JOULE,
   eeThresholdKbitPerJouleToBitsPerJoule,
 } from '../../engine/handover/eeThreshold';
 import {
   HOMEPAGE_EE_SCALE_MIN_BITS_PER_JOULE,
   HOMEPAGE_EE_SCALE_MAX_BITS_PER_JOULE,
-  RAIL_RADIUS_RULES,
-  RAIL_LAYOUT_GEOMETRY,
+  RAIL_CELL_EXAMPLE_LABELS,
+  RAIL_METRIC_FIELDS,
+  buildSatelliteGroups,
+  bestEeRowForGroup,
+  bestSameSatelliteAlternateMetric,
+  formatCount,
+  formatNumber,
+  finiteEe,
+  handoverRoleForRow,
+  phaseLabel,
+  pairJoinKey,
+  projectedRowsForGroup,
+  roleLabel,
   resolveRailEeRatio,
   resolveRailServingEeOpacity,
   formatRailEndpointLabel,
-  finiteEe,
+  unavailableReason,
   eeForRow,
+  type MetricField,
+  type RailProjectedBeamRow,
+  type RailSatelliteGroup,
 } from '../../appearance/candidateRailPresentation';
 
 /** Metadata copied from the accepted snapshot; it carries no decision logic. */
@@ -63,13 +75,6 @@ export interface HomepageBeamRailProps {
 }
 
 type RailLink = NonNullable<HomepageRailProjection['serving']>;
-type MetricField =
-  | 'powerW'
-  | 'throughputBps'
-  | 'sinrDb'
-  | 'energyEfficiencyBitsPerJoule';
-
-type RailPhase = HomepageRailProjection['phase'];
 
 const COLORS = Object.freeze({
   // Keep the homepage rail in the same dark instrument-panel family as the
@@ -92,46 +97,8 @@ const COLORS = Object.freeze({
 // fixed prevents the threshold and every beam from moving when a new frame or
 // a new handover target arrives.
 
-/**
- * The concrete cell set each reuse topology names.
- *
- * Keyed on `cellExample` rather than derived from `cellCount` on purpose: the
- * two travel together in the projection, so rendering both means a test can
- * tell a real projection from hard-coded copy.
- */
-const CELL_EXAMPLE_LABEL: Readonly<Record<HomepageHandoverStoryCellExample, string>> = Object.freeze({
-  'one-cell': 'C1',
-  'seven-cell': 'C1–C7',
-  'nineteen-cell': 'C1–C19',
-});
-
-const METRIC_FIELDS: ReadonlyArray<{
-  readonly field: MetricField;
-  readonly zh: string;
-  readonly en: string;
-  readonly unit: string;
-}> = [
-  { field: 'powerW', zh: 'Power', en: 'Power', unit: 'W' },
-  { field: 'throughputBps', zh: 'Throughput', en: 'Throughput', unit: 'bit/s' },
-  { field: 'sinrDb', zh: 'SINR', en: 'SINR', unit: 'dB' },
-  { field: 'energyEfficiencyBitsPerJoule', zh: 'EE', en: 'EE', unit: 'Kbit/J' },
-];
-
-const PHASE_LABELS: Readonly<Record<RailPhase, { readonly zh: string; readonly en: string }>> = {
-  'initial-attach': { zh: '初始連線', en: 'Initial attach' },
-  monitoring: { zh: '監測中', en: 'Monitoring' },
-  evaluating: { zh: '評估中', en: 'Evaluating' },
-  qualifying: { zh: '資格確認', en: 'Qualifying' },
-  'selection-hold': { zh: '選擇保持', en: 'Selection hold' },
-  switching: { zh: '換手中', en: 'Handover' },
-  guard: { zh: '保護期', en: 'Guard' },
-};
-
-interface SatelliteGroup {
-  readonly satelliteId: string;
-  readonly metrics: HomepageBeamMetric[];
-  readonly links: RailLink[];
-}
+type SatelliteGroup = RailSatelliteGroup<HomepageBeamMetric, RailLink>;
+type ProjectedBeamRow = RailProjectedBeamRow<HomepageBeamMetric, RailLink>;
 
 /**
  * Beam metrics and accepted presentation links deliberately carry different
@@ -140,74 +107,6 @@ interface SatelliteGroup {
  * identity so the rail cannot silently replace finite metric values with an
  * unavailable placeholder.
  */
-function pairJoinKey(value: Pick<RailLink, 'key'> | Pick<HomepageBeamMetric, 'key'>): string {
-  return candidateLinkKeyString(value.key);
-}
-
-function trimNumber(value: number): string {
-  if (Object.is(value, -0)) return '0';
-  return value.toLocaleString('en-US', {
-    useGrouping: false,
-    maximumFractionDigits: 2,
-  });
-}
-
-function formatCompactValue(value: number): { readonly value: string; readonly prefix: string } {
-  const magnitude = Math.abs(value);
-  if (magnitude >= 1_000_000_000) return { value: trimNumber(value / 1_000_000_000), prefix: 'G' };
-  if (magnitude >= 1_000_000) return { value: trimNumber(value / 1_000_000), prefix: 'M' };
-  if (magnitude >= 1_000) return { value: trimNumber(value / 1_000), prefix: 'k' };
-  return { value: trimNumber(value), prefix: '' };
-}
-
-function formatNumber(value: number, unit: string): string {
-  const compact = formatCompactValue(value);
-  return `${compact.value} ${compact.prefix}${unit}`.trim();
-}
-
-function formatCount(value: number): string {
-  const compact = formatCompactValue(value);
-  return `${compact.value}${compact.prefix.length > 0 ? ` ${compact.prefix}` : ''}`;
-}
-
-function phaseLabel(phase: RailPhase, isEnglish: boolean): string {
-  const labels = PHASE_LABELS[phase];
-  return isEnglish ? labels.en : labels.zh;
-}
-
-function roleLabel(role: string, isEnglish: boolean): string {
-  switch (role) {
-    case 'serving':
-    case 'committed-serving':
-      return isEnglish ? 'Serving' : '服務';
-    case 'candidate':
-    case 'selected-target':
-    case 'provisional-leader':
-    case 'qualified':
-    case 'hard-eligible':
-      return isEnglish ? 'Option' : '候選';
-    case 'observed':
-      return isEnglish ? 'Observed' : '觀測';
-    default:
-      return role;
-  }
-}
-
-function unavailableReason(metric: HomepageBeamMetric | null, isEnglish: boolean): string {
-  if (metric?.reason?.trim()) return metric.reason.trim();
-  if (metric?.availability === 'idle') {
-    return isEnglish
-      ? 'This configured beam has no accepted measurement in the frame.'
-      : '此設定波束在目前影格沒有可接受的量測。';
-  }
-  if (metric?.availability === 'unavailable') {
-    return isEnglish ? 'The accepted frame did not provide this metric.' : '目前影格沒有提供此數值。';
-  }
-  return isEnglish
-    ? 'No value was supplied by the accepted beam-metrics projection.'
-    : '目前影格沒有提供此波束數值。';
-}
-
 function UnavailableValue({ reason }: { readonly reason: string }) {
   return (
     <span
@@ -363,7 +262,7 @@ function MetricGrid({
       hidden={!expanded}
       style={{ ...styles.metricGrid, display: expanded ? 'grid' : 'none' }}
     >
-      {METRIC_FIELDS.filter(({ field }) => field !== 'energyEfficiencyBitsPerJoule').map(({ field, zh, en, unit }) => (
+      {RAIL_METRIC_FIELDS.filter(({ field }) => field !== 'energyEfficiencyBitsPerJoule').map(({ field, zh, en, unit }) => (
         <MetricCell
           key={field}
           metric={metric}
@@ -412,7 +311,7 @@ function UnavailableMetricGrid({
       hidden
       style={{ ...styles.metricGrid, display: 'none' }}
     >
-      {METRIC_FIELDS.map(({ field, zh, en }) => (
+      {RAIL_METRIC_FIELDS.map(({ field, zh, en }) => (
         <div
           key={field}
           data-testid={`homepage-beam-metric-${field}`}
@@ -611,91 +510,6 @@ function BeamRow({
   );
 }
 
-function buildSatelliteGroups(
-  metrics: readonly HomepageBeamMetric[],
-  links: readonly RailLink[],
-  servingSatelliteId: string | null,
-): SatelliteGroup[] {
-  const groups = new Map<string, SatelliteGroup>();
-
-  const groupFor = (satelliteId: string): SatelliteGroup => {
-    const existing = groups.get(satelliteId);
-    if (existing !== undefined) return existing;
-    const created: SatelliteGroup = { satelliteId, metrics: [], links: [] };
-    groups.set(satelliteId, created);
-    return created;
-  };
-
-  for (const metric of metrics) {
-    if (metric.satelliteId !== servingSatelliteId) groupFor(metric.satelliteId).metrics.push(metric);
-  }
-
-  for (const link of links) {
-    const isServingLink = link.isServing
-      || link.visual.isActiveDataLink
-      || link.satelliteId === servingSatelliteId;
-    if (!isServingLink && link.isCandidate) groupFor(link.satelliteId).links.push(link);
-  }
-
-  return [...groups.values()];
-}
-
-interface ProjectedBeamRow {
-  readonly metric: HomepageBeamMetric | null;
-  readonly link: RailLink | null;
-}
-
-function handoverRoleForRow(
-  metric: HomepageBeamMetric | null,
-  link: RailLink | null,
-  presentation: HomepageHandoverPresentation | null | undefined,
-  story: HomepageHandoverStoryProjection | null | undefined,
-): 'source' | 'target' | undefined {
-  const satelliteId = metric?.satelliteId ?? link?.satelliteId ?? '';
-  const beamId = metric?.beamId ?? link?.beamId ?? null;
-  if (presentation !== null && presentation !== undefined) {
-    if (satelliteId === presentation.from.satelliteId && beamId === presentation.from.beamId) return 'source';
-    if (satelliteId === presentation.to.satelliteId && beamId === presentation.to.beamId) return 'target';
-  }
-  if (story !== null && story !== undefined) {
-    const rowKey = candidateLinkKeyString({ satelliteId, beamId: beamId ?? 0 });
-    if (rowKey === candidateLinkKeyString(story.source)) return 'source';
-    const targetIsConfirmed = story.selectionStatus === 'selected'
-      || story.selectionStatus === 'committed'
-      || story.phase === 'switching'
-      || story.phase === 'guard';
-    if (targetIsConfirmed && rowKey === candidateLinkKeyString(story.target)) return 'target';
-  }
-  return undefined;
-}
-
-function projectedRowsForGroup(group: SatelliteGroup): ProjectedBeamRow[] {
-  const metricJoinKeys = new Set(group.metrics.map(metric => metric.joinKey));
-  const metricPairKeys = new Set(group.metrics.map(pairJoinKey));
-  const linkByPairKey = new Map(group.links.map(link => [pairJoinKey(link), link]));
-  return [
-    ...group.metrics.map(metric => ({
-      metric,
-      link: linkByPairKey.get(pairJoinKey(metric)) ?? null,
-    })),
-    ...group.links
-      .filter(link => !metricPairKeys.has(pairJoinKey(link)) && !metricJoinKeys.has(link.joinKey))
-      .map(link => ({ metric: null, link })),
-  ];
-}
-
-function bestEeRowForGroup(group: SatelliteGroup): ProjectedBeamRow | null {
-  let best: ProjectedBeamRow | null = null;
-  let bestEe: number | null = null;
-  for (const row of projectedRowsForGroup(group)) {
-    const ee = eeForRow(row.metric, row.link);
-    if (ee === null || (bestEe !== null && ee <= bestEe)) continue;
-    best = row;
-    bestEe = ee;
-  }
-  return best;
-}
-
 function GroupEeSummary({
   row,
   eeScaleMin,
@@ -735,34 +549,6 @@ type HandoverRailEndpoint = {
   readonly beamId: number;
   readonly sinrDb: number | null;
 };
-
-function bestSameSatelliteAlternateMetric(
-  metrics: readonly HomepageBeamMetric[],
-  source: HandoverRailEndpoint,
-): HomepageBeamMetric | null {
-  return metrics
-    .filter(metric => metric.satelliteId === source.satelliteId && metric.beamId !== source.beamId)
-    .filter(metric => finiteEe(metric.energyEfficiencyBitsPerJoule) !== null)
-    .sort((left, right) => (
-      (finiteEe(right.energyEfficiencyBitsPerJoule) ?? -1)
-      - (finiteEe(left.energyEfficiencyBitsPerJoule) ?? -1)
-    ))[0] ?? null;
-}
-
-function handoverStatusLabel(
-  story: HomepageHandoverStoryProjection | null,
-  presentation: HomepageHandoverPresentation | null,
-  isEnglish: boolean,
-): string {
-  if (presentation !== null) {
-    return isEnglish ? `Live · ${presentation.phase}` : `進行中 · ${presentation.phase}`;
-  }
-  if (story === null) return isEnglish ? 'Waiting for EE trigger' : '等待 EE 觸發';
-  if (story.selectionStatus === 'committed') return isEnglish ? 'Committed' : '已完成';
-  if (story.selectionStatus === 'selected') return isEnglish ? 'Selected' : '已選定';
-  if (story.selectionStatus === 'ttt-stable') return isEnglish ? 'TTT stable' : 'TTT 穩定';
-  return isEnglish ? 'Qualified' : '具備資格';
-}
 
 /**
  * Compact homepage handover readout. It joins accepted data only; it does not
@@ -1080,8 +866,8 @@ function IntraHandoverExplainer({
         <div data-testid="homepage-handover-story-topology" style={styles.handoverReadoutMeta}>
           <span data-testid="homepage-handover-cell-count">
             {isEnglish
-              ? `${story.cellCount} ${story.cellCount === 1 ? 'cell' : 'cells'} reused per satellite (${CELL_EXAMPLE_LABEL[story.cellExample]})`
-              : `每顆衛星重用 ${story.cellCount} 個 Cell（${CELL_EXAMPLE_LABEL[story.cellExample]}）`}
+              ? `${story.cellCount} ${story.cellCount === 1 ? 'cell' : 'cells'} reused per satellite (${RAIL_CELL_EXAMPLE_LABELS[story.cellExample]})`
+              : `每顆衛星重用 ${story.cellCount} 個 Cell（${RAIL_CELL_EXAMPLE_LABELS[story.cellExample]}）`}
           </span>
           <span data-testid="homepage-handover-winner-basis">
             {story.winnerBasis === 'instantaneous-ee-max'
