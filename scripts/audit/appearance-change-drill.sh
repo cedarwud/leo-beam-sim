@@ -36,7 +36,7 @@ GEOMETRY="src/appearance/coneGeometryContract.ts"
 TIMING="src/appearance/handoverTimingEnvelope.ts"
 MARKERS="src/scene/renderedLiveSatelliteMarkers.ts"
 RAIL="src/homepage/controller/railProjection.ts"
-FINAL_COLOUR="src/viz/MultiCandidateBeamScene.tsx"
+FINAL_COLOUR="src/appearance/resolveBeamAppearance.ts"
 SHADE_MAPPING="src/viz/HandoverLinks.tsx"
 
 VISIBILITY_TEST="src/appearance/beamVisibilityCharacterization.test.ts"
@@ -44,6 +44,8 @@ GEOMETRY_TEST="src/appearance/coneGeometryCharacterization.test.ts"
 TIMING_TEST="src/appearance/handoverTimingEnvelopeCharacterization.test.ts"
 SINK_TEST="src/appearance/sinkAppearanceCharacterization.test.ts"
 RAIL_TEST="src/appearance/railPresentationCharacterization.test.ts"
+FINAL_COLOUR_TEST="src/appearance/beamColourPrecedenceCharacterization.test.ts"
+SHADE_MAPPING_TEST="src/appearance/satelliteIdentityChannelCharacterization.test.ts"
 
 total_drills=0
 converged_count=0
@@ -354,21 +356,32 @@ drill expect_pass "$RAIL" "候選軌有換手故事時要保留那一組候選�
 "  const shouldRetainCandidateRoster = handoverStory === null;" \
 "$RAIL_TEST"
 
-drill expect_fail "$FINAL_COLOUR" "改一支波束最終顏色的 precedence 順序" \
-"  const coneColor = homepageColor?.color
-    ?? source.identity.beam?.threeColor
-    ?? source.identity.satellite.threeColor;" \
-"  const coneColor = source.identity.beam?.threeColor
-    ?? homepageColor?.color
-    ?? source.identity.satellite.threeColor;"
+# Anchor repaired 2026-09-09, and the TARGET moved with it. The old anchor was an
+# inline precedence ternary inside MultiCandidateBeamScene.tsx; that lane has since
+# been routed through the ladder's single owner, so the decision now lives in
+# resolveBeamAppearance.ts. Two workers landed at once here — one repointed this
+# drill at the old anchor while the other removed it — and the `invalid` bucket
+# caught the collision instead of reporting a converged decision or a regression.
+# That bucket exists for exactly this, and this is the first time it has fired
+# on a real conflict rather than on a drill I broke myself.
+drill expect_pass "$FINAL_COLOUR" "改一支波束最終顏色的 precedence 順序" \
+"  if (homepage !== undefined && homepage.length > 0) return homepage;
 
-# Anchor repaired 2026-09-08. The old anchor was an inline ternary arm; the
-# decision has since been given a named owner, `markerColorForBeam`. The drill
-# had been silently unappliable for some time and was being MIS-REPORTED as an
-# unexpected pass — see the invalid_count bucket above, added for exactly this.
-drill expect_fail "$SHADE_MAPPING" "改 beam id 怎麼對應到深淺階，handover link 也要跟著換" \
+  const accepted = sources.acceptedColorFor?.(satId, beamId);
+  if (accepted !== undefined && accepted.length > 0) return accepted;" \
+"  const accepted = sources.acceptedColorFor?.(satId, beamId);
+  if (accepted !== undefined && accepted.length > 0) return accepted;
+
+  if (homepage !== undefined && homepage.length > 0) return homepage;" \
+"$FINAL_COLOUR_TEST"
+
+# The link's named beam-id rung is now characterized through its exported pure
+# seam. The test photograph includes literal rung outputs, so a one-file mapping
+# perturbation is visible rather than being mistaken for a decorative edit.
+drill expect_pass "$SHADE_MAPPING" "改 beam id 怎麼對應到深淺階，handover link 也要跟著換" \
 "  return colorForServingBeam(satId, beamId).markerColor;" \
-"  return colorForServingBeam(satId, beamId + 1).markerColor;"
+"  return colorForServingBeam(satId, beamId + 1).markerColor;" \
+"$SHADE_MAPPING_TEST"
 
 echo "────────────────────────────────────────────────────────────"
 echo "APPEARANCE CONVERGENCE FRONTIER SUMMARY"

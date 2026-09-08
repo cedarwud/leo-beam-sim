@@ -75,7 +75,7 @@ const presentation = {
   solidDataLinkCount: 1,
 } as unknown as MultiCandidateScenePresentation;
 
-function resolve(homepageVisualIdentity: boolean): string {
+function resolveInstruction(homepageVisualIdentity: boolean) {
   const input: MultiCandidateBeamSceneResolverInput = {
     presentation,
     placementByCellId: new Map([[0, { cellId: 0, worldX: 0, worldZ: 0, radiusWorld: 10 }]]),
@@ -84,7 +84,11 @@ function resolve(homepageVisualIdentity: boolean): string {
     reducedMotion: true,
     homepageVisualIdentity,
   };
-  return resolveMultiCandidateBeamScene(input).instructions[0]!.beamColor;
+  return resolveMultiCandidateBeamScene(input).instructions[0]!;
+}
+
+function resolve(homepageVisualIdentity: boolean): string {
+  return resolveInstruction(homepageVisualIdentity).beamColor;
 }
 
 test('homepage colour outranks beam identity at the MultiCandidate scene seam', () => {
@@ -102,5 +106,27 @@ test('homepage colour outranks beam identity at the MultiCandidate scene seam', 
     resolve(true),
     resolve(false),
     'homepage colour and beam identity must remain distinguishable rungs',
+  );
+});
+
+test('the winning precedence colour reaches every final paint lane', () => {
+  const instruction = resolveInstruction(true);
+  assert.deepEqual(
+    {
+      beam: instruction.beamColor,
+      cone: instruction.cone.color,
+      footprint: instruction.footprint.color,
+      link: instruction.link.color,
+      endpoint: instruction.endpoint.color,
+      label: instruction.label?.color,
+    },
+    {
+      beam: '#5d80e9',
+      cone: '#5d80e9',
+      footprint: '#5d80e9',
+      link: '#5d80e9',
+      endpoint: '#5d80e9',
+      label: '#5d80e9',
+    },
   );
 });

@@ -3,6 +3,8 @@ import { Billboard, Html, Line } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 
+import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
+import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteAppearance';
 import type {
   CandidatePresentationConeStyle,
   CandidatePresentationDataLinkStyle,
@@ -693,6 +695,81 @@ function buildFootprintRings(
   return Object.freeze([outer, inner]);
 }
 
+function acceptedMultiCandidateBeamColor(
+  source: MultiCandidateSceneLinkInstruction,
+): string {
+  if (source.identity.beam !== null) return source.identity.beam.threeColor;
+  return source.identity.satellite.threeColor;
+}
+
+function homepageMultiCandidateBeamColor(
+  source: MultiCandidateSceneLinkInstruction,
+  homepageBeamEeByKey: ReadonlyMap<string, number | null> | undefined,
+  homepageIdentityPaletteIndexBySatelliteId: ReadonlyMap<string, number | null> | undefined,
+): string {
+  return homepageSatelliteColorForBeam(source.satelliteId, source.beamId, {
+    identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(source.satelliteId) ?? null,
+    isServing: source.isServing,
+    eeNormalized: homepageBeamEeByKey?.get(
+      homepageBeamEeKey(source.satelliteId, source.beamId),
+    ),
+  }).color;
+}
+
+function homepageMultiCandidateSatelliteColor(
+  source: MultiCandidateSceneLinkInstruction,
+  homepageIdentityPaletteIndexBySatelliteId: ReadonlyMap<string, number | null> | undefined,
+): string {
+  return homepageSatelliteColorForBeam(source.satelliteId, source.beamId, {
+    identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(source.satelliteId) ?? null,
+    isServing: source.isServing,
+  }).baseColor;
+}
+
+/**
+ * The scene supplies accepted-snapshot and homepage adapters; the appearance
+ * ladder owns which identity source wins. Keeping this adapter here preserves
+ * the scene's existing homepage serving flag and exact EE key.
+ */
+function resolveMultiCandidateBeamIdentityColor(
+  source: MultiCandidateSceneLinkInstruction,
+  homepageVisualIdentity: boolean,
+  homepageBeamEeByKey: ReadonlyMap<string, number | null> | undefined,
+  homepageIdentityPaletteIndexBySatelliteId: ReadonlyMap<string, number | null> | undefined,
+): string {
+  return resolveBaseIdentityColor(
+    source.satelliteId,
+    source.beamId,
+    {
+      homepageColorFor: homepageVisualIdentity
+        ? () => homepageMultiCandidateBeamColor(
+          source,
+          homepageBeamEeByKey,
+          homepageIdentityPaletteIndexBySatelliteId,
+        )
+        : undefined,
+      acceptedColorFor: () => acceptedMultiCandidateBeamColor(source),
+    },
+    { isServingOrCandidate: source.isServing },
+  );
+}
+
+function resolveMultiCandidateSatelliteIdentityColor(
+  source: MultiCandidateSceneLinkInstruction,
+  homepageVisualIdentity: boolean,
+  homepageIdentityPaletteIndexBySatelliteId: ReadonlyMap<string, number | null> | undefined,
+): string {
+  return resolveSatelliteIdentityColor(source.satelliteId, {
+    homepageColorFor: homepageVisualIdentity
+      ? () => homepageMultiCandidateSatelliteColor(
+        source,
+        homepageIdentityPaletteIndexBySatelliteId,
+      )
+      : undefined,
+    acceptedColorFor: () => source.identity.satellite.threeColor,
+  });
+}
+
 function mapPresentationInstruction(
   source: MultiCandidateSceneLinkInstruction,
   placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>,
@@ -757,21 +834,17 @@ function mapPresentationInstruction(
   );
   const footprintDashed = source.footprint.style !== 'solid';
   const coneVisible = source.cone.visible && source.cone.volume === 1;
-  const homepageColor = homepageVisualIdentity
-    ? homepageSatelliteColorForBeam(source.satelliteId, source.beamId, {
-      identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(source.satelliteId) ?? null,
-      // Candidate colours stay in their satellite family, but do not become
-      // the active serving shade before the accepted handover commits.
-      isServing: source.isServing,
-      eeNormalized: homepageBeamEeByKey?.get(
-        homepageBeamEeKey(source.satelliteId, source.beamId),
-      ),
-    })
-    : null;
-  const coneColor = homepageColor?.color
-    ?? source.identity.beam?.threeColor
-    ?? source.identity.satellite.threeColor;
-  const satelliteColor = homepageColor?.baseColor ?? source.identity.satellite.threeColor;
+  const coneColor = resolveMultiCandidateBeamIdentityColor(
+    source,
+    homepageVisualIdentity,
+    homepageBeamEeByKey,
+    homepageIdentityPaletteIndexBySatelliteId,
+  );
+  const satelliteColor = resolveMultiCandidateSatelliteIdentityColor(
+    source,
+    homepageVisualIdentity,
+    homepageIdentityPaletteIndexBySatelliteId,
+  );
   const footprintColor = source.role === 'observed' && !source.isPinned
     ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
     : coneColor;
