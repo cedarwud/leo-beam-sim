@@ -72,8 +72,10 @@ import {
   HOMEPAGE_PRIMARY_UE_MARKER_EMISSIVE,
 } from '../homepage/controller/homepageAccentPalette';
 import {
-  filterHomepageBeamItems as filterHomepageBeamItemsBySatellite,
-} from '../homepage/controller/homepageBeamVisibility';
+  restrictHomepageBeamItems,
+  resolveServingConeBudgetFan,
+  resolveServingConeFocusSatIds,
+} from '../appearance/beamVisibilityContract';
 import { resolveHomepageSceneGeometryPolicy } from '../homepage/controller/homepageSceneGeometryPolicy';
 import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
 // S-cells-4d: the legacy 20-hex EarthFixedCells green-disc ground paint is retired
@@ -2666,15 +2668,13 @@ function SceneRenderContent({
     ],
   );
   const { homepageBeamVisibility } = useHomepageBeamVisibility({ homepageSceneBeamVisibilityInput });
-  const restrictHomepageBeamItems = useCallback(
+  const restrictSceneBeamItems = useCallback(
     (items: readonly SinrLiveCellBeamConeRenderItem[]): readonly SinrLiveCellBeamConeRenderItem[] => (
-      homepageVisualIdentity
-        ? filterHomepageBeamItemsBySatellite(
-          items,
-          homepageBeamVisibility,
-          homepageBeamFanSatelliteIds,
-        )
-        : items
+      restrictHomepageBeamItems(items, {
+        homepageVisualIdentity,
+        allowedBeamIdentities: homepageBeamVisibility,
+        allowAllBeamSatelliteIds: homepageBeamFanSatelliteIds,
+      })
     ),
     [homepageBeamFanSatelliteIds, homepageBeamVisibility, homepageVisualIdentity],
   );
@@ -2843,13 +2843,18 @@ function SceneRenderContent({
       cellFrame: sim.sinrLiveCells,
       placementByCellId: sinrLiveCellPlacementById,
       satelliteWorldById: viz.coneApexWorldById,
-      focusSatIds: homepageVisualIdentity
-        ? sinrLiveTargetSatIds
-        : beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
+      focusSatIds: resolveServingConeFocusSatIds(
+        homepageVisualIdentity,
+        beamDisplaySpec.showNonServingCones,
+        sinrLiveTargetSatIds,
+      ),
       frequencyReuse: profile.beams.frequencyReuse,
       servingBeamBudget: sinrLiveBeamDisplayFrame.serving.configuredBeamCount,
       allowHeroFallback: homepageVisualIdentity,
-      budgetServingFan: homepageVisualIdentity || !beamDisplaySpec.showNonServingCones,
+      budgetServingFan: resolveServingConeBudgetFan(
+        homepageVisualIdentity,
+        beamDisplaySpec.showNonServingCones,
+      ),
       displayHeroRecord,
     },
     presentation: {
@@ -2865,7 +2870,7 @@ function SceneRenderContent({
       homepageBeamVisibility,
       homepageBeamFanSatelliteIds,
       resolveSceneAcceptedBeamColor,
-      restrictHomepageBeamItems,
+      restrictHomepageBeamItems: restrictSceneBeamItems,
     },
   });
   // Keep the streaming particles on the same geometry authority as the visible
@@ -2879,12 +2884,12 @@ function SceneRenderContent({
     multiCandidateCentralOverlayActive,
     displayHeroRecord,
     coneItems: sinrLiveCellBeamConeItems,
-    restrictItems: restrictHomepageBeamItems,
+    restrictItems: restrictSceneBeamItems,
     particlesPerBeam: SPINE_PARTICLES_PER_BEAM,
   }), [
     displayHeroRecord,
     multiCandidateCentralOverlayActive,
-    restrictHomepageBeamItems,
+    restrictSceneBeamItems,
     showSinrLiveCellBeams,
     sinrLiveCellBeamConeItems,
   ]);
@@ -2922,7 +2927,7 @@ function SceneRenderContent({
       triggeredIntraPeakOpacity: beamDisplaySpec.triggeredIntraPeakOpacity,
       targetRole: handoverPresentation.targetRole,
       acceptedHandoverPresentation,
-      restrictHomepageBeamItems,
+      restrictHomepageBeamItems: restrictSceneBeamItems,
     },
   });
 
@@ -2930,7 +2935,7 @@ function SceneRenderContent({
   // fan keeps the rest of the original serving satellite's beams visible until the
   // source side releases in legacy lanes. The homepage keeps the pair atomic: no
   // extra source fan is allowed to appear behind it.
-  const { sinrLiveCinemaInterServingFanConeItems } = useSinrLiveCinemaInterServingFanConeItems({ acceptedHandoverPresentation, beamDisplaySpec, cinemaInterDisplayCellFrame, handoverDisplayIsolation, homepageVisualIdentity, presentationHandoverEnvelope, presentationSatelliteWorldById, presentedHandoverPairCandidate, profile, restrictHomepageBeamItems, runtime, showSinrLiveCellBeams, sinrLiveCellPlacementById });
+  const { sinrLiveCinemaInterServingFanConeItems } = useSinrLiveCinemaInterServingFanConeItems({ acceptedHandoverPresentation, beamDisplaySpec, cinemaInterDisplayCellFrame, handoverDisplayIsolation, homepageVisualIdentity, presentationHandoverEnvelope, presentationSatelliteWorldById, presentedHandoverPairCandidate, profile, restrictHomepageBeamItems: restrictSceneBeamItems, runtime, showSinrLiveCellBeams, sinrLiveCellPlacementById });
   // W5 Beam-Info callouts: per-cell serving SINR (dB) keyed by cellId, for the
   // <Html> chips. Reads the cell model's own serving SINR — display-only.
   const sinrLiveCellServingSinrByCellId = useMemo(() => {
@@ -2954,7 +2959,7 @@ function SceneRenderContent({
   // opens every non-serving co-channel beam in the field. Display-only (Rule#6); the
   // showNonServingCones switch + the target-sat set are in the dep-array (the
   // invisible-dep-array bug fix), so toggling either re-renders.
-  const { sinrLiveCellNonServingConeItems } = useSinrLiveCellNonServingConeItems({ acceptedHandoverPresentation, beamDisplaySpec, handoverDisplayIsolation, homepageVisualIdentity, restrictHomepageBeamItems, showSinrLiveCellBeams, sim, sinrLiveCellPlacementById, sinrLiveTargetSatIds, viz });
+  const { sinrLiveCellNonServingConeItems } = useSinrLiveCellNonServingConeItems({ acceptedHandoverPresentation, beamDisplaySpec, handoverDisplayIsolation, homepageVisualIdentity, restrictHomepageBeamItems: restrictSceneBeamItems, showSinrLiveCellBeams, sim, sinrLiveCellPlacementById, sinrLiveTargetSatIds, viz });
   // G2c ambient live-handover pulse: the real per-frame handovers the cell model
   // classified (`sim.sinrLiveCells.recentHandoverEvents`) → bright, age-faded cones
   // on each event's old/new cell. ALWAYS-ON on sinr-live (not director-gated) so the
@@ -2988,7 +2993,7 @@ function SceneRenderContent({
       },
       output: {
         resolveSceneAcceptedBeamColor,
-        restrictHomepageBeamItems,
+        restrictHomepageBeamItems: restrictSceneBeamItems,
       },
     },
     triggeredIntra: {
@@ -3017,7 +3022,7 @@ function SceneRenderContent({
       },
       output: {
         resolveSceneAcceptedBeamColor,
-        restrictHomepageBeamItems,
+        restrictHomepageBeamItems: restrictSceneBeamItems,
       },
     },
     cinemaPair: {
@@ -3046,7 +3051,7 @@ function SceneRenderContent({
       },
       output: {
         resolveSceneAcceptedBeamColor,
-        restrictHomepageBeamItems,
+        restrictHomepageBeamItems: restrictSceneBeamItems,
       },
     },
     authorityPair: {
@@ -3075,7 +3080,7 @@ function SceneRenderContent({
       },
       output: {
         resolveSceneAcceptedBeamColor,
-        restrictHomepageBeamItems,
+        restrictHomepageBeamItems: restrictSceneBeamItems,
       },
     },
   });

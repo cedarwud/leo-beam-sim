@@ -246,7 +246,7 @@ function markerColor(role: VisualLabGlobalSatellite['role'], palette: GlobalScen
   return role === 'serving' ? palette.serving : palette.candidate;
 }
 
-function SatelliteMarker({ satellite, palette, copy }: { readonly satellite: VisualLabGlobalSatellite; readonly palette: GlobalScenePalette; readonly copy: (typeof VISUAL_LAB_GLOBAL_SCENE_COPY)[VisualLabGlobalSceneLocale] }): ReactElement {
+function VisualLabGlobalSatelliteMarker({ satellite, palette, copy }: { readonly satellite: VisualLabGlobalSatellite; readonly palette: GlobalScenePalette; readonly copy: (typeof VISUAL_LAB_GLOBAL_SCENE_COPY)[VisualLabGlobalSceneLocale] }): ReactElement {
   const color = markerColor(satellite.role, palette);
   return <group position={point(satellite.positionWorld)} name={`${satellite.role}-satellite-${satellite.satelliteId}`}>
     <mesh>
@@ -363,8 +363,8 @@ function GlobalAcceptedContent({ frame, palette, copy }: { readonly frame: Visua
     <Line points={trajectoryPoints(frame)} color={palette.serving} lineWidth={1.45} transparent opacity={.92} />
     {frame.candidateTrajectory.length > 0 ? <Line points={trajectoryPoints(frame, true)} color={palette.candidate} lineWidth={1.05} transparent opacity={.78} /> : null}
     <ObserverMarker frame={frame} palette={palette} copy={copy} />
-    <SatelliteMarker satellite={frame.selected} palette={palette} copy={copy} />
-    {frame.candidate === null ? null : <SatelliteMarker satellite={frame.candidate} palette={palette} copy={copy} />}
+    <VisualLabGlobalSatelliteMarker satellite={frame.selected} palette={palette} copy={copy} />
+    {frame.candidate === null ? null : <VisualLabGlobalSatelliteMarker satellite={frame.candidate} palette={palette} copy={copy} />}
     <GlobalProvenance frame={frame} palette={palette} copy={copy} />
   </>;
 }

@@ -130,13 +130,14 @@ const NTPU_SUBSTRATE_WIDTH_WORLD = 9.1;
 const NTPU_SUBSTRATE_DEPTH_WORLD = NTPU_SUBSTRATE_WIDTH_WORLD
   * NTPU_MODEL_NATIVE_DEPTH / NTPU_MODEL_NATIVE_WIDTH;
 const SATELLITE_STAGE_SCALE = .38;
-// Shared presentation ratios.  The canonical beamwidth still controls the
-// relative scale; these values only keep the default footprint broad enough
-// to read against one full hexagonal cell at the NTPU scale.
-const SERVICE_PRIMARY_BEAM_RADIUS_RATIO = .82;
-const SERVICE_CONTEXT_BEAM_RADIUS_RATIO = .58;
-const CANDIDATE_PRIMARY_BEAM_RADIUS_RATIO = .78;
-const CANDIDATE_CONTEXT_BEAM_RADIUS_RATIO = .55;
+import {
+  resolveVisualLabBeamRadius,
+  VISUAL_LAB_PULSE_RADIUS_SCALE,
+  VISUAL_LAB_SERVICE_PRIMARY_BEAM_RADIUS_RATIO as SERVICE_PRIMARY_BEAM_RADIUS_RATIO,
+  VISUAL_LAB_SERVICE_CONTEXT_BEAM_RADIUS_RATIO as SERVICE_CONTEXT_BEAM_RADIUS_RATIO,
+  VISUAL_LAB_CANDIDATE_PRIMARY_BEAM_RADIUS_RATIO as CANDIDATE_PRIMARY_BEAM_RADIUS_RATIO,
+  VISUAL_LAB_CANDIDATE_CONTEXT_BEAM_RADIUS_RATIO as CANDIDATE_CONTEXT_BEAM_RADIUS_RATIO,
+} from '../../appearance/coneGeometryContract';
 type SatelliteVariant = VisualLabConstellation;
 
 const clamp = (n: number, limit = 3.9) => THREE.MathUtils.clamp(Number.isFinite(n) ? n : 0, -limit, limit);
@@ -779,14 +780,16 @@ function Service({ plan, beamFrame, density, focus, selected, onUeMove, storyBea
         : style;
       const configuredIdle = !target.isLoaded;
       const metricColor = intraTarget ? C.coral : active ? C.yellow : C.grey;
-      const beamRadius = (
-        active || intraTarget
-          ? SERVICE_PRIMARY_BEAM_RADIUS_RATIO * plan.render.beam.coneWidthScale * beamWidthDraftScale
-          : SERVICE_CONTEXT_BEAM_RADIUS_RATIO
-      ) * (cellRadiusWorld / .8) * (intraTarget ? 1.18 : 1);
+      const beamRadius = resolveVisualLabBeamRadius({
+        active,
+        intraTarget: Boolean(intraTarget),
+        cellRadiusWorld,
+        coneWidthScale: plan.render.beam.coneWidthScale,
+        beamWidthDraftScale,
+      });
       return <group key={`${directedHandoverAvailable ? directedHandover.fromSatelliteId : plan.serving.satelliteId}:${target.beamId}`}>
         <VisualLabBeamCone from={sourcePosition} to={targetPoint} radius={beamRadius} role={intraTarget ? 'hero' : role} opacity={sourceStyle.opacity * sourceBeamOpacity * (intraTarget ? 1 - intraTransitionFraction : 1) * (configuredIdle ? .32 : 1)} />
-        {intraTarget && intraTransitionFraction > .001 ? <VisualLabBeamCone from={sourcePosition} to={targetPoint} radius={beamRadius * 1.12} role="pulse" kind="intra" opacity={style.opacity * intraTransitionFraction} /> : null}
+        {intraTarget && intraTransitionFraction > .001 ? <VisualLabBeamCone from={sourcePosition} to={targetPoint} radius={beamRadius * VISUAL_LAB_PULSE_RADIUS_SCALE} role="pulse" kind="intra" opacity={style.opacity * intraTransitionFraction} /> : null}
         {active ? <PowerBoundary p={targetPoint} scale={plan.render.beam.capBoundaryScale} opacity={.18 + plan.render.beam.powerUtilization * .24} /> : null}
         {active ? <InterferenceHalo p={targetPoint} intensity={plan.render.interference.intensity} /> : null}
         {showLabels && target.metric !== null ? <BeamMetricLabel
@@ -800,7 +803,11 @@ function Service({ plan, beamFrame, density, focus, selected, onUeMove, storyBea
     {directedHandoverAvailable && targetPosition !== null && primaryTargetPoint !== null && targetCandidateOpacity > .005 ? <VisualLabBeamCone
       from={targetPosition}
       to={primaryTargetPoint}
-      radius={CANDIDATE_PRIMARY_BEAM_RADIUS_RATIO * (cellRadiusWorld / .8)}
+      radius={resolveVisualLabBeamRadius({
+        active: false,
+        role: 'candidatePrimary',
+        cellRadiusWorld,
+      })}
       role="candidatePrimary"
       opacity={.9 * targetCandidateOpacity}
     /> : null}
@@ -814,9 +821,12 @@ function Service({ plan, beamFrame, density, focus, selected, onUeMove, storyBea
         ? demoInterHandover || canonicalTargetKeepsCandidateTone ? 'candidatePrimary' : 'hero'
         : 'servingFan';
       const style = resolveSinrLiveConeRoleStyle(role, {}, active ? { opacity: .62 + .22 * plan.render.beam.intensity } : {});
-      const beamRadius = (active
-        ? SERVICE_PRIMARY_BEAM_RADIUS_RATIO * plan.render.beam.coneWidthScale * beamWidthDraftScale
-        : SERVICE_CONTEXT_BEAM_RADIUS_RATIO) * (cellRadiusWorld / .8);
+      const beamRadius = resolveVisualLabBeamRadius({
+        active,
+        cellRadiusWorld,
+        coneWidthScale: plan.render.beam.coneWidthScale,
+        beamWidthDraftScale,
+      });
       return <VisualLabBeamCone key={`new-service-${directedHandover.toSatelliteId}:${target.beamId}`} from={targetPosition} to={targetPoint} radius={beamRadius} role={role} opacity={style.opacity * targetServiceOpacity * (configuredIdle ? .32 : 1)} />;
     }) : null}
     {focus === 'geometry' && !storyFocused && selected == null && acceptedUePoint !== null && activeBeamTarget !== null ? <OffAxisGeometry
@@ -1171,7 +1181,7 @@ export function VisualLabScene(props: VisualLabSceneProps) {
     data-beam-candidate-active-count={props.beamFrame.candidate.activeTargetCount}
     data-beam-illumination-mode={props.beamFrame.illuminationMode}
     data-local-tle-frame-id={localScene?.tleFrameId ?? undefined}
-    data-local-beam-width-scale={localScene?.render.beam.coneWidthScale ?? undefined}
+    data-local-beam-width-scale={localScene?.render.beam.coneWidthScale}
     data-local-off-axis-angle-rad={localScene?.render.beam.offAxisAngleRad ?? undefined}
     data-local-beam-intensity={localScene?.render.beam.intensity ?? undefined}
     data-local-interference-intensity={localScene?.render.interference.intensity ?? undefined}

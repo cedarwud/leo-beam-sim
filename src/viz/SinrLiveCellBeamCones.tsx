@@ -61,7 +61,11 @@ import {
   type SinrLiveCellFrame,
   type SinrLiveCellHandoverEvent,
 } from '../scene/sinrLiveCellModel';
-import { computeSinrLiveBeamFootprintEllipse } from '../scene/sinrLiveBeamGeometry';
+import {
+  resolveBeamBaseCenter,
+  buildObliqueBeamConePositions,
+} from '../appearance/coneGeometryContract';
+export { buildObliqueBeamConePositions } from '../appearance/coneGeometryContract';
 import type { WorldPoint } from './CellFootprints';
 
 /**
@@ -219,14 +223,6 @@ export function resolveSinrLiveConeDisplayStyle(
   };
 }
 
-function resolveBeamBaseCenter(placement: SinrLiveCellPlacement): THREE.Vector3 {
-  const worldUnitsPerKm = placement.worldUnitsPerKm ?? 1;
-  return new THREE.Vector3(
-    placement.worldX,
-    0,
-    placement.worldZ,
-  );
-}
 
 /**
  * Which cone LAYER a mount is (the five `<SinrLiveCellBeamCones/>` mounts in MainScene).
@@ -321,55 +317,7 @@ export function shouldDimSinrLiveConeRole(
   return true;
 }
 
-/**
- * Build the OBLIQUE beam-cone side surface as a triangle soup: apex (satellite)
- * fanned to a flat elliptical ground ring (y = `baseCenter.y`, i.e. 0) derived from
- * `radius` around the resolved beam centre. Returns a packed position `Float32Array` (3 verts × `segments`
- * triangles). `meshBasicMaterial` is unlit → no normals needed. Segment count +
- * cone opacity + blending live in `constants/sinrLiveConeStyle.ts` (S5-2 D-TOKEN).
- */
-export function buildObliqueBeamConePositions(
-  apex: THREE.Vector3,
-  baseCenter: THREE.Vector3,
-  radius: number,
-  segments: number = SINR_LIVE_CONE_SEGMENTS,
-  ellipseTiltExaggeration = 1,
-): Float32Array {
-  const ellipse = computeSinrLiveBeamFootprintEllipse({
-    apex,
-    baseCenter,
-    radiusWorld: radius,
-    tiltExaggeration: ellipseTiltExaggeration,
-  });
-  const out = new Float32Array(segments * 9);
-  for (let i = 0; i < segments; i += 1) {
-    const a0 = (i / segments) * Math.PI * 2;
-    const a1 = ((i + 1) / segments) * Math.PI * 2;
-    const pointOnEllipse = (angle: number): { x: number; z: number } => {
-      const localLong = Math.cos(angle) * ellipse.longAxisWorld;
-      const localShort = Math.sin(angle) * ellipse.shortAxisWorld;
-      return {
-        x: localLong * Math.cos(ellipse.longAxisAzimuthRad)
-          - localShort * Math.sin(ellipse.longAxisAzimuthRad),
-        z: localLong * Math.sin(ellipse.longAxisAzimuthRad)
-          + localShort * Math.cos(ellipse.longAxisAzimuthRad),
-      };
-    };
-    const p0 = pointOnEllipse(a0);
-    const p1 = pointOnEllipse(a1);
-    const o = i * 9;
-    out[o] = apex.x;
-    out[o + 1] = apex.y;
-    out[o + 2] = apex.z;
-    out[o + 3] = baseCenter.x + p0.x;
-    out[o + 4] = baseCenter.y;
-    out[o + 5] = baseCenter.z + p0.z;
-    out[o + 6] = baseCenter.x + p1.x;
-    out[o + 7] = baseCenter.y;
-    out[o + 8] = baseCenter.z + p1.z;
-  }
-  return out;
-}
+
 
 /**
  * G1-CONE-STYLE: per-vertex RGBA colours for the apex→base alpha fade. RGB is left

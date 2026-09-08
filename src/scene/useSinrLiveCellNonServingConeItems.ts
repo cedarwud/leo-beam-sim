@@ -5,6 +5,10 @@ import { type BeamDisplaySpec } from './beamDisplaySpec';
 import { type AcceptedHandoverPresentationSnapshot } from './acceptedHandoverPresentationSnapshot';
 import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
 import { paintConeItems } from '../appearance/paintConeItems';
+import {
+  resolveNonServingConeFocusSatIds,
+  shouldRenderNonServingCones,
+} from '../appearance/beamVisibilityContract';
 import { type HandoverDisplayIsolationState } from './handoverDisplayIsolation';
 
 export interface UseSinrLiveCellNonServingConeItemsParameters {
@@ -24,20 +28,35 @@ export interface UseSinrLiveCellNonServingConeItemsResult {
   sinrLiveCellNonServingConeItems: readonly SinrLiveCellBeamConeRenderItem[];
 }
 
-export function useSinrLiveCellNonServingConeItems({ acceptedHandoverPresentation, beamDisplaySpec, handoverDisplayIsolation, homepageVisualIdentity, restrictHomepageBeamItems, showSinrLiveCellBeams, sim, sinrLiveCellPlacementById, sinrLiveTargetSatIds, viz }: UseSinrLiveCellNonServingConeItemsParameters): UseSinrLiveCellNonServingConeItemsResult {
+export function useSinrLiveCellNonServingConeItems({
+  acceptedHandoverPresentation,
+  beamDisplaySpec,
+  handoverDisplayIsolation,
+  homepageVisualIdentity,
+  restrictHomepageBeamItems,
+  showSinrLiveCellBeams,
+  sim,
+  sinrLiveCellPlacementById,
+  sinrLiveTargetSatIds,
+  viz,
+}: UseSinrLiveCellNonServingConeItemsParameters): UseSinrLiveCellNonServingConeItemsResult {
   const sinrLiveCellNonServingConeItems = useMemo(
       () => {
-        if (
-          !showSinrLiveCellBeams
-          || homepageVisualIdentity
-          || handoverDisplayIsolation.hideNormalBeamField
-        ) return [];
-        if (!beamDisplaySpec.showNonServingCones && sinrLiveTargetSatIds !== null && sinrLiveTargetSatIds.size === 0) return [];
+        if (!shouldRenderNonServingCones({
+          showSinrLiveCellBeams,
+          homepageVisualIdentity,
+          hideNormalBeamField: handoverDisplayIsolation.hideNormalBeamField,
+          showNonServingCones: beamDisplaySpec.showNonServingCones,
+          targetSatIds: sinrLiveTargetSatIds,
+        })) return [];
         const items = resolveSinrLiveNonServingConeItems({
           cellFrame: sim.sinrLiveCells,
           placementByCellId: sinrLiveCellPlacementById,
           satelliteWorldById: viz.coneApexWorldById,
-          focusSatIds: beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
+          focusSatIds: resolveNonServingConeFocusSatIds(
+            beamDisplaySpec.showNonServingCones,
+            sinrLiveTargetSatIds,
+          ),
         });
         // COLOUR is decided by `src/appearance/`, never here. Keyed on the
         // item's own beam id so this lane and the serving lane name the same

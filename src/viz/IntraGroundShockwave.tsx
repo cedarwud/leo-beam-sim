@@ -1,11 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import {
-  INTRA_HANDOVER_SOURCE_COLOR,
-  INTRA_HANDOVER_TARGET_COLOR,
-} from '../constants/beamRoleTokens';
-import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
+import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
+import type { IdentitySources } from '../appearance/beamAppearanceContract';
 import type { RuntimeConfig, VizFrame, VizIntraHandoverEvent } from '../scene/types';
 
 /**
@@ -282,25 +279,45 @@ interface Props {
   identityColorBySatelliteBeamId?: ReadonlyMap<string, string>;
 }
 
+/**
+ * WHERE AN INTRA-HANDOVER SHOCKWAVE'S COLOURS COME FROM — the appearance ladder.
+ *
+ * An intra-handover event is a beam switch on the SAME satellite.
+ * Both the source (fromBeamId) and target (toBeamId) share that satellite's hue
+ * family and differ by their lightness rungs on the identity ladder.
+ *
+ * Before this, this sink resolved colours by trying maps and then falling back to
+ * private hardcoded constants (INTRA_HANDOVER_SOURCE_COLOR and INTRA_HANDOVER_TARGET_COLOR),
+ * or jumping prematurely to neutral fallback. A sink inventing its own fallback colour is
+ * how the same satellite ended up with different colours across different visual surfaces.
+ *
+ * Both source and target colours are now routed through {@link resolveBaseIdentityColor}.
+ * If accepted identity maps provide a colour (beam-specific or satellite-level), that colour
+ * governs; on a miss, the deterministic rung `colorForServingBeam(satId, beamId)` supplies the
+ * stable lightness rung for the source and target beams, preserving the satellite hue across
+ * surfaces without inventing a sink-local fallback.
+ */
 export function resolveIntraGroundShockwaveColors(input: {
   readonly event: Pick<VizIntraHandoverEvent, 'satId' | 'fromBeamId' | 'toBeamId'>;
   readonly identityColorBySatelliteId?: ReadonlyMap<string, string>;
   readonly identityColorBySatelliteBeamId?: ReadonlyMap<string, string>;
 }): { readonly sourceColor: string; readonly targetColor: string } {
-  const identityAuthorityActive = input.identityColorBySatelliteBeamId !== undefined
-    || input.identityColorBySatelliteId !== undefined;
-  const satelliteColor = input.identityColorBySatelliteId?.get(input.event.satId);
+  const sources: IdentitySources = {
+    acceptedColorFor: (satId: string, beamId: number) =>
+      input.identityColorBySatelliteBeamId?.get(`${satId}/${beamId}`)
+      ?? input.identityColorBySatelliteId?.get(satId),
+  };
   return Object.freeze({
-    sourceColor: input.identityColorBySatelliteBeamId?.get(
-      `${input.event.satId}/${input.event.fromBeamId}`,
-    ) ?? satelliteColor ?? (identityAuthorityActive
-      ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
-      : INTRA_HANDOVER_SOURCE_COLOR),
-    targetColor: input.identityColorBySatelliteBeamId?.get(
-      `${input.event.satId}/${input.event.toBeamId}`,
-    ) ?? satelliteColor ?? (identityAuthorityActive
-      ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
-      : INTRA_HANDOVER_TARGET_COLOR),
+    sourceColor: resolveBaseIdentityColor(
+      input.event.satId,
+      input.event.fromBeamId,
+      sources,
+    ),
+    targetColor: resolveBaseIdentityColor(
+      input.event.satId,
+      input.event.toBeamId,
+      sources,
+    ),
   });
 }
 

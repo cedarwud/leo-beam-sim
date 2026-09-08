@@ -1,5 +1,9 @@
 import { type SinrLiveCellBeamConeRenderItem } from '../viz/SinrLiveCellBeamCones';
-import { filterHomepageBeamItems as filterHomepageBeamItemsBySatellite } from '../homepage/controller/homepageBeamVisibility';
+import {
+  restrictHomepageBeamItems,
+  shouldKeepPrimaryServingBeam,
+  shouldRenderServingConeField,
+} from '../appearance/beamVisibilityContract';
 import { resolveServingConeGeometry } from './servingConeGeometry';
 import { paintConeItems } from '../appearance/paintConeItems';
 
@@ -22,7 +26,7 @@ export interface ServingConePresentationInput {
     beamId: number,
     isServingOrCandidate?: boolean,
   ) => string;
-  readonly restrictHomepageBeamItems: (
+  readonly restrictHomepageBeamItems?: (
     items: readonly SinrLiveCellBeamConeRenderItem[],
   ) => readonly SinrLiveCellBeamConeRenderItem[];
 }
@@ -35,24 +39,24 @@ export interface ServingConeInput {
 /**
  * Pure serving-cone projection. Geometry and display policy are explicit inputs;
  * no React state or hook lifecycle is visible at this seam.
+ * Visibility filtering delegates entirely to `src/appearance/beamVisibilityContract`.
  */
 export function resolveServingConeItems(
   input: ServingConeInput,
 ): readonly SinrLiveCellBeamConeRenderItem[] {
   const { geometry, presentation } = input;
   const hero = geometry.displayHeroRecord;
-  if (!presentation.showSinrLiveCellBeams || !presentation.renderServingField) return [];
-  if (
-    presentation.hideNormalBeamField
-    && (presentation.teachingLectureFieldCleared || !presentation.multiCandidateCentralOverlayActive)
-    && !presentation.preserveConfiguredServingFan
-  ) return [];
-  if (
-    !presentation.homepageVisualIdentity
-    && !presentation.showNonServingCones
-    && geometry.focusSatIds !== null
-    && geometry.focusSatIds.size === 0
-  ) return [];
+  if (!shouldRenderServingConeField({
+    showSinrLiveCellBeams: presentation.showSinrLiveCellBeams,
+    renderServingField: presentation.renderServingField,
+    hideNormalBeamField: presentation.hideNormalBeamField,
+    teachingLectureFieldCleared: presentation.teachingLectureFieldCleared,
+    multiCandidateCentralOverlayActive: presentation.multiCandidateCentralOverlayActive,
+    preserveConfiguredServingFan: presentation.preserveConfiguredServingFan,
+    homepageVisualIdentity: presentation.homepageVisualIdentity,
+    showNonServingCones: presentation.showNonServingCones,
+    focusSatIds: geometry.focusSatIds,
+  })) return [];
 
   const items = resolveServingConeGeometry(geometry);
   // COLOUR is decided by `src/appearance/`, never here. This lane's items are
@@ -63,22 +67,20 @@ export function resolveServingConeItems(
     resolveIdentityColor: presentation.resolveSceneAcceptedBeamColor,
     prominence: 'serving',
   });
-  const keepPrimary = (
-    !presentation.hidePrimaryServingBeam
-    || presentation.preserveConfiguredServingFan
-    || presentation.multiCandidateCentralOverlayActive
-    || presentation.homepageVisualIdentity
-    || hero === null
-  );
+  const keepPrimary = shouldKeepPrimaryServingBeam({
+    hidePrimaryServingBeam: presentation.hidePrimaryServingBeam,
+    preserveConfiguredServingFan: presentation.preserveConfiguredServingFan,
+    multiCandidateCentralOverlayActive: presentation.multiCandidateCentralOverlayActive,
+    homepageVisualIdentity: presentation.homepageVisualIdentity,
+    heroRecordPresent: hero !== null,
+  });
   const visibleItems = keepPrimary || hero === null
     ? identityItems
     : identityItems.filter(item => item.satId !== hero.servingSatId || item.cellId !== hero.cellId);
 
-  return presentation.homepageVisualIdentity
-    ? filterHomepageBeamItemsBySatellite(
-      visibleItems,
-      presentation.homepageBeamVisibility,
-      presentation.homepageBeamFanSatelliteIds,
-    )
-    : presentation.restrictHomepageBeamItems(visibleItems);
+  return restrictHomepageBeamItems(visibleItems, {
+    homepageVisualIdentity: presentation.homepageVisualIdentity,
+    allowedBeamIdentities: presentation.homepageBeamVisibility,
+    allowAllBeamSatelliteIds: presentation.homepageBeamFanSatelliteIds,
+  });
 }

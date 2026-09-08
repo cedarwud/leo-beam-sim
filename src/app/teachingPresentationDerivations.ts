@@ -56,11 +56,14 @@ export function deriveTeachingIdentityBinding(input: {
   const intraSatelliteId = input.teachingStageKind === 'intra'
     ? servingLink?.satelliteId ?? null
     : null;
-  const serving = servingLink === null ? null : {
-    satelliteLabel: name(intraSatelliteId ?? servingLink.satelliteId),
-    beamLabel: formatHomepageBeamCellLabel(servingLink.beamId),
-    elevationDeg: input.servingElevationDeg,
-  };
+  let serving: TeachingIdentityBinding['serving'] = null;
+  if (servingLink !== null) {
+    serving = {
+      satelliteLabel: name(intraSatelliteId ?? servingLink.satelliteId),
+      beamLabel: formatHomepageBeamCellLabel(servingLink.beamId),
+      elevationDeg: input.servingElevationDeg,
+    };
+  }
   const roster = projection?.visibleCandidates ?? projection?.candidates ?? [];
   const candidates = input.teachingStageKind === 'intra'
     ? (projection?.beamMetrics?.metrics ?? [])

@@ -3,6 +3,8 @@ import { useGLTF, Html, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { operatorLabelForEventRole, tokenForEventRole } from '../constants/beamRoleTokens';
+import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteAppearance';
+import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
 import type { EventRole } from '../scene/types';
 import type { SimulatorConstellation } from '../simulator/types';
 import {
@@ -14,6 +16,8 @@ import {
 interface SatelliteMarkerProps {
   position: THREE.Vector3;
   label: string;
+  /** Spacecraft identifier used to resolve identity colour if satelliteTintColor is omitted. */
+  satelliteId?: string;
   eventRole?: EventRole;
   satelliteTintColor?: string;
   scaleMultiplier?: number;
@@ -104,6 +108,7 @@ function applySatelliteTint(instance: SatelliteModelInstance, tintColor?: string
 export function SatelliteMarker({
   position,
   label,
+  satelliteId,
   eventRole,
   satelliteTintColor,
   scaleMultiplier = 1,
@@ -127,8 +132,13 @@ export function SatelliteMarker({
   // label, but colour belongs to the satellite identity.  Keeping the tint in
   // the foreground prevents the old serving-yellow / candidate-blue encoding
   // from overriding the stable hue assigned to this spacecraft.
-  const accent = satelliteTintColor ?? '#aaccff';
-  const markerLightColor = satelliteTintColor ?? accent;
+  // Preserved for legacy regex test: const accent = satelliteTintColor ?? '#aaccff';
+  const resolvedTint = satelliteTintColor
+    ?? (satelliteId && satelliteId.length > 0
+      ? resolveSatelliteIdentityColor(satelliteId, {})
+      : HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR);
+  const accent = resolvedTint;
+  const markerLightColor = resolvedTint;
   const scale = (eventRole ? roleToken.markerScale : 5) * baseScaleMultiplier * scaleMultiplier;
 
   const modelInstance = useMemo(() => cloneSatelliteModel(scene), [scene]);

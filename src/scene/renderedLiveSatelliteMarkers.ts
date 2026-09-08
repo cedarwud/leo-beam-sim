@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteAppearance';
 import type { VisibleSat } from './types';
 
 export type SatelliteMarkerSeed = Pick<VisibleSat, 'id' | 'world' | 'satelliteTintColor'>;
@@ -14,7 +15,8 @@ export interface RenderedLiveSatelliteMarkersInput {
   readonly handoverMarkerSatelliteIds: ReadonlySet<string>;
   readonly identityColorBySatelliteId: ReadonlyMap<string, string>;
   readonly coneApexWorldById: ReadonlyMap<string, SatelliteApexWorld>;
-  readonly resolveFallbackColor: (satelliteId: string) => string;
+  /** Optional fallback colour resolver. When omitted, defaults to resolveSatelliteIdentityColor. */
+  readonly resolveFallbackColor?: (satelliteId: string) => string;
 }
 
 export interface RenderedLiveSatelliteMarker {
@@ -23,12 +25,23 @@ export interface RenderedLiveSatelliteMarker {
   readonly satelliteTintColor?: string;
 }
 
+/**
+ * WHERE A LIVE SATELLITE MARKER'S TINT COLOUR COMES FROM:
+ * If an accepted identity colour is provided in identityColorBySatelliteId, it wins.
+ * If an explicit fallback resolver was supplied by the caller, it is consulted next.
+ * Otherwise, the satellite appearance ladder resolveSatelliteIdentityColor owns
+ * deterministic fallback and neutral resolution.
+ */
 function markerColor(
   input: RenderedLiveSatelliteMarkersInput,
   satelliteId: string,
 ): string {
-  return input.identityColorBySatelliteId.get(satelliteId)
-    ?? input.resolveFallbackColor(satelliteId);
+  const published = input.identityColorBySatelliteId.get(satelliteId);
+  if (published !== undefined && published.length > 0) return published;
+  if (input.resolveFallbackColor !== undefined) {
+    return input.resolveFallbackColor(satelliteId);
+  }
+  return resolveSatelliteIdentityColor(satelliteId, {});
 }
 
 /** Preserve the ambient marker field and add only explicitly requested event markers. */

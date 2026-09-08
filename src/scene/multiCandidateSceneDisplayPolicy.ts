@@ -25,7 +25,7 @@ import type { HandoverDecisionFrame } from '../engine/handover/candidateDecision
 
 export type MultiCandidateSceneSimulationSource = 'live' | 'archived-tle';
 
-export const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1;
+export { MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER } from '../appearance/coneGeometryContract';
 export const MULTI_CANDIDATE_CENTRAL_OVERLAY_ENABLED = true;
 
 export interface MultiCandidateComparisonLatch {

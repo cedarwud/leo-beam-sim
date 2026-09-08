@@ -21,6 +21,17 @@ import {
   EE_THRESHOLD_MAX_KBIT_PER_JOULE,
   eeThresholdKbitPerJouleToBitsPerJoule,
 } from '../../engine/handover/eeThreshold';
+import {
+  HOMEPAGE_EE_SCALE_MIN_BITS_PER_JOULE,
+  HOMEPAGE_EE_SCALE_MAX_BITS_PER_JOULE,
+  RAIL_RADIUS_RULES,
+  RAIL_LAYOUT_GEOMETRY,
+  resolveRailEeRatio,
+  resolveRailServingEeOpacity,
+  formatRailEndpointLabel,
+  finiteEe,
+  eeForRow,
+} from '../../appearance/candidateRailPresentation';
 
 /** Metadata copied from the accepted snapshot; it carries no decision logic. */
 export type HomepageBeamRailSnapshotMetadata = Pick<
@@ -80,8 +91,6 @@ const COLORS = Object.freeze({
 // The rail scale is a visual contract, not an auto-fitting chart. Keeping it
 // fixed prevents the threshold and every beam from moving when a new frame or
 // a new handover target arrives.
-const HOMEPAGE_EE_SCALE_MIN_BITS_PER_JOULE = 0;
-const HOMEPAGE_EE_SCALE_MAX_BITS_PER_JOULE = EE_THRESHOLD_MAX_KBIT_PER_JOULE * 1000;
 
 /**
  * The concrete cell set each reuse topology names.
@@ -243,18 +252,12 @@ function MetricCell({
   );
 }
 
-function finiteEe(value: number | null | undefined): number | null {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-}
-
 function eeRatio(
   ee: number | null,
   eeScaleMin: number,
   eeScaleMax: number,
 ): number {
-  return ee === null || eeScaleMax <= eeScaleMin
-    ? 0
-    : Math.max(0, Math.min(1, (ee - eeScaleMin) / (eeScaleMax - eeScaleMin)));
+  return resolveRailEeRatio(ee, eeScaleMin, eeScaleMax);
 }
 
 function servingEeOpacity(
@@ -263,25 +266,7 @@ function servingEeOpacity(
   eeScaleMin: number,
   eeScaleMax: number,
 ): number {
-  if (ee === null) return 1;
-  // Use the fixed homepage EE scale rather than the trigger as the colour
-  // breakpoint.  The serving beam therefore fades during the whole decline,
-  // while the threshold remains a separate handover decision marker.
-  const displayMax = Math.max(
-    eeScaleMax,
-    thresholdBitsPerJoule ?? eeScaleMin,
-    eeScaleMin + 1,
-  );
-  const ratio = Math.max(0, Math.min(1, (ee - eeScaleMin) / (displayMax - eeScaleMin)));
-  return 0.3 + ratio * 0.7;
-}
-
-function eeForRow(
-  metric: HomepageBeamMetric | null,
-  link: RailLink | null,
-): number | null {
-  return finiteEe(metric?.energyEfficiencyBitsPerJoule)
-    ?? finiteEe(link?.opportunity?.instantaneousEe?.value);
+  return resolveRailServingEeOpacity(ee, thresholdBitsPerJoule, eeScaleMin, eeScaleMax);
 }
 
 function EeProgressSummary({
@@ -721,9 +706,7 @@ function GroupEeSummary({
   readonly eeScaleMax: number;
 }) {
   const ee = row === null ? null : eeForRow(row.metric, row.link);
-  const ratio = ee === null || eeScaleMax <= eeScaleMin
-    ? 0
-    : Math.max(0, Math.min(1, (ee - eeScaleMin) / (eeScaleMax - eeScaleMin)));
+  const ratio = eeRatio(ee, eeScaleMin, eeScaleMax);
   const accent = row?.metric?.color.color ?? row?.link?.satelliteIdentity.color ?? COLORS.blue;
   return (
     <span
@@ -889,12 +872,20 @@ function IntraHandoverExplainer({
   const progress01 = presentation === null
     ? 0
     : Math.max(0, Math.min(1, presentation.progress01));
-  const sourceLabel = source === null
-    ? '—'
-    : `${resolveHomepageSatelliteDisplayName(source.satelliteId, satelliteNameById)} / ${formatHomepageBeamCellLabel(source.beamId)}`;
-  const targetLabel = target === null
-    ? '—'
-    : `${resolveHomepageSatelliteDisplayName(target.satelliteId, satelliteNameById)} / ${formatHomepageBeamCellLabel(target.beamId)}`;
+  let sourceLabel = '—';
+  if (source !== null) {
+    sourceLabel = formatRailEndpointLabel(
+      resolveHomepageSatelliteDisplayName(source.satelliteId, satelliteNameById),
+      source.beamId,
+    );
+  }
+  let targetLabel = '—';
+  if (target !== null) {
+    targetLabel = formatRailEndpointLabel(
+      resolveHomepageSatelliteDisplayName(target.satelliteId, satelliteNameById),
+      target.beamId,
+    );
+  }
   const thresholdLabel = thresholdKbitPerJoule === null
     ? '—'
     : `${thresholdKbitPerJoule.toFixed(0)} Kbit/J`;

@@ -3449,6 +3449,35 @@ export function App() {
   // beam projection. Palette/live-status tabs were competing presentation
   // surfaces, so the palette moved to `/beam-colors` and this rail is mounted
   // directly for the homepage only.
+  let homepageRailContent: React.ReactNode = null;
+  if (homepageRailProjection !== null) {
+    homepageRailContent = (
+      <HomepageBeamRail
+        projection={homepageRailProjection}
+        acceptedSnapshotMetadata={simState.acceptedHandoverPresentation}
+        satelliteNameById={homepageSatelliteNameById}
+        playback={{
+          paused: playback.paused,
+          selectedSpeed: playback.speed,
+          effectiveSpeed: playback.effectiveSpeed,
+        }}
+        // Root homepage handover rows/story must come from the accepted
+        // snapshot projection. `visibleHandover` remains a compatibility
+        // owner for non-homepage lanes, but passing it here created a
+        // second homepage rail presentation authority.
+        // The homepage rail is driven only by the accepted EE decision
+        // snapshot. The legacy presentation owner can animate a scheduled
+        // event before the serving/target threshold contract is accepted,
+        // which made the UI look like a handover above the configured floor.
+        handoverPresentation={isRootHomepage ? null : visibleHandover.presentation}
+        eeThresholdKbitPerJoule={homepageEeThresholdKbitPerJoule}
+        showAllSurfaces={homepageRailShowAllSurfaces}
+      />
+    );
+  } else {
+    homepageRailContent = <HomepageBeamRailWaiting />;
+  }
+
   const homepageRailPanel = homepageRailShowAllSurfaces
     ? (
       <section
@@ -3459,31 +3488,7 @@ export function App() {
         data-homepage-rail-source-frame-id={homepageRailProjection?.sourceFrameId ?? ''}
         data-homepage-rail-phase={homepageRailProjection?.phase ?? ''}
       >
-        {homepageRailProjection ? (
-          <HomepageBeamRail
-            projection={homepageRailProjection}
-            acceptedSnapshotMetadata={simState.acceptedHandoverPresentation}
-            satelliteNameById={homepageSatelliteNameById}
-            playback={{
-              paused: playback.paused,
-              selectedSpeed: playback.speed,
-              effectiveSpeed: playback.effectiveSpeed,
-            }}
-            // Root homepage handover rows/story must come from the accepted
-            // snapshot projection. `visibleHandover` remains a compatibility
-            // owner for non-homepage lanes, but passing it here created a
-            // second homepage rail presentation authority.
-            // The homepage rail is driven only by the accepted EE decision
-            // snapshot. The legacy presentation owner can animate a scheduled
-            // event before the serving/target threshold contract is accepted,
-            // which made the UI look like a handover above the configured floor.
-            handoverPresentation={isRootHomepage ? null : visibleHandover.presentation}
-            eeThresholdKbitPerJoule={homepageEeThresholdKbitPerJoule}
-            showAllSurfaces={homepageRailShowAllSurfaces}
-          />
-        ) : (
-          <HomepageBeamRailWaiting />
-        )}
+        {homepageRailContent}
       </section>
     )
     : null;

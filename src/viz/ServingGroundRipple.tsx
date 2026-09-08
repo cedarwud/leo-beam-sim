@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BEAM_ROLE_TOKENS } from '../constants/beamRoleTokens';
-import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
+import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
+import type { IdentitySources } from '../appearance/beamAppearanceContract';
 import type { BeamTarget } from '../scene/beamTargetTypes';
 
 export type GroundRippleRole = 'serving' | 'pending';
@@ -139,16 +140,26 @@ export function resolveGroundRippleTargets(input: {
       if (!role) continue;
 
       const roleSpec = groundRippleSpec(role);
-      const identityAuthorityActive = input.identityColorBySatelliteBeamId !== undefined
-        || input.identityColorBySatelliteId !== undefined;
+      // Identity colour belongs to the beam's identity, resolved via the appearance
+      // ladder. Downstream sinks must not decide their own colour: on an accepted-map
+      // miss, the beam resolves to its deterministic lightness rung instead of
+      // reverting to role-based serving-yellow or candidate-blue.
+      //
+      // Timing and envelope (cycleSec, expandSec, radiusMultiplier, maxOpacity)
+      // remain governed by roleSpec as leftovers not yet modeled on the ladder.
+      const sources: IdentitySources = {
+        acceptedColorFor: (satId: string, beamId: number) =>
+          input.identityColorBySatelliteBeamId?.get(`${satId}/${beamId}`)
+          ?? input.identityColorBySatelliteId?.get(satId),
+      };
 
       targets.push({
         ...roleSpec,
-        color: input.identityColorBySatelliteBeamId?.get(`${satelliteId}/${beam.beamId}`)
-          ?? input.identityColorBySatelliteId?.get(satelliteId)
-          ?? (identityAuthorityActive
-            ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
-            : roleSpec.color),
+        color: resolveBaseIdentityColor(
+          satelliteId,
+          beam.beamId,
+          sources,
+        ),
         id: `${role}-ripple-${satelliteId}-B${beam.beamId}`,
         satelliteId,
         beamId: beam.beamId,

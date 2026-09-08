@@ -120,8 +120,8 @@ export const SINR_LIVE_FOOTPRINT_RING_OPACITY = 0.9;
  * crisp white outline DISTINCT from the role-colour inner ring (the ab861c4 two-tone). */
 export const SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR = 0.96;
 export const SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR = 1.04;
-/** Tiny ground lift (world units) so the flat hexes never z-fight the terrain. */
-export const SINR_LIVE_FOOTPRINT_RING_Y_LIFT = 0.6;
+/** Tiny ground lift (world units) so the flat hexes never z-fight the terrain. Owned by coneGeometryContract. */
+export { SINR_LIVE_FOOTPRINT_RING_Y_LIFT } from '../appearance/coneGeometryContract';
 /**
  * ab861c4 fill-glow restore: a faint additive hexagon FILL under the two border rings,
  * so each served cell reads as the rich 3-layer hex (faint fill + outer border + bright

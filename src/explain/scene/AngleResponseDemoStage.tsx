@@ -191,7 +191,7 @@ function FixedCutawayCamera() {
   return null;
 }
 
-function SatelliteMarker({
+function AngleDemoSatelliteMarker({
   satelliteId,
   position = SATELLITE_POSITION,
   role = 'service',
@@ -373,9 +373,9 @@ function LinkCutaway({
         <meshStandardMaterial color="#061715" roughness={0.92} />
       </mesh>
 
-      <SatelliteMarker satelliteId={satelliteId} />
+      <AngleDemoSatelliteMarker satelliteId={satelliteId} />
       {candidateSatelliteId !== null && candidatePosition !== null && (
-        <SatelliteMarker satelliteId={candidateSatelliteId} position={candidatePosition} role="candidate" opacity={0.82} />
+        <AngleDemoSatelliteMarker satelliteId={candidateSatelliteId} position={candidatePosition} role="candidate" opacity={0.82} />
       )}
 
       {CUTAWAY_CELLS.map((position, index) => (
@@ -567,8 +567,8 @@ function HandoverCutaway({
         </group>
       ))}
 
-      <SatelliteMarker satelliteId={serviceId} position={servicePosition} role="service" />
-      <SatelliteMarker satelliteId={otherId} position={otherPosition} role={phase === 'before' ? 'candidate' : 'retired'} opacity={phase === 'before' ? 0.86 : 0.38} />
+      <AngleDemoSatelliteMarker satelliteId={serviceId} position={servicePosition} role="service" />
+      <AngleDemoSatelliteMarker satelliteId={otherId} position={otherPosition} role={phase === 'before' ? 'candidate' : 'retired'} opacity={phase === 'before' ? 0.86 : 0.38} />
       {phase === 'before' && (
         <Line points={[toPosition, [0.2, 0.15, 0.22]]} color="#58bfe0" lineWidth={2} dashed dashSize={0.15} gapSize={0.12} transparent opacity={0.7} />
       )}

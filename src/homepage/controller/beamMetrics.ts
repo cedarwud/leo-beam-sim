@@ -680,11 +680,12 @@ function applyHomepageEeHierarchyDisplayPolicy(
   // itself has no finite measurement.
   if (servingDraft === null || servingEe === null) return drafts;
 
-  const story = input.snapshot === null
-    ? null
-    : projectHomepageHandoverStory({ snapshot: input.snapshot });
+  let story: ReturnType<typeof projectHomepageHandoverStory> = null;
+  if (input.snapshot !== null) {
+    story = projectHomepageHandoverStory({ snapshot: input.snapshot });
+  }
   const storyActive = story !== null && isHandoverStoryPhase(story.phase);
-  const targetKey = storyActive ? story.target : null;
+  const targetKey = storyActive && story !== null ? story.target : null;
   const servingKey = servingDraft.key;
   const targetIsCurrentServing = targetKey !== null && sameCandidateLinkKey(targetKey, servingKey);
   const targetJoinKey = targetKey === null ? null : candidateLinkKeyString(targetKey);
