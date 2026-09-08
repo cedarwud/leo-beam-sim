@@ -5,15 +5,6 @@ import type { AppExperienceMode } from '../appMode';
 import type { SceneTopologyState } from '../../sceneTopology';
 import type { UeDistributionMode } from '../../engine/ue/multiUeState';
 import {
-  MODQN_BEAMS_PER_SERVING_SATELLITE,
-  MODQN_DEFAULT_SERVING_COUNT,
-  MODQN_PAPER_BASELINE_SERVING_COUNT,
-  MODQN_PAPER_SWEEP_MAX_SERVING_COUNT,
-  MODQN_SERVING_COUNT_OPTIONS,
-  type ModqnServingCount,
-} from '../../modqn/servingCount';
-import { DEFAULT_SERVING_COUNT } from '../../scene/useCellSchedule';
-import {
   createSceneVisualScaleState,
   type SceneVisualScaleState,
 } from '../../sceneVisualScale';
@@ -21,7 +12,6 @@ import { controlStackStyle, dividerStyle, explanatoryTextStyle } from './styles'
 import {
   formatBeamCount,
   formatSatCount,
-  formatServingCount,
   formatUeCount,
 } from './topologyFormatters';
 import {
@@ -71,16 +61,6 @@ const BEAM_COUNT_OPTION_TESTIDS: Record<BeamCountOption, string> = {
   7: 'topology-tab-beam-count-option-7',
   19: 'topology-tab-beam-count-option-19',
   37: 'topology-tab-beam-count-option-37',
-};
-
-const SERVING_COUNT_OPTION_TESTIDS: Record<ModqnServingCount, string> = {
-  2: 'topology-tab-serving-count-option-2',
-  3: 'topology-tab-serving-count-option-3',
-  4: 'topology-tab-serving-count-option-4',
-  5: 'topology-tab-serving-count-option-5',
-  6: 'topology-tab-serving-count-option-6',
-  7: 'topology-tab-serving-count-option-7',
-  8: 'topology-tab-serving-count-option-8',
 };
 
 const UE_DISTRIBUTION_MODE_OPTION_TESTIDS: Record<VisibleUeDistributionMode, string> = {
@@ -144,16 +124,6 @@ function T({ text }: { text: TopologyCopy }) {
 
 function isBeamCountOption(value: number): value is BeamCountOption {
   return BEAM_COUNT_OPTIONS.includes(value as BeamCountOption);
-}
-
-function formatServingOptionLabel(option: ModqnServingCount): string {
-  if (option === MODQN_PAPER_BASELINE_SERVING_COUNT) {
-    return `L = ${option} · baseline`;
-  }
-  if (option === MODQN_PAPER_SWEEP_MAX_SERVING_COUNT) {
-    return `L = ${option} · sweep max`;
-  }
-  return `L = ${option}`;
 }
 
 /**
@@ -307,12 +277,9 @@ export function TopologyTab({
   onSceneVisualScaleChange = () => undefined,
   onReset,
 }: TopologyTabProps) {
-  // Scene topology is a live-scene setting, not an app-mode permission. The
-  // MODQN live-cell lane reuses the same live scene and must expose the same
-  // clear/reset controls; artifact replay never mounts this component.
+  // Scene topology is a live-scene setting. Artifact replay never mounts this
+  // component.
   const showTopologyOverrideControls = true;
-  const effectiveServingCount = topology.cellServingCount ?? DEFAULT_SERVING_COUNT;
-  const hasServingCountOverride = topology.cellServingCount !== null;
   const baseSatCount = baseProfile.orbit.shells[0]?.satsPerPlane ?? 4;
   const effectiveSatCount = topology.satsPerPlane ?? baseSatCount;
   const hasSatOverride = topology.satsPerPlane !== null;
@@ -339,70 +306,8 @@ export function TopologyTab({
     : isBeamCountOption(baseBeamCount)
       ? baseBeamCount
       : null;
-  const modqnActionCatalogSize = effectiveServingCount * MODQN_BEAMS_PER_SERVING_SATELLITE;
-
   return (
     <div style={controlStackStyle}>
-      {appMode === 'modqn-demo' && (
-        <>
-          <TopologySection data-testid="topology-tab-serving-count-effective-value">
-            <SectionHeading
-              title="Serving satellites (L)"
-              titleText={copy('scene.servingCount.title', '服務衛星數 L', 'Serving satellites (L)')}
-              description="modqn-demo selector: serving candidates L from the 24x16 synthetic constellation pool. Each serving satellite contributes 7 MODQN beam actions; L=4 is the paper-faithful baseline and L=8 is the paper sweep max / rich demo."
-              descriptionText={copy(
-                'scene.servingCount.hint',
-                '自 24×16 合成衛星池中選取的服務候選衛星數 L。每顆服務衛星提供 7 個波束動作；L=4 為基準組態，L=8 為掃描上限。',
-                'The number of serving candidate satellites L drawn from the 24×16 synthetic constellation pool. Each serving satellite contributes 7 beam actions; L=4 is the baseline configuration and L=8 the sweep maximum.',
-              )}
-              badge={hasServingCountOverride ? undefined : `Default L=${MODQN_DEFAULT_SERVING_COUNT} rich demo`}
-              value={formatServingCount(effectiveServingCount)}
-            />
-            <fieldset data-testid="topology-tab-serving-count-radio" style={topologyRadioFieldsetStyle(4)}>
-              <RadioLegend><T text={copy('scene.legend.servingCount', '服務衛星數', 'Serving satellite count')} /><span aria-hidden="true" data-prominence="canonical-copy" style={srOnlyStyle}> Serving satellite count</span></RadioLegend>
-              {MODQN_SERVING_COUNT_OPTIONS.map(option => {
-                const active = effectiveServingCount === option;
-                return (
-                  <label key={option} style={topologyRadioLabelStyle(active)}>
-                    <input
-                      data-testid={SERVING_COUNT_OPTION_TESTIDS[option]}
-                      type="radio"
-                      name="topology-serving-count"
-                      value={option}
-                      checked={active}
-                      onChange={() => onTopologyChange({ ...topology, cellServingCount: option })}
-                      style={topologyChoiceInputStyle}
-                    />
-                    <span>{formatServingOptionLabel(option)}</span>
-                  </label>
-                );
-              })}
-            </fieldset>
-            <div style={topologyEffectiveValueStyle}>
-              <span>
-                Effective serving count: L = {effectiveServingCount} ({hasServingCountOverride ? 'override' : 'default'})
-              </span>
-              <span>
-                L x 7 MODQN beam actions: {modqnActionCatalogSize}
-              </span>
-            </div>
-            <TopologyNotice
-                canonical="Takes effect on next render frame (no simulation restart)."
-                text={copy('scene.notice.nextFrame', '於下一個畫面更新後生效，模擬不會重新開始。', 'Takes effect on the next rendered frame; the run does not restart.')}
-              />
-            <ActionRow>
-              <ResetButton
-                data-testid="topology-tab-serving-count-clear-override"
-                clear
-                onClick={() => onTopologyChange({ ...topology, cellServingCount: null })}
-                text={copy('scene.reset.servingCount', '清除服務衛星數覆寫', 'Clear serving override')}
-              />
-            </ActionRow>
-          </TopologySection>
-          <div style={dividerStyle} />
-        </>
-      )}
-
       {showTopologyOverrideControls && (
         <>
           <div data-testid="topology-tab-restart-banner" style={topologyNoticeStyle}>

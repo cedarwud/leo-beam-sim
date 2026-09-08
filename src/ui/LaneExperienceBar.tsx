@@ -1,19 +1,7 @@
 import type { KeyboardEvent } from 'react';
 import type { SceneLane } from '../app/sceneLane';
 
-// The top-level "Experience" segmented control. After the 4->2 nav consolidation
-// (docs/modqn-tab-consolidation-plan.md) this surfaces only the TWO primary
-// experiences — SINR and MODQN — even though FOUR authoritative SceneLanes exist.
-// This is the governance keystone made literal: nav != lane (a non-injective map,
-// ADR-002). The SINR segment owns the sinr-live lane; the MODQN segment owns the
-// modqn-live-cell-preview lane AND, via the in-MODQN ModqnViewToggle sub-nav, the
-// modqn-replay-proof and artifact-replay lanes. `value` is the resolved SceneLane;
-// it is collapsed to a nav segment by `navSegmentForLane` so the MODQN button
-// stays highlighted across all three MODQN lanes. `onChange` hands back the target
-// lane; App owns the governance-safe transition (reset artifact/replay state,
-// cancel any armed Director focus, fail closed while the artifact streams).
-//
-// SceneLane enum stays 4 (CLAUDE.md Rule#4): nav segments are UI chrome, not lanes.
+// The top-level experience control now exposes the canonical live SINR surface.
 export interface LaneExperienceOption {
   readonly lane: SceneLane;
   readonly label: string;
@@ -22,15 +10,10 @@ export interface LaneExperienceOption {
 
 export const LANE_EXPERIENCE_OPTIONS: readonly LaneExperienceOption[] = [
   { lane: 'sinr-live', label: 'SINR', sub: 'live SINR beams' },
-  { lane: 'modqn-live-cell-preview', label: 'MODQN', sub: 'decision + replay evidence' },
 ];
 
-// nav != lane: collapse the 4 SceneLanes onto the 2 nav segments. The SINR
-// segment maps from sinr-live only; the MODQN segment maps from all three MODQN
-// lanes (live-cell-preview / replay-proof / artifact-replay), so the MODQN button
-// stays active while the in-MODQN ModqnViewToggle picks the sub-lane.
-export function navSegmentForLane(lane: SceneLane): SceneLane {
-  return lane === 'sinr-live' ? 'sinr-live' : 'modqn-live-cell-preview';
+export function navSegmentForLane(_lane: SceneLane): SceneLane {
+  return 'sinr-live';
 }
 
 export interface LaneExperienceBarProps {

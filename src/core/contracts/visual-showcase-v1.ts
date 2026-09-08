@@ -390,23 +390,6 @@ export interface VisualShowcaseFrameMetrics {
   rewardVector: Record<string, number>;
 }
 
-interface RetiredDecisionCompatibility {
-  actionIndex: number;
-  actionLabel: string;
-  previousSatelliteId: string;
-  previousBeamId: string;
-  selectedSatelliteId: string;
-  selectedBeamId: string;
-  validActionCount: number;
-  selectedActionScore: number;
-  runnerUpActionScore: number | null;
-  scoreMargin: number | null;
-  decisionActionValidityMask?: boolean[];
-  diagnosticsRef: string;
-}
-
-export type VisualShowcaseModqnDecision = RetiredDecisionCompatibility;
-
 export interface VisualShowcaseTimelineFrame {
   tSec: number;
   sourceRefs: VisualShowcaseFrameSourceRefs;
@@ -416,8 +399,6 @@ export interface VisualShowcaseTimelineFrame {
   links: VisualShowcaseLinkSample[];
   handoverState: VisualShowcaseHandoverState;
   metrics: VisualShowcaseFrameMetrics;
-  /** Compatibility field retained until the replay consumer is removed. */
-  modqnDecision?: VisualShowcaseModqnDecision;
 }
 
 export interface VisualShowcaseEvent {

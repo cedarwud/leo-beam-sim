@@ -11,8 +11,6 @@ import {
 } from './info-panel/formatters';
 import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
 import { usePanelCopy } from './info-panel/panelHelp';
-import type { RuntimeHandoverMode } from '../modqn/runtimeControls';
-import { OVERRIDE_PRIMARY_UE_SCOPE_NOTE } from '../modqn/runtimeControls';
 import { HandoverEvaluationPanel } from './handover-evaluation/HandoverEvaluationPanel';
 
 type InfoPanelProps = SimState & {
@@ -24,7 +22,7 @@ type InfoPanelProps = SimState & {
    */
   showFormulaTerms?: boolean;
   profile: Profile;
-  handoverMode?: RuntimeHandoverMode;
+  handoverMode?: 'sinr-offset';
   isFormulaEvidenceStale?: boolean;
   /** Cell identity of a display-only same-satellite comparison beam. */
   comparisonCellId?: number | null;
@@ -51,42 +49,9 @@ interface LiveStatusModeCopy {
   triggerAriaLabel: string;
 }
 
-// S4-4 (Decision D3): the decision/ω override is installed on the PRIMARY UE's
-// HandoverManager only, so every override-mode copy carries the primary-only
-// scope note (the secondary population follows live SINR-offset). Exported so
-// `validate:s4:override-primary-scope` drives the real resolver instead of a
-// source-text pin. The default `sinr-offset` mode never carries the note.
-export function getLiveStatusModeCopy(mode: RuntimeHandoverMode): LiveStatusModeCopy {
-  if (mode === 'decision-overlay-on-live-sinr') {
-    return {
-      label: 'MODQN Overlay Mode',
-      detail: 'Live SINR geometry/reference with MODQN replay decision overlay',
-      duelBadge: 'MODQN Decision Overlay',
-      duelDetail: `Viewport uses live SINR geometry and metrics as reference while the serving beam displays the MODQN replay decision overlay. ${OVERRIDE_PRIMARY_UE_SCOPE_NOTE}`,
-      servingCaption: 'MODQN overlay serving link',
-      pendingCaption: 'handover target',
-      candidateCaption: 'live SINR reference',
-      deltaLabel: 'live Δ SINR',
-      offsetLabel: 'gate offset',
-      triggerLabel: 'decision timing threshold',
-      triggerAriaLabel: 'MODQN decision progress bar',
-    };
-  }
-  if (mode === 'omega-heuristic') {
-    return {
-      label: 'ω Heuristic Decision',
-      detail: 'Simplified heuristic policy based on live omega weights',
-      duelBadge: 'Heuristic Live Decision',
-      duelDetail: `Serving link follows the live omega weighted heuristic policy. All signal and threshold metrics are computed live. ${OVERRIDE_PRIMARY_UE_SCOPE_NOTE}`,
-      servingCaption: 'heuristic serving link',
-      pendingCaption: 'handover target',
-      candidateCaption: 'live SINR reference',
-      deltaLabel: 'live Δ SINR',
-      offsetLabel: 'gate offset',
-      triggerLabel: 'handover progress',
-      triggerAriaLabel: 'handover progress bar',
-    };
-  }
+// The status copy is exported so callers and focused checks share one canonical
+// description of the live SINR handover protocol.
+export function getLiveStatusModeCopy(_mode?: 'sinr-offset'): LiveStatusModeCopy {
   return {
     label: 'SINR Experiment Mode',
     detail: 'Traditional live SINR-offset handover protocol',
@@ -153,14 +118,6 @@ export function InfoPanel({
   const servingFriendlyTitle = panelPrimary.role === 'ho-source'
     ? tx('panel.role.hoSource')
     : tx('panel.role.activeServing');
-  // Non-default handover modes carry a display-vs-truth distinction in their
-  // caption ("live SINR reference" is NOT the deciding authority under the
-  // overlay). That nuance rides along as a quiet caption note rather than being
-  // dropped for tidiness; under the plain sinr-offset mode there is nothing
-  // extra to say, so no note is emitted.
-  const modeNote = (note: string): string | undefined => (
-    handoverMode === 'sinr-offset' ? undefined : note
-  );
   const servingCaption = panelPrimary.role === 'ho-source'
     ? tx('panel.caption.previousSource')
     : tx('panel.caption.serving');
@@ -168,7 +125,7 @@ export function InfoPanel({
   // recent-HO surfaces (and `validate:phase1a:recent-ho-ui`) speak.
   const servingCaptionNote = panelPrimary.role === 'ho-source'
     ? 'previous source'
-    : modeNote(modeCopy.servingCaption);
+    : undefined;
   const comparisonTitle =
     panelComparison.role === 'pending'
       ? 'PENDING TARGET'
@@ -197,15 +154,15 @@ export function InfoPanel({
           : tx('panel.caption.none');
   const comparisonCaptionNote =
     panelComparison.role === 'pending'
-      ? modeNote(modeCopy.pendingCaption)
+      ? undefined
       : panelComparison.role === 'ho-target'
         ? panelComparison.satId === physicalServing.satId
           ? 'recent target / serving now'
           : 'recent target'
         : panelComparison.role === 'candidate'
-          ? modeNote(modeCopy.candidateCaption)
+          ? undefined
           : undefined;
-  const formulaTermsVisible = showFormulaTerms && handoverMode !== 'decision-overlay-on-live-sinr';
+  const formulaTermsVisible = showFormulaTerms;
   const frequencyReuse = profile.beams.frequencyReuse;
   // Cell lane (servingBeamId null, servingCellId set): the serving unit is the
   // earth-fixed cell. Use formatCellServingIdentity — its frequency token is the
@@ -284,7 +241,7 @@ export function InfoPanel({
           stateLabel={duelState.label}
           stateTone={duelState.tone}
           contextBadgeText={modeCopy.duelBadge}
-          contextBadgeTone={handoverMode === 'sinr-offset' ? 'neutral' : 'candidate'}
+          contextBadgeTone="neutral"
           deltaLabel={modeCopy.deltaLabel}
           offsetLabel={modeCopy.offsetLabel}
           triggerLabel={modeCopy.triggerLabel}

@@ -27,32 +27,32 @@ export function SimulationSourceToggle({ value, onChange }: SimulationSourceTogg
 
   return (
     <div
-      className="leo-simulation-source-toggle leo-modqn-view-toggle"
+      className="leo-simulation-source-toggle"
       role="group"
       aria-label="Simulation source"
       data-testid="simulation-source-toggle"
     >
-      <span className="leo-simulation-source-toggle__title leo-modqn-view-toggle__title">
+      <span className="leo-simulation-source-toggle__title">
         Source
       </span>
-      <div className="leo-simulation-source-toggle__group leo-modqn-view-toggle__group">
+      <div className="leo-simulation-source-toggle__group">
         {SIMULATION_SOURCE_OPTIONS.map(option => {
           const active = option.mode === activeMode;
           return (
             <button
               key={option.mode}
               type="button"
-              className="leo-simulation-source-toggle__button leo-modqn-view-toggle__button"
+              className="leo-simulation-source-toggle__button"
               data-testid={`simulation-source-toggle-${option.mode}`}
               data-source-mode={option.mode}
               data-active={active ? 'true' : 'false'}
               aria-pressed={active}
               onClick={() => { if (!active) onChange(option.mode); }}
             >
-              <span className="leo-simulation-source-toggle__label leo-modqn-view-toggle__label">
+              <span className="leo-simulation-source-toggle__label">
                 {option.label}
               </span>
-              <small className="leo-simulation-source-toggle__subtitle leo-modqn-view-toggle__sub">
+              <small className="leo-simulation-source-toggle__subtitle">
                 {option.subtitle}
               </small>
             </button>
