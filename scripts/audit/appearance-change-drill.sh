@@ -159,6 +159,13 @@ drill() {
     return
   fi
 
+  # A drill pointed at a test that cannot observe its edit reports a working
+  # seam as decorative. That misread FOUR drills in this session before it was
+  # caught, every time by a human noticing the number looked wrong. So the drill
+  # now proves its own pin first: make the edit, confirm the chosen test goes
+  # RED, and only then trust anything it says. A drill whose test stays green
+  # under its own perturbation is a BROKEN DRILL, reported as such — never as a
+  # finding about the code.
   local before_tree backup
   before_tree=$(tree_fingerprint)
   backup=$(mktemp)
@@ -195,7 +202,10 @@ drill() {
     echo "  ✗ FAIL — the change was not confined to one file."
   elif [ "$rows" -eq 0 ]; then
     outcome="fail"
-    echo "  ✗ FAIL — one file, but nothing on screen changed. The seam is decorative."
+    echo "  ✗ FAIL — one file, but $drill_test did not move."
+    echo "           Either the seam is decorative, OR this drill is checking a test"
+    echo "           that cannot see its edit. Confirm which before believing it:"
+    echo "           apply the edit by hand and run the whole suite."
   else
     outcome="pass"
     echo "  ✓ PASS — one file, $rows rendered rows moved."
@@ -275,9 +285,11 @@ drill expect_pass "$SERVING" "改同一顆衛星裡不同 beam 的深淺階梯" 
 
 # ==================== Frontier decisions (expect_fail) ====================
 
-drill expect_fail "$SERVING" "換掉衛星身分色的調色盤" \
+HUE_TEST="src/appearance/satelliteIdentityHueCharacterization.test.ts"
+drill expect_pass "$SERVING" "換掉衛星身分色的調色盤" \
 "  { hueDegrees: 48, baseLightness: 0.60 },  // gold" \
-"  { hueDegrees: 52, baseLightness: 0.60 },  // gold"
+"  { hueDegrees: 52, baseLightness: 0.60 },  // gold" \
+"$HUE_TEST"
 
 # Checked against the side characterization, not the default cone photograph:
 # the side rule is exercised by renderKey-only items, which the 284-row cone
