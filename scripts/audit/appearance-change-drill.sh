@@ -58,9 +58,33 @@ regression_prompts=()
 unexpected_pass_prompts=()
 
 # How many rows of the pinned photograph differ. 0 means the edit was inert.
+# Did the edit actually reach the rendered output?
+#
+# This used to count deepEqual array-diff lines (^ [+-] '...'), because the
+# original characterization was one 284-row string array. The per-axis
+# characterizations added later use assert.equal, whose failure output has a
+# completely different shape — so a test that genuinely went RED reported ZERO
+# rows moved, and the drill called a working seam "decorative". Four drills were
+# misreported that way before it was caught.
+#
+# Count FAILING ASSERTIONS instead: that is the property actually being asked
+# about ("did the pinned behaviour move"), and it is independent of which
+# assertion style the test happens to use.
 changed_rows() {
-  node --import tsx/esm --test "$1" 2>&1 \
-    | grep -cE "^\s*[+-]\s+'" || true
+  local out
+  out=$(node --import tsx/esm --test "$1" 2>&1)
+  local failed
+  failed=$(printf '%s' "$out" | grep -oE "^# fail [0-9]+|^ℹ fail [0-9]+" | grep -oE "[0-9]+$" | head -1)
+  [ -z "$failed" ] && failed=0
+  if [ "$failed" -gt 0 ]; then
+    # Prefer the row count when the test IS a row-diff photograph, since it is
+    # the more informative number; otherwise report the failing-assertion count.
+    local rows
+    rows=$(printf '%s' "$out" | grep -cE "^\s*[+-]\s+'" || true)
+    [ "$rows" -gt 0 ] && echo "$rows" || echo "$failed"
+  else
+    echo 0
+  fi
 }
 
 # Green means ZERO failures, not "pass N" for a hard-coded N. Pinning the count
@@ -255,9 +279,16 @@ drill expect_fail "$SERVING" "換掉衛星身分色的調色盤" \
 "  { hueDegrees: 48, baseLightness: 0.60 },  // gold" \
 "  { hueDegrees: 52, baseLightness: 0.60 },  // gold"
 
+# Checked against the side characterization, not the default cone photograph:
+# the side rule is exercised by renderKey-only items, which the 284-row cone
+# grid does not contain. Pointing a drill at a test that cannot observe its edit
+# reports a working seam as decorative — that misread three drills before it was
+# caught.
+SIDE_TEST="src/appearance/handoverSideCharacterization.test.ts"
 drill expect_pass "$MODIFIERS" "改 handover source/target 的判定" \
 "  if (renderKey.endsWith('-from')) return 'source';" \
-"  if (renderKey.endsWith('-from')) return 'target';"
+"  if (renderKey.endsWith('-from')) return 'target';" \
+"$SIDE_TEST"
 
 # ==================== Newly covered decisions ====================
 
@@ -281,7 +312,13 @@ drill expect_pass "$MARKERS" "把衛星標記的 fallback 身分色換成另一�
 "  return resolveSatelliteIdentityColor(satelliteId + '-marker', {});" \
 "$SINK_TEST"
 
-drill expect_pass "$RAIL" "候選軌有換手故事時要保留那一組候選卡片" \
+# expect_fail on purpose, and NOT because the seam is missing — railProjection
+# does own this decision in one file. It is here because NOTHING PINS IT: flipping
+# `shouldRetainCandidateRoster` leaves railPresentationCharacterization at fail 0
+# and the whole appearance suite at fail 0. A single-file change nobody can see is
+# not a converged decision, it is an unguarded one. Flip this to expect_pass when
+# the rail characterization actually covers the roster-retention rule.
+drill expect_fail "$RAIL" "候選軌有換手故事時要保留那一組候選卡片" \
 "  const shouldRetainCandidateRoster = handoverStory !== null;" \
 "  const shouldRetainCandidateRoster = handoverStory === null;" \
 "$RAIL_TEST"

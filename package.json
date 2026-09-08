@@ -69,7 +69,7 @@
     "validate:beam-floor": "node --import tsx/esm scripts/validate-serving-pending-beam-floor.ts",
     "validate:beam:visual-invariants:browser": "node --import tsx/esm scripts/validate-beam-visual-invariants-browser.ts",
     "validate:beam:colour-match": "node --import tsx/esm scripts/validate-beam-colour-match.ts",
-    "test:appearance": "node --import tsx/esm --test src/appearance/handoverAppearanceModifiers.test.ts src/appearance/resolveSatelliteAppearance.test.ts src/appearance/paletteAgreement.test.ts src/scene/appearanceCharacterization.test.ts src/scene/coneItems.test.ts src/scene/multiCandidateBeamColors.test.ts src/scene/additiveHandoverConeColoring.test.ts",
+    "test:appearance": "node --import tsx/esm --test src/appearance/handoverAppearanceModifiers.test.ts src/appearance/resolveSatelliteAppearance.test.ts src/appearance/paletteAgreement.test.ts src/appearance/beamVisibilityCharacterization.test.ts src/appearance/coneGeometryCharacterization.test.ts src/appearance/handoverSideCharacterization.test.ts src/appearance/handoverTimingEnvelopeCharacterization.test.ts src/appearance/railPresentationCharacterization.test.ts src/appearance/satelliteIdentityHueCharacterization.test.ts src/appearance/sinkAppearanceCharacterization.test.ts src/scene/appearanceCharacterization.test.ts src/scene/coneItems.test.ts src/scene/multiCandidateBeamColors.test.ts src/scene/additiveHandoverConeColoring.test.ts",
     "audit:appearance-cost": "node --import tsx/esm scripts/audit/appearance-change-cost.ts",
     "audit:appearance-drill": "bash scripts/audit/appearance-change-drill.sh",
     "validate:phase1a:recent-ho-ui": "node --import tsx/esm scripts/validate-phase1a-recent-ho-ui.tsx",
