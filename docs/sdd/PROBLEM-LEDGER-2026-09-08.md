@@ -23,6 +23,13 @@
 | S6 | 「第 N 秒畫面上是什麼」無法計算 | `8e40f8f` | `--diff 6,7` 印出 intra 換手全部變化 |
 | S7 | render-timeline 的 wall time 印在 stdout 破壞確定性 | `8e40f8f` | 移到 stderr,5/5 逐位相同 |
 | S8 | `validate:frame-plan` 對 intra 著色全盲 | 未提交 | 實測:同擾動現在抓到 6 個顏色差異 |
+| S9 | manifest 只有 12 筆,且**收斂的三個模組沒登記** | `5076ba9` | 我自己複驗:query 空、正對照命中 |
+| S10 | `MultiCandidateBeamScene` 兩套重複 precedence ladder | `a85a4e7` | 孤立 seam 2→1;drill invalid 桶抓到 worker 衝突 |
+| S11 | identity ladder rung 0/2 無 headless 入口(工具靜靜印錯顏色) | `a3c4eeb` | `#8397d1`→`#2758ec rung=0-plan`;工具現在印出哪一階贏 |
+| S12 | `satelliteTint` 六個消費者未收斂 | `e2afdd4` | 改一行,九條道同動;退役權威不動 |
+| S13 | 27 個瀏覽器閘門可假綠 | `d9eba1b` | 自驗:假驗證器打死 port → VOID/DID NOT RUN,exit 1 |
+| S14 | MainScene 五個決策無擁有者 | `ea102f8` | 9 個 move,timeline cmp 全 0/0;五個都登記 manifest |
+| S15 | T1 tsc 錯誤 2 個 / T2 `opacityFactor` 死欄位 | `ea102f8` `3c6100f` | tsc 2→0;刪除後 sha256 未變證明無人觀測 |
 
 ---
 
@@ -40,15 +47,25 @@
 
 ---
 
+## 🔬 已量出但尚未決定的(新)
+
+| # | 發現 | 證據 |
+|---|---|---|
+| M1 | **舊的瀏覽器閘門一個都沒真正跑過** —— 全部 0.76~1.10 秒 exit 1 = VOID。移植成 DOM 後才第一次真的執行並通過 | `/tmp/jsdom-port.md` 對照表 |
+| M2 | **homepage 有 React 無限重渲染**:`Maximum update depth exceeded` ×2。暫停狀態下 `errors:0`,所以與播放狀態有關 | 移植後跑 112.84s 才紅;舊閘門 0.97s VOID 從沒看見過 |
+| M3 | 換手功能**在現在的程式碼裡是健康的**:7200 秒 126 次(45 intra + 81 inter),presentation-starts 126,**dropped 0** | `/tmp/handover-death.md`,四個假設全排除 |
+| M4 | 但有**兩個 1 秒空窗**(t=1889、t=2051),`satId=null`,下一次換手 t=1894/2057 自行恢復 | 成因 `sinrLiveCellModel.ts:2813-2850` 的 detach 清空 |
+| M5 | 首頁 intra/inter 按鈕跑**固定 72 秒手寫劇本**,`t=52s` 把服務身分換成作者指定的贏家。可從任意時刻按、會重啟、端點缺失 fail-closed | `App.tsx:2252/:2292` |
+| M6 | homepage 六色系仍是第二調色盤,收斂會重新著色整個首頁(gold 55°→280° 等) | `seams` 報告列出每個 hue 的位移 |
+
 ## ⬜ 待辦(未派)
 
 | # | 問題 | 為何還沒做 |
 |---|---|---|
-| T1 | `garbage` worker 刪檔留下 **2 個 tsc 錯誤**(`sceneRenderLayers.test.tsx` 引用已刪的 `SceneBeamLoadLayers` / `SceneCellPresentationLayers`) | 要先判斷那兩個刪除本身是否正確 |
-| T2 | `HandoverAppearanceModifier.opacityFactor` 是**死欄位**(只有宣告 + 4 個字面量 1,無讀取者) | 低風險,等 `seams` 完成避免衝突 |
-| T3 | identity ladder **rung 0 / rung 2 沒有 headless 入口**(在 React accepted-snapshot store 後面)。後果:rail 已發布的波束可能與 render-timeline 差一個 shade 階 | 需要設計,不是清理 |
 | T4 | `HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR` 在預設路由不可達(唯一消費者被關閉的 overlay 擋住) | 要先確認 overlay 是否該永久關閉 |
-| T5 | 32 個孤兒測試檔已接入 `test:all`,但**沒做過突變測試** | `mutation` worker 正在補 |
+| T6 | 20/24 個 NEEDS-DOM 驗證器未移植 —— 19 個是**現在的程式碼到不了那個斷言面**(MODQN 移除的後果),1 個因 M2 那個 React bug 而紅 | 等 M2 修完再重評 |
+| T7 | M4 的兩個 1 秒空窗:要決定是「明確的覆蓋中斷狀態」還是「視覺連續性保持」 | owner 決定,不是重構副作用 |
+| T8 | M5 的按鈕:要決定是**教學控制**還是**即時控制** | owner 決定 |
 
 ---
 
