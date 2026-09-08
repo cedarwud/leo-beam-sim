@@ -385,6 +385,34 @@ test('candidate rail presentation characterization matches pre-convergence photo
   assert.deepEqual(actual, EXPECTED_RAIL_PRESENTATION_PHOTOGRAPH);
 });
 
+test('keeps the prior candidate cards visible while a committed story is still presented', () => {
+  const beforeSnapshot = snapshotFor(
+    cases.find(({ name }) => name === 'selection-hold-intra')!.decision,
+  );
+  const beforeRail = projectHomepageRail(beforeSnapshot);
+  const afterSnapshot = snapshotFor(
+    cases.find(({ name }) => name === 'switching-intra')!.decision,
+  );
+  const afterRail = projectHomepageRail(afterSnapshot, {
+    previousSnapshot: beforeSnapshot,
+    previousStory: beforeRail.handoverStory,
+  });
+
+  assert.ok(beforeRail.handoverStory);
+  assert.ok(afterRail.handoverStory);
+  assert.deepEqual(
+    afterRail.candidates.map(link => `${link.satelliteId}:${link.beamId}`),
+    ['sat-a:1'],
+    'the current accepted snapshot has moved on to a different candidate roster',
+  );
+  assert.deepEqual(
+    afterRail.visibleCandidates?.map(link => `${link.satelliteId}:${link.beamId}`),
+    ['sat-a:2'],
+    'the rail keeps the prior candidate card that explains the committed story',
+  );
+  assert.equal(afterRail.candidateRosterRetained, true);
+});
+
 test('candidate rail presentation photograph proof of sensitivity: fails if outputs move', () => {
   const actual = recordRailPhotograph();
   const corrupted = [...actual];
