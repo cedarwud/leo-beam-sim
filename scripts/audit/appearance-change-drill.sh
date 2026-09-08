@@ -111,7 +111,25 @@ tree_fingerprint() {
 }
 
 is_green() {
-  node --import tsx/esm --test "$1" 2>&1 | grep -qE "^ℹ fail 0$"
+  # `fail 0` alone is not enough: node exits non-zero on a missing file or a
+  # crash after the summary without ever printing `fail`, so check its exit code
+  # too. Cross-family review (a Gemini pass over this harness) raised both that
+  # case and a nested-subtest one; the subtest case does NOT reproduce on this
+  # node version, which prints exactly one `ℹ fail` line. Verified, not assumed.
+  #
+  # KNOWN LIMIT, not fixed: a test file containing NO tests still prints
+  # `ℹ pass 1 / ℹ fail 0`, because node counts the file itself as a pass. So an
+  # emptied or fully-skipped suite still reads as a green baseline here. The
+  # `pass >= 1` check below does not catch it and is kept only for the crash
+  # case. Measured consequence: such a drill then reports 0 rows moved, i.e. it
+  # lands in FALSE FAIL (a converged decision misread as frontier), not false
+  # pass — the safe direction. Closing it properly needs a baseline pass-count
+  # recorded per drill and compared, which is a larger change than this guard.
+  local out status
+  out=$(node --import tsx/esm --test "$1" 2>&1); status=$?
+  [ "$status" -eq 0 ] || return 1
+  echo "$out" | grep -qE "^ℹ fail 0$" || return 1
+  echo "$out" | grep -qE "^ℹ pass [1-9][0-9]*$"
 }
 
 # Refuse only on a TRACKED file with unstaged edits — those are work the drill
