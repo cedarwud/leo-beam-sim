@@ -29,9 +29,11 @@
  * ## What is computed here and what is NOT
  *
  * COMPUTED (all of it, exactly): the serving assignment, the handover events and
- * their kind, the presentation clock/phase/envelope, which cone items exist,
- * each item's resolved hex colour, its resolved opacity, its layer, its role,
- * its cone apex/baseCenter/baseRadius in world units.
+ * their kind, the accepted comparison plan, the accepted homepage snapshot,
+ * same-frame EE normalisation, the identity ladder rung that won, the
+ * presentation clock/phase/envelope, which cone items exist, each item's
+ * resolved hex colour, its resolved opacity, its layer, its role, its cone
+ * apex/baseCenter/baseRadius in world units.
  *
  * NOT COMPUTED, and deliberately not faked: GPU rasterisation, additive
  * blending between overlapping cones, fog, tone mapping, camera framing, and
@@ -101,6 +103,10 @@ import {
   type UeCellServingRecord,
 } from '../../src/scene/sinrLiveCellModel.ts';
 import { resolveRecentPrimaryHandoverEvent } from '../../src/scene/recentHandoverPresentationEvent.ts';
+import {
+  buildAcceptedHandoverPresentationSession,
+  createHandoverPresentationPolicyConfigHash,
+} from '../../src/scene/acceptedHandoverPresentationSnapshot.ts';
 import { resolveHandoverPresentationCandidate } from '../../src/scene/handoverPresentationCandidate.ts';
 import {
   advanceHandoverPresentation,
@@ -111,6 +117,9 @@ import {
 } from '../../src/scene/handoverPresentationOwner.ts';
 import { resolveHandoverPresentationDisplayPolicy } from '../../src/scene/handoverPresentationDisplayPolicy.ts';
 import { resolveHomepageSceneGeometryPolicy } from '../../src/homepage/controller/homepageSceneGeometryPolicy.ts';
+import { adaptHomepageSourceFrame } from '../../src/homepage/controller/sourceFrameAdapter.ts';
+import { resolveHomepageRenderAuthority } from '../../src/homepage/controller/homepageRenderAuthority.ts';
+import { homepageBeamEeNormalizedByKey } from '../../src/homepage/controller/homepageBeamEeProjection.ts';
 import { resolveHomepageSceneBeamVisibility } from '../../src/scene/homepageSceneBeamVisibility.ts';
 import {
   restrictHomepageBeamItems,
@@ -125,6 +134,10 @@ import {
   INTER_HANDOVER_CINEMA_DISPLAY_MS,
 } from '../../src/appearance/handoverTimingEnvelope.ts';
 import { DEFAULT_BEAM_DISPLAY_SPEC } from '../../src/scene/beamDisplaySpec.ts';
+import {
+  MIN_RENDER_ELEVATION_DEG,
+  SINR_LIVE_FOOTPRINT_RING_Y_LIFT,
+} from '../../src/appearance/coneGeometryContract.ts';
 import { resolveServingConeItems } from '../../src/scene/servingConeItems.ts';
 import {
   resolveAuthorityPairConeItems,
@@ -132,8 +145,19 @@ import {
   resolvePulseConeItems,
 } from '../../src/scene/handoverConeResolvers.ts';
 import { paintConeItems } from '../../src/appearance/paintConeItems.ts';
-import { resolveBaseIdentityColor } from '../../src/appearance/resolveBeamAppearance.ts';
+import {
+  resolveBaseIdentityColorWithRung,
+  type BaseIdentityColorResolution,
+} from '../../src/appearance/resolveBeamAppearance.ts';
 import { homepageSatelliteColorForBeam } from '../../src/homepage/controller/homepageSatelliteVisualIdentity.ts';
+import { resolveAcceptedBeamIdentityColor } from '../../src/scene/acceptedBeamIdentityColor.ts';
+import { resolveMultiCandidateComparisonPolicy } from '../../src/scene/multiCandidateSceneDisplayPolicy.ts';
+import { resolveAuthorityPresentationCandidate } from '../../src/scene/handoverPresentationDisplayPolicy.ts';
+import {
+  commitReceiptMatchesHandoverPresentation,
+  resolveHandoverAuthorityJoin,
+} from '../../src/scene/handoverAuthorityJoin.ts';
+import { resolveMultiCandidateBeamColors } from '../../src/scene/multiCandidateBeamColors.ts';
 import {
   resolveSinrLiveConeDisplayStyle,
   resolveSinrLiveConeRole,
@@ -147,8 +171,18 @@ import {
   resolveSinrLiveConeElevationDimFactor,
   type SinrLiveConePalette,
 } from '../../src/constants/sinrLiveConeStyle.ts';
+import {
+  SINR_LIVE_CONE_BASE_ALPHA_FACTOR,
+  SINR_LIVE_CONE_SEGMENTS,
+} from '../../src/constants/sinrLiveConeStyle.ts';
 import type { WorldPoint } from '../../src/viz/CellFootprints.tsx';
 import type { CachedSatState } from '../../src/scene/simulationHelpers.ts';
+import type { SimFrame } from '../../src/scene/types.ts';
+import type {
+  HomepageAcceptedSnapshot,
+  HomepageBeamMetricsProjection,
+} from '../../src/homepage/controller/contracts.ts';
+import type { MultiCandidateComparisonLatch } from '../../src/scene/multiCandidateSceneDisplayPolicy.ts';
 
 const TOOL = 'audit:render-timeline';
 
@@ -180,6 +214,9 @@ interface TimelineItem {
    * only direct evidence the intra shading path was exercised.
    */
   readonly identityColor: string;
+  readonly identityRung: BaseIdentityColorResolution['rung'];
+  /** The exact frame-relative EE input used by the homepage colour projection. */
+  readonly eeNormalized: number | null;
   readonly shaded: boolean;
   readonly opacity: number;
   readonly role: string;
@@ -409,32 +446,7 @@ function createDriver(options: DriverOptions): Driver {
     worldUnitsPerKm,
   });
   const palette = paletteFromDefaultSpec();
-
-  // IDENTITY LADDER. Rung 1 (homepage projection) is wired when the homepage
-  // owns identity, exactly as MainScene wires it, MINUS the accepted-snapshot
-  // EE normalisation (`eeNormalized`) and MINUS rung 2 (the accepted snapshot
-  // itself) — both live behind the React accepted-snapshot store, which has no
-  // headless entry point. What that means for a reader: a beam whose colour the
-  // rail has already published may render one homepage shade rung away from
-  // what this tool prints. Stated rather than papered over.
-  const resolveIdentityColor = (
-    satelliteId: string,
-    beamId: number,
-    isServingOrCandidate = false,
-  ): string => resolveBaseIdentityColor(
-    satelliteId,
-    beamId,
-    {
-      homepageColorFor: homepageVisualIdentity
-        ? (satId, beam, serving) => homepageSatelliteColorForBeam(satId, beam, {
-          identityPaletteIndex: null,
-          eeNormalized: undefined,
-          isServing: serving,
-        }).color
-        : undefined,
-    },
-    { isServingOrCandidate },
-  );
+  const policyConfigHash = createHandoverPresentationPolicyConfigHash(JSON.stringify(profile));
 
   const stepFrame = (paused: boolean, deltaSec: number) => stepRuntimeFrame({
     profile,
@@ -472,6 +484,9 @@ function createDriver(options: DriverOptions): Driver {
   let presentationState: HandoverPresentationState = createHandoverPresentationState();
   let lastSec = -1;
   const seenEventKeys = new Set<string>();
+  let previousAcceptedSnapshot: HomepageAcceptedSnapshot | null = null;
+  let previousHomepageBeamMetrics: HomepageBeamMetricsProjection | null = null;
+  let previousComparisonLatch: MultiCandidateComparisonLatch | null = null;
 
   const eventKey = (event: SinrLiveCellHandoverEvent): string => (
     `${event.ueId}|${event.sourceTimeSec}|${event.kind}|${event.fromSatId}|${event.fromBeamId}|${event.toSatId}|${event.toBeamId}`
@@ -483,6 +498,72 @@ function createDriver(options: DriverOptions): Driver {
     if (cellFrame === undefined) {
       throw new Error(`[${TOOL}] the model published no cell frame at t=${simTimeSec}`);
     }
+
+    // This is the headless equivalent of the live publisher's React adapter.
+    // The adapter and authority are pure; the only state retained here is the
+    // same previous-snapshot/previous-metrics continuity that React retains in
+    // refs between published frames.
+    const homepageSourceFrame = homepageVisualIdentity
+      ? adaptHomepageSourceFrame({
+        frame: frame as SimFrame,
+        epochUtcMs: EPOCH_UTC_MS,
+        dtSec: 0,
+      })
+      : null;
+    const homepageAuthority = homepageVisualIdentity
+      ? resolveHomepageRenderAuthority({
+        sourceFrame: homepageSourceFrame,
+        policyConfigHash,
+        previousSnapshot: previousAcceptedSnapshot,
+        previousMetrics: previousHomepageBeamMetrics,
+        servingBeamCount: SERVING_BEAM_COUNT,
+        candidateBeamCount: CANDIDATE_BEAM_COUNT,
+        profileBeamsPerSatellite: profile.beams.perSatellite,
+        configuredBeamCount: SERVING_BEAM_COUNT,
+      })
+      : null;
+    const directAcceptedSession = !homepageVisualIdentity
+      && (frame as SimFrame).handoverDecisionFrame !== null
+      && (frame as SimFrame).handoverDecisionFrame !== undefined
+      ? buildAcceptedHandoverPresentationSession({
+        decision: (frame as SimFrame).handoverDecisionFrame!,
+        policyConfigHash,
+        pinnedKey: null,
+        previousSnapshot: previousAcceptedSnapshot,
+      })
+      : null;
+    if (homepageAuthority?.session !== null && homepageAuthority?.session !== undefined) {
+      previousAcceptedSnapshot = homepageAuthority.session.snapshot;
+    } else if (directAcceptedSession !== null) {
+      previousAcceptedSnapshot = directAcceptedSession.snapshot;
+    }
+    if (homepageAuthority?.beamMetrics !== null && homepageAuthority?.beamMetrics !== undefined) {
+      previousHomepageBeamMetrics = homepageAuthority.beamMetrics;
+    }
+    const acceptedSnapshot = homepageAuthority?.snapshot
+      ?? directAcceptedSession?.snapshot
+      ?? null;
+    const homepageBeamMetrics = homepageAuthority?.beamMetrics ?? null;
+    const homepageEeByKey = homepageBeamMetrics === null
+      ? null
+      : homepageBeamEeNormalizedByKey(homepageBeamMetrics.metrics);
+    const homepageIdentityPaletteIndexBySatelliteId = acceptedSnapshot === null
+      ? null
+      : new Map(
+        Object.entries(acceptedSnapshot.plan.identityAllocation.assignments).map(
+          ([satelliteId, identity]) => [satelliteId, identity.paletteIndex] as const,
+        ),
+      );
+    const comparisonPolicy = homepageVisualIdentity
+      ? resolveMultiCandidateComparisonPolicy({
+        acceptedPresentation: acceptedSnapshot,
+        simSource: 'live',
+        sceneLane: 'sinr-live',
+        previousLatch: previousComparisonLatch,
+        centralOverlayEnabled: true,
+      })
+      : null;
+    previousComparisonLatch = comparisonPolicy?.nextLatch ?? null;
 
     // --- satellite cone apexes, by the production projection ----------------
     const satelliteWorldById = new Map<string, WorldPoint>();
@@ -502,6 +583,69 @@ function createDriver(options: DriverOptions): Driver {
       ue => ue.ueId === primaryUeId,
     ) ?? cellFrame.ues[0];
 
+    const resolveIdentityAppearance = (
+      satelliteId: string,
+      beamId: number,
+      isServingOrCandidate = false,
+      planColorFor?: (satId: string, beam: number) => string | undefined,
+    ): BaseIdentityColorResolution => resolveBaseIdentityColorWithRung(
+      satelliteId,
+      beamId,
+      {
+        planColorFor,
+        homepageColorFor: homepageVisualIdentity
+          ? (satId, beam, serving) => homepageSatelliteColorForBeam(satId, beam, {
+            identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(satId) ?? null,
+            eeNormalized: homepageEeByKey?.get(`${satId}:${beam}`),
+            isServing: serving,
+          }).color
+          : undefined,
+        acceptedColorFor: (satId, beam) => {
+          const published = resolveAcceptedBeamIdentityColor(
+            acceptedSnapshot,
+            satId,
+            beam,
+            '',
+          );
+          return published.length > 0 ? published : undefined;
+        },
+      },
+      { isServingOrCandidate },
+    );
+    const resolveIdentityColor = (
+      satelliteId: string,
+      beamId: number,
+      isServingOrCandidate = false,
+    ): string => resolveIdentityAppearance(
+      satelliteId,
+      beamId,
+      isServingOrCandidate,
+    ).color;
+    // `resolveMultiCandidateBeamColors` is the production authority-map
+    // constructor. Its values are then supplied as the pair lane's rung-0
+    // source, exactly as MainScene supplies `beamColorBySatelliteBeam`.
+    const authorityBeamColors = resolveMultiCandidateBeamColors({
+      sceneInstructions: [],
+      authorityDisplayedLinks: acceptedSnapshot?.plan.displayedLinks.map(link => ({
+        satelliteId: link.satelliteId,
+        beamId: link.beamId,
+        isServing: link.isServing,
+        isCandidate: link.isCandidate,
+      })) ?? [],
+      authorityActive: comparisonPolicy?.authorityActive ?? false,
+      resolveBeamColor: resolveIdentityColor,
+    }).bySatelliteBeam;
+    const resolveAuthorityIdentityAppearance = (
+      satelliteId: string,
+      beamId: number,
+      isServingOrCandidate = false,
+    ): BaseIdentityColorResolution => resolveIdentityAppearance(
+      satelliteId,
+      beamId,
+      isServingOrCandidate,
+      (satId, beam) => authorityBeamColors.get(`${satId}/${beam}`),
+    );
+
     // --- events -------------------------------------------------------------
     const retained = cellFrame.recentHandoverEvents ?? [];
     const newEvents: TimelineEvent[] = [];
@@ -518,13 +662,33 @@ function createDriver(options: DriverOptions): Driver {
       primaryUeId,
       simTimeSec: cellFrame.simTimeSec,
     });
+    const handoverAuthorityJoin = resolveHandoverAuthorityJoin(
+      acceptedSnapshot?.decision ?? null,
+      acceptedSnapshot?.commit ?? null,
+    );
+    const authorityHandoverPresentationCandidate = resolveAuthorityPresentationCandidate({
+      enabled: comparisonPolicy?.authorityActive ?? false,
+      homepageVisualIdentity,
+      authorityJoin: handoverAuthorityJoin,
+      simSource: 'live',
+      hasCellPlacement: cellId => placementByCellId.has(cellId),
+      hasSatelliteWorld: satelliteId => satelliteWorldById.has(satelliteId),
+      durationMs: {
+        intra: homepageVisualIdentity
+          ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS
+          : INTRA_HANDOVER_CINEMA_DISPLAY_MS,
+        inter: homepageVisualIdentity
+          ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS
+          : INTER_HANDOVER_CINEMA_DISPLAY_MS,
+      },
+    });
     const presentationCandidate = resolveHandoverPresentationCandidate({
       authority: {
-        active: false,
-        candidate: null,
-        centralOverlayActive: false,
-        decisionAuthorityPresent: false,
-        acceptedPresentation: null,
+        active: comparisonPolicy?.authorityActive ?? false,
+        candidate: authorityHandoverPresentationCandidate,
+        centralOverlayActive: comparisonPolicy?.centralOverlayActive ?? false,
+        decisionAuthorityPresent: comparisonPolicy?.decisionAuthorityPresent ?? false,
+        acceptedPresentation: acceptedSnapshot,
       },
       manual: {
         active: false,
@@ -555,6 +719,10 @@ function createDriver(options: DriverOptions): Driver {
     presentationState = advanced.state;
     const presentation: HandoverPresentationView = advanced.view
       ?? createIdleHandoverPresentationView();
+    const authorityTransitionActive = comparisonPolicy?.authorityActive === true
+      && handoverAuthorityJoin?.transition !== null
+      && handoverAuthorityJoin?.transition !== undefined
+      && presentation.event?.eventId === handoverAuthorityJoin.transition.eventId;
 
     const displayPolicy = resolveHandoverPresentationDisplayPolicy({
       presentation,
@@ -566,18 +734,19 @@ function createDriver(options: DriverOptions): Driver {
       handoverCinemaKind: null,
       recentAnyInterHandoverEventPresent: false,
       simSource: 'live',
-      multiCandidateCentralOverlayActive: false,
+      multiCandidateCentralOverlayActive: comparisonPolicy?.centralOverlayActive ?? false,
       primaryServingRecord: primary ?? null,
       preserveConfiguredServingFan: homepageVisualIdentity,
       teachingLectureActive: false,
       peakOpacity: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraPeakOpacity,
       fallbackSimTimeSec: simTimeSec,
       homepageVisualIdentity,
+      multiCandidateIdentityTransitionActive: authorityTransitionActive,
     });
     const geometryPolicy = resolveHomepageSceneGeometryPolicy({
       homepageVisualIdentity,
-      candidateReviewActive: false,
-      authorityTransitionActive: false,
+      candidateReviewActive: comparisonPolicy?.centralOverlayActive ?? false,
+      authorityTransitionActive,
       presentationActive: presentation.active,
       presentationSource: presentation.event?.source ?? null,
       presentationKind: presentation.event?.kind ?? null,
@@ -602,7 +771,7 @@ function createDriver(options: DriverOptions): Driver {
         renderedCandidateSatelliteId: null,
         presentedHandoverPairCandidate: displayPolicy.presentedHandoverPairCandidate,
         handoverPresentationCandidate: presentationCandidate,
-        handoverAuthorityJoin: null,
+        handoverAuthorityJoin,
         cinemaPairCandidate: displayPolicy.presentedHandoverPairCandidate,
         recentPrimaryHandoverEvent,
       })
@@ -652,7 +821,7 @@ function createDriver(options: DriverOptions): Driver {
         preserveConfiguredServingFan:
           displayPolicy.handoverDisplayIsolation.preserveConfiguredServingFan,
         teachingLectureFieldCleared: false,
-        multiCandidateCentralOverlayActive: false,
+        multiCandidateCentralOverlayActive: comparisonPolicy?.centralOverlayActive ?? false,
         homepageVisualIdentity,
         homepageBeamVisibility: allowedBeamIdentities,
         homepageBeamFanSatelliteIds,
@@ -736,23 +905,25 @@ function createDriver(options: DriverOptions): Driver {
         restrictHomepageBeamItems: restrict,
       },
     });
-    // The authority lane needs the accepted-comparison overlay, which is React
-    // state with no headless entry point. It is wired with the overlay OFF, so
-    // it correctly resolves to empty; that is a real production state (the
-    // overlay closed), not a stub.
+    // The authority lane owns rung 0 when the pure comparison policy says the
+    // accepted plan is on stage. Its map is the same map the React scene passes
+    // into `handoverConePaintContext`; an absent map entry is still a miss.
     const authorityItems = resolveAuthorityPairConeItems({
       policy: {
         enabled: true,
-        centralOverlayActive: false,
-        identityTransitionActive: false,
+        centralOverlayActive: comparisonPolicy?.centralOverlayActive ?? false,
+        identityTransitionActive: authorityTransitionActive,
         handoverActive: presentation.active,
         homepageVisualIdentity,
         renderAuthorityPair: geometryPolicy.renderAuthorityPair,
-        authorityPresentationCommitObserved: false,
+        authorityPresentationCommitObserved: commitReceiptMatchesHandoverPresentation(
+          acceptedSnapshot?.commit,
+          presentation.event,
+        ),
       },
       candidate: displayPolicy.presentedHandoverPairCandidate,
       envelope,
-      beamColorBySatelliteBeam: new Map(),
+      beamColorBySatelliteBeam: authorityBeamColors,
       geometry: handoverGeometry,
       output: {
         resolveSceneAcceptedBeamColor: resolveIdentityColor,
@@ -767,33 +938,40 @@ function createDriver(options: DriverOptions): Driver {
     // identity colour be recomputed with the SAME inputs the lane used, so a
     // `shaded=YES` means the modifier table fired and never means this tool
     // asked the ladder a different question.
+    type ResolveIdentityAppearance = (
+      satId: string,
+      beamId: number,
+      isServingOrCandidate?: boolean,
+    ) => BaseIdentityColorResolution;
     const lanes: readonly [
       SinrLiveConeMountLayer,
       readonly SinrLiveCellBeamConeRenderItem[],
       (item: SinrLiveCellBeamConeRenderItem) => boolean,
+      ResolveIdentityAppearance,
     ][] = [
       // paintConeItems(..., prominence: 'candidate') -> flag derives to true.
-      ['nonServing', nonServingItems, () => true],
+      ['nonServing', nonServingItems, () => true, resolveIdentityAppearance],
       // servingConeItems.ts:65 paints with prominence 'serving' -> true.
-      ['serving', servingItems, () => true],
+      ['serving', servingItems, () => true, resolveIdentityAppearance],
       // handoverConeResolvers.ts pulse lane: `isServingOrCandidate: item.kind === 'intra'`.
-      ['pulse', pulseItems, item => item.kind === 'intra'],
+      ['pulse', pulseItems, item => item.kind === 'intra', resolveIdentityAppearance],
       // handoverConeResolvers.ts cinema pair lane: `isServingOrCandidate: false`.
-      ['triggered', cinemaItems, () => false],
+      ['triggered', cinemaItems, () => false, resolveIdentityAppearance],
       // handoverConeResolvers.ts authority pair lane: `isServingOrCandidate: intra`.
       ['triggered', authorityItems, () => (
         displayPolicy.presentedHandoverPairCandidate?.kind === 'intra'
-      )],
+      ), resolveAuthorityIdentityAppearance],
     ];
     const items = lanes
-      .flatMap(([layer, laneItems, laneServingFlag]) => laneItems.map(
+      .flatMap(([layer, laneItems, laneServingFlag, laneIdentityAppearance]) => laneItems.map(
         item => finalizeItem(
           layer,
           item,
           placementByCellId,
           palette,
           hero,
-          resolveIdentityColor,
+          laneIdentityAppearance,
+          (satId, beamId) => homepageEeByKey?.get(`${satId}:${beamId}`) ?? null,
           laneServingFlag(item),
         ),
       ))
@@ -853,6 +1031,7 @@ function createDriver(options: DriverOptions): Driver {
     `servingBeamCount    = ${SERVING_BEAM_COUNT}  candidateBeamCount=${CANDIDATE_BEAM_COUNT}`,
     `eeThresholdKbitPerJ = ${DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE}`,
     `worldUnitsPerKm     = ${num(worldUnitsPerKm, 6)}  satPosScaleFactor=${num(satPosScaleFactor, 6)}`,
+    `renderGeometry      = coneSegments=${SINR_LIVE_CONE_SEGMENTS} baseVertexAlpha=${num(SINR_LIVE_CONE_BASE_ALPHA_FACTOR)} footprintRingYLift=${num(SINR_LIVE_FOOTPRINT_RING_Y_LIFT)} minRenderElevationDeg=${num(MIN_RENDER_ELEVATION_DEG, 1)}`,
     `presentationClock   = simTimeSec * ${MS_PER_SIM_SEC} ms (playback speed 1)`,
   ];
 
@@ -889,7 +1068,12 @@ function finalizeItem(
   placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>,
   palette: SinrLiveConePalette,
   hero: { readonly satId: string | null; readonly cellId: number | null; readonly beamId: number | null },
-  resolveIdentityColor: (satId: string, beamId: number, isServingOrCandidate?: boolean) => string,
+  resolveIdentityAppearance: (
+    satId: string,
+    beamId: number,
+    isServingOrCandidate?: boolean,
+  ) => BaseIdentityColorResolution,
+  resolveEeNormalized: (satId: string, beamId: number) => number | null,
   laneIsServingOrCandidate: boolean,
 ): TimelineItem {
   const beamId = item.beamId ?? cellLinkBudgetBeamId(item.cellId);
@@ -930,12 +1114,15 @@ function finalizeItem(
   );
   // The SAME identity lookup the lane used, with NO handover row applied. When
   // this differs from `style.color`, the modifier table fired on this item.
-  const identityColor = resolveIdentityColor(item.satId, beamId, laneIsServingOrCandidate);
+  const identity = resolveIdentityAppearance(item.satId, beamId, laneIsServingOrCandidate);
+  const identityColor = identity.color;
   return {
     id: `${layer}|${item.satId}|${item.cellId}|${beamId}|${role}|${item.renderKey ?? ''}`,
     layer,
     color: style.color,
     identityColor,
+    identityRung: identity.rung,
+    eeNormalized: resolveEeNormalized(item.satId, beamId),
     shaded: style.color.toLowerCase() !== identityColor.toLowerCase(),
     opacity,
     role,
@@ -965,6 +1152,8 @@ function itemLine(item: TimelineItem): string {
     `freq=${String(item.frequencyIndex).padStart(2)}`,
     `color=${item.color}`,
     `identity=${item.identityColor}`,
+    `rung=${item.identityRung}`,
+    `eeNorm=${item.eeNormalized === null ? '-' : num(item.eeNormalized)}`,
     `shaded=${item.shaded ? 'YES' : 'no '}`,
     `opacity=${num(item.opacity)}`,
     `serving=${item.serving ? 'Y' : 'n'}`,
@@ -1019,7 +1208,7 @@ function printAt(second: TimelineSecond, lines: string[]): void {
 }
 
 const DIFFED_FIELDS = [
-  'layer', 'color', 'identityColor', 'shaded', 'opacity', 'role', 'satId',
+  'layer', 'color', 'identityColor', 'identityRung', 'eeNormalized', 'shaded', 'opacity', 'role', 'satId',
   'cellId', 'beamId', 'frequencyIndex', 'serving', 'displayOnly', 'renderKey',
 ] as const;
 

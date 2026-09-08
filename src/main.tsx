@@ -1,4 +1,4 @@
-import { StrictMode, useState, type CSSProperties, type ReactNode } from 'react';
+import { StrictMode, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { SixActsLauncher } from './course/nav/SixActsLauncher';
@@ -88,6 +88,16 @@ const isSixActsTeachingStage = query.get('teaching') === '1'
   || query.get('preset') === 'handover';
 
 function Shell({ children }: { readonly children: ReactNode }) {
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      container.dataset.leoAppReady = 'true';
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      delete container.dataset.leoAppReady;
+    };
+  }, []);
+
   return (
     <StrictMode>
       {children}

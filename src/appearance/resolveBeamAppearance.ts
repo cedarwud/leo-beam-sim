@@ -35,6 +35,19 @@ export interface BaseIdentityColorOptions {
   readonly isServingOrCandidate?: boolean;
 }
 
+/** The rung that supplied an identity colour to the renderer. */
+export type IdentityColorRung =
+  | '0-plan'
+  | '1-homepage'
+  | '2-accepted'
+  | '3-deterministic'
+  | '4-neutral';
+
+export interface BaseIdentityColorResolution {
+  readonly color: string;
+  readonly rung: IdentityColorRung;
+}
+
 /**
  * WHERE A BEAM'S IDENTITY COLOUR COMES FROM — the single precedence ladder.
  *
@@ -71,32 +84,49 @@ export interface BaseIdentityColorOptions {
  * lookup must never answer a colour of its own invention to signal a miss —
  * that is what made a miss indistinguishable from a hit at the boundary.
  */
-export function resolveBaseIdentityColor(
+export function resolveBaseIdentityColorWithRung(
   satId: string,
   beamId: number,
   sources: IdentitySources,
   options: BaseIdentityColorOptions = {},
-): string {
+): BaseIdentityColorResolution {
   if (satId.length === 0 || !Number.isFinite(beamId)) {
     // An unusable id has no identity, so answering with a real colour would be
     // inventing one, and colorForServingBeam(sat, NaN) silently returned
     // lightness rung 0 — a real, plausible-looking colour for a bug.
-    return HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR;
+    return {
+      color: HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
+      rung: '4-neutral',
+    };
   }
   const plan = sources.planColorFor?.(satId, beamId);
-  if (plan !== undefined && plan.length > 0) return plan;
+  if (plan !== undefined && plan.length > 0) return { color: plan, rung: '0-plan' };
 
   const homepage = sources.homepageColorFor?.(
     satId,
     beamId,
     options.isServingOrCandidate ?? false,
   );
-  if (homepage !== undefined && homepage.length > 0) return homepage;
+  if (homepage !== undefined && homepage.length > 0) {
+    return { color: homepage, rung: '1-homepage' };
+  }
 
   const accepted = sources.acceptedColorFor?.(satId, beamId);
-  if (accepted !== undefined && accepted.length > 0) return accepted;
+  if (accepted !== undefined && accepted.length > 0) {
+    return { color: accepted, rung: '2-accepted' };
+  }
 
-  return colorForServingBeam(satId, beamId).markerColor;
+  return { color: colorForServingBeam(satId, beamId).markerColor, rung: '3-deterministic' };
+}
+
+/** Resolve only the colour for existing consumers; the rung-aware core above is authoritative. */
+export function resolveBaseIdentityColor(
+  satId: string,
+  beamId: number,
+  sources: IdentitySources,
+  options: BaseIdentityColorOptions = {},
+): string {
+  return resolveBaseIdentityColorWithRung(satId, beamId, sources, options).color;
 }
 
 export interface BeamAppearanceInput {

@@ -365,14 +365,22 @@ drill expect_pass "$RAIL" "候選軌有換手故事時要保留那一組候選�
 # That bucket exists for exactly this, and this is the first time it has fired
 # on a real conflict rather than on a drill I broke myself.
 drill expect_pass "$FINAL_COLOUR" "改一支波束最終顏色的 precedence 順序" \
-"  if (homepage !== undefined && homepage.length > 0) return homepage;
+"  if (homepage !== undefined && homepage.length > 0) {
+    return { color: homepage, rung: '1-homepage' };
+  }
 
   const accepted = sources.acceptedColorFor?.(satId, beamId);
-  if (accepted !== undefined && accepted.length > 0) return accepted;" \
+  if (accepted !== undefined && accepted.length > 0) {
+    return { color: accepted, rung: '2-accepted' };
+  }" \
 "  const accepted = sources.acceptedColorFor?.(satId, beamId);
-  if (accepted !== undefined && accepted.length > 0) return accepted;
+  if (accepted !== undefined && accepted.length > 0) {
+    return { color: accepted, rung: '2-accepted' };
+  }
 
-  if (homepage !== undefined && homepage.length > 0) return homepage;" \
+  if (homepage !== undefined && homepage.length > 0) {
+    return { color: homepage, rung: '1-homepage' };
+  }" \
 "$FINAL_COLOUR_TEST"
 
 # The link's named beam-id rung is now characterized through its exported pure

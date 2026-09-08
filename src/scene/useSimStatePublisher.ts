@@ -33,7 +33,6 @@ import {
   type UeCellServingRecord,
 } from './sinrLiveCellModel';
 import {
-  resolveHomepageBeamBudgets,
   resolveSinrLiveBeamBudget,
   resolveSinrLivePhysicalRoleBeamCount,
 } from './sinrLiveBeamBudget';
@@ -60,15 +59,12 @@ import {
   type AcceptedHandoverPresentationSnapshot,
 } from './acceptedHandoverPresentationSnapshot';
 import {
-  buildHomepageAcceptedSnapshotSession,
-} from '../homepage/controller/acceptedSnapshot';
+  resolveHomepageRenderAuthority,
+} from '../homepage/controller/homepageRenderAuthority';
 import {
   adaptHomepageSourceFrame,
   isHomepageSourceFrameJoinCurrent,
 } from '../homepage/controller/sourceFrameAdapter';
-import {
-  buildHomepageBeamMetrics,
-} from '../homepage/controller/beamMetrics';
 import type { HomepageBeamMetricsProjection } from '../homepage/controller/contracts';
 
 // P1d: this hook now receives `frame: NormalizedSceneFrame` and forwards it
@@ -883,6 +879,39 @@ export function useSimStatePublisher({
       dtSec: 0,
     });
   }, [enabled, homepageControllerEnabled, sim, sourceEpochUtcMs]);
+  // The accepted homepage snapshot and its same-frame EE projection are one
+  // renderer-neutral authority. React retains the previous values around this
+  // call, but it does not reconstruct either value itself.
+  const homepageRenderAuthority = useMemo(
+    () => homepageControllerEnabled
+      ? resolveHomepageRenderAuthority({
+        sourceFrame: enabled ? homepageSourceFrame : null,
+        policyConfigHash,
+        pinnedKey: candidateInspectionPinnedKey,
+        previousSnapshot: previousAcceptedSnapshotForCurrentPolicy,
+        previousMetrics: previousHomepageBeamMetricsRef.current,
+        servingBeamCount,
+        candidateBeamCount,
+        profileBeamsPerSatellite: profile.beams.perSatellite,
+        beamCountBySatellite,
+        configuredBeamCount: resolveSinrLivePhysicalRoleBeamCount(
+          servingBeamCount ?? profile.beams.perSatellite,
+        ) ?? profile.beams.perSatellite,
+      })
+      : null,
+    [
+      candidateInspectionPinnedKey,
+      beamCountBySatellite,
+      candidateBeamCount,
+      enabled,
+      homepageControllerEnabled,
+      homepageSourceFrame,
+      policyConfigHash,
+      previousAcceptedSnapshotForCurrentPolicy,
+      profile.beams.perSatellite,
+      servingBeamCount,
+    ],
+  );
   const acceptedHandoverPresentationSession = useMemo(() => {
     if (!enabled || sim.handoverDecisionFrame === null || sim.handoverDecisionFrame === undefined) {
       return null;
@@ -901,48 +930,7 @@ export function useSimStatePublisher({
     if (homepageSourceFrame === null || homepageSourceFrame.decision === null) {
       return null;
     }
-    const decision = homepageSourceFrame.decision;
-    const session = buildHomepageAcceptedSnapshotSession({
-      decisionBoundary: Object.freeze({
-        sourceFrameId: homepageSourceFrame.sourceFrameId,
-        epochToken: homepageSourceFrame.epochToken,
-        simTimeMs: homepageSourceFrame.simTimeMs,
-        phase: decision.phase,
-        decision,
-      }),
-      policyConfigHash,
-      pinnedKey: candidateInspectionPinnedKey,
-      previousSnapshot: previousAcceptedSnapshotForCurrentPolicy,
-      // The accepted decision is the sole candidate authority. Keep hard-eligible
-      // alternatives visible while they are being monitored; the EE trigger is
-      // still enforced by the decision engine and is the only condition that can
-      // advance a handover. Binding visibility to that instantaneous trigger made
-      // the rail jump from zero rows to a whole replacement set at the threshold.
-      // Each selected satellite still carries its configured 1/7/19 beam roster
-      // in the rail, while the scene projection bounds carrier geometry to the
-      // serving beam and the existing winner.
-      // Expand the accepted set, but only to candidates that also satisfy the
-      // decision trigger. These two flags are not independent: the budget path
-      // returns early unless the first is true (candidatePresentationPlan.ts,
-      // `if (!displayAllHardEligibleCandidates) return budget;`), so the pair
-      // below means "show the contenders", not "show everything".
-      //
-      // Both were set to false in 6b9474e to avoid a "0→N→0 candidate cloud".
-      // Measured over a 7201-frame window once the SINR admission regression
-      // (d558881) was fixed: hard-eligible candidates exist in 93% of frames
-      // (up to 17 links / 12 satellites), but trigger-satisfied ones appear in
-      // only 25.5% (up to 11). The cloud that comment describes is the
-      // true/false combination; it is not what this pair produces.
-      displayAllHardEligibleCandidates: true,
-      displayOnlyTriggerSatisfiedCandidates: true,
-      // The homepage scenario controls are the source of the rendered 1/7/19
-      // beam roster. Do not fall back to the profile's default here: doing so
-      // made the accepted snapshot/rail silently disagree with the scene when
-      // the serving layout was changed by the left control panel.
-      configuredBeamCount: resolveSinrLivePhysicalRoleBeamCount(
-        servingBeamCount ?? profile.beams.perSatellite,
-      ) ?? profile.beams.perSatellite,
-    });
+    const session = homepageRenderAuthority?.session ?? null;
     if (session === null) return null;
     previousAcceptedSnapshotRef.current = session.snapshot;
     return session;
@@ -955,6 +943,7 @@ export function useSimStatePublisher({
     policyConfigHash,
     profile.beams.perSatellite,
     sim.handoverDecisionFrame,
+    homepageRenderAuthority,
   ]);
   // During one React render the runtime can expose the old SimFrame while the
   // decision model has already moved to the new identity. Keep the last
@@ -1447,27 +1436,9 @@ export function useSimStatePublisher({
         ? null
         : primaryCellRecord.comparisonSinrDb ?? null
       : pendingTargetSinrDb;
-    const homepageBeamMetrics = homepageControllerEnabled && homepageSourceFrame !== null
-      ? buildHomepageBeamMetrics({
-        sourceFrame: homepageSourceFrame,
-        snapshot: acceptedHandoverPresentationSnapshotForRender,
-        // One resolver, so serving and candidate cannot be crossed here without
-        // failing `sinrLiveBeamBudget.test.ts`. These were four interleaved
-        // inline expressions and the seam had no test of its own.
-        ...resolveHomepageBeamBudgets({
-          servingBeamCount,
-          candidateBeamCount,
-          profileBeamsPerSatellite: profile.beams.perSatellite,
-        }),
-        beamCountBySatellite,
-        previousMetrics: previousHomepageBeamMetricsRef.current,
-        // The homepage now presents the same corrected replacement EE that
-        // drives the handover policy. No synthetic hierarchy is applied.
-        eeDisplayPolicy: 'source',
-      })
-      : homepageControllerEnabled
-        ? previousHomepageBeamMetricsRef.current
-        : null;
+    const homepageBeamMetrics = homepageControllerEnabled
+      ? homepageRenderAuthority?.beamMetrics ?? previousHomepageBeamMetricsRef.current
+      : null;
     const nextState: SimState = {
       profileId: profile.id,
       formulaFamilyLabel: getFormulaFamilyLabel(profile.formulaFamily),
