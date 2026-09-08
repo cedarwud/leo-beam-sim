@@ -1,0 +1,1332 @@
+/**
+ * THE QUERYABLE RENDER TIMELINE.
+ *
+ * ## Why this exists
+ *
+ * The owner's standing complaint:
+ *
+ *   「每次都要我看畫面才能確定這件事本身就有問題,前端的渲染邏輯這麼清楚的寫在
+ *     程式上,哪一秒要發生什麼事情,理論上你應該都是可以完全掌握才對,怎麼會每次
+ *     都是要我用看的,你應該都算得出來嗎?」
+ *
+ * They are right. There is no randomness and no external input on this render
+ * path: what the screen shows at sim second N is a pure function of the model
+ * state at N. So it must be answerable by computation, not by looking.
+ *
+ * This tool answers it. It steps the REAL production model headlessly and, at
+ * any second you ask for, prints the resolved render plan — every cone item
+ * with its colour, opacity, role, layer and geometry — plus the serving
+ * assignment and whatever handover is on stage.
+ *
+ * ## What it is NOT
+ *
+ * It is not a second copy of `validate:frame-plan`. That gate pins ONE synthetic
+ * frame against a fixture and answers "did anything change since last time".
+ * This answers "what is on screen at second N, and what changed at second N+1",
+ * over the real 2-hour Walker route, for any N. Different question, different
+ * tool, no shared file.
+ *
+ * ## What is computed here and what is NOT
+ *
+ * COMPUTED (all of it, exactly): the serving assignment, the handover events and
+ * their kind, the presentation clock/phase/envelope, which cone items exist,
+ * each item's resolved hex colour, its resolved opacity, its layer, its role,
+ * its cone apex/baseCenter/baseRadius in world units.
+ *
+ * NOT COMPUTED, and deliberately not faked: GPU rasterisation, additive
+ * blending between overlapping cones, fog, tone mapping, camera framing, and
+ * anti-aliasing. Those need a rasteriser. Everything a rasteriser is HANDED —
+ * colour, alpha, visibility, geometry — is computed here.
+ *
+ * ## Determinism
+ *
+ * Fixed epoch (`DEFAULT_WALKER_SCENARIO_EPOCH_UTC_MS`), fixed 1 s step, fixed
+ * UE seed, no wall clock, no RNG, no I/O. The presentation clock is driven by
+ * `nowMs = simTimeSec * 1000`, i.e. playback speed 1 — the only mapping under
+ * which "sim second N" and "what the viewer sees" are the same question.
+ *
+ * ## Output format, and why
+ *
+ * Default is ONE ITEM PER LINE with a stable sort. Chosen over JSON because the
+ * primary consumer is `diff`, `grep` and human eyes in a terminal, and a
+ * line-oriented format survives all three. `--json` emits the same data with
+ * sorted keys for machine consumption.
+ *
+ * ## Usage
+ *
+ *   npm run audit:render-timeline -- --at 88
+ *   npm run audit:render-timeline -- --diff 86,90
+ *   npm run audit:render-timeline -- --events 0..600
+ *   npm run audit:render-timeline -- --watch color --range 300..340
+ *   npm run audit:render-timeline -- --at 88 --json
+ */
+import { Vector3 } from 'three';
+
+import { loadProfile } from '../../src/profiles/index.ts';
+import { deriveWalkerSignalTunedProfile } from '../../src/app/walkerSignalProfile.ts';
+import { createSignalTuningState } from '../../src/signalTuning.ts';
+import {
+  applyHandoverPolicyTuning,
+  createHandoverPolicyTuningState,
+} from '../../src/handoverPolicyTuning.ts';
+import { createSceneTopologyState } from '../../src/sceneTopology.ts';
+import { DEFAULT_WALKER_SCENARIO_EPOCH_UTC_MS } from '../../src/app/walkerScenarioTime.ts';
+import { DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE } from '../../src/engine/handover/eeThreshold.ts';
+import {
+  DEFAULT_UE_MOBILITY_PARAMS,
+  createMobilityStates,
+} from '../../src/engine/ue/multiUeMobility.ts';
+import { HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM } from '../../src/homepage/controller/homepageStoryScenario.ts';
+import { HandoverManager } from '../../src/engine/handover/handover-manager.ts';
+import { createObserverContext } from '../../src/engine/orbit/index.ts';
+import {
+  buildSinrLiveCellLayout,
+  createSinrLiveCellModel,
+  attachSinrLiveCellFrame,
+  resolveSinrLiveSceneCellCount,
+} from '../../src/scene/sinrLiveCellRuntime.ts';
+import {
+  createBeamLayoutsByShellId,
+  createRuntimeFrameStepState,
+  stepRuntimeFrame,
+} from '../../src/scene/runtimeFrameStep.ts';
+import { computeTrajectoryCache } from '../../src/scene/trajectoryFrame.ts';
+import { SKY_DOME_V_RADIUS } from '../../src/scene/sceneScale.ts';
+import { NTPU_CONFIG, resolveInscribedPaperUserArea } from '../../src/config/ntpu.config.ts';
+import { resolveSinrLiveCellPlacementById } from '../../src/scene/sinrLiveCellPlacement.ts';
+import {
+  cellLinkBudgetBeamId,
+  type SinrLiveCellFrame,
+  type SinrLiveCellHandoverEvent,
+  type UeCellServingRecord,
+} from '../../src/scene/sinrLiveCellModel.ts';
+import { resolveRecentPrimaryHandoverEvent } from '../../src/scene/recentHandoverPresentationEvent.ts';
+import { resolveHandoverPresentationCandidate } from '../../src/scene/handoverPresentationCandidate.ts';
+import {
+  advanceHandoverPresentation,
+  createHandoverPresentationState,
+  createIdleHandoverPresentationView,
+  type HandoverPresentationState,
+  type HandoverPresentationView,
+} from '../../src/scene/handoverPresentationOwner.ts';
+import { resolveHandoverPresentationDisplayPolicy } from '../../src/scene/handoverPresentationDisplayPolicy.ts';
+import { resolveHomepageSceneGeometryPolicy } from '../../src/homepage/controller/homepageSceneGeometryPolicy.ts';
+import { resolveHomepageSceneBeamVisibility } from '../../src/scene/homepageSceneBeamVisibility.ts';
+import {
+  restrictHomepageBeamItems,
+  resolveNonServingConeFocusSatIds,
+  resolveServingConeBudgetFan,
+  resolveServingConeFocusSatIds,
+} from '../../src/appearance/beamVisibilityContract.ts';
+import {
+  HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
+  HOMEPAGE_INTER_HANDOVER_DISPLAY_MS,
+  INTRA_HANDOVER_CINEMA_DISPLAY_MS,
+  INTER_HANDOVER_CINEMA_DISPLAY_MS,
+} from '../../src/appearance/handoverTimingEnvelope.ts';
+import { DEFAULT_BEAM_DISPLAY_SPEC } from '../../src/scene/beamDisplaySpec.ts';
+import { resolveServingConeItems } from '../../src/scene/servingConeItems.ts';
+import {
+  resolveAuthorityPairConeItems,
+  resolveCinemaPairConeItems,
+  resolvePulseConeItems,
+} from '../../src/scene/handoverConeResolvers.ts';
+import { paintConeItems } from '../../src/appearance/paintConeItems.ts';
+import { resolveBaseIdentityColor } from '../../src/appearance/resolveBeamAppearance.ts';
+import { homepageSatelliteColorForBeam } from '../../src/homepage/controller/homepageSatelliteVisualIdentity.ts';
+import {
+  resolveSinrLiveConeDisplayStyle,
+  resolveSinrLiveConeRole,
+  resolveSinrLiveNonServingConeItems,
+  shouldDimSinrLiveConeRole,
+  type SinrLiveCellBeamConeRenderItem,
+  type SinrLiveConeMountLayer,
+  type SinrLiveCellPlacement,
+} from '../../src/viz/SinrLiveCellBeamCones.tsx';
+import {
+  resolveSinrLiveConeElevationDimFactor,
+  type SinrLiveConePalette,
+} from '../../src/constants/sinrLiveConeStyle.ts';
+import type { WorldPoint } from '../../src/viz/CellFootprints.tsx';
+import type { CachedSatState } from '../../src/scene/simulationHelpers.ts';
+
+const TOOL = 'audit:render-timeline';
+
+// ---------------------------------------------------------------------------
+// FIXED INPUTS. Every one of these is the production default-route value; the
+// header prints them so a reader never has to trust this comment.
+// ---------------------------------------------------------------------------
+const EPOCH_UTC_MS = DEFAULT_WALKER_SCENARIO_EPOCH_UTC_MS;
+const PROFILE_ID = 'hobs-2024-candidate-rich';
+const STEP_SEC = 1;
+const UE_COUNT = 100;
+const SERVING_BEAM_COUNT = 7;
+const CANDIDATE_BEAM_COUNT = 7;
+const PRIMARY_UE_ID = 'live-ue-0';
+/** Playback speed 1: one sim second is one wall-clock second on screen. */
+const MS_PER_SIM_SEC = 1000;
+
+type Surface = 'homepage' | 'scene';
+
+interface TimelineItem {
+  /** Stable identity for diffing across seconds. */
+  readonly id: string;
+  readonly layer: SinrLiveConeMountLayer;
+  readonly color: string;
+  /**
+   * The colour this item would have with NO handover shade applied. When this
+   * differs from `color`, the (kind, side) row in
+   * `appearance/handoverAppearanceModifiers.ts` fired. That difference is the
+   * only direct evidence the intra shading path was exercised.
+   */
+  readonly identityColor: string;
+  readonly shaded: boolean;
+  readonly opacity: number;
+  readonly role: string;
+  readonly satId: string;
+  readonly cellId: number;
+  readonly beamId: number;
+  readonly frequencyIndex: number;
+  readonly serving: boolean;
+  readonly displayOnly: boolean;
+  readonly renderKey: string | null;
+  readonly apex: WorldPoint;
+  readonly baseCenter: WorldPoint;
+  readonly baseRadiusWorld: number;
+}
+
+interface TimelineEvent {
+  readonly kind: 'intra' | 'inter';
+  readonly ueId: string;
+  readonly sourceTimeSec: number;
+  readonly fromSatId: string | null;
+  readonly fromCellId: number | null;
+  readonly fromBeamId: number | null;
+  readonly toSatId: string;
+  readonly toCellId: number;
+  readonly toBeamId: number | null;
+}
+
+interface TimelineSecond {
+  readonly simTimeSec: number;
+  readonly serving: {
+    readonly ueId: string | null;
+    readonly satId: string | null;
+    readonly cellId: number | null;
+    readonly beamId: number | null;
+    readonly sinrDb: number | null;
+  };
+  /**
+   * Two DIFFERENT energy-efficiency numbers exist for the same link and they do
+   * not agree. Both are printed, labelled, and neither is silently preferred.
+   *
+   *   decisionEe — `angleAware.energyEfficiencyBitsPerJoule`, the raw formula
+   *                output. This is what the EE admission threshold compares.
+   *   displayEe  — `angleAware.homepageDemoEeBitsPerJoule`, the bounded,
+   *                temporally-continuous projection the homepage rail SHOWS
+   *                (see `homepage/controller/beamMetrics.ts:157-163`, frozen).
+   *
+   * A timeline that printed only one of them and did not say which would invite
+   * exactly the confusion this tool exists to remove.
+   */
+  readonly ee: {
+    readonly decisionEeBitsPerJoule: number | null;
+    readonly displayEeBitsPerJoule: number | null;
+    readonly diverges: boolean;
+  };
+  readonly presentation: {
+    readonly active: boolean;
+    readonly kind: 'intra' | 'inter' | null;
+    readonly source: string | null;
+    readonly phase: string | null;
+    readonly progress01: number;
+    readonly fromOpacity: number;
+    readonly toOpacity: number;
+    readonly eventId: string | null;
+    readonly geometryOwner: string;
+  };
+  /** Events the model published at this exact second (not the retained window). */
+  readonly newEvents: readonly TimelineEvent[];
+  readonly retainedEvents: readonly TimelineEvent[];
+  readonly items: readonly TimelineItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Ordering. One total order, used everywhere, so two runs and two seconds are
+// comparable line by line.
+// ---------------------------------------------------------------------------
+const LAYER_ORDER: Record<SinrLiveConeMountLayer, number> = {
+  nonServing: 0,
+  serving: 1,
+  candidate: 2,
+  pulse: 3,
+  triggered: 4,
+};
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function compareItems(left: TimelineItem, right: TimelineItem): number {
+  return LAYER_ORDER[left.layer] - LAYER_ORDER[right.layer]
+    || compareText(left.satId, right.satId)
+    || left.cellId - right.cellId
+    || left.beamId - right.beamId
+    || compareText(left.role, right.role)
+    || compareText(left.renderKey ?? '', right.renderKey ?? '');
+}
+
+function num(value: number, digits = 4): string {
+  if (!Number.isFinite(value)) return String(value);
+  const fixed = value.toFixed(digits);
+  return fixed === `-${(0).toFixed(digits)}` ? (0).toFixed(digits) : fixed;
+}
+
+function point(p: WorldPoint): string {
+  return `(${num(p.x, 3)},${num(p.y, 3)},${num(p.z, 3)})`;
+}
+
+// ---------------------------------------------------------------------------
+// The driver. Steps the production model forward one second at a time and
+// resolves the render plan at each second.
+// ---------------------------------------------------------------------------
+function buildProfile() {
+  const baseProfile = loadProfile(PROFILE_ID);
+  const topology = createSceneTopologyState();
+  const signalTuning = createSignalTuningState(baseProfile);
+  const tuned = deriveWalkerSignalTunedProfile({
+    baseProfile,
+    signalTuning,
+    activeSceneTopology: topology,
+  });
+  return {
+    profile: applyHandoverPolicyTuning(tuned, createHandoverPolicyTuningState(baseProfile)),
+    topology,
+  };
+}
+
+function paletteFromDefaultSpec(): SinrLiveConePalette {
+  return {
+    heroColor: DEFAULT_BEAM_DISPLAY_SPEC.heroConeColor,
+    servingFanColor: DEFAULT_BEAM_DISPLAY_SPEC.servingFanConeColor,
+    backgroundColor: DEFAULT_BEAM_DISPLAY_SPEC.backgroundConeColor,
+    candidateColor: DEFAULT_BEAM_DISPLAY_SPEC.candidateConeColor,
+    candidateFanColor: DEFAULT_BEAM_DISPLAY_SPEC.candidateFanConeColor,
+    pulseIntraColor: DEFAULT_BEAM_DISPLAY_SPEC.pulseIntraColor,
+    pulseInterColor: DEFAULT_BEAM_DISPLAY_SPEC.pulseInterColor,
+    heroOpacity: DEFAULT_BEAM_DISPLAY_SPEC.heroConeOpacity,
+    servingConeOpacity: DEFAULT_BEAM_DISPLAY_SPEC.servingConeOpacity,
+    backgroundOpacity: DEFAULT_BEAM_DISPLAY_SPEC.backgroundConeOpacity,
+    candidateOpacity: DEFAULT_BEAM_DISPLAY_SPEC.candidateConeOpacity,
+    candidateFanOpacity: DEFAULT_BEAM_DISPLAY_SPEC.candidateFanConeOpacity,
+    nonServingOpacity: DEFAULT_BEAM_DISPLAY_SPEC.nonServingConeOpacity,
+  };
+}
+
+function summarizeEvent(event: SinrLiveCellHandoverEvent): TimelineEvent {
+  return {
+    kind: event.kind,
+    ueId: event.ueId,
+    sourceTimeSec: event.sourceTimeSec,
+    fromSatId: event.fromSatId,
+    fromCellId: event.fromCellId,
+    fromBeamId: event.fromBeamId ?? null,
+    toSatId: event.toSatId,
+    toCellId: event.toCellId,
+    toBeamId: event.toBeamId ?? null,
+  };
+}
+
+interface DriverOptions {
+  readonly surface: Surface;
+}
+
+interface Driver {
+  readonly header: readonly string[];
+  /** Advance to `sec` (must be >= the last requested second) and return its plan. */
+  at(sec: number): TimelineSecond;
+}
+
+function createDriver(options: DriverOptions): Driver {
+  const { profile, topology } = buildProfile();
+  const homepageVisualIdentity = options.surface === 'homepage';
+  const observer = createObserverContext(profile.orbit.observerLatDeg, profile.orbit.observerLonDeg);
+  const trajectoryCache: CachedSatState[][] = computeTrajectoryCache(profile, observer, EPOCH_UTC_MS);
+
+  const model = createSinrLiveCellModel(
+    profile,
+    true,
+    EPOCH_UTC_MS,
+    {},
+    SERVING_BEAM_COUNT,
+    CANDIDATE_BEAM_COUNT,
+    topology.beamHoppingEnabled,
+    'sampled-steering',
+    true,
+    DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
+  );
+  if (model === null) throw new Error(`[${TOOL}] the cell-truth model did not initialize`);
+  model.setFocusCell(null);
+
+  const hoManager = new HandoverManager(profile.handover, { enforceSharedHandoverInterval: true });
+  const secondaryHoManagers = Array.from(
+    { length: Math.max(0, UE_COUNT - 1) },
+    () => new HandoverManager(profile.handover),
+  );
+  const state = createRuntimeFrameStepState(0);
+  const beamLayoutsByShellId = createBeamLayoutsByShellId(profile);
+  const sceneCellLayout = buildSinrLiveCellLayout(
+    profile,
+    resolveSinrLiveSceneCellCount(SERVING_BEAM_COUNT),
+  );
+  const sceneCellCentersKm = sceneCellLayout.centers.map(c => ({
+    eastKm: c.localXKm,
+    northKm: c.localYKm,
+  }));
+  const mobilityStates = createMobilityStates(
+    UE_COUNT,
+    'static',
+    DEFAULT_UE_MOBILITY_PARAMS,
+    profile.ueDistribution?.seed ?? 42,
+  );
+  const replay = {
+    epochUtcMs: EPOCH_UTC_MS,
+    startOffsetSec: 0,
+    loop: false,
+    windowLengthSec: 7200,
+  };
+
+  // Production world scale, read from the same config MainScene reads.
+  const paperUserArea = resolveInscribedPaperUserArea(NTPU_CONFIG);
+  const worldUnitsPerKm = 1 / paperUserArea.kmPerWorldUnit;
+  const satPosScaleFactor = NTPU_CONFIG.visualSatelliteAltitude / SKY_DOME_V_RADIUS;
+
+  const placementByCellId = resolveSinrLiveCellPlacementById({
+    enabled: true,
+    hasCanonicalScenario: false,
+    profile,
+    servingBeamCount: SERVING_BEAM_COUNT,
+    worldUnitsPerKm,
+  });
+  const palette = paletteFromDefaultSpec();
+
+  // IDENTITY LADDER. Rung 1 (homepage projection) is wired when the homepage
+  // owns identity, exactly as MainScene wires it, MINUS the accepted-snapshot
+  // EE normalisation (`eeNormalized`) and MINUS rung 2 (the accepted snapshot
+  // itself) — both live behind the React accepted-snapshot store, which has no
+  // headless entry point. What that means for a reader: a beam whose colour the
+  // rail has already published may render one homepage shade rung away from
+  // what this tool prints. Stated rather than papered over.
+  const resolveIdentityColor = (
+    satelliteId: string,
+    beamId: number,
+    isServingOrCandidate = false,
+  ): string => resolveBaseIdentityColor(
+    satelliteId,
+    beamId,
+    {
+      homepageColorFor: homepageVisualIdentity
+        ? (satId, beam, serving) => homepageSatelliteColorForBeam(satId, beam, {
+          identityPaletteIndex: null,
+          eeNormalized: undefined,
+          isServing: serving,
+        }).color
+        : undefined,
+    },
+    { isServingOrCandidate },
+  );
+
+  const stepFrame = (paused: boolean, deltaSec: number) => stepRuntimeFrame({
+    profile,
+    replay,
+    speed: 1,
+    paused,
+    deltaSec,
+    observer,
+    beamLayoutsByShellId,
+    trajectoryCache,
+    hoManager,
+    secondaryHoManagers,
+    state,
+    ueCount: UE_COUNT,
+    ueDistributionMode: 'seven-cell-asymmetric',
+    primaryJogEastKm: HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM.east,
+    primaryJogNorthKm: HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM.north,
+    focusCellId: null,
+    focusUeId: model.getPinnedPrimaryUeId(),
+    uePrimaryAnchorMode: 'observer',
+    ueDistributionScope: 'beam-footprint',
+    ueDistributionRadiusKm: undefined,
+    ueDistributionCellCentersKm: sceneCellCentersKm,
+    ueDistributionCellRadiusKm: sceneCellLayout.cellRadiusKm,
+    ueMobilityMode: 'static',
+    ueMobilityParams: DEFAULT_UE_MOBILITY_PARAMS,
+    mobilityStates,
+    // Fixed, so the display-latch stamping inside the step is deterministic.
+    nowMs: EPOCH_UTC_MS,
+  } as never);
+
+  let rawFrame = stepFrame(true, 0).frame;
+  attachSinrLiveCellFrame(rawFrame as never, model, 0);
+
+  let presentationState: HandoverPresentationState = createHandoverPresentationState();
+  let lastSec = -1;
+  const seenEventKeys = new Set<string>();
+
+  const eventKey = (event: SinrLiveCellHandoverEvent): string => (
+    `${event.ueId}|${event.sourceTimeSec}|${event.kind}|${event.fromSatId}|${event.fromBeamId}|${event.toSatId}|${event.toBeamId}`
+  );
+
+  function resolvePlan(frame: unknown): TimelineSecond {
+    const cellFrame = (frame as { sinrLiveCells?: SinrLiveCellFrame }).sinrLiveCells;
+    const simTimeSec = (frame as { simTimeSec: number }).simTimeSec;
+    if (cellFrame === undefined) {
+      throw new Error(`[${TOOL}] the model published no cell frame at t=${simTimeSec}`);
+    }
+
+    // --- satellite cone apexes, by the production projection ----------------
+    const satelliteWorldById = new Map<string, WorldPoint>();
+    for (const sat of (frame as { satellites: readonly {
+      id: string;
+      world: { x: number; y: number; z: number };
+    }[] }).satellites) {
+      satelliteWorldById.set(sat.id, {
+        x: sat.world.x * satPosScaleFactor,
+        y: sat.world.y * satPosScaleFactor,
+        z: sat.world.z * satPosScaleFactor,
+      });
+    }
+
+    const primaryUeId = cellFrame.primaryUeId ?? PRIMARY_UE_ID;
+    const primary: UeCellServingRecord | undefined = cellFrame.ues.find(
+      ue => ue.ueId === primaryUeId,
+    ) ?? cellFrame.ues[0];
+
+    // --- events -------------------------------------------------------------
+    const retained = cellFrame.recentHandoverEvents ?? [];
+    const newEvents: TimelineEvent[] = [];
+    for (const event of retained) {
+      const key = eventKey(event);
+      if (seenEventKeys.has(key)) continue;
+      seenEventKeys.add(key);
+      newEvents.push(summarizeEvent(event));
+    }
+
+    // --- presentation owner (the production state machine, speed 1) ---------
+    const recentPrimaryHandoverEvent = resolveRecentPrimaryHandoverEvent({
+      events: retained,
+      primaryUeId,
+      simTimeSec: cellFrame.simTimeSec,
+    });
+    const presentationCandidate = resolveHandoverPresentationCandidate({
+      authority: {
+        active: false,
+        candidate: null,
+        centralOverlayActive: false,
+        decisionAuthorityPresent: false,
+        acceptedPresentation: null,
+      },
+      manual: {
+        active: false,
+        requested: false,
+        displayMs: 0,
+        event: null,
+        beamRecord: null,
+      },
+      natural: {
+        event: recentPrimaryHandoverEvent,
+        source: 'live',
+        satelliteWorldById,
+      },
+      cinema: { ready: false, armed: false, candidate: null, satelliteWorldById },
+      placementByCellId,
+      durations: {
+        naturalIntraMs: HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
+        naturalInterMs: HOMEPAGE_INTER_HANDOVER_DISPLAY_MS,
+        cinemaIntraMs: INTRA_HANDOVER_CINEMA_DISPLAY_MS,
+        cinemaInterMs: INTER_HANDOVER_CINEMA_DISPLAY_MS,
+      },
+      teachingLectureActive: false,
+    });
+    const advanced = advanceHandoverPresentation(presentationState, {
+      nowMs: simTimeSec * MS_PER_SIM_SEC,
+      candidate: presentationCandidate,
+    });
+    presentationState = advanced.state;
+    const presentation: HandoverPresentationView = advanced.view
+      ?? createIdleHandoverPresentationView();
+
+    const displayPolicy = resolveHandoverPresentationDisplayPolicy({
+      presentation,
+      presentationMode: presentationState.mode,
+      manualHandoverActive: false,
+      manualHandoverRequested: false,
+      handoverCinemaArmed: false,
+      handoverCinemaReady: false,
+      handoverCinemaKind: null,
+      recentAnyInterHandoverEventPresent: false,
+      simSource: 'live',
+      multiCandidateCentralOverlayActive: false,
+      primaryServingRecord: primary ?? null,
+      preserveConfiguredServingFan: homepageVisualIdentity,
+      teachingLectureActive: false,
+      peakOpacity: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraPeakOpacity,
+      fallbackSimTimeSec: simTimeSec,
+      homepageVisualIdentity,
+    });
+    const geometryPolicy = resolveHomepageSceneGeometryPolicy({
+      homepageVisualIdentity,
+      candidateReviewActive: false,
+      authorityTransitionActive: false,
+      presentationActive: presentation.active,
+      presentationSource: presentation.event?.source ?? null,
+      presentationKind: presentation.event?.kind ?? null,
+      presentationMode: presentationState.mode,
+      // MainScene:2468 — the homepage never uses the raw retention-buffer pulse
+      // fallback; its natural events go through the normalized wall-clock pair.
+      naturalPulseAvailable: !homepageVisualIdentity && recentPrimaryHandoverEvent !== null,
+    });
+
+    // --- homepage geometry allow-list ---------------------------------------
+    const hero = {
+      satId: primary?.servingSatId ?? null,
+      cellId: primary?.cellId ?? null,
+      beamId: primary?.servingBeamId ?? null,
+    };
+    const allowedBeamIdentities = homepageVisualIdentity
+      ? resolveHomepageSceneBeamVisibility({
+        displayHeroRecord: hero.satId === null || hero.cellId === null
+          ? null
+          : { servingSatId: hero.satId, cellId: hero.cellId, beamId: hero.beamId },
+        primaryServingRecord: primary ?? null,
+        renderedCandidateSatelliteId: null,
+        presentedHandoverPairCandidate: displayPolicy.presentedHandoverPairCandidate,
+        handoverPresentationCandidate: presentationCandidate,
+        handoverAuthorityJoin: null,
+        cinemaPairCandidate: displayPolicy.presentedHandoverPairCandidate,
+        recentPrimaryHandoverEvent,
+      })
+      : new Set<string>();
+    const homepageBeamFanSatelliteIds = new Set<string>(
+      hero.satId === null ? [] : [hero.satId],
+    );
+    const restrict = (items: readonly SinrLiveCellBeamConeRenderItem[]) => (
+      restrictHomepageBeamItems(items, {
+        homepageVisualIdentity,
+        allowedBeamIdentities,
+        allowAllBeamSatelliteIds: homepageBeamFanSatelliteIds,
+      })
+    );
+
+    const targetSatIds = hero.satId === null ? null : new Set([hero.satId]);
+    const focusSatIds = resolveServingConeFocusSatIds(
+      homepageVisualIdentity,
+      DEFAULT_BEAM_DISPLAY_SPEC.showNonServingCones,
+      targetSatIds,
+    );
+
+    // --- the render lanes, as MainScene assembles them ----------------------
+    const servingItems = resolveServingConeItems({
+      geometry: {
+        cellFrame,
+        placementByCellId,
+        satelliteWorldById,
+        focusSatIds,
+        frequencyReuse: profile.beams.frequencyReuse,
+        servingBeamBudget: SERVING_BEAM_COUNT,
+        allowHeroFallback: homepageVisualIdentity,
+        budgetServingFan: resolveServingConeBudgetFan(
+          homepageVisualIdentity,
+          DEFAULT_BEAM_DISPLAY_SPEC.showNonServingCones,
+        ),
+        displayHeroRecord: hero.satId === null || hero.cellId === null
+          ? null
+          : { servingSatId: hero.satId, cellId: hero.cellId, beamId: hero.beamId },
+      },
+      presentation: {
+        showSinrLiveCellBeams: true,
+        renderServingField: geometryPolicy.renderServingField,
+        showNonServingCones: DEFAULT_BEAM_DISPLAY_SPEC.showNonServingCones,
+        hideNormalBeamField: displayPolicy.handoverDisplayIsolation.hideNormalBeamField,
+        hidePrimaryServingBeam: displayPolicy.handoverDisplayIsolation.hidePrimaryServingBeam,
+        preserveConfiguredServingFan:
+          displayPolicy.handoverDisplayIsolation.preserveConfiguredServingFan,
+        teachingLectureFieldCleared: false,
+        multiCandidateCentralOverlayActive: false,
+        homepageVisualIdentity,
+        homepageBeamVisibility: allowedBeamIdentities,
+        homepageBeamFanSatelliteIds,
+        resolveSceneAcceptedBeamColor: resolveIdentityColor,
+        restrictHomepageBeamItems: restrict,
+      },
+    });
+
+    const nonServingItems = DEFAULT_BEAM_DISPLAY_SPEC.showNonServingCones
+      ? restrict(paintConeItems(
+        resolveSinrLiveNonServingConeItems({
+          cellFrame,
+          placementByCellId,
+          satelliteWorldById,
+          focusSatIds: resolveNonServingConeFocusSatIds(
+            DEFAULT_BEAM_DISPLAY_SPEC.showNonServingCones,
+            focusSatIds,
+          ),
+        }),
+        { resolveIdentityColor, prominence: 'candidate' },
+      ))
+      : [];
+
+    const pulseItems = resolvePulseConeItems({
+      policy: {
+        enabled: true,
+        hideTimelinePulse: displayPolicy.handoverDisplayIsolation.hideTimelinePulse,
+        suppressNaturalHandoverLayers:
+          displayPolicy.handoverDisplayIsolation.suppressNaturalHandoverLayers,
+        renderNaturalPulse: geometryPolicy.renderNaturalPulse,
+        homepageVisualIdentity,
+        concurrentIntraVisualSuppressed: displayPolicy.concurrentIntraVisualSuppressed,
+        showOtherHandoverUes: DEFAULT_BEAM_DISPLAY_SPEC.showOtherHandoverUes,
+        pulseFocusFollowsScope: DEFAULT_BEAM_DISPLAY_SPEC.pulseFocusFollowsScope,
+      },
+      frame: {
+        recentHandoverEvents: retained,
+        simTimeSec: cellFrame.simTimeSec,
+      },
+      geometry: {
+        placementByCellId,
+        satelliteWorldById,
+        frequencyReuse: profile.beams.frequencyReuse,
+        focusSatIds,
+        protagonistUeId: primaryUeId,
+      },
+      output: {
+        resolveSceneAcceptedBeamColor: resolveIdentityColor,
+        restrictHomepageBeamItems: restrict,
+      },
+    });
+
+    const handoverGeometry = {
+      placementByCellId,
+      satelliteWorldById,
+      frequencyReuse: profile.beams.frequencyReuse,
+      homepageIntraCellAnchor: new Vector3(0, 0, 0),
+      manualHandoverGroundTarget: new Vector3(0, 0, 0),
+    };
+    const envelope = {
+      fromOpacity: displayPolicy.presentationHandoverEnvelope.fromOpacity,
+      phase: displayPolicy.presentationHandoverEnvelope.phase,
+      toOpacity: displayPolicy.presentationHandoverEnvelope.toOpacity,
+    };
+    const cinemaItems = resolveCinemaPairConeItems({
+      policy: {
+        enabled: true,
+        homepageVisualIdentity,
+        renderCinemaPair: geometryPolicy.renderCinemaPair,
+        handoverActive: presentation.active,
+        presentedInterHandoverActive: displayPolicy.presentedInterHandoverActive,
+        presentedCinemaHandoverActive: displayPolicy.presentedCinemaHandoverActive,
+        handoverEventKind: presentation.event?.kind ?? null,
+      },
+      candidate: displayPolicy.presentedHandoverPairCandidate,
+      envelope,
+      triggeredIntraPeakOpacity: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraPeakOpacity,
+      geometry: handoverGeometry,
+      output: {
+        resolveSceneAcceptedBeamColor: resolveIdentityColor,
+        restrictHomepageBeamItems: restrict,
+      },
+    });
+    // The authority lane needs the accepted-comparison overlay, which is React
+    // state with no headless entry point. It is wired with the overlay OFF, so
+    // it correctly resolves to empty; that is a real production state (the
+    // overlay closed), not a stub.
+    const authorityItems = resolveAuthorityPairConeItems({
+      policy: {
+        enabled: true,
+        centralOverlayActive: false,
+        identityTransitionActive: false,
+        handoverActive: presentation.active,
+        homepageVisualIdentity,
+        renderAuthorityPair: geometryPolicy.renderAuthorityPair,
+        authorityPresentationCommitObserved: false,
+      },
+      candidate: displayPolicy.presentedHandoverPairCandidate,
+      envelope,
+      beamColorBySatelliteBeam: new Map(),
+      geometry: handoverGeometry,
+      output: {
+        resolveSceneAcceptedBeamColor: resolveIdentityColor,
+        restrictHomepageBeamItems: restrict,
+      },
+    });
+
+    // The `isServingOrCandidate` flag each lane passes to the identity ladder is
+    // NOT derivable from the finished item — the pair lanes decide their colour
+    // before the item exists, and they pass `false` on cones whose `serving`
+    // field is `true`. Recording the flag per lane is what lets the unshaded
+    // identity colour be recomputed with the SAME inputs the lane used, so a
+    // `shaded=YES` means the modifier table fired and never means this tool
+    // asked the ladder a different question.
+    const lanes: readonly [
+      SinrLiveConeMountLayer,
+      readonly SinrLiveCellBeamConeRenderItem[],
+      (item: SinrLiveCellBeamConeRenderItem) => boolean,
+    ][] = [
+      // paintConeItems(..., prominence: 'candidate') -> flag derives to true.
+      ['nonServing', nonServingItems, () => true],
+      // servingConeItems.ts:65 paints with prominence 'serving' -> true.
+      ['serving', servingItems, () => true],
+      // handoverConeResolvers.ts pulse lane: `isServingOrCandidate: item.kind === 'intra'`.
+      ['pulse', pulseItems, item => item.kind === 'intra'],
+      // handoverConeResolvers.ts cinema pair lane: `isServingOrCandidate: false`.
+      ['triggered', cinemaItems, () => false],
+      // handoverConeResolvers.ts authority pair lane: `isServingOrCandidate: intra`.
+      ['triggered', authorityItems, () => (
+        displayPolicy.presentedHandoverPairCandidate?.kind === 'intra'
+      )],
+    ];
+    const items = lanes
+      .flatMap(([layer, laneItems, laneServingFlag]) => laneItems.map(
+        item => finalizeItem(
+          layer,
+          item,
+          placementByCellId,
+          palette,
+          hero,
+          resolveIdentityColor,
+          laneServingFlag(item),
+        ),
+      ))
+      .sort(compareItems);
+
+    const terms = primary?.servingLinkSample?.angleAware as
+      | { energyEfficiencyBitsPerJoule?: number; homepageDemoEeBitsPerJoule?: number }
+      | undefined;
+    const decisionEe = typeof terms?.energyEfficiencyBitsPerJoule === 'number'
+      && Number.isFinite(terms.energyEfficiencyBitsPerJoule)
+      ? terms.energyEfficiencyBitsPerJoule
+      : null;
+    const displayEe = typeof terms?.homepageDemoEeBitsPerJoule === 'number'
+      && Number.isFinite(terms.homepageDemoEeBitsPerJoule)
+      ? terms.homepageDemoEeBitsPerJoule
+      : null;
+
+    return {
+      simTimeSec,
+      serving: {
+        ueId: primary?.ueId ?? null,
+        satId: hero.satId,
+        cellId: hero.cellId,
+        beamId: hero.beamId,
+        sinrDb: primary?.sinrDb ?? null,
+      },
+      ee: {
+        decisionEeBitsPerJoule: decisionEe,
+        displayEeBitsPerJoule: displayEe,
+        diverges: decisionEe !== null && displayEe !== null && decisionEe !== displayEe,
+      },
+      presentation: {
+        active: presentation.active,
+        kind: presentation.event?.kind ?? null,
+        source: presentation.event?.source ?? null,
+        phase: presentation.phase,
+        progress01: presentation.progress01,
+        fromOpacity: envelope.fromOpacity,
+        toOpacity: envelope.toOpacity,
+        eventId: presentation.event?.eventId ?? null,
+        geometryOwner: geometryPolicy.owner,
+      },
+      newEvents,
+      retainedEvents: retained.map(summarizeEvent),
+      items,
+    };
+  }
+
+  const header = [
+    `tool                = ${TOOL}`,
+    `surface             = ${options.surface} (homepageVisualIdentity=${String(homepageVisualIdentity)})`,
+    `profile             = ${profile.id}`,
+    `epochUtcMs          = ${EPOCH_UTC_MS} (${new Date(EPOCH_UTC_MS).toISOString()})`,
+    `simStepSec          = ${STEP_SEC}`,
+    `ueCount             = ${UE_COUNT}  primaryUe=${PRIMARY_UE_ID}`,
+    `primaryJogKm        = east ${HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM.east}, north ${HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM.north}`,
+    `servingBeamCount    = ${SERVING_BEAM_COUNT}  candidateBeamCount=${CANDIDATE_BEAM_COUNT}`,
+    `eeThresholdKbitPerJ = ${DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE}`,
+    `worldUnitsPerKm     = ${num(worldUnitsPerKm, 6)}  satPosScaleFactor=${num(satPosScaleFactor, 6)}`,
+    `presentationClock   = simTimeSec * ${MS_PER_SIM_SEC} ms (playback speed 1)`,
+  ];
+
+  return {
+    header,
+    at(sec: number): TimelineSecond {
+      if (sec < lastSec) {
+        throw new Error(`[${TOOL}] the timeline only advances; asked for t=${sec} after t=${lastSec}`);
+      }
+      while (state.simTimeSec < sec - 1e-9) {
+        const deltaSec = Math.min(STEP_SEC, sec - state.simTimeSec);
+        const result = stepFrame(false, deltaSec);
+        rawFrame = result.frame;
+        attachSinrLiveCellFrame(
+          rawFrame as never,
+          model,
+          (rawFrame as { simTimeSec: number }).simTimeSec - result.previousSimTimeSec,
+        );
+        // Every intermediate second must be resolved too: the presentation
+        // owner is a STATE MACHINE, so skipping a second would change what it
+        // reports later. This is why the tool is a timeline and not a sampler.
+        lastSec = (rawFrame as { simTimeSec: number }).simTimeSec;
+        if (lastSec < sec - 1e-9) resolvePlan(rawFrame);
+      }
+      lastSec = sec;
+      return resolvePlan(rawFrame);
+    },
+  };
+}
+
+function finalizeItem(
+  layer: SinrLiveConeMountLayer,
+  item: SinrLiveCellBeamConeRenderItem,
+  placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>,
+  palette: SinrLiveConePalette,
+  hero: { readonly satId: string | null; readonly cellId: number | null; readonly beamId: number | null },
+  resolveIdentityColor: (satId: string, beamId: number, isServingOrCandidate?: boolean) => string,
+  laneIsServingOrCandidate: boolean,
+): TimelineItem {
+  const beamId = item.beamId ?? cellLinkBudgetBeamId(item.cellId);
+  const role = resolveSinrLiveConeRole({
+    layer,
+    satId: item.satId,
+    cellId: item.cellId,
+    itemRole: item.role,
+    heroSatId: hero.satId,
+    heroCellId: hero.cellId,
+    heroBeamId: hero.beamId,
+    beamId,
+  });
+  const style = resolveSinrLiveConeDisplayStyle(role, palette, item, 'item-identity');
+  const placement = placementByCellId.get(item.cellId);
+  if (placement === undefined) {
+    throw new Error(`[${TOOL}] missing placement for rendered cell ${item.cellId}`);
+  }
+  const apparentElevationDeg = (Math.atan2(
+    item.apex.y - item.baseCenter.y,
+    Math.hypot(item.apex.x - item.baseCenter.x, item.apex.z - item.baseCenter.z),
+  ) * 180) / Math.PI;
+  const opacity = style.opacity * (
+    shouldDimSinrLiveConeRole(
+      role,
+      layer === 'serving' || layer === 'candidate'
+        ? DEFAULT_BEAM_DISPLAY_SPEC.elevationDimEnabled
+        : false,
+      DEFAULT_BEAM_DISPLAY_SPEC.heroExemptFromElevationDim,
+    )
+      ? resolveSinrLiveConeElevationDimFactor(
+        apparentElevationDeg,
+        DEFAULT_BEAM_DISPLAY_SPEC.elevationDimFloorDeg,
+        DEFAULT_BEAM_DISPLAY_SPEC.elevationDimCeilDeg,
+        DEFAULT_BEAM_DISPLAY_SPEC.elevationDimMinFactor,
+      )
+      : 1
+  );
+  // The SAME identity lookup the lane used, with NO handover row applied. When
+  // this differs from `style.color`, the modifier table fired on this item.
+  const identityColor = resolveIdentityColor(item.satId, beamId, laneIsServingOrCandidate);
+  return {
+    id: `${layer}|${item.satId}|${item.cellId}|${beamId}|${role}|${item.renderKey ?? ''}`,
+    layer,
+    color: style.color,
+    identityColor,
+    shaded: style.color.toLowerCase() !== identityColor.toLowerCase(),
+    opacity,
+    role,
+    satId: item.satId,
+    cellId: item.cellId,
+    beamId,
+    frequencyIndex: item.frequencyIndex,
+    serving: item.serving,
+    displayOnly: item.displayOnly === true,
+    renderKey: item.renderKey ?? null,
+    apex: { x: item.apex.x, y: item.apex.y, z: item.apex.z },
+    baseCenter: { x: item.baseCenter.x, y: item.baseCenter.y, z: item.baseCenter.z },
+    baseRadiusWorld: placement.radiusWorld * DEFAULT_BEAM_DISPLAY_SPEC.coneWidthScale,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Rendering the answer.
+// ---------------------------------------------------------------------------
+function itemLine(item: TimelineItem): string {
+  return [
+    `  ${item.layer.padEnd(10)}`,
+    `${item.role.padEnd(15)}`,
+    `${item.satId.padEnd(22)}`,
+    `cell=${String(item.cellId).padStart(2)}`,
+    `beam=${String(item.beamId).padStart(2)}`,
+    `freq=${String(item.frequencyIndex).padStart(2)}`,
+    `color=${item.color}`,
+    `identity=${item.identityColor}`,
+    `shaded=${item.shaded ? 'YES' : 'no '}`,
+    `opacity=${num(item.opacity)}`,
+    `serving=${item.serving ? 'Y' : 'n'}`,
+    `displayOnly=${item.displayOnly ? 'Y' : 'n'}`,
+    `apex=${point(item.apex)}`,
+    `base=${point(item.baseCenter)}`,
+    `r=${num(item.baseRadiusWorld, 3)}`,
+    `key=${item.renderKey ?? '-'}`,
+  ].join(' ');
+}
+
+function eventLine(event: TimelineEvent): string {
+  return `  t=${String(event.sourceTimeSec).padStart(6)} ${event.kind.toUpperCase().padEnd(5)}`
+    + ` ue=${event.ueId}`
+    + ` ${event.fromSatId ?? '-'}#cell${event.fromCellId ?? '-'}/beam${event.fromBeamId ?? '-'}`
+    + ` -> ${event.toSatId}#cell${event.toCellId}/beam${event.toBeamId ?? '-'}`;
+}
+
+function printAt(second: TimelineSecond, lines: string[]): void {
+  lines.push(`=== RENDER PLAN AT t=${second.simTimeSec}s ===`);
+  lines.push(
+    `SERVING   ue=${second.serving.ueId ?? '-'}`
+    + ` sat=${second.serving.satId ?? '-'}`
+    + ` cell=${second.serving.cellId ?? '-'}`
+    + ` beam=${second.serving.beamId ?? '-'}`
+    + ` sinrDb=${second.serving.sinrDb === null ? '-' : num(second.serving.sinrDb, 3)}`,
+  );
+  lines.push(
+    `EE        decision(raw formula, drives the threshold)=`
+    + `${second.ee.decisionEeBitsPerJoule === null ? '-' : num(second.ee.decisionEeBitsPerJoule, 1)} bit/J`
+    + `  display(homepage projection, what the rail SHOWS)=`
+    + `${second.ee.displayEeBitsPerJoule === null ? '-' : num(second.ee.displayEeBitsPerJoule, 1)} bit/J`
+    + `  ${second.ee.diverges ? '<-- DISPLAY-ONLY VALUE DIVERGES FROM DECISION VALUE' : '(agree)'}`,
+  );
+  lines.push(
+    `HANDOVER  active=${second.presentation.active ? 'YES' : 'no'}`
+    + ` kind=${second.presentation.kind ?? '-'}`
+    + ` source=${second.presentation.source ?? '-'}`
+    + ` phase=${second.presentation.phase ?? '-'}`
+    + ` progress01=${num(second.presentation.progress01)}`
+    + ` fromOpacity=${num(second.presentation.fromOpacity)}`
+    + ` toOpacity=${num(second.presentation.toOpacity)}`
+    + ` owner=${second.presentation.geometryOwner}`,
+  );
+  lines.push(`          eventId=${second.presentation.eventId ?? '-'}`);
+  lines.push(`EVENTS committed at this second: ${second.newEvents.length}`);
+  for (const event of second.newEvents) lines.push(eventLine(event));
+  lines.push(`EVENTS retained in the display window: ${second.retainedEvents.length}`);
+  for (const event of second.retainedEvents) lines.push(eventLine(event));
+  lines.push(`ITEMS ${second.items.length}`);
+  for (const item of second.items) lines.push(itemLine(item));
+}
+
+const DIFFED_FIELDS = [
+  'layer', 'color', 'identityColor', 'shaded', 'opacity', 'role', 'satId',
+  'cellId', 'beamId', 'frequencyIndex', 'serving', 'displayOnly', 'renderKey',
+] as const;
+
+function formatFieldValue(value: unknown): string {
+  if (typeof value === 'number') return num(value);
+  return String(value);
+}
+
+function printDiff(before: TimelineSecond, after: TimelineSecond, lines: string[]): void {
+  lines.push(`=== DIFF t=${before.simTimeSec}s -> t=${after.simTimeSec}s ===`);
+  const changedTop: string[] = [];
+  const compareTop = (label: string, left: unknown, right: unknown): void => {
+    if (formatFieldValue(left) !== formatFieldValue(right)) {
+      changedTop.push(`  ${label}: ${formatFieldValue(left)} -> ${formatFieldValue(right)}`);
+    }
+  };
+  compareTop('serving.satId', before.serving.satId, after.serving.satId);
+  compareTop('serving.cellId', before.serving.cellId, after.serving.cellId);
+  compareTop('serving.beamId', before.serving.beamId, after.serving.beamId);
+  compareTop('serving.sinrDb', before.serving.sinrDb, after.serving.sinrDb);
+  compareTop('ee.decision', before.ee.decisionEeBitsPerJoule, after.ee.decisionEeBitsPerJoule);
+  compareTop('ee.display', before.ee.displayEeBitsPerJoule, after.ee.displayEeBitsPerJoule);
+  compareTop('handover.active', before.presentation.active, after.presentation.active);
+  compareTop('handover.kind', before.presentation.kind, after.presentation.kind);
+  compareTop('handover.phase', before.presentation.phase, after.presentation.phase);
+  compareTop('handover.progress01', before.presentation.progress01, after.presentation.progress01);
+  compareTop('handover.fromOpacity', before.presentation.fromOpacity, after.presentation.fromOpacity);
+  compareTop('handover.toOpacity', before.presentation.toOpacity, after.presentation.toOpacity);
+  compareTop('handover.eventId', before.presentation.eventId, after.presentation.eventId);
+  compareTop('handover.owner', before.presentation.geometryOwner, after.presentation.geometryOwner);
+  lines.push(`STATE CHANGES: ${changedTop.length}`);
+  lines.push(...changedTop);
+
+  const beforeById = new Map(before.items.map(item => [item.id, item]));
+  const afterById = new Map(after.items.map(item => [item.id, item]));
+  const added = after.items.filter(item => !beforeById.has(item.id));
+  const removed = before.items.filter(item => !afterById.has(item.id));
+  const changed: string[] = [];
+  for (const item of after.items) {
+    const previous = beforeById.get(item.id);
+    if (previous === undefined) continue;
+    const fieldDiffs: string[] = [];
+    for (const field of DIFFED_FIELDS) {
+      const left = formatFieldValue(previous[field]);
+      const right = formatFieldValue(item[field]);
+      if (left !== right) fieldDiffs.push(`${field}: ${left} -> ${right}`);
+    }
+    for (const geo of ['apex', 'baseCenter'] as const) {
+      const left = point(previous[geo]);
+      const right = point(item[geo]);
+      if (left !== right) fieldDiffs.push(`${geo}: ${left} -> ${right}`);
+    }
+    if (num(previous.baseRadiusWorld, 3) !== num(item.baseRadiusWorld, 3)) {
+      fieldDiffs.push(`baseRadiusWorld: ${num(previous.baseRadiusWorld, 3)} -> ${num(item.baseRadiusWorld, 3)}`);
+    }
+    if (fieldDiffs.length > 0) {
+      changed.push(`  ~ ${item.id}`);
+      for (const diff of fieldDiffs) changed.push(`      ${diff}`);
+    }
+  }
+  lines.push(`ITEMS ADDED: ${added.length}`);
+  for (const item of added) lines.push(`  + ${itemLine(item).trimStart()}`);
+  lines.push(`ITEMS REMOVED: ${removed.length}`);
+  for (const item of removed) lines.push(`  - ${itemLine(item).trimStart()}`);
+  lines.push(`ITEMS CHANGED: ${changed.filter(line => line.startsWith('  ~')).length}`);
+  lines.push(...changed);
+}
+
+interface VisibleChange {
+  readonly sec: number;
+  readonly reasons: readonly string[];
+  readonly intraCommits: number;
+  readonly interCommits: number;
+}
+
+function detectChanges(before: TimelineSecond, after: TimelineSecond): VisibleChange {
+  const reasons: string[] = [];
+  // Only the PROTAGONIST UE's handovers reach the homepage presentation owner
+  // and the pulse lane; the other 99 UEs hand over constantly and are counted
+  // separately so a reader is never told the screen changed when it did not.
+  const primaryUeId = after.serving.ueId;
+  const primaryCommits = after.newEvents.filter(event => event.ueId === primaryUeId);
+  const otherCommits = after.newEvents.filter(event => event.ueId !== primaryUeId);
+  for (const event of primaryCommits) reasons.push(`handover-commit:${event.kind}`);
+  if (otherCommits.length > 0) reasons.push(`other-ue-commits:${otherCommits.length}`);
+  if (before.serving.satId !== after.serving.satId) reasons.push('serving-satellite-change');
+  if (before.serving.beamId !== after.serving.beamId) reasons.push('serving-beam-change');
+  if (before.presentation.active !== after.presentation.active) {
+    reasons.push(after.presentation.active ? 'presentation-start' : 'presentation-end');
+  }
+  if (before.presentation.phase !== after.presentation.phase) {
+    reasons.push(`presentation-phase:${before.presentation.phase ?? '-'}->${after.presentation.phase ?? '-'}`);
+  }
+  const beforeById = new Map(before.items.map(item => [item.id, item]));
+  const afterById = new Map(after.items.map(item => [item.id, item]));
+  let appeared = 0;
+  let disappeared = 0;
+  let colorChanges = 0;
+  let opacityChanges = 0;
+  let geometryChanges = 0;
+  for (const item of after.items) {
+    const previous = beforeById.get(item.id);
+    if (previous === undefined) { appeared += 1; continue; }
+    if (previous.color !== item.color) colorChanges += 1;
+    if (num(previous.opacity) !== num(item.opacity)) opacityChanges += 1;
+    if (point(previous.apex) !== point(item.apex) || point(previous.baseCenter) !== point(item.baseCenter)) {
+      geometryChanges += 1;
+    }
+  }
+  for (const item of before.items) if (!afterById.has(item.id)) disappeared += 1;
+  if (appeared > 0) reasons.push(`cone-appeared:${appeared}`);
+  if (disappeared > 0) reasons.push(`cone-disappeared:${disappeared}`);
+  if (colorChanges > 0) reasons.push(`color-changed:${colorChanges}`);
+  if (opacityChanges > 0) reasons.push(`opacity-changed:${opacityChanges}`);
+  if (geometryChanges > 0) reasons.push(`geometry-changed:${geometryChanges}`);
+  return {
+    sec: after.simTimeSec,
+    reasons,
+    intraCommits: primaryCommits.filter(event => event.kind === 'intra').length,
+    interCommits: primaryCommits.filter(event => event.kind === 'inter').length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// CLI
+// ---------------------------------------------------------------------------
+function parseRange(text: string): { from: number; to: number } {
+  const match = /^(-?\d+)\.\.(-?\d+)$/.exec(text.trim());
+  if (match === null) throw new Error(`[${TOOL}] expected a range like 0..600, received "${text}"`);
+  const from = Number(match[1]);
+  const to = Number(match[2]);
+  if (to < from) throw new Error(`[${TOOL}] range end ${to} precedes start ${from}`);
+  return { from, to };
+}
+
+function argValue(argv: readonly string[], flag: string): string | undefined {
+  const index = argv.indexOf(flag);
+  return index >= 0 ? argv[index + 1] : undefined;
+}
+
+function sortedJson(value: unknown): string {
+  return JSON.stringify(value, (_key, inner) => {
+    if (inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
+      return Object.fromEntries(
+        Object.entries(inner as Record<string, unknown>).sort(([a], [b]) => compareText(a, b)),
+      );
+    }
+    return inner;
+  }, 2);
+}
+
+function main(): void {
+  const argv = process.argv.slice(2);
+  const json = argv.includes('--json');
+  const surface: Surface = argValue(argv, '--surface') === 'scene' ? 'scene' : 'homepage';
+  const startedAt = process.hrtime.bigint();
+  const lines: string[] = [];
+  let payload: unknown = null;
+
+  const atArg = argValue(argv, '--at');
+  const diffArg = argValue(argv, '--diff');
+  const eventsArg = argValue(argv, '--events');
+  const watchArg = argValue(argv, '--watch');
+
+  if (atArg === undefined && diffArg === undefined && eventsArg === undefined && watchArg === undefined) {
+    console.log(`[${TOOL}] usage:`);
+    console.log('  --at <sec>                     the complete render plan at that sim second');
+    console.log('  --diff <a>,<b>                 what changed on screen between two seconds');
+    console.log('  --events <a>..<b> [--only-discrete]  every second at which something visible changes');
+    console.log('  --watch <field> --range <a>..<b> [--item <id-substring>]');
+    console.log('                                 track one field across time (color|opacity|visibility)');
+    console.log('  --surface homepage|scene       which identity surface (default homepage)');
+    console.log('  --json                         machine-readable output, sorted keys');
+    process.exitCode = 2;
+    return;
+  }
+
+  const driver = createDriver({ surface });
+  lines.push(...driver.header.map(line => `# ${line}`));
+
+  if (atArg !== undefined) {
+    const sec = Number(atArg);
+    if (!Number.isFinite(sec) || sec < 0) throw new Error(`[${TOOL}] --at needs a non-negative second`);
+    const second = driver.at(sec);
+    payload = second;
+    printAt(second, lines);
+  } else if (diffArg !== undefined) {
+    const parts = diffArg.split(',').map(part => Number(part.trim()));
+    if (parts.length !== 2 || parts.some(part => !Number.isFinite(part))) {
+      throw new Error(`[${TOOL}] --diff needs two seconds, e.g. --diff 86,90`);
+    }
+    const [left, right] = parts as [number, number];
+    if (right < left) throw new Error(`[${TOOL}] --diff needs the earlier second first`);
+    const before = driver.at(left);
+    const after = driver.at(right);
+    payload = { before, after };
+    printDiff(before, after, lines);
+  } else if (eventsArg !== undefined) {
+    const { from, to } = parseRange(eventsArg);
+    // Satellites move every second, so cone apexes and elevation-dimmed
+    // opacities drift on EVERY second of a live route. That is a real visible
+    // change and is reported, but it buries the discrete ones; --only-discrete
+    // keeps the seconds where something appeared, vanished, recoloured, or a
+    // handover/phase boundary was crossed.
+    const onlyDiscrete = argv.includes('--only-discrete');
+    const DRIFT_ONLY = /^(geometry-changed|opacity-changed|other-ue-commits):/;
+    const changes: VisibleChange[] = [];
+    let previous = driver.at(from);
+    for (let sec = from + 1; sec <= to; sec += 1) {
+      const current = driver.at(sec);
+      const change = detectChanges(previous, current);
+      const discrete = change.reasons.some(reason => !DRIFT_ONLY.test(reason));
+      if (change.reasons.length > 0 && (!onlyDiscrete || discrete)) changes.push(change);
+      previous = current;
+    }
+    const intraSeconds = changes.filter(change => change.intraCommits > 0).map(change => change.sec);
+    const interSeconds = changes.filter(change => change.interCommits > 0).map(change => change.sec);
+    payload = { from, to, changes, intraSeconds, interSeconds };
+    lines.push(`=== VISIBLE CHANGES IN t=${from}..${to}s ===`);
+    lines.push(`seconds scanned            = ${to - from}`);
+    lines.push(`seconds with a change      = ${changes.length}`);
+    lines.push(`INTRA handover commits     = ${intraSeconds.length}  at t=[${intraSeconds.join(', ')}]   (primary UE only)`);
+    lines.push(`INTER handover commits     = ${interSeconds.length}  at t=[${interSeconds.join(', ')}]   (primary UE only)`);
+    if (intraSeconds.length === 0) {
+      lines.push('NOTE: zero INTRA commits in this range. An empty result is not proof of absence —');
+      lines.push('      widen the range or run the positive control in the report.');
+    }
+    if (interSeconds.length === 0) {
+      lines.push('NOTE: zero INTER commits in this range. Same caveat.');
+    }
+    for (const change of changes) {
+      lines.push(`  t=${String(change.sec).padStart(6)}  ${change.reasons.join(' ')}`);
+    }
+  } else if (watchArg !== undefined) {
+    const field = watchArg;
+    if (!['color', 'opacity', 'visibility'].includes(field)) {
+      throw new Error(`[${TOOL}] --watch takes color, opacity or visibility; received "${field}"`);
+    }
+    const rangeArg = argValue(argv, '--range');
+    if (rangeArg === undefined) throw new Error(`[${TOOL}] --watch needs --range <a>..<b>`);
+    const { from, to } = parseRange(rangeArg);
+    const itemFilter = argValue(argv, '--item') ?? '';
+    const trajectory: { sec: number; id: string; value: string }[] = [];
+    for (let sec = from; sec <= to; sec += 1) {
+      const second = driver.at(sec);
+      const matching = second.items.filter(item => item.id.includes(itemFilter));
+      if (field === 'visibility') {
+        for (const item of matching) trajectory.push({ sec, id: item.id, value: 'present' });
+      } else {
+        for (const item of matching) {
+          trajectory.push({
+            sec,
+            id: item.id,
+            value: field === 'color' ? item.color : num(item.opacity),
+          });
+        }
+      }
+    }
+    const byId = new Map<string, { sec: number; value: string }[]>();
+    for (const entry of trajectory) {
+      const list = byId.get(entry.id) ?? [];
+      list.push({ sec: entry.sec, value: entry.value });
+      byId.set(entry.id, list);
+    }
+    payload = { field, from, to, itemFilter, byId: Object.fromEntries(byId) };
+    lines.push(`=== WATCH ${field} OVER t=${from}..${to}s ${itemFilter === '' ? '(all items)' : `(items matching "${itemFilter}")`} ===`);
+    lines.push(`items tracked = ${byId.size}`);
+    if (byId.size === 0) {
+      lines.push('NOTE: no item matched. An empty result is not proof of absence — check the');
+      lines.push('      --item filter against an --at listing for one of these seconds.');
+    }
+    for (const id of [...byId.keys()].sort(compareText)) {
+      const samples = byId.get(id)!;
+      lines.push(`  ${id}`);
+      let runStart = samples[0]!.sec;
+      let runValue = samples[0]!.value;
+      let runPrevSec = samples[0]!.sec;
+      const flush = (endSec: number): void => {
+        lines.push(`      t=${runStart}..${endSec}  ${field}=${runValue}`);
+      };
+      for (let index = 1; index < samples.length; index += 1) {
+        const sample = samples[index]!;
+        if (sample.value !== runValue || sample.sec !== runPrevSec + 1) {
+          flush(runPrevSec);
+          runStart = sample.sec;
+          runValue = sample.value;
+        }
+        runPrevSec = sample.sec;
+      }
+      flush(runPrevSec);
+    }
+  }
+
+  const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+  // Wall time goes to stderr in BOTH modes so the payload stays byte-identical
+  // across runs. A timing number inside the document would make every machine
+  // comparison fail for the one reason that is never interesting — and machine
+  // comparison (diff two seconds, sha256 two runs) is what this tool is for.
+  // This reasoning was already written here but applied only to the JSON
+  // branch; the text branch printed wall to stdout, so three runs of the same
+  // query produced three different hashes with identical content.
+  if (json) {
+    console.log(sortedJson({ tool: TOOL, header: driver.header, result: payload }));
+  } else {
+    for (const line of lines) console.log(line);
+  }
+  console.error(`# wall=${elapsedMs.toFixed(0)}ms`);
+}
+
+main();
