@@ -238,6 +238,10 @@ function integrationElementProps<T extends object>(node: ReactElement): T {
 }
 
 const source = await readFile(new URL('./MainScene.tsx', import.meta.url), 'utf8');
+const servingConePaletteSource = await readFile(
+  new URL('../appearance/servingConePalette.ts', import.meta.url),
+  'utf8',
+);
 const railSource = await readFile(
   new URL('../ui/handover-evaluation/HandoverEvaluationPanel.tsx', import.meta.url),
   'utf8',
@@ -556,7 +560,8 @@ test('candidate authority is additive and cannot blanket-suppress the establishe
   // explicitly presented candidate pairs. The rest of the serving satellite's
   // fan must retain the semantic neutral treatment.
   assert.match(source, /const multiCandidateServingBeamColor = multiCandidateSceneRenderPlan\?\.instructions\.find/);
-  assert.match(source, /heroColor: multiCandidateServingBeamColor\s*\n\s*\?\? sinrLiveConePalette\.heroColor/);
+  assert.match(source, /resolveServingConePalette\(/);
+  assert.match(servingConePaletteSource, /heroColor: activeServingBeamColor \?\? basePalette\.heroColor/);
   assert.doesNotMatch(source, /items\.map\(item => \{[\s\S]{0,500}beamIdentitiesBySatelliteId/);
   const servingItems = resolveServingConeItems({
     geometry: {

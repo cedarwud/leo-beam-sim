@@ -117,6 +117,11 @@ export interface SinrLiveBeamFootprintEllipse {
   readonly renderElevationDeg: number;
 }
 
+/** Select the display-only teaching tilt without changing physical geometry. */
+export function resolveSinrLiveEllipseTiltExaggeration(sceneLane: string): number {
+  return sceneLane === 'sinr-live' ? 3 : 1;
+}
+
 /**
  * Computes the ground intersection ellipse long/short axes, azimuth, and render elevation.
  *

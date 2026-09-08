@@ -48,8 +48,6 @@ export interface HandoverAppearanceModifier {
    * identity colour untouched.
    */
   readonly shade: HandoverSide | null;
-  /** Multiplier on the geometry layer's opacity, in [0, 1]. */
-  readonly opacityFactor: number;
   /** Why this row is what it is. Prose, for the next person holding a prompt. */
   readonly rationale: string;
 }
@@ -81,24 +79,20 @@ export const HANDOVER_APPEARANCE_MODIFIERS: {
   intra: {
     source: {
       shade: 'source',
-      opacityFactor: 1,
       rationale: 'same satellite hue on both sides; darken the outgoing beam so the pair reads as two beams',
     },
     target: {
       shade: 'target',
-      opacityFactor: 1,
       rationale: 'same satellite hue on both sides; brighten the incoming beam so the arrival is legible',
     },
   },
   inter: {
     source: {
       shade: null,
-      opacityFactor: 1,
       rationale: 'different satellites already differ in hue; shading would imply an intra shade-shift',
     },
     target: {
       shade: null,
-      opacityFactor: 1,
       rationale: 'different satellites already differ in hue; the hue jump IS the inter cue',
     },
   },

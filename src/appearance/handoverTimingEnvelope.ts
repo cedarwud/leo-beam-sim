@@ -153,3 +153,25 @@ export function resolveHandoverCinemaDisplayMs(kind: 'intra' | 'inter' | null): 
     ? INTER_HANDOVER_CINEMA_DISPLAY_MS
     : INTRA_HANDOVER_CINEMA_DISPLAY_MS;
 }
+
+export interface HandoverPresentationDurations {
+  readonly naturalIntraMs: number;
+  readonly naturalInterMs: number;
+  readonly cinemaIntraMs: number;
+  readonly cinemaInterMs: number;
+}
+
+/** Resolve the route/kind duration answers used by every scene presentation owner. */
+export function resolveHandoverPresentationDurations(input: {
+  readonly homepageVisualIdentity: boolean;
+  readonly naturalIntraMs: number;
+}): HandoverPresentationDurations {
+  const cinemaIntraMs = resolveHandoverCinemaDisplayMs('intra');
+  const cinemaInterMs = resolveHandoverCinemaDisplayMs('inter');
+  return {
+    naturalIntraMs: input.homepageVisualIdentity ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS : input.naturalIntraMs,
+    naturalInterMs: input.homepageVisualIdentity ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS : cinemaInterMs,
+    cinemaIntraMs: input.homepageVisualIdentity ? HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS : cinemaIntraMs,
+    cinemaInterMs: input.homepageVisualIdentity ? HOMEPAGE_INTER_HANDOVER_DISPLAY_MS : cinemaInterMs,
+  };
+}

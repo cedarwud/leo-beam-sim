@@ -89,3 +89,20 @@ export function annotateOtherHandoverDisplayUes<T extends { readonly id: string 
     isOtherHandover: ue.id !== primaryUeId && selectedOtherUeIds.has(ue.id),
   }));
 }
+
+/** Resolve the renderer-facing UE population and its display-only annotations. */
+export function resolveDisplayedOtherHandoverUes<T extends { readonly id: string }>(
+  ues: readonly T[],
+  primaryUeId: string | undefined,
+  showOtherHandoverUes: boolean,
+  selectedOtherUeIds: ReadonlySet<string>,
+): readonly (T & { readonly isOtherHandover: boolean })[] {
+  const visibleUes = showOtherHandoverUes
+    ? filterOtherHandoverDisplayUes(ues, primaryUeId, selectedOtherUeIds)
+    : ues;
+  return annotateOtherHandoverDisplayUes(
+    visibleUes,
+    primaryUeId,
+    showOtherHandoverUes ? selectedOtherUeIds : new Set(),
+  );
+}

@@ -126,3 +126,36 @@ export function handoverConePaintContext(
     isServingOrCandidate: input.isServingOrCandidate,
   };
 }
+
+export interface HandoverOverlayCueEndpoint {
+  readonly satelliteId: string;
+  readonly cellId: number;
+}
+
+export interface HandoverOverlayCueColors {
+  readonly sourceColor: string;
+  readonly targetColor: string;
+}
+
+/** Resolve accepted-cue endpoint colours without importing scene transition types. */
+export function resolveHandoverOverlayCueColors(input: {
+  readonly centralOverlayActive: boolean;
+  readonly beamColorBySatelliteCell: ReadonlyMap<string, string>;
+  readonly neutralColor: string;
+  readonly source: HandoverOverlayCueEndpoint | null;
+  readonly target: HandoverOverlayCueEndpoint | null;
+  readonly resolveAcceptedCellColor: (satelliteId: string, cellId: number) => string;
+}): HandoverOverlayCueColors {
+  const resolveEndpoint = (endpoint: HandoverOverlayCueEndpoint | null): string => {
+    if (endpoint === null) return input.neutralColor;
+    if (!input.centralOverlayActive) {
+      return input.resolveAcceptedCellColor(endpoint.satelliteId, endpoint.cellId);
+    }
+    return input.beamColorBySatelliteCell.get(`${endpoint.satelliteId}/${endpoint.cellId}`)
+      ?? input.resolveAcceptedCellColor(endpoint.satelliteId, endpoint.cellId);
+  };
+  return {
+    sourceColor: resolveEndpoint(input.source),
+    targetColor: resolveEndpoint(input.target),
+  };
+}

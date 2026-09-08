@@ -103,6 +103,19 @@ export function resolveHomepageBeamVisibility(
   return identities;
 }
 
+/** Resolve which serving spacecraft may expose its configured multibeam fan. */
+export function resolveServingFanSatelliteIds(
+  displayHeroSatelliteId: string | null | undefined,
+  primaryServingSatelliteId: string | null | undefined,
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  const servingSatelliteId = displayHeroSatelliteId ?? primaryServingSatelliteId;
+  if (typeof servingSatelliteId === 'string' && servingSatelliteId.length > 0) {
+    ids.add(servingSatelliteId);
+  }
+  return ids;
+}
+
 /**
  * Keep the same item shape while dropping geometry from non-story beam pairs.
  *

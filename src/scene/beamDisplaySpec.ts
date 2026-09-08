@@ -354,6 +354,30 @@ export interface DisplayHeroRecord {
   readonly beamId?: number | null;
 }
 
+/** Project the primary serving truth into the hero's display identity. */
+export function resolveDisplayHeroPrimary(
+  primary: {
+    readonly servingSatId?: string | null;
+    readonly cellId?: number | null;
+    readonly servingBeamId?: number | null;
+  } | null,
+  cellIdFromLinkBudgetBeamId: (beamId: number) => number,
+): {
+  readonly servingSatId?: string | null;
+  readonly cellId?: number | null;
+  readonly beamId: number | null;
+} | null {
+  if (primary === null) return null;
+  const beamId = primary.servingBeamId ?? null;
+  return {
+    servingSatId: primary.servingSatId,
+    beamId,
+    cellId: beamId === null
+      ? primary.cellId
+      : cellIdFromLinkBudgetBeamId(beamId),
+  };
+}
+
 /**
  * Pick the `(satId, cellId)` identity that owns the visual HERO role.
  *

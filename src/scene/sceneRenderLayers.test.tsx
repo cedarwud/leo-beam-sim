@@ -13,14 +13,6 @@ import {
   EMPTY_BEAM_LOAD_CONTENTION,
 } from './beamLoadContention';
 import {
-  SceneBeamLoadLayers,
-  type SceneBeamLoadLayersProps,
-} from './SceneBeamLoadLayers';
-import {
-  SceneCellPresentationLayers,
-  type SceneCellPresentationLayersProps,
-} from './SceneCellPresentationLayers';
-import {
   SceneGroundUeLayer,
   resolveGroundSceneUes,
   type SceneGroundUeLayerProps,
@@ -160,63 +152,11 @@ test('satellite marker layer keeps identity labels and visibility in one render 
 });
 
 test('layer wrappers preserve mount gates without invoking WebGL child renderers', () => {
-  const cellProps: SceneCellPresentationLayersProps = {
-    overlay: {
-      visible: false,
-      schedule: {} as CellScheduleViz,
-      satelliteTintById: new Map(),
-    },
-    story: {
-      visible: false,
-      model: null,
-      satelliteTintById: new Map(),
-    },
-    arcs: {
-      mounted: false,
-      visible: false,
-      reassignments: [],
-      satelliteWorldById: new Map(),
-    },
-    beamCones: {
-      visible: false,
-      schedule: {} as CellScheduleViz,
-      satelliteWorldById: new Map(),
-      satelliteTintById: new Map(),
-    },
-  };
-  assert.equal(childElements(SceneCellPresentationLayers(cellProps)).length, 0);
-  assert.equal(
-    childElements(SceneCellPresentationLayers({
-      ...cellProps,
-      overlay: { ...cellProps.overlay, visible: true },
-    })).length,
-    1,
-  );
-
-  const beamLoadProps: SceneBeamLoadLayersProps = {
-    cylinder: {
-      worldPos: undefined,
-      normalizedLoad: 0,
-      load: 0,
-      mounted: false,
-      visible: false,
-    },
-    uploadParticles: {
-      visible: false,
-      focusCones: [],
-      beamLoadContention: EMPTY_BEAM_LOAD_CONTENTION,
-      focusedUe: null,
-      enabled: false,
-      paused: false,
-      reducedMotion: true,
-    },
-  };
-  assert.equal(SceneBeamLoadLayers(beamLoadProps), null);
-  assert.equal(childElements(SceneBeamLoadLayers({
-    ...beamLoadProps,
-    cylinder: { ...beamLoadProps.cylinder, mounted: true },
-  })).length, 1);
-
+  // The cell-presentation and beam-load wrappers were removed as dead code (zero
+  // production importers; not mounted by MainScene even at the commit that still
+  // contained them). Their mount-gate assertions are dropped because THE SUBJECT IS
+  // GONE, not to make anything green: the remaining wrappers below are still
+  // asserted with the identical protocol.
   const emptySinrLayers = {
     appearance: {
       homepageVisualIdentity: false,
