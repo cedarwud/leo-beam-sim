@@ -137,6 +137,37 @@ REV1 給的是 `FinalColor = Compose(BaseIdentityColor, HandoverStateModifier)` 
 
 另外一個被低估的嚴重度：intra-cell variant beam 的偏差**不是一階**。`cellId 0 / beamId 421` 的 fallback 把整個 420 stride 的 variant offset 丟掉了，`#afe03e` vs `#f0f9dc` —— 差了大半個階梯，不是相鄰色。
 
+## 視覺驗證(2026-09-08,逐個跑,紅的都隔離重跑)
+
+| 閘門 | HEAD | 判定 |
+|---|---|---|
+| beam:visual-invariants | PASS | ✅ |
+| phase-h:sinr-live-render | PASS | ✅ |
+| phase-c:sinr-live-cells | PASS | ✅ |
+| homepage:multi-candidate | PASS | ✅ |
+| homepage:authority | PASS | ✅ |
+| homepage:sinr-layout | PASS | ✅ |
+| phase-c:handover-cinema | FAIL | 既有(base 也紅) |
+| phase-c:sinr-serving-mosaic | FAIL | 既有(base 也紅) |
+| phase-c:handover-pulse:render | FAIL | **見下** |
+
+### 一次我下太快的判定,以及它怎麼被推翻
+
+第一輪 handover-pulse 的樣本是「HEAD 紅 ×1、base 綠 ×1」,我據此宣告**這是我造成的回歸**。
+
+那個判定不成立,理由是我自己後來才注意到的:HEAD 的兩次失敗**斷言不同**(一次 `count==render`,一次 `rendered >= 1 cone`)。程式真壞會每次以同樣方式壞;失敗模式會變是時序敏感的特徵。而我每邊只有一個樣本。
+
+改跑每邊五次之後:
+
+```
+HEAD      : 0 PASS / 7 runs
+31a6ab8~1 : 1 PASS / 6 runs
+```
+
+**兩邊都幾乎全紅**,base 那一次綠落在雜訊裡。**沒有證據顯示這輪收斂弄壞了它**;它是一個既有的高度 flaky 閘門,而且以這個通過率,它本身就不能當回歸偵測器用。
+
+教訓寫下來:**flaky 閘門的單一樣本不是歸因證據。** 我當時已經知道這個 repo 有這個坑(記憶裡就寫著「4 個綠→紅逐個重跑後全部 PASS」),但只在「紅」的方向套用了這條規則,沒有在「綠」的方向套用 —— 一次綠同樣證明不了穩定綠。
+
 ## 回歸驗證
 
 | 項目 | 結果 |

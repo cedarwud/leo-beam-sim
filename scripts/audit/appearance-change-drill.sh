@@ -21,15 +21,28 @@
 # drill asserts BOTH that the blast radius was one file AND that pixels moved.
 #
 # Usage:  bash scripts/audit/appearance-change-drill.sh
-# Exit 0 only if every drill is a single-file, visibly-effective change.
+# Exit 0 only if every drill matches its expectation (expect_pass passes, expect_fail fails).
+# Exit non-zero if a drill regresses OR if an expect_fail drill unexpectedly passes (stale board).
 
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 
 TEST="src/scene/appearanceCharacterization.test.ts"
 MODIFIERS="src/appearance/handoverAppearanceModifiers.ts"
+SHADE="src/appearance/intraHandoverShade.ts"
+SERVING="src/constants/servingColour.ts"
 
-fail=0
+total_drills=0
+converged_count=0
+frontier_count=0
+regressions=0
+unexpected_passes=0
+mismatches=0
+
+converged_prompts=()
+frontier_prompts=()
+regression_prompts=()
+unexpected_pass_prompts=()
 
 # How many rows of the pinned photograph differ. 0 means the edit was inert.
 changed_rows() {
@@ -60,7 +73,7 @@ is_green() {
 # Refuse only on a TRACKED file with unstaged edits — those are work the drill
 # would destroy. An untracked module is fine: the drill backs it up and restores
 # it byte-exactly. (Checking porcelain alone would see "??" and refuse forever.)
-for guarded in "$MODIFIERS" "src/appearance/intraHandoverShade.ts"; do
+for guarded in "$MODIFIERS" "$SHADE" "$SERVING"; do
   if git ls-files --error-unmatch "$guarded" >/dev/null 2>&1 \
      && ! git diff --quiet -- "$guarded"; then
     echo "REFUSING TO RUN: $guarded has uncommitted changes; the drill would destroy them." >&2
@@ -84,14 +97,28 @@ PY
 }
 
 drill() {
+  local expect="expect_pass"
+  if [ "$1" = "expect_pass" ] || [ "$1" = "expect_fail" ]; then
+    expect="$1"
+    shift
+  fi
   local target="$1" prompt="$2" old="$3" new="$4"
+
+  total_drills=$((total_drills + 1))
   echo "────────────────────────────────────────────────────────────"
-  echo "PROMPT: $prompt"
+  echo "PROMPT: $prompt [$expect]"
 
   if ! is_green; then
     echo "  ✗ SKIP — characterization test is not green before the drill;"
     echo "           a drill against a red baseline proves nothing."
-    fail=1
+    mismatches=$((mismatches + 1))
+    if [ "$expect" = "expect_pass" ]; then
+      regressions=$((regressions + 1))
+      regression_prompts+=("$prompt (baseline red)")
+    else
+      unexpected_passes=$((unexpected_passes + 1))
+      unexpected_pass_prompts+=("$prompt (baseline red)")
+    fi
     return
   fi
 
@@ -102,7 +129,16 @@ drill() {
 
   if ! apply_edit "$target" "$old" "$new"; then
     echo "  ✗ FAIL — could not apply the edit (see above)."
-    fail=1
+    cp "$backup" "$target"
+    rm -f "$backup"
+    mismatches=$((mismatches + 1))
+    if [ "$expect" = "expect_pass" ]; then
+      regressions=$((regressions + 1))
+      regression_prompts+=("$prompt (edit failed)")
+    else
+      unexpected_passes=$((unexpected_passes + 1))
+      unexpected_pass_prompts+=("$prompt (edit failed)")
+    fi
     return
   fi
 
@@ -110,7 +146,7 @@ drill() {
   # a clean checkout. The tree legitimately carries other in-progress work, and
   # counting that as "files this change touched" would inflate every drill and
   # make the metric useless exactly when it is most needed.
-  local touched rows
+  local touched rows outcome
   touched=$(comm -13 <(printf '%s\n' "$before_tree") <(tree_fingerprint) | wc -l)
   rows=$(changed_rows)
 
@@ -118,12 +154,13 @@ drill() {
   echo "  characterization rows that moved : $rows"
 
   if [ "$touched" -ne 1 ]; then
+    outcome="fail"
     echo "  ✗ FAIL — the change was not confined to one file."
-    fail=1
   elif [ "$rows" -eq 0 ]; then
+    outcome="fail"
     echo "  ✗ FAIL — one file, but nothing on screen changed. The seam is decorative."
-    fail=1
   else
+    outcome="pass"
     echo "  ✓ PASS — one file, $rows rendered rows moved."
   fi
 
@@ -132,13 +169,40 @@ drill() {
   # subsequent drill in the run.
   cp "$backup" "$target"
   rm -f "$backup"
+
+  # Evaluate against expectation
+  if [ "$expect" = "expect_pass" ]; then
+    if [ "$outcome" = "pass" ]; then
+      converged_count=$((converged_count + 1))
+      converged_prompts+=("$prompt ($rows rows moved)")
+      echo "  Expectation: MATCH (converged decision)"
+    else
+      regressions=$((regressions + 1))
+      mismatches=$((mismatches + 1))
+      regression_prompts+=("$prompt ($rows rows moved)")
+      echo "  Expectation: MISMATCH — REGRESSION! Expected single-file effective pass, but drill failed."
+    fi
+  else
+    if [ "$outcome" = "fail" ]; then
+      frontier_count=$((frontier_count + 1))
+      frontier_prompts+=("$prompt (rows moved: $rows)")
+      echo "  Expectation: MATCH (known frontier: unconverged decision)"
+    else
+      unexpected_passes=$((unexpected_passes + 1))
+      mismatches=$((mismatches + 1))
+      unexpected_pass_prompts+=("$prompt ($rows rows moved)")
+      echo "  Expectation: MISMATCH — UNEXPECTED PASS! Drill was expected to fail as frontier, but passed ($rows rows moved). Decision has converged; board is stale!"
+    fi
+  fi
 }
 
 echo "APPEARANCE CHANGE DRILL"
 echo "one owner-phrased prompt at a time; each must be single-file AND visible"
 echo
 
-drill "$MODIFIERS" "inter 換手的 target 也要有強調（原本完全沒有）" \
+# ==================== Converged decisions (expect_pass) ====================
+
+drill expect_pass "$MODIFIERS" "inter 換手的 target 也要有強調（原本完全沒有）" \
 "    target: {
       shade: null,
       opacityFactor: 1,
@@ -148,7 +212,7 @@ drill "$MODIFIERS" "inter 換手的 target 也要有強調（原本完全沒有�
       opacityFactor: 1,
       rationale: 'owner asked for an explicit incoming-beam cue on inter as well as intra',"
 
-drill "$MODIFIERS" "intra 換手的 source 不要再變暗了" \
+drill expect_pass "$MODIFIERS" "intra 換手的 source 不要再變暗了" \
 "    source: {
       shade: 'source',
       opacityFactor: 1," \
@@ -156,23 +220,87 @@ drill "$MODIFIERS" "intra 換手的 source 不要再變暗了" \
       shade: null,
       opacityFactor: 1,"
 
-drill "$MODIFIERS" "換手兩側的透明度對比再拉開一點" \
+drill expect_pass "$MODIFIERS" "換手兩側的透明度對比再拉開一點" \
 "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.62;" \
 "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.40;"
-
-SHADE="src/appearance/intraHandoverShade.ts"
 
 # This one is here because "把 intra target 改亮一點" was measured as a TWO-file
 # change while emphasizeIntraHandoverColor still lived in constants/servingColour.ts:
 # the table said WHICH shade applied, a different directory said what it MEANT.
 # It is a single-file change only because the implementation moved beside the table.
-drill "$SHADE" "把 intra 換手的 target 再亮一點" \
+drill expect_pass "$SHADE" "把 intra 換手的 target 再亮一點" \
 "    : Math.min(0.94, Math.max(0.74, hsl.lightness * 0.50 + 0.48));" \
 "    : Math.min(0.98, Math.max(0.86, hsl.lightness * 0.50 + 0.60));"
 
+drill expect_pass "$SERVING" "改同一顆衛星裡不同 beam 的深淺階梯" \
+"const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.56, 0.64, 0.72, 0.80, 0.87, 0.92, 0.96, 0.99] as const;" \
+"const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.50, 0.60, 0.70, 0.80, 0.87, 0.92, 0.96, 0.99] as const;"
+
+# ==================== Frontier decisions (expect_fail) ====================
+
+drill expect_fail "$SERVING" "換掉衛星身分色的調色盤" \
+"  { hueDegrees: 48, baseLightness: 0.60 },  // gold" \
+"  { hueDegrees: 52, baseLightness: 0.60 },  // gold"
+
+drill expect_fail "$MODIFIERS" "改 handover source/target 的判定" \
+"  if (renderKey.endsWith('-from')) return 'source';" \
+"  if (renderKey.endsWith('-from')) return 'target';"
+
 echo "────────────────────────────────────────────────────────────"
-if [ "$fail" -ne 0 ]; then
-  echo "DRILL FAILED — at least one rendering decision is not yet single-file-and-effective."
+echo "APPEARANCE CONVERGENCE FRONTIER SUMMARY"
+echo "────────────────────────────────────────────────────────────"
+echo "Total drills: $total_drills"
+echo "  Converged decisions (expected pass, passed) : $converged_count"
+echo "  Frontier decisions  (expected fail, failed) : $frontier_count"
+echo "  Expectation mismatches                      : $mismatches"
+if [ "$unexpected_passes" -gt 0 ]; then
+  echo "    - Unexpected passes (board is stale!)     : $unexpected_passes"
+fi
+if [ "$regressions" -gt 0 ]; then
+  echo "    - Regressions (expected pass, failed!)    : $regressions"
+fi
+echo
+if [ "${#converged_prompts[@]}" -gt 0 ]; then
+  echo "Converged decisions ($converged_count):"
+  for item in "${converged_prompts[@]}"; do
+    echo "  ✓ $item"
+  done
+  echo
+fi
+if [ "${#frontier_prompts[@]}" -gt 0 ]; then
+  echo "Frontier decisions — unconverged ($frontier_count):"
+  for item in "${frontier_prompts[@]}"; do
+    echo "  ✗ $item"
+  done
+  echo
+fi
+if [ "${#unexpected_pass_prompts[@]}" -gt 0 ]; then
+  echo "Unexpectedly passing decisions ($unexpected_passes) — FINDING: frontier moved, board is stale:"
+  for item in "${unexpected_pass_prompts[@]}"; do
+    echo "  ⚡ $item"
+  done
+  echo
+fi
+if [ "${#regression_prompts[@]}" -gt 0 ]; then
+  echo "Regressions ($regressions):"
+  for item in "${regression_prompts[@]}"; do
+    echo "  ❌ $item"
+  done
+  echo
+fi
+echo "────────────────────────────────────────────────────────────"
+
+if [ "$mismatches" -ne 0 ]; then
+  echo "DRILL FAILED — $mismatches expectation mismatch(es) detected."
+  if [ "$unexpected_passes" -gt 0 ]; then
+    echo "  Notice: $unexpected_passes drill(s) expected to fail actually passed."
+    echo "          The frontier has moved; update expectations once confirmed."
+  fi
+  if [ "$regressions" -gt 0 ]; then
+    echo "  Notice: $regressions drill(s) expected to pass failed. This is a regression."
+  fi
   exit 1
 fi
-echo "DRILL PASSED — every listed rendering decision is one file and visibly effective."
+
+echo "DRILL PASSED — every listed rendering decision matched its expectation."
+exit 0
