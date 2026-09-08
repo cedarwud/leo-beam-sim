@@ -55,9 +55,6 @@ import {
 } from '../ui/handover-evaluation/candidateInspectionSelection';
 import { satelliteTint } from '../constants/beamRoleTokens';
 import {
-  colorForServingBeam,
-} from '../constants/servingColour';
-import {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
   homepageSatelliteColorForBeam,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
@@ -1934,11 +1931,9 @@ function SceneRenderContent({
   // to say answers `undefined`; neither lookup may invent a colour to stand in
   // for a miss, because a fabricated miss colour is indistinguishable from a
   // real hit one rung down.
-  const resolveSceneAcceptedBeamColorSources = useMemo((): IdentitySources => ({
-    // Rung 1. Present only while the homepage controller owns identity; absent
-    // — not merely empty — on every other surface.
-    homepageColorFor: homepageVisualIdentity
-      ? (satelliteId, beamId, isServingOrCandidate) => homepageSatelliteColorForBeam(satelliteId, beamId, {
+  const resolveSceneAcceptedBeamColorSources = useMemo((): IdentitySources => {
+    const homepageColorFor = (satelliteId: string, beamId: number, isServingOrCandidate: boolean): string => (
+      homepageSatelliteColorForBeam(satelliteId, beamId, {
         identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(satelliteId) ?? null,
         // The homepage shade is a projection of the accepted snapshot's
         // published EE.  Do not fall back to beam-slot shading for transition
@@ -1947,7 +1942,11 @@ function SceneRenderContent({
         eeNormalized: homepageBeamEeByKey?.get(`${satelliteId}:${beamId}`),
         isServing: isServingOrCandidate,
       }).color
-      : undefined,
+    );
+    return {
+      // Rung 1. Present only while the homepage controller owns identity; absent
+      // — not merely empty — on every other surface.
+      homepageColorFor: homepageVisualIdentity ? homepageColorFor : undefined,
     // Rung 2. `resolveAcceptedBeamIdentityColor` reports a miss by handing back
     // whatever fallback it was given, so the only way to see a miss from out
     // here is to give it a value that can never be a published colour. The
@@ -1962,7 +1961,8 @@ function SceneRenderContent({
       );
       return published.length > 0 ? published : undefined;
     },
-  }), [acceptedHandoverPresentation, homepageBeamEeByKey, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
+    };
+  }, [acceptedHandoverPresentation, homepageBeamEeByKey, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
   const resolveSceneAcceptedBeamColor = useCallback((
     satelliteId: string,
     beamId: number,

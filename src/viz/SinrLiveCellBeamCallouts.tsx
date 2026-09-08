@@ -20,9 +20,7 @@ import { useEffect, useLayoutEffect, type JSX } from 'react';
 import { Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { resolveHomepageSatelliteDisplayName } from '../homepage/controller/homepageSatelliteDisplayName';
-import {
-  homepageSatelliteColorForBeam,
-} from '../homepage/controller/homepageSatelliteVisualIdentity';
+import { homepageSatelliteBeamColor } from '../homepage/controller/homepageSatelliteVisualIdentity';
 import { SINR_LIVE_CALLOUT_Y_LIFT } from '../constants/sinrLiveConeStyle';
 import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 import { formatHomepageEe } from '../homepage/controller/homepageMetricFormatters';
@@ -150,11 +148,11 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
           || resolveHandoverSide(item) === 'target'
           || item.role === 'triggered';
         const renderColor = homepageVisualIdentity
-          ? homepageSatelliteColorForBeam(item.satId, beamId, {
+          ? homepageSatelliteBeamColor(item.satId, beamId, {
             identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(item.satId) ?? null,
             isServing: isPrimaryIdentity,
             eeNormalized: homepageBeamEeByKey?.get(`${item.satId}:${beamId}`),
-          }).color
+          })
           : item.color;
         const displayEe = props.homepageBeamEeBitsPerJouleByKey !== undefined;
         const valueLabel = displayEe

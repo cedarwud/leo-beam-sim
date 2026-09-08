@@ -49,6 +49,10 @@ function primaryBeamLabel(satId: string, beams: BeamTarget[] | undefined): strin
   return beam ? formatBeamIdentityByIndex({ satId, beamId: beam.beamId, frequencyIndex: beam.frequencyIndex }) : null;
 }
 
+function markerColorForBeam(satId: string, beamId: number): string {
+  return colorForServingBeam(satId, beamId).markerColor;
+}
+
 function identityColorForLink(
   satId: string,
   beams: BeamTarget[] | undefined,
@@ -60,7 +64,7 @@ function identityColorForLink(
     ?? beams?.[0];
   return beam === undefined
     ? fallback
-    : colorForServingBeam(satId, beam.beamId).markerColor;
+    : markerColorForBeam(satId, beam.beamId);
 }
 
 function resolveAnchor(

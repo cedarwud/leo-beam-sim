@@ -45,7 +45,7 @@ import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteApp
 import {
   HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,
   homepageEeVisualOpacity,
-  homepageSatelliteColorForBeam,
+  homepageSatelliteBeamColor,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
 import {
   homepageBeamEeKey,
@@ -171,7 +171,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
           || resolveHandoverSide({ role: itemRole }) !== null
           || itemRole === 'triggered';
         const homepageBeamColor = homepageIdentity
-          ? homepageSatelliteColorForBeam(item.satId, beamId, {
+          ? homepageSatelliteBeamColor(item.satId, beamId, {
             identityPaletteIndex: props.homepageIdentityPaletteIndexBySatelliteId?.get(item.satId) ?? null,
             isServing: isPrimaryIdentityBeam,
             eeNormalized: props.homepageBeamEeByKey?.get(
@@ -180,9 +180,9 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
           })
           : null;
         const borderColor = resolveSatelliteIdentityColor(item.satId, {
-          homepageColorFor: () => homepageBeamColor?.color,
+          homepageColorFor: () => homepageBeamColor ?? undefined,
         });
-        const roleColor = homepageBeamColor?.color ?? resolvedRoleColor;
+        const roleColor = homepageBeamColor ?? resolvedRoleColor;
         const homepageEeOpacity = homepageIdentity
           ? homepageEeVisualOpacity(props.homepageBeamEeByKey?.get(
             homepageBeamEeKey(item.satId, beamId),

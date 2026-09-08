@@ -155,6 +155,20 @@ const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.56, 0.64, 0.72, 0.80, 0.87, 0.
 // changing the satellite/beam identity contract.
 const SERVING_IDENTITY_BLUE_BEAM_LIGHTNESS_LEVELS = [0.72, 0.78, 0.84, 0.89, 0.93, 0.96, 0.98, 0.99] as const;
 
+/**
+ * THE beam-id → shade-rung mapping for the full serving projection.
+ *
+ * This deliberately knows the index arithmetic but not the lightness values:
+ * `SERVING_IDENTITY_*_LIGHTNESS_LEVELS` is the separate ladder decision. The
+ * homepage calls the same mapping with its four-rung compact projection, so
+ * that surface remains intentionally remapped rather than flattened into the
+ * full scene ladder.
+ */
+export function servingBeamShadeIndex(beamId: number, shadeCount: number): number {
+  const normalizedBeamId = Number.isFinite(beamId) ? Math.abs(Math.trunc(beamId)) : 0;
+  return normalizedBeamId % shadeCount;
+}
+
 /** FNV-1a string hash → [0, 1). Deterministic, display-order independent. */
 function hashStringToUnit(value: string): number {
   let hash = 2166136261;
@@ -330,7 +344,6 @@ function paletteEntryForServingSatellite(satId: string) {
 export function colorForServingBeam(satId: string, beamId: number): ServingIdentityColor {
   const paletteEntry = paletteEntryForServingSatellite(satId);
   const satHue = paletteEntry.hueDegrees / 360;
-  const beamMod = Math.abs(Math.trunc(beamId));
   const hue = satHue;
   const isBluePurpleFamily = paletteEntry.hueDegrees >= 200 && paletteEntry.hueDegrees <= 300;
   // Blue/cyan/purple identities use a lifted range so even their darkest beam
@@ -340,7 +353,7 @@ export function colorForServingBeam(satId: string, beamId: number): ServingIdent
   const lightnessLevels = isBluePurpleFamily
     ? SERVING_IDENTITY_BLUE_BEAM_LIGHTNESS_LEVELS
     : SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS;
-  const lightness = lightnessLevels[beamMod % lightnessLevels.length]!;
+  const lightness = lightnessLevels[servingBeamShadeIndex(beamId, lightnessLevels.length)]!;
   return {
     markerColor: hslToHex(hue, SERVING_IDENTITY_SATURATION, lightness),
     markerEmissive: hslToHex(hue, SERVING_IDENTITY_SATURATION, Math.max(0.28, lightness - 0.18)),

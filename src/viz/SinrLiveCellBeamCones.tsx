@@ -51,7 +51,7 @@ import {
 } from '../constants/sinrLiveConeStyle';
 import { colorForServingBeam } from '../constants/servingColour';
 import {
-  homepageSatelliteColorForBeam,
+  homepageSatelliteBeamColor,
   homepageEeVisualOpacity,
   HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
@@ -443,7 +443,7 @@ export function resolveSinrLiveCellBeamConeItems(
       // mosaic uses, so this serving cone is the SAME colour as the UE dots it
       // serves — beam↔UE matchable by colour (kills Bug E). `cellId` is the
       // serving unit on the cell lane (== the UE mosaic's `cellId`-as-beamId).
-      color: colorForServingBeam(beam.satId, beam.beamId ?? cellLinkBudgetBeamId(beam.cellId)).markerColor,
+      color: colorForServingBeam(beam.satId, beamId).markerColor,
       serving: true,
       apex,
       baseCenter,
@@ -489,16 +489,17 @@ export function resolveSinrLiveNonServingConeItems(
     const apex = new THREE.Vector3(satWorld.x, satWorld.y, satWorld.z);
     const baseCenter = resolveBeamBaseCenter(placement);
     if (apex.distanceTo(baseCenter) <= 1e-6) continue;
+    const beamId = beam.beamId ?? cellLinkBudgetBeamId(beam.cellId);
 
     items.push({
       cellId: beam.cellId,
       satId: beam.satId,
-      beamId: beam.beamId ?? cellLinkBudgetBeamId(beam.cellId),
+      beamId,
       frequencyIndex: beam.frequencyIndex,
       // Serving-identity colour (SDD §3.2) keyed on (satId, cellId) — same authority
       // as the serving cones + UE mosaic, so the whole field is one colour scheme
       // (the freq-reuse palette is retired from the live render).
-      color: colorForServingBeam(beam.satId, beam.beamId ?? cellLinkBudgetBeamId(beam.cellId)).markerColor,
+      color: colorForServingBeam(beam.satId, beamId).markerColor,
       serving: false,
       apex,
       baseCenter,
@@ -538,7 +539,7 @@ function buildCellConeItem(input: {
     // Preserve the legacy cell-lane colour for ordinary beams while allowing
     // an explicit same-cell variant to select its real beam shade.  The
     // homepage identity mount uses `beamId` below for the EE-driven colour.
-    color: colorForServingBeam(input.satId, input.beamId ?? cellLinkBudgetBeamId(input.cellId)).markerColor,
+    color: colorForServingBeam(input.satId, beamId).markerColor,
     serving: true,
     apex,
     baseCenter,
@@ -1388,7 +1389,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           || resolveHandoverSide({ role }) !== null
           || role === 'triggered';
         const color = homepageIdentity
-          ? homepageSatelliteColorForBeam(cone.satId, beamId, {
+          ? homepageSatelliteBeamColor(cone.satId, beamId, {
             identityPaletteIndex: props.homepageIdentityPaletteIndexBySatelliteId?.get(cone.satId) ?? null,
             // Candidate/event primary beams keep their identity shade when
             // the decision role changes from candidate to serving. Ambient
@@ -1397,7 +1398,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             eeNormalized: props.homepageBeamEeByKey?.get(
               homepageBeamEeKey(cone.satId, beamId),
             ),
-          }).color
+          })
           : style.color;
         const homepageEeOpacity = homepageIdentity
           ? homepageEeVisualOpacity(props.homepageBeamEeByKey?.get(

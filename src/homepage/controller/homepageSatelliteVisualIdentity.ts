@@ -16,6 +16,7 @@ import {
   homepageSatelliteBaseColor,
   homepageSatellitePaletteIndex,
 } from '../../appearance/satelliteIdentityPalette';
+import { servingBeamShadeIndex } from '../../constants/servingColour';
 
 export {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
@@ -120,8 +121,11 @@ function hslToHex(hueDegrees: number, saturation: number, lightness: number): st
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 }
 
-function normalizedBeamSlot(beamId: number): number {
-  return Number.isFinite(beamId) ? Math.abs(Math.trunc(beamId)) : 0;
+function homepageBeamShadeIndex(beamId: number): number {
+  // The homepage is intentionally a compact projection: it folds the shared
+  // beam-id mapping into four local rungs, while finite EE may replace this
+  // fallback with the frame-relative intensity bucket below.
+  return servingBeamShadeIndex(beamId, HOMEPAGE_SATELLITE_BEAM_LIGHTNESS_LEVELS.length);
 }
 
 function normalizedEeBucket(eeNormalized: number): number {
@@ -162,7 +166,7 @@ export function homepageSatelliteColorForBeam(
   const family = HOMEPAGE_SATELLITE_HUE_FAMILIES[paletteIndex]!;
   const eeBucket = finiteEeBucket(options?.eeNormalized);
   const shadeIndex = eeBucket
-    ?? normalizedBeamSlot(beamId) % HOMEPAGE_SATELLITE_BEAM_LIGHTNESS_LEVELS.length;
+    ?? homepageBeamShadeIndex(beamId);
   const isServing = options?.isServing === true;
   // Keep the four-level `shadeIndex` API for existing consumers, but interpolate
   // the actual token when EE is finite.  This makes the beam fade every frame
@@ -197,4 +201,13 @@ export function homepageSatelliteColorForBeam(
         : Math.max(0.56, lightness - 0.10),
     ),
   });
+}
+
+/** Paint-only adapter: consumers need the resolved CSS token, not the projection metadata. */
+export function homepageSatelliteBeamColor(
+  satelliteId: string,
+  beamId: number,
+  options?: HomepageSatelliteColorOptions,
+): string {
+  return homepageSatelliteColorForBeam(satelliteId, beamId, options).color;
 }
