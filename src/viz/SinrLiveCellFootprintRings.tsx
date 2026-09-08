@@ -41,7 +41,7 @@ import {
   SINR_LIVE_FOOTPRINT_RING_Y_LIFT,
   type SinrLiveConePalette,
 } from '../constants/sinrLiveConeStyle';
-import { colorForServingSatellite } from '../constants/servingColour';
+import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteAppearance';
 import {
   HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,
   homepageEeVisualOpacity,
@@ -179,8 +179,9 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
             ),
           })
           : null;
-        const borderColor = homepageBeamColor?.color
-          ?? colorForServingSatellite(item.satId).markerColor;
+        const borderColor = resolveSatelliteIdentityColor(item.satId, {
+          homepageColorFor: () => homepageBeamColor?.color,
+        });
         const roleColor = homepageBeamColor?.color ?? resolvedRoleColor;
         const homepageEeOpacity = homepageIdentity
           ? homepageEeVisualOpacity(props.homepageBeamEeByKey?.get(

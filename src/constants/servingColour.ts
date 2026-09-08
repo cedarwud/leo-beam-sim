@@ -1,5 +1,5 @@
 /**
- * Serving-identity colour — THE ONE authority for "who serves this UE".
+ * Serving-identity colour and satellite hue — THE ONE low-level authority.
  *
  * Consolidation SDD §3.2 (kills Bug E): both the SINR-live serving CONE
  * (`SinrLiveCellBeamCones`) and the UE serving MARKER (`sinrServingMosaic`) colour
@@ -9,7 +9,7 @@
  * (`cellId mod reuse`) while UE markers used a serving-identity hash → the same
  * (sat, cell) rendered two different colours and beam↔UE could not be matched.
  *
- * The colour is a STABLE allocation from the satellite identity plus a beam
+ * The palette is a STABLE allocation from the satellite identity plus a beam
  * lightness step: Walker spacecraft use an interleaved ID-derived palette slot
  * (adjacent spacecraft deliberately land in contrasting families), while
  * arbitrary IDs use a deterministic hash. Beams of one satellite keep one
@@ -17,6 +17,10 @@
  * jump (inter-HO = a family change), and a dot/cone recolours IFF its serving
  * beam actually changed (no display-order frame-churn —
  * frontend-render-governance.md §6).
+ *
+ * The 16-slot identity palette and the homepage's 16→6 projection live here
+ * together. `src/appearance/satelliteIdentityPalette.ts` is only the
+ * appearance-facing import surface; it deliberately contains no second table.
  *
  * Lives in `constants/` (not `scene/`) on purpose: BOTH the cone resolver
  * (`viz/`) and the UE mosaic (`scene/`) import DOWN into it, so there is no
@@ -36,7 +40,7 @@ export interface ServingIdentityColor {
   readonly markerEmissive: string;
 }
 
-const SERVING_IDENTITY_SATURATION = 0.72;
+export const SERVING_IDENTITY_SATURATION = 0.72;
 /**
  * Deliberately interleaved hue families for the satellites shown in the scene.
  *
@@ -107,6 +111,33 @@ const INTERLEAVED_PALETTE_SLOTS = [
  * cycle. This is presentation-only; it does not alter the orbital phase.
  */
 const WALKER_PLANE_PALETTE_STRIDE = 14;
+
+/** Six compact homepage families projected from the canonical source slots. */
+export const HOMEPAGE_SATELLITE_COLOR_COUNT = 6 as const;
+
+export const HOMEPAGE_SATELLITE_HUE_FAMILIES = Object.freeze([
+  Object.freeze({ name: 'gold', hueDegrees: 55 }),
+  Object.freeze({ name: 'blue', hueDegrees: 225 }),
+  Object.freeze({ name: 'green', hueDegrees: 115 }),
+  Object.freeze({ name: 'cyan', hueDegrees: 190 }),
+  Object.freeze({ name: 'teal', hueDegrees: 155 }),
+  Object.freeze({ name: 'orange', hueDegrees: 25 }),
+] as const);
+
+export const HOMEPAGE_SATELLITE_PALETTE_REFERENCE_IDS = Object.freeze([
+  'homepage-palette-ref-6',
+  'homepage-palette-ref-3',
+  'homepage-palette-ref-2',
+  'homepage-palette-ref-4',
+  'homepage-palette-ref-1',
+  'homepage-palette-ref-0',
+] as const);
+
+/** Compact projection; collisions are intentional and are carried by non-hue cues. */
+const HOMEPAGE_SOURCE_SLOT_TO_FAMILY = Object.freeze([
+  2, 5, 1, 5, 2, 4, 2, 3,
+  2, 5, 5, 1, 1, 4, 0, 3,
+] as const);
 
 /**
  * Seven explicit same-satellite shade levels.  The cell-truth lane exposes
@@ -255,6 +286,34 @@ export function servingIdentityPaletteNameAt(index: number): string {
   return SERVING_IDENTITY_PALETTE_NAMES[
     positiveModulo(Math.trunc(index), SERVING_IDENTITY_PALETTE_NAMES.length)
   ]!;
+}
+
+/** Homepage compact family derived from the canonical source palette slot. */
+export function homepageSatellitePaletteIndex(
+  satelliteId: string,
+  _identityPaletteIndex?: number | null,
+): number {
+  const sourceSlot = positiveModulo(
+    servingIdentityPaletteIndex(satelliteId),
+    HOMEPAGE_SOURCE_SLOT_TO_FAMILY.length,
+  );
+  return HOMEPAGE_SOURCE_SLOT_TO_FAMILY[sourceSlot]!;
+}
+
+export function homepageSatelliteBaseColor(
+  satelliteId: string,
+  _identityPaletteIndex?: number | null,
+): string {
+  const family = HOMEPAGE_SATELLITE_HUE_FAMILIES[homepageSatellitePaletteIndex(satelliteId)]!;
+  return hslToHex(family.hueDegrees / 360, 0.72, 0.58);
+}
+
+/** Homepage-only identity projection; non-homepage lanes fall through. */
+export function resolveHomepageSatelliteIdentityColor(
+  satelliteId: string,
+  homepageVisualIdentity: boolean,
+): string | undefined {
+  return homepageVisualIdentity ? homepageSatelliteBaseColor(satelliteId) : undefined;
 }
 
 function paletteEntryForServingSatellite(satId: string) {
