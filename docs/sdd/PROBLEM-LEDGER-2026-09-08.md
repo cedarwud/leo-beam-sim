@@ -30,6 +30,8 @@
 | S13 | 27 個瀏覽器閘門可假綠 | `d9eba1b` | 自驗:假驗證器打死 port → VOID/DID NOT RUN,exit 1 |
 | S14 | MainScene 五個決策無擁有者 | `ea102f8` | 9 個 move,timeline cmp 全 0/0;五個都登記 manifest |
 | S15 | T1 tsc 錯誤 2 個 / T2 `opacityFactor` 死欄位 | `ea102f8` `3c6100f` | tsc 2→0;刪除後 sha256 未變證明無人觀測 |
+| S16 | `App.tsx` / `sinrLiveCellModel.ts` 探索成本過高 | `8e2c5f9` | 8 個任務 **27,992 → 5,043 行(−82%)**;timeline 逐位相同 |
+| S17 | **render-timeline 自己只看得見 29%** | `cef049c` | 42 個突變普查 → 補強到 **45.2%**,23 個盲點逐一機械歸類 |
 
 ---
 
@@ -57,6 +59,8 @@
 | M4 | 但有**兩個 1 秒空窗**(t=1889、t=2051),`satId=null`,下一次換手 t=1894/2057 自行恢復 | 成因 `sinrLiveCellModel.ts:2813-2850` 的 detach 清空 |
 | M5 | 首頁 intra/inter 按鈕跑**固定 72 秒手寫劇本**,`t=52s` 把服務身分換成作者指定的贏家。可從任意時刻按、會重啟、端點缺失 fail-closed | `App.tsx:2252/:2292` |
 | M6 | homepage 六色系仍是第二調色盤,收斂會重新著色整個首頁(gold 55°→280° 等) | `seams` 報告列出每個 hue 的位移 |
+| M7 | **「timeline 逐位相同」的保證範圍是 45%,不是 100%**。已提交的重構仍有 `test:appearance`(85)與 drill(14/14)兩層獨立覆蓋 | `cef049c` |
+| M8 | 剩餘 23 個盲點:**7 個 UNREACHABLE-ROUTE**(預設路由真的跑不到,補不了)、**12 個 NOT-WIRED**(harness 沒接生產路徑,`sat-wire` 正在補)、3 個已修 | `/tmp/render-timeline-coverage.md` |
 
 ## ⬜ 待辦(未派)
 
