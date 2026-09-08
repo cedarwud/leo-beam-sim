@@ -9,6 +9,14 @@ import type {
 } from '../appearance/beamAppearanceContract';
 import { coneItemBeamId, paintConeItem } from '../appearance/paintConeItems';
 import {
+  handoverConePaintContext,
+  HANDOVER_CONE_OVERLAY_INACTIVE,
+  type HandoverConeOverlay,
+} from '../appearance/handoverOverlayIdentity';
+
+export type { HandoverConeOverlay } from '../appearance/handoverOverlayIdentity';
+export { HANDOVER_CONE_OVERLAY_INACTIVE } from '../appearance/handoverOverlayIdentity';
+import {
   resolveSinrLiveHandoverPulseConeItems as resolvePulseGeometry,
   resolveTriggeredIntraConeItems as resolveTriggeredGeometry,
   resolveCinemaHandoverPairConeItems as resolveCinemaPairGeometry,
@@ -66,6 +74,8 @@ function pairSideColor(input: {
   readonly isServingOrCandidate: boolean;
   readonly resolveIdentityColor?: ResolveSceneAcceptedBeamColor;
   readonly planColorFor?: (satId: string, beamId: number) => string | undefined;
+  /** Defaults to inactive, which is the authority lane's case: it owns rung 0 itself. */
+  readonly overlay?: HandoverConeOverlay;
 }): string {
   return paintConeItem(
     {
@@ -77,13 +87,15 @@ function pairSideColor(input: {
       color: '',
       role: handoverRoleForSide(input.side),
     },
-    {
+    handoverConePaintContext({
+      overlay: input.overlay ?? HANDOVER_CONE_OVERLAY_INACTIVE,
+      cellId: input.cellId,
       resolveIdentityColor: input.resolveIdentityColor,
       planColorFor: input.planColorFor,
       laneKind: input.kind,
       prominence: input.prominence,
       isServingOrCandidate: input.isServingOrCandidate,
-    },
+    }),
   ).color;
 }
 
@@ -114,6 +126,8 @@ export interface PulseConeInput {
     readonly resolveSceneAcceptedBeamColor: ResolveSceneAcceptedBeamColor;
     readonly restrictHomepageBeamItems: RestrictHomepageBeamItems;
   };
+  /** The accepted-comparison overlay, as ladder rung 0. See {@link HandoverConeOverlay}. */
+  readonly overlay?: HandoverConeOverlay;
 }
 
 /** Resolve the ambient real-handover pulse as one independent output. */
@@ -157,15 +171,22 @@ export function resolvePulseConeItems(
       ? geometry.protagonistIntraBaseCenterOverride
       : undefined,
   });
-  // These items exist, so they are painted directly: identity from the lookup,
-  // shade from the (kind, side) table, side from the item's own role.
-  return output.restrictHomepageBeamItems(items.map(item => paintConeItem(item, {
-    resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
-    // See `pairSideColor`: prominence carries the `isServingOrCandidate` flag,
-    // which this lane passed as `true` for intra and left unset for inter.
-    prominence: 'serving',
-    isServingOrCandidate: item.kind === 'intra',
-  })));
+  // These items exist, so they are painted directly — ONCE. Identity comes from
+  // whichever source owns it (the overlay's plan map when the comparison overlay
+  // is open, the scene lookup otherwise), the shade from the (kind, side) table,
+  // the side from the item's own role.
+  return output.restrictHomepageBeamItems(items.map(item => paintConeItem(
+    item,
+    handoverConePaintContext({
+      overlay: input.overlay ?? HANDOVER_CONE_OVERLAY_INACTIVE,
+      cellId: item.cellId,
+      resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+      // See `pairSideColor`: prominence carries the `isServingOrCandidate` flag,
+      // which this lane passed as `true` for intra and left unset for inter.
+      prominence: 'serving',
+      isServingOrCandidate: item.kind === 'intra',
+    }),
+  )));
 }
 
 export interface TriggeredIntraConeInput {
@@ -196,6 +217,8 @@ export interface TriggeredIntraConeInput {
     readonly resolveSceneAcceptedBeamColor: ResolveSceneAcceptedBeamColor;
     readonly restrictHomepageBeamItems: RestrictHomepageBeamItems;
   };
+  /** The accepted-comparison overlay, as ladder rung 0. See {@link HandoverConeOverlay}. */
+  readonly overlay?: HandoverConeOverlay;
 }
 
 /** Resolve the explicitly triggered manual intra-handover output. */
@@ -246,6 +269,7 @@ export function resolveTriggeredIntraConeItems(
       prominence: 'serving',
       isServingOrCandidate: false,
       resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+      overlay: input.overlay,
     }),
     toColor: pairSideColor({
       satId: event.toSatId,
@@ -256,6 +280,7 @@ export function resolveTriggeredIntraConeItems(
       prominence: 'serving',
       isServingOrCandidate: false,
       resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+      overlay: input.overlay,
     }),
     placementByCellId: geometry.placementByCellId,
     satelliteWorldById: geometry.satelliteWorldById,
@@ -294,6 +319,8 @@ export interface CinemaPairConeInput {
     readonly resolveSceneAcceptedBeamColor: ResolveSceneAcceptedBeamColor;
     readonly restrictHomepageBeamItems: RestrictHomepageBeamItems;
   };
+  /** The accepted-comparison overlay, as ladder rung 0. See {@link HandoverConeOverlay}. */
+  readonly overlay?: HandoverConeOverlay;
 }
 
 /** Resolve the focused cinema pair as its own output. */
@@ -333,6 +360,7 @@ export function resolveCinemaPairConeItems(
       prominence: 'serving',
       isServingOrCandidate: false,
       resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+      overlay: input.overlay,
     }),
     toColor: pairSideColor({
       satId: candidate.toSatId,
@@ -343,6 +371,7 @@ export function resolveCinemaPairConeItems(
       prominence: 'serving',
       isServingOrCandidate: false,
       resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+      overlay: input.overlay,
     }),
     placementByCellId: geometry.placementByCellId,
     satelliteWorldById: geometry.satelliteWorldById,

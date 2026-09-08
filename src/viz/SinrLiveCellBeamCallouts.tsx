@@ -20,12 +20,15 @@ import { useEffect, useLayoutEffect, type JSX } from 'react';
 import { Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { resolveHomepageSatelliteDisplayName } from '../homepage/controller/homepageSatelliteDisplayName';
-import { homepageSatelliteBeamColor } from '../homepage/controller/homepageSatelliteVisualIdentity';
+import { homepageBeamIdentityLookup } from '../homepage/controller/homepageSatelliteVisualIdentity';
+import {
+  resolveMountedConeColor,
+  resolvePrimaryIdentityBeam,
+} from '../appearance/mountedConeAppearance';
 import { SINR_LIVE_CALLOUT_Y_LIFT } from '../constants/sinrLiveConeStyle';
 import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 import { formatHomepageEe } from '../homepage/controller/homepageMetricFormatters';
 import { formatEngineering } from '../ui/signal-tuning/formatters';
-import { resolveHandoverSide } from '../appearance/handoverAppearanceModifiers';
 import type { SinrLiveCellBeamConeRenderItem } from './SinrLiveCellBeamCones';
 import type { AngleAwareFormulaFrame } from '../engine/signal/types';
 
@@ -84,8 +87,10 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
     satelliteNameById = null,
     homepageVisualIdentity = false,
     homepageBeamEeByKey = null,
-    homepageIdentityPaletteIndexBySatelliteId = null,
   } = props;
+  // ONE injected identity source for the whole mount; see the cone mount for
+  // why this is built once rather than at each call.
+  const homepageIdentityColorFor = homepageBeamIdentityLookup(homepageBeamEeByKey);
   // The beam fan contains a geometric substrate for beams that have no UE/SINR
   // sample. That substrate is useful for the cone renderer, but it is not an
   // information record. Do not turn it into a pile of "unmeasured" cards: Beam
@@ -143,17 +148,23 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
         const eeProgress = homepageVisualIdentity
           ? clampProgress(props.homepageBeamEeByKey?.get(`${item.satId}:${beamId}`))
           : null;
-        const isPrimaryIdentity = isPrimary
-          || item.role === 'candidatePrimary'
-          || resolveHandoverSide(item) === 'target'
-          || item.role === 'triggered';
-        const renderColor = homepageVisualIdentity
-          ? homepageSatelliteBeamColor(item.satId, beamId, {
-            identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(item.satId) ?? null,
-            isServing: isPrimaryIdentity,
-            eeNormalized: homepageBeamEeByKey?.get(`${item.satId}:${beamId}`),
-          })
-          : item.color;
+        // Same two questions, same one owner as the cone mount. The `callout`
+        // row differs from the `cone` row in exactly one field, and that
+        // difference is now visible as data rather than as a second boolean
+        // expression in a second file that nobody could compare.
+        const isPrimaryIdentity = resolvePrimaryIdentityBeam({
+          surface: 'callout',
+          isPrimaryServing: isPrimary,
+          role: item.role,
+          renderKey: item.renderKey,
+        });
+        const renderColor = resolveMountedConeColor({
+          item,
+          roleColor: item.color,
+          homepageIdentity: homepageVisualIdentity,
+          primaryIdentityBeam: isPrimaryIdentity,
+          homepageColorFor: homepageIdentityColorFor,
+        });
         const displayEe = props.homepageBeamEeBitsPerJouleByKey !== undefined;
         const valueLabel = displayEe
           ? homepageVisualIdentity

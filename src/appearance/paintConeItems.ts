@@ -98,6 +98,22 @@ export interface ConePaintContext {
    * `kind`. The pulse lane tags each item; the pair lanes know it per-lane.
    */
   readonly laneKind?: 'intra' | 'inter' | null;
+  /**
+   * WHO owns the handover kind for this paint: the item, or the lane.
+   *
+   * `'item'` (the default) reads `item.kind` and falls back to `laneKind`.
+   * `'lane'` ignores `item.kind` entirely, so `laneKind` alone decides — which
+   * is what a lane means when it says "every cone I draw is one intra pair"
+   * regardless of what each cone remembers about its own event.
+   *
+   * This existed before as a TRICK rather than an option: the additive overlay
+   * rebuilt each item without its `kind` field and its docstring explained that
+   * "the item's own `kind` is deliberately not forwarded". A decision expressed
+   * by omitting a property is invisible to anyone reading the call site, and it
+   * forced a second paint of an already-painted item to express it. Naming it
+   * lets the ONE paint say which authority applies.
+   */
+  readonly situationKindAuthority?: 'item' | 'lane';
   readonly phase?: HandoverSituation['phase'];
   readonly prominence?: BeamProminence;
   /**
@@ -187,7 +203,9 @@ export function paintConeItem<T extends PaintableConeItem>(item: T, context: Con
     context.isServingOrCandidate,
   );
   const situation: HandoverSituation = {
-    kind: item.kind ?? context.laneKind ?? null,
+    kind: context.situationKindAuthority === 'lane'
+      ? context.laneKind ?? null
+      : item.kind ?? context.laneKind ?? null,
     side: resolveHandoverSide(item),
     phase: context.phase ?? null,
   };

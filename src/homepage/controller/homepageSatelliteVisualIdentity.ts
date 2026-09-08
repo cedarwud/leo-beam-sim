@@ -211,3 +211,28 @@ export function homepageSatelliteBeamColor(
 ): string {
   return homepageSatelliteColorForBeam(satelliteId, beamId, options).color;
 }
+
+/**
+ * The homepage projection expressed as an appearance IDENTITY SOURCE.
+ *
+ * `src/appearance/` may not import `src/homepage/`, so the mounted-cone
+ * appearance owner takes this lookup as an argument instead. Building it here,
+ * once, is what stops the cone mount and the callout mount from each writing
+ * their own `homepageSatelliteBeamColor(...)` call with slightly different
+ * arguments — which is exactly how they came to disagree.
+ *
+ * `isServingOrCandidate` arrives from the appearance ladder, which is the one
+ * place that decides it; this adapter only forwards it.
+ */
+export function homepageBeamIdentityLookup(
+  eeByKey: ReadonlyMap<string, number | null> | null | undefined,
+): (satelliteId: string, beamId: number, isServingOrCandidate?: boolean) => string {
+  return (satelliteId, beamId, isServingOrCandidate) => homepageSatelliteBeamColor(
+    satelliteId,
+    beamId,
+    {
+      isServing: isServingOrCandidate === true,
+      eeNormalized: eeByKey?.get(`${satelliteId}:${beamId}`),
+    },
+  );
+}

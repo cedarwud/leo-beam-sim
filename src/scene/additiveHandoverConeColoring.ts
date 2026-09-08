@@ -1,4 +1,5 @@
 import { paintConeItem } from '../appearance/paintConeItems';
+import { handoverConePaintContext } from '../appearance/handoverOverlayIdentity';
 
 export interface HandoverConeColorItem {
   readonly satId: string;
@@ -33,23 +34,29 @@ export interface AdditiveHandoverConeColoringResult<TItem extends HandoverConeCo
 }
 
 /**
- * The overlay's colour for one item — identity, then the handover table.
+ * The overlay's colour for one item.
  *
- * Two things are deliberate here.
+ * ## This function no longer decides anything
  *
- * The IDENTITY source is the accepted comparison plan's published colour for
- * this (satellite, cell), which outranks anything derived from the id because it
- * is what the rail is already showing. Beneath it `paintConeItem` supplies the
- * deterministic identity colour for the same beam id it used as the key, which
- * is the rung this overlay used to miss: its own fallback was derived from the
- * CELL while every other lane's was derived from the BEAM.
+ * It used to. It carried its own copy of "which identity source names a
+ * handover cone under the overlay" — plan map at rung 0, no scene lookup,
+ * lane-owned kind — while `scene/handoverConeResolvers.ts` carried a DIFFERENT
+ * copy for the same items, and this one won. Measured, on one inter pulse item
+ * with the accepted snapshot present: the resolver produced `#0a10a0` (the
+ * snapshot's published colour) and this pass overwrote it with `#bee561` (the
+ * deterministic rung), so the accepted snapshot stopped reaching the screen the
+ * moment the comparison overlay opened.
  *
- * The MODIFIER is chosen per LANE, not per item, which is what this overlay
- * always did: the triggered lane shades both sides as an intra pair, the cinema
- * lane shades only when the presented pair is intra, and the pulse lane does not
- * shade at all. So `laneKind` carries the decision and the item's own `kind` is
- * deliberately not forwarded; the SIDE still comes from the item, resolved by
- * the appearance module from the same role/renderKey signals as everywhere else.
+ * The decision now lives once, in `appearance/handoverOverlayIdentity.ts`, and
+ * the resolvers ask the same function with the same overlay before these items
+ * ever get here. That is what makes this pass IDEMPOTENT rather than
+ * authoritative: it recomputes the same answer the resolver already reached.
+ * `handoverOverlayIdentityCharacterization.test.ts` pins that it cannot drift.
+ *
+ * The item's `kind` is now forwarded like every other field; the overlay's
+ * `situationKindAuthority: 'lane'` is what makes the lane's kind win. Before,
+ * the same effect was achieved by rebuilding the item WITHOUT its `kind`, which
+ * made the decision invisible to anyone reading the call.
  */
 function overlayColorForItem(
   item: HandoverConeColorItem,
@@ -57,21 +64,15 @@ function overlayColorForItem(
   beamColorBySatelliteCell: ReadonlyMap<string, string>,
 ): string {
   return paintConeItem(
-    {
-      satId: item.satId,
+    item,
+    handoverConePaintContext({
+      overlay: {
+        centralOverlayActive: true,
+        beamColorBySatelliteCell,
+        laneKind,
+      },
       cellId: item.cellId,
-      beamId: item.beamId,
-      color: item.color,
-      role: item.role,
-      renderKey: item.renderKey,
-    },
-    {
-      // The plan map is supplied as ladder rung 0 (`planColorFor`). A MISS returns
-      // `undefined` and falls through to the ladder's deterministic rung without any
-      // caller-side `??` decision.
-      planColorFor: (satId) => beamColorBySatelliteCell.get(`${satId}/${item.cellId}`),
-      laneKind,
-    },
+    }),
   ).color;
 }
 

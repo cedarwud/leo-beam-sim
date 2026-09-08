@@ -50,10 +50,14 @@ import {
 } from '../constants/sinrLiveConeStyle';
 import { colorForServingBeam } from '../constants/servingColour';
 import {
-  homepageSatelliteBeamColor,
+  homepageBeamIdentityLookup,
   homepageEeVisualOpacity,
   HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
+import {
+  resolveMountedConeColor,
+  resolvePrimaryIdentityBeam,
+} from '../appearance/mountedConeAppearance';
 import {
   cellFrequencyIndex,
   cellLinkBudgetBeamId,
@@ -1326,6 +1330,11 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
   const cones = props.items;
   const layer = props.layer ?? 'serving';
   const palette = props.palette;
+  // The homepage projection as ONE injected identity source, built once for the
+  // whole mount. Two mounts each writing their own `homepageSatelliteBeamColor`
+  // call with slightly different arguments is how the cone and its own callout
+  // came to disagree about the beam they were describing.
+  const homepageIdentityColorFor = homepageBeamIdentityLookup(props.homepageBeamEeByKey);
 
   useLayoutEffect(() => {
     const key = props.telemetryCountDatasetKey;
@@ -1383,22 +1392,23 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           && (props.primaryServingBeamId === null
             || props.primaryServingBeamId === undefined
             || beamId === props.primaryServingBeamId);
-        const isPrimaryIdentityBeam = isPrimaryServing
-          || role === 'candidatePrimary'
-          || resolveHandoverSide({ role }) !== null
-          || role === 'triggered';
-        const color = homepageIdentity
-          ? homepageSatelliteBeamColor(cone.satId, beamId, {
-            identityPaletteIndex: props.homepageIdentityPaletteIndexBySatelliteId?.get(cone.satId) ?? null,
-            // Candidate/event primary beams keep their identity shade when
-            // the decision role changes from candidate to serving. Ambient
-            // fan beams remain pale; no second colour authority is introduced.
-            isServing: isPrimaryIdentityBeam,
-            eeNormalized: props.homepageBeamEeByKey?.get(
-              homepageBeamEeKey(cone.satId, beamId),
-            ),
-          })
-          : style.color;
+        // WHAT this beam is (primary identity or context) and WHAT COLOUR that
+        // means are both decided in `appearance/mountedConeAppearance.ts`. The
+        // mount used to answer both here, with a rule that disagreed with the
+        // shared paint path on one boolean and therefore drew a different
+        // colour than every off-screen lane computed for the same beam.
+        const isPrimaryIdentityBeam = resolvePrimaryIdentityBeam({
+          surface: 'cone',
+          isPrimaryServing,
+          role,
+        });
+        const color = resolveMountedConeColor({
+          item: cone,
+          roleColor: style.color,
+          homepageIdentity,
+          primaryIdentityBeam: isPrimaryIdentityBeam,
+          homepageColorFor: homepageIdentityColorFor,
+        });
         const homepageEeOpacity = homepageIdentity
           ? homepageEeVisualOpacity(props.homepageBeamEeByKey?.get(
             homepageBeamEeKey(cone.satId, beamId),

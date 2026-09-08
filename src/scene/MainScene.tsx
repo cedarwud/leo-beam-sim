@@ -47,7 +47,6 @@ import {
   useCandidateInspectionSelection,
   type CandidateInspectionSnapshotInput,
 } from '../ui/handover-evaluation/candidateInspectionSelection';
-import { satelliteTint } from '../constants/beamRoleTokens';
 import {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
   homepageSatelliteColorForBeam,
@@ -213,6 +212,7 @@ import {
   resolveSatelliteIdentityColor,
   type SatelliteIdentitySources,
 } from '../appearance/resolveSatelliteAppearance';
+import { resolveSatelliteSurfaceColor } from '../appearance/satelliteSurfaceModifiers';
 import { useSinrLiveCellBeamConeItems } from './useSinrLiveCellBeamConeItems';
 import { useSinrLiveCandidateBeamConeItems } from './useSinrLiveCandidateBeamConeItems';
 import { useSinrLiveCinemaInterServingFanConeItems } from './useSinrLiveCinemaInterServingFanConeItems';
@@ -912,7 +912,7 @@ function ArtifactSceneContent({
       )}
       {(presentationPlan.visible['selected-satellite']
         || presentationPlan.visible['candidate-satellite']
-        || presentationPlan.visible['context-satellites']) && visibleSatellites.map((satellite, index) => {
+        || presentationPlan.visible['context-satellites']) && visibleSatellites.map((satellite) => {
         const eventRole = sceneFrame.eventRoles.bySatId.get(satellite.id);
         return (
           <SatelliteMarker
@@ -920,7 +920,12 @@ function ArtifactSceneContent({
             position={new THREE.Vector3(...satellite.worldPos)}
             label={formatSatelliteLabel(satellite.id)}
             eventRole={eventRole === 'inactive' ? undefined : eventRole}
-            satelliteTintColor={satelliteTint(satellite.id, index)}
+            // The replay marker is the SAME surface as the live marker, so it
+            // asks the same table the same question. It used to call
+            // `satelliteTint`, a 4-colour hash unrelated to the identity ladder,
+            // and therefore drew this spacecraft a different colour than the
+            // live lane drew it.
+            satelliteTintColor={resolveSatelliteSurfaceColor(satellite.id, 'marker')}
             constellation={DEFAULT_SATELLITE_CONSTELLATION}
           />
         );
@@ -1743,6 +1748,20 @@ function SceneRenderContent({
     satelliteId,
     resolveSceneSatelliteColorSources,
   ), [resolveSceneSatelliteColorSources]);
+  // The orbit trail is a SATELLITE SURFACE, so its colour comes from the
+  // satellite table in `appearance/satelliteSurfaceModifiers.ts` — identity
+  // first, then the `orbitTrail` row's paling. It used to read the
+  // `satelliteTintColor` channel that `useBeamViz` fills from the legacy
+  // `satelliteTint` hash, which is a SECOND palette: changing the identity
+  // palette moved the marker and left the trail behind.
+  const orbitTrailSatellites = useMemo(() => viz.displaySats.map(satellite => ({
+    ...satellite,
+    satelliteTintColor: resolveSatelliteSurfaceColor(
+      satellite.id,
+      'orbitTrail',
+      resolveSceneSatelliteColorSources,
+    ),
+  })), [resolveSceneSatelliteColorSources, viz.displaySats]);
   const selectCandidateSceneInstructions = homepageVisualIdentity
     ? selectHomepageCandidateSceneInstructions
     : selectCentralMultiCandidateSceneInstructions;
@@ -2723,6 +2742,15 @@ function SceneRenderContent({
         resolveSceneAcceptedBeamColor,
         restrictHomepageBeamItems: restrictSceneBeamItems,
       },
+      // The comparison overlay is an identity SOURCE (ladder rung 0), supplied
+      // to the ONE paint. It used to be applied as a SECOND paint downstream,
+      // which discarded the accepted snapshot this lane had already resolved.
+      // The pulse lane is steady state to the overlay: no handover shade.
+      overlay: {
+        centralOverlayActive: multiCandidateCentralOverlayActive,
+        beamColorBySatelliteCell: multiCandidateBeamColorBySatelliteCell,
+        laneKind: null,
+      },
     },
     triggeredIntra: {
       policy: {
@@ -2752,6 +2780,13 @@ function SceneRenderContent({
         resolveSceneAcceptedBeamColor,
         restrictHomepageBeamItems: restrictSceneBeamItems,
       },
+      // The overlay shades this lane as one intra pair regardless of the
+      // event's own kind — the lane's story, not the item's memory.
+      overlay: {
+        centralOverlayActive: multiCandidateCentralOverlayActive,
+        beamColorBySatelliteCell: multiCandidateBeamColorBySatelliteCell,
+        laneKind: 'intra',
+      },
     },
     cinemaPair: {
       policy: {
@@ -2780,6 +2815,13 @@ function SceneRenderContent({
       output: {
         resolveSceneAcceptedBeamColor,
         restrictHomepageBeamItems: restrictSceneBeamItems,
+      },
+      // The overlay takes the presented pair's own kind for this lane, which is
+      // the same candidate object the resolver already reads.
+      overlay: {
+        centralOverlayActive: multiCandidateCentralOverlayActive,
+        beamColorBySatelliteCell: multiCandidateBeamColorBySatelliteCell,
+        laneKind: presentedHandoverPairCandidate?.kind ?? null,
       },
     },
     authorityPair: {
@@ -3360,7 +3402,7 @@ function SceneRenderContent({
         }}
         orbitTrail={{
           mounted: presentationPlan.visible['motion-guides'] && showOrbitTrail,
-          satellites: viz.displaySats,
+          satellites: orbitTrailSatellites,
         }}
         spineParticles={{
           mounted: presentationPlan.visible['motion-guides'] && showSpineParticles,
