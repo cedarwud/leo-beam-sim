@@ -953,6 +953,61 @@ export function useSimStatePublisher({
     ? acceptedHandoverPresentationSession?.snapshot ?? previousAcceptedSnapshotForCurrentPolicy
     : acceptedHandoverPresentationSession?.snapshot ?? null;
 
+  const debugReactLoopRef = useRef<{
+    renderCount: number;
+    effectCount: number;
+    sim: SimFrame;
+    frame: NormalizedSceneFrame;
+    viz: VizFrame;
+    onSimUpdate: (state: SimState) => void;
+    profile: Profile;
+    beamCountBySatellite: Readonly<Record<string, number>>;
+    homepageSourceFrame: typeof homepageSourceFrame;
+    acceptedSession: AcceptedHandoverPresentationSession | null;
+    acceptedSnapshot: AcceptedHandoverPresentationSnapshot | null;
+  } | null>(null);
+  const debugReactLoopPrevious = debugReactLoopRef.current;
+  const debugReactLoopRenderCount = (debugReactLoopPrevious?.renderCount ?? 0) + 1;
+  const debugReactLoopChanged = debugReactLoopPrevious === null
+    || debugReactLoopPrevious.sim !== sim
+    || debugReactLoopPrevious.frame !== frame
+    || debugReactLoopPrevious.viz !== viz
+    || debugReactLoopPrevious.onSimUpdate !== onSimUpdate
+    || debugReactLoopPrevious.profile !== profile
+    || debugReactLoopPrevious.beamCountBySatellite !== beamCountBySatellite
+    || debugReactLoopPrevious.homepageSourceFrame !== homepageSourceFrame
+    || debugReactLoopPrevious.acceptedSession !== acceptedHandoverPresentationSession
+    || debugReactLoopPrevious.acceptedSnapshot !== acceptedHandoverPresentationSnapshotForRender;
+  if (debugReactLoopChanged || debugReactLoopRenderCount % 1000 === 0) {
+    console.log('[DEBUG-react-loop] render', JSON.stringify({
+      renderCount: debugReactLoopRenderCount,
+      changed: debugReactLoopChanged,
+      simSame: debugReactLoopPrevious?.sim === sim,
+      frameSame: debugReactLoopPrevious?.frame === frame,
+      vizSame: debugReactLoopPrevious?.viz === viz,
+      onSimUpdateSame: debugReactLoopPrevious?.onSimUpdate === onSimUpdate,
+      profileSame: debugReactLoopPrevious?.profile === profile,
+      beamCountBySatelliteSame: debugReactLoopPrevious?.beamCountBySatellite === beamCountBySatellite,
+      homepageSourceFrameSame: debugReactLoopPrevious?.homepageSourceFrame === homepageSourceFrame,
+      acceptedSessionSame: debugReactLoopPrevious?.acceptedSession === acceptedHandoverPresentationSession,
+      acceptedSnapshotSame: debugReactLoopPrevious?.acceptedSnapshot === acceptedHandoverPresentationSnapshotForRender,
+      simTimeSec: sim.simTimeSec,
+    }));
+  }
+  debugReactLoopRef.current = {
+    renderCount: debugReactLoopRenderCount,
+    effectCount: debugReactLoopPrevious?.effectCount ?? 0,
+    sim,
+    frame,
+    viz,
+    onSimUpdate,
+    profile,
+    beamCountBySatellite,
+    homepageSourceFrame,
+    acceptedSession: acceptedHandoverPresentationSession,
+    acceptedSnapshot: acceptedHandoverPresentationSnapshotForRender,
+  };
+
   // In-place signal controls update `profile` without changing the structural
   // `signalResetKey`. While paused, useSimulation intentionally emits exactly
   // one recomputed frame; if that frame lands inside the one-second UI throttle
@@ -1008,6 +1063,27 @@ export function useSimStatePublisher({
 
   useEffect(() => {
     if (!enabled) return;
+
+    const debugReactLoopState = debugReactLoopRef.current;
+    if (debugReactLoopState !== null) {
+      debugReactLoopState.effectCount += 1;
+      if (debugReactLoopState.effectCount <= 20 || debugReactLoopState.effectCount % 100 === 0) {
+        console.log('[DEBUG-react-loop] effect', JSON.stringify({
+          effectCount: debugReactLoopState.effectCount,
+          renderCount: debugReactLoopState.renderCount,
+          simTimeSec: sim.simTimeSec,
+          onSimUpdateSame: debugReactLoopPrevious?.onSimUpdate === onSimUpdate,
+          simSame: debugReactLoopPrevious?.sim === sim,
+          frameSame: debugReactLoopPrevious?.frame === frame,
+          vizSame: debugReactLoopPrevious?.viz === viz,
+          profileSame: debugReactLoopPrevious?.profile === profile,
+          beamCountBySatelliteSame: debugReactLoopPrevious?.beamCountBySatellite === beamCountBySatellite,
+          homepageSourceFrameSame: debugReactLoopPrevious?.homepageSourceFrame === homepageSourceFrame,
+          acceptedSessionSame: debugReactLoopPrevious?.acceptedSession === acceptedHandoverPresentationSession,
+          acceptedSnapshotSame: debugReactLoopPrevious?.acceptedSnapshot === acceptedHandoverPresentationSnapshotForRender,
+        }));
+      }
+    }
 
     const profileChangeSourceFrame = profileChangeSourceFrameRef.current;
     if (profileChangeSourceFrame === sim) {

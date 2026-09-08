@@ -4,6 +4,7 @@ import { loadProfile } from './profiles';
 import type { BeamDensity, RuntimeConfig, SimState } from './scene/types';
 import { createInitialSimState } from './scene/initialSimState';
 import { recommendDemoReplayStartOffsetSec } from './scene/replay-recommendation';
+import { shouldSuppressInterSeekFade } from './scene/handoverDisplayIsolation';
 import {
   type LiveWalkerDirectorFocusClaimKind,
 } from './scene/liveWalkerDirectorFocus';
@@ -42,16 +43,11 @@ import {
   type SceneVisualScaleState,
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
-import { DirectorControls } from './ui/DirectorControls';
+import { AppHandoverRail } from './app/AppHandoverRail';
 import { useHandoverCinema } from './app/useHandoverCinema';
-import { shouldSuppressInterSeekFade } from './scene/handoverDisplayIsolation';
 import { createSinrLiveBeamDisplayFrame } from './scene/sinrLiveBeamDisplayFrame';
-import { CinematicSeekFadeOverlay } from './ui/CinematicSeekFadeOverlay';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
-import {
-  HandoverEventRail,
-  type HandoverRailEvent,
-} from './ui/HandoverEventRail';
+import type { HandoverRailEvent } from './ui/HandoverEventRail';
 import { HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM } from './homepage/controller/homepageStoryScenario';
 import {
   HOMEPAGE_TEACHING_PLAYBACK_SPEED,
@@ -60,23 +56,15 @@ import {
   HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
   MANUAL_HANDOVER_DISPLAY_MS,
 } from './appearance/handoverTimingEnvelope';
-import {
-  HandoverTeachingCaption,
-  HandoverTeachingRail,
-  useHandoverTeachingLecture,
-} from './ui/homepage/HandoverTeachingRail';
+import { HandoverTeachingRail, useHandoverTeachingLecture } from './ui/homepage/HandoverTeachingRail';
 import type {
   TeachingFrame,
   TeachingHandoverKind,
 } from './homepage/teaching/handoverTeachingScript';
 import type { HandoverTeachingSceneStory } from './viz/HandoverTeachingBeamCones';
 import { InfoPanel } from './ui/InfoPanel';
-import { SidebarTabShell } from './ui/SidebarTabShell';
-import { HomepageCanonicalControls } from './ui/signal-tuning/HomepageCanonicalControls';
 import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
 import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';
-import { SignalTuningPanel } from './ui/SignalTuningPanel';
-import { HandoverPolicyControls } from './ui/HandoverPolicyControls';
 import {
   DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE,
   normalizeEeThresholdKbitPerJoule,
@@ -86,17 +74,14 @@ import { deriveCanonicalTeachingLinkSnapshot } from './app/canonicalTeachingLink
 import { WalkerResultsRail } from './ui/signal-tuning/WalkerResultsRail';
 import { useHomepageCanonicalAnalysis } from './ui/signal-tuning/useHomepageCanonicalAnalysis';
 import type { MainTabKey } from './ui/signal-tuning/types';
-import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
 import { DEFAULT_BEAM_DISPLAY_SPEC } from './scene/beamDisplaySpec';
-import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,
   PRODUCER_PINNED_SOURCE,
   SYNTHETIC_FIXTURE_SOURCE,
   HEADER_ABSENT_SOURCE,
 } from './ui/ArtifactSourceBadge';
-import { ArtifactSatelliteCompass } from './ui/ArtifactSatelliteCompass';
 // Global zh-TW / EN language state (CONTRACT.md §2). The provider wraps the
 // whole shell so the left tuners, the right readout and every HelpPopover
 // share one locale; the toggle itself lives in the top-right quick-control row.
@@ -104,7 +89,6 @@ import { LocaleProvider } from './i18n';
 import { loadShowcaseArtifact } from './showcase/loadShowcaseArtifact';
 import { showcaseArtifactToSceneInterpolated } from './showcase/showcaseArtifactToSceneInterpolated';
 import { ShowcaseReplayController } from './showcase/ShowcaseReplayController';
-import { AlgorithmDashboard } from './showcase/dashboard/AlgorithmDashboard';
 import type { VisualShowcaseArtifact } from './scene/visual-showcase-contract';
 import type { NormalizedSceneFrame } from './scene/NormalizedSceneFrame';
 import { resolveSceneLane } from './app/sceneLane';
@@ -143,9 +127,6 @@ import {
   advanceArchivedTlePlaybackCursor,
   resolveArchivedTlePlaybackStart,
 } from './app/archivedTlePlayback';
-import {
-  liveObservedHandoverRailEventFromState,
-} from './app/handoverRailBuilders';
 import {
   persistSceneTopologyOverrides,
   persistSceneVisualScaleOverrides,
@@ -207,7 +188,6 @@ import {
   type HomepageHandoverJumpIntent,
 } from './homepage/controller/handoverJumpIntent';
 import { HomepageBeamRail } from './ui/homepage/HomepageBeamRail';
-import { HomepageTeachingTimeline } from './ui/homepage/HomepageTeachingTimeline';
 import type {
   HomepageAcceptedSnapshot,
   HomepageBeamMetricsProjection,
@@ -226,34 +206,26 @@ import {
   withSixActsTeachingMode,
   type SixActsTeachingMode,
 } from './course/sixActs/teachingMode';
-import {
-  adaptHomepageSixActsFrameFacts,
-  type SixActsFrameFacts,
-} from './course/sixActs/liveReplayBridge';
-import {
-  advanceSixActsSubtitleState,
-  createSixActsSubtitleState,
-  type SixActsSubtitleState,
-} from './course/sixActs/subtitleStateMachine';
-import { SixActsSubtitleBar } from './course/nav/SixActsAnnotation';
+import type { SixActsFrameFacts } from './course/sixActs/liveReplayBridge';
+import type { SixActsSubtitleState } from './course/sixActs/subtitleStateMachine';
 import {
   DEFAULT_SHELL_CHROME_VISIBILITY,
   ShellChromeControls,
   type ShellChromeKey,
   type ShellChromeVisibility,
 } from './ui/ShellChromeControls';
-import {
-  SixActsTeachingOverlay,
-  type SixActsTeachingReceipt,
-} from './ui/SixActsTeachingOverlay';
+import type { SixActsTeachingReceipt } from './ui/SixActsTeachingOverlay';
 import { SimulationSourceToggle } from './ui/SimulationSourceToggle';
 import { SixActsTopEntry } from './ui/SixActsTopEntry';
-import { ArchivedTleBoundaryNote } from './ui/ArchivedTleBoundaryNote';
 import { HomepageBeamRailWaiting } from './ui/HomepageBeamRailWaiting';
 import { GlobalLocaleToggleSlot } from './ui/GlobalLocaleToggleSlot';
-import { HomepageCanonicalRightRail } from './ui/HomepageCanonicalRightRail';
+import { AppRightSidebar } from './app/AppRightSidebar';
+import { AppSceneOverlays } from './app/AppSceneOverlays';
+import { publishAppSimulationFrame } from './app/appSimulationPublication';
+import { useAppHomepageTeachingStory } from './app/AppHomepageTeachingStory';
 import { useLeftSidebar } from './app/useLeftSidebar';
 import { useDirectorModes } from './app/useDirectorModesQ1';
+import { AppLeftSidebar } from './app/AppLeftSidebar';
 
 /**
  * One lecture's own scene endpoints.
@@ -1011,79 +983,27 @@ export function App() {
   }, [isRootHomepage, manualHandoverRequest, playback.setPaused]);
 
   const handleSimUpdate = useCallback((state: SimState) => {
-    // ITEM #C: mirror the absolute live sim cursor into a ref so the Director
-    // focus resolver can read "now" without recreating its callback every frame.
-    liveSimTimeSecRef.current = state.simTimeSec;
-    walkerRuntimeHasPublishedRef.current = true;
-    setSimState(state);
-    if (teachingMode === 'teaching' && sceneLane === 'sinr-live') {
-      const facts = adaptHomepageSixActsFrameFacts(state);
-      if (facts === null) {
-        const hadSubtitle = sixActsSubtitleRef.current !== null;
-        const hadReceipt = sixActsTeachingReceiptRef.current !== null;
-        sixActsTeachingFactsRef.current = null;
-        sixActsTeachingTraceRef.current = [];
-        sixActsTeachingReceiptRef.current = null;
-        sixActsSubtitleRef.current = null;
-        if (hadSubtitle) setSixActsSubtitle(null);
-        if (hadReceipt) setSixActsTeachingReceipt(null);
-      } else {
-        sixActsTeachingFactsRef.current = facts;
-        const previousTrace = sixActsTeachingTraceRef.current;
-        const previousPoint = previousTrace[previousTrace.length - 1];
-        const nextTrace = previousPoint !== undefined && facts.simTimeSec < previousPoint.simTimeSec
-          ? [facts]
-          : previousPoint === undefined || facts.simTimeSec > previousPoint.simTimeSec
-            ? [...previousTrace, facts]
-            : previousTrace;
-        sixActsTeachingTraceRef.current = nextTrace.slice(-96);
-        const commit = facts.lastCommittedHandover;
-        const previousReceipt = sixActsTeachingReceiptRef.current;
-        if (
-          commit !== null
-          && commit.action === 'inter-handover'
-          && commit.fromSatelliteId !== null
-          && previousReceipt?.commit.timeMs !== commit.timeMs
-        ) {
-          const nextReceipt = Object.freeze({
-            commit,
-            simTimeSec: facts.simTimeSec,
-            hoCount: state.hoCount,
-          });
-          sixActsTeachingReceiptRef.current = nextReceipt;
-          setSixActsTeachingReceipt(nextReceipt);
-        }
-        const policy = {
-          offsetDb: appliedHandoverPolicy.offsetDb,
-          tttSec: appliedHandoverPolicy.triggerTimeSec,
-        } as const;
-        const previous = sixActsSubtitleRef.current;
-        const next = previous === null
-          ? createSixActsSubtitleState(facts, policy)
-          : advanceSixActsSubtitleState(previous, facts, policy);
-        sixActsSubtitleRef.current = next;
-        setSixActsSubtitle(next);
-      }
-    } else {
-      const hadSubtitle = sixActsSubtitleRef.current !== null;
-      const hadReceipt = sixActsTeachingReceiptRef.current !== null;
-      sixActsTeachingFactsRef.current = null;
-      sixActsTeachingTraceRef.current = [];
-      sixActsTeachingReceiptRef.current = null;
-      sixActsSubtitleRef.current = null;
-      if (hadSubtitle) setSixActsSubtitle(null);
-      if (hadReceipt) setSixActsTeachingReceipt(null);
-    }
-    const observedEvent = liveObservedHandoverRailEventFromState(state);
-    if (observedEvent !== null) {
-      setLiveObservedHandoverRailEvents(current => {
-        if (current.some(event => event.id === observedEvent.id)) return current;
-        return [...current, observedEvent].sort((a, b) => a.timeSec - b.timeSec);
-      });
-    }
-    setStaleFormulaEvidenceKey(current => (
-      current === signalEvidenceKey && state.physicalServingBudget !== null ? null : current
-    ));
+    publishAppSimulationFrame({
+      state,
+      teachingMode,
+      sceneLane,
+      policy: {
+        offsetDb: appliedHandoverPolicy.offsetDb,
+        tttSec: appliedHandoverPolicy.triggerTimeSec,
+      },
+      signalEvidenceKey,
+      liveSimTimeSecRef,
+      walkerRuntimeHasPublishedRef,
+      sixActsSubtitleRef,
+      sixActsTeachingFactsRef,
+      sixActsTeachingTraceRef,
+      sixActsTeachingReceiptRef,
+      setSimState,
+      setSixActsSubtitle,
+      setSixActsTeachingReceipt,
+      setLiveObservedHandoverRailEvents,
+      setStaleFormulaEvidenceKey,
+    });
   }, [appliedHandoverPolicy.offsetDb, appliedHandoverPolicy.triggerTimeSec, sceneLane, signalEvidenceKey, teachingMode]);
 
   useEffect(() => {
@@ -1861,46 +1781,6 @@ export function App() {
     && homepageDemoWindow !== null
     && !liveWalkerHandoverEventIndexBuilding
     && !timelineDisabled;
-  const handleHomepageTeachingRevealDetails = useCallback(() => {
-    setHomepageTeachingDetailsVisible(true);
-  }, []);
-  const handleHomepageTeachingSeekSource = useCallback((sourceTimeSec: number, pause: boolean) => {
-    const targetSourceSec = homepageDemoWindow === null
-      ? Math.max(0, sourceTimeSec)
-      : Math.min(
-        Math.max(sourceTimeSec, homepageDemoWindow.leadInSec),
-        homepageDemoWindow.endSec,
-      );
-    const visibleTargetSec = clampTimelineTime(
-      targetSourceSec - liveTimelineWindowStartSec,
-      timelineDurationSec,
-    );
-    handleTimelineSeek(visibleTargetSec, { sourceHistoryReplay: true });
-    if (pause) playback.setPaused(true);
-  }, [
-    handleTimelineSeek,
-    homepageDemoWindow,
-    liveTimelineWindowStartSec,
-    playback,
-    timelineDurationSec,
-  ]);
-  const handleHomepageTeachingEnd = useCallback(() => {
-    if (homepageDemoWindow !== null) {
-      handleHomepageTeachingSeekSource(homepageDemoWindow.endSec, true);
-    }
-    setHomepageDemoRunEndSec(null);
-    setHomepageTeachingActive(false);
-    setHomepageTeachingDetailsVisible(false);
-    playback.setPaused(true);
-  }, [handleHomepageTeachingSeekSource, homepageDemoWindow, playback]);
-  useEffect(() => {
-    if (!isRootHomepage || homepageDemoRunEndSec === null) return;
-    if (!Number.isFinite(simState.simTimeSec) || simState.simTimeSec < homepageDemoRunEndSec) return;
-    setHomepageDemoRunEndSec(null);
-    setHomepageTeachingActive(false);
-    setHomepageTeachingDetailsVisible(false);
-    if (!playback.paused) playback.setPaused(true);
-  }, [homepageDemoRunEndSec, isRootHomepage, playback.paused, playback.setPaused, simState.simTimeSec]);
   const handoverCinema = useHandoverCinema({
     sceneLane,
     handoverEventIndex: liveWalkerHandoverEventIndex,
@@ -2409,59 +2289,37 @@ export function App() {
   }, [playback]);
 
   const handoverEventRail = (
-    <>
-      <HandoverEventRail
-        events={handoverRailEvents}
-        currentTimeSec={timelineRailDescriptor.rail.currentTimeSec}
-        durationSec={timelineRailDescriptor.rail.durationSec}
-        onSeek={handleHandoverRailSeek}
-        disabled={timelineDisabled}
-        sourceLabel={timelineRailDescriptor.rail.sourceLabel}
-        sourceOwner={timelineRailDescriptor.rail.sourceOwner}
-        horizonKind={timelineRailDescriptor.rail.horizonKind}
-        horizonLabel={timelineRailDescriptor.rail.horizonLabel}
-        claimKind={timelineRailDescriptor.rail.claimKind}
-        sourceStartSec={timelineRailDescriptor.rail.sourceStartSec}
-        sourceEndSec={timelineRailDescriptor.rail.sourceEndSec}
-        sourceGapReasons={timelineRailDescriptor.rail.sourceGapReasons}
-        axisKind={timelineRailDescriptor.rail.axisKind}
-        axisLabel={timelineRailDescriptor.rail.axisLabel}
-        axisDurationSec={timelineRailDescriptor.rail.axisDurationSec}
-        axisCurrentTimeSec={timelineRailDescriptor.rail.axisCurrentTimeSec}
-        axisPlaying={!playback.paused}
-        axisPlaybackRate={playback.effectiveSpeed}
-        directorFocusedEventId={liveDirectorFocusEventId}
-      />
-      {/* The explicit Trigger Intra action remains seek-free and owns
-          setPrimaryUeJogKm. Next Intra prefers a source-indexed event and falls
-          back to that same real engine jog only when the current index has no
-          intra row, so the acceptance control never becomes inert. */}
-      {/* onIntraTrigger={() => setPrimaryUeJogKm(...)} */}
-      {/* onIntraFocus={handoverCinema.armIntra} */}
-      <DirectorControls
-        intraEnabled={directorNextIntraEnabled}
-        interEnabled={directorInterButtonEnabled}
-        intraTriggerEnabled={directorIntraTriggerEnabled}
-        nextIntraMode={directorNextIntraMode}
-        handoverIndexBuilding={liveWalkerHandoverEventIndexBuilding}
+    <AppHandoverRail
+      events={handoverRailEvents}
+      surface={timelineRailDescriptor.rail}
+      disabled={timelineDisabled}
+      axisPlaying={!playback.paused}
+      axisPlaybackRate={playback.effectiveSpeed}
+      director={{
+        intraEnabled: directorNextIntraEnabled,
+        interEnabled: directorInterButtonEnabled,
+        intraTriggerEnabled: directorIntraTriggerEnabled,
+        nextIntraMode: directorNextIntraMode,
+        handoverIndexBuilding: liveWalkerHandoverEventIndexBuilding,
         // The event count is an internal index diagnostic, not a teaching
-        // control.  Keep it available to non-homepage compatibility lanes, but
-        // do not put a misleading quantity beside the homepage actions.
-        nextIntraCount={isRootHomepage ? undefined : directorIntraIndexedEnabled
+        // control. Keep it available to non-homepage compatibility lanes.
+        nextIntraCount: isRootHomepage ? undefined : directorIntraIndexedEnabled
           ? directorFocusEnabled
             ? directorButtonCountEvents.filter(event => event.kind === 'intra').length
             : handoverRailEvents.filter(event => event.kind === 'intra').length
-          : undefined}
-        nextInterCount={isRootHomepage ? undefined : directorFocusEnabled
+          : undefined,
+        nextInterCount: isRootHomepage ? undefined : directorFocusEnabled
           ? directorButtonCountEvents.filter(event => event.kind === 'inter').length
-          : handoverRailEvents.filter(event => event.kind === 'inter').length}
-        phase={camera.directorPhase}
-        onIntraTrigger={triggerPrimaryIntra}
-        onIntraFocus={handleDirectorNextIntra}
-        onInterFocus={handleDirectorNextInter}
-        onExit={handoverCinema.exit}
-      />
-    </>
+          : handoverRailEvents.filter(event => event.kind === 'inter').length,
+        phase: camera.directorPhase,
+        liveDirectorFocusEventId,
+      }}
+      onSeek={handleHandoverRailSeek}
+      onIntraTrigger={triggerPrimaryIntra}
+      onIntraFocus={handleDirectorNextIntra}
+      onInterFocus={handleDirectorNextInter}
+      onExit={handoverCinema.exit}
+    />
   );
 
   // Playback transport, shared by the scene view (inside the canvas) and the
@@ -2495,25 +2353,25 @@ export function App() {
     && sceneLane === 'sinr-live'
     && isWalkerSceneActive;
   // The teaching timeline is an event readout, not a permanent playback
-  // banner in normal mode. Review mode deliberately keeps its shell visible so
-  // the owner can inspect and remove redundant surfaces before the next pass.
-  const homepageTeachingTimeline = homepageRailShowAllSurfaces
-    ? (
-      <HomepageTeachingTimeline
-        currentSourceTimeSec={simState.simTimeSec}
-        startSourceTimeSec={homepageDemoWindow?.leadInSec ?? Math.max(0, simState.simTimeSec - 30)}
-        endSourceTimeSec={homepageDemoWindow?.endSec ?? Math.max(simState.simTimeSec + 30, Math.max(0, simState.simTimeSec - 30) + 60)}
-        paused={playback.paused}
-        speed={playback.effectiveSpeed}
-        handoverStory={homepageHandoverStory}
-        satelliteNameById={homepageSatelliteNameById}
-        onRevealDetails={handleHomepageTeachingRevealDetails}
-        onSeekSource={handleHomepageTeachingSeekSource}
-        onTogglePause={playback.togglePause}
-        onEnd={handleHomepageTeachingEnd}
-      />
-    )
-    : null;
+  // banner in normal mode. Its callbacks and bounded source window live in the
+  // homepage teaching-story owner.
+  const homepageTeachingTimeline = useAppHomepageTeachingStory({
+    isRootHomepage,
+    showTimeline: homepageRailShowAllSurfaces,
+    currentSourceTimeSec: simState.simTimeSec,
+    simTimeSec: simState.simTimeSec,
+    homepageDemoWindow,
+    homepageDemoRunEndSec,
+    liveTimelineWindowStartSec,
+    timelineDurationSec,
+    homepageHandoverStory,
+    satelliteNameById: homepageSatelliteNameById,
+    playback,
+    onTimelineSeek: handleTimelineSeek,
+    setHomepageDemoRunEndSec,
+    setHomepageTeachingActive,
+    setHomepageTeachingDetailsVisible,
+  });
 
   // World-space lerp adapter binding (SDD §9 P3): interpolation occurs strictly
   // after coordToWorld; raw positionEcefKm is never re-interpolated.
@@ -2846,136 +2704,68 @@ export function App() {
         data-left-sidebar-hidden={shellChromeVisibility.leftSidebar ? 'false' : 'true'}
         data-right-sidebar-hidden={shellChromeVisibility.rightSidebar ? 'false' : 'true'}
       >
-        <aside
-          className="leo-shell-left"
-          data-left-sidebar-state={leftSidebarCollapsed ? 'collapsed' : 'expanded'}
-          data-shell-visibility={shellChromeVisibility.leftSidebar ? 'visible' : 'hidden'}
-          aria-label="Signal tuning panel slot"
-          aria-hidden={!shellChromeVisibility.leftSidebar}
-        >
-          <button
-            type="button"
-            className="leo-left-sidebar-toggle"
-            data-testid="left-sidebar-toggle"
-            aria-controls="left-sidebar-content"
-            aria-expanded={!leftSidebarCollapsed}
-            aria-label={leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
-            title={leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
-            onClick={() => setLeftSidebarCollapsed(collapsed => !collapsed)}
-          >
-            <span className="leo-left-sidebar-toggle__icon" aria-hidden="true">
-              {leftSidebarCollapsed ? '›' : '‹'}
-            </span>
-            <span className="leo-offscreen">
-              {leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar'}
-            </span>
-          </button>
-          <div id="left-sidebar-content" className="leo-left-sidebar-content">
-          {sceneLane === 'artifact-replay' && (
-          <SidebarTabShell
-            label="Simulation control sidebar"
-            side="left"
-            tabs={visibleLeftSidebarTabs}
-            activeKey={activeLeftSidebarTab}
-            onChange={setLeftSidebarTab}
-          >
-            {activeLeftSidebarTab === 'evidence' ? (
-                <section
-                  className="leo-sidebar-content-stack"
-                  aria-label="Artifact replay source status"
-                  data-testid="artifact-replay-sidebar"
-                  data-artifact-loaded={showcaseArtifact ? 'true' : 'false'}
-                  data-artifact-loading={showcaseLoading ? 'true' : 'false'}
-                  data-artifact-frame-index={String(frameIndex)}
-                >
-                  <div className="leo-replay-truth-summary" data-testid="artifact-replay-source-summary">
-                    <strong>{showcaseArtifact?.scenario.title ?? 'Artifact replay'}</strong>
-                    <span>{showcaseError ?? showcaseArtifact?.artifactId ?? 'loading visual-showcase-v1'}</span>
-                  </div>
-                  <div className="leo-replay-playback-status" data-testid="artifact-replay-playback-status">
-                    t={currentTimeSec.toFixed(1)}s / {showcaseArtifact?.scenario.durationSec.toFixed(1) ?? '0.0'}s
-                  </div>
-                </section>
-            ) : null}
-          </SidebarTabShell>
-          )}
-          {/* Homepage input rail. It owns every editable or fixed calculation
-              parameter; final values are rendered from the same accepted frame
-              in the right rail. */}
-          {sceneLane === 'sinr-live' && (
-            <SinrLiveDisplayDrawer
-              showTeachingAuxiliaryUi={HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE}
-              campusVisible={campusVisible}
-              onCampusVisibleChange={() => setCampusVisible(current => !current)}
-              teachingMode={teachingMode}
-              onTeachingModeChange={handleTeachingModeChange}
-              teachingLinkSnapshot={teachingLinkSnapshot}
-              teachingPolicySection={isWalkerSceneActive ? (
-                <HandoverPolicyControls
-                  draft={handoverPolicyDraft}
-                  applied={appliedHandoverPolicy}
-                  hasDraftChanges={hasHandoverPolicyDraftChanges}
-                  hasOverrides={hasHandoverPolicyOverrides}
-                  onDraftChange={handleHandoverPolicyDraftChange}
-                  onApply={handleApplyHandoverPolicy}
-                  onReset={handleResetHandoverPolicy}
-                />
-              ) : (
-                <ArchivedTleBoundaryNote homepageCanonicalAnalysis={homepageCanonicalAnalysis} />
-              )}
-              parameterSection={
-                isWalkerSceneActive ? (
-                  <SignalTuningPanel
-                    baseProfile={baseProfile}
-                    tuning={signalTuning}
-                    topology={activeSceneTopology}
-                    sceneVisualScale={sceneVisualScale}
-                    hasOverrides={hasSignalOverrides || hasTopologyOverrides || hasVisualScaleOverrides}
-                    appMode={appMode}
-                    formulaBudget={simState.physicalServingBudget}
-                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                    activeMainTab={isRootHomepage ? homepageSignalTuningMainTab : undefined}
-                    onActiveMainTabChange={isRootHomepage ? setHomepageSignalTuningMainTab : undefined}
-                    onTuningChange={handleSignalTuningChange}
-                    onTopologyChange={handleSceneTopologyChange}
-                    servingSatelliteId={simState.servingSatId}
-                    candidateSatelliteId={simState.pendingTargetSatId ?? simState.comparisonSatId}
-                    formulaFrame={simState.angleAwareFormulaFrame}
-                    showHomepageEeThreshold={isRootHomepage}
-                    homepageEeThresholdKbitPerJoule={homepageEeThresholdKbitPerJoule}
-                    onHomepageEeThresholdKbitPerJouleChange={handleHomepageEeThresholdChange}
-                    walkerScenarioDate={walkerScenarioDate}
-                    walkerScenarioTime={walkerScenarioTime}
-                    onWalkerScenarioDateChange={setWalkerScenarioDate}
-                    onWalkerScenarioTimeChange={setWalkerScenarioTime}
-                    onSceneVisualScaleChange={setSceneVisualScale}
-                    onReset={handleResetSignalTuning}
-                    handoverPolicySection={(
-                      <HandoverPolicyControls
-                        draft={handoverPolicyDraft}
-                        applied={appliedHandoverPolicy}
-                        hasDraftChanges={hasHandoverPolicyDraftChanges}
-                        hasOverrides={hasHandoverPolicyOverrides}
-                        onDraftChange={handleHandoverPolicyDraftChange}
-                        onApply={handleApplyHandoverPolicy}
-                        onReset={handleResetHandoverPolicy}
-                      />
-                    )}
-                  />
-                ) : (
-                  <>
-                    <HomepageCanonicalControls
-                      analysis={homepageCanonicalAnalysis}
-                      activeTab={homepageCanonicalTab}
-                      onActiveTabChange={setHomepageCanonicalTab}
-                    />
-                  </>
-                )
-              }
-            />
-          )}
-          </div>
-        </aside>
+        <AppLeftSidebar
+          collapsed={leftSidebarCollapsed}
+          shellVisible={shellChromeVisibility.leftSidebar}
+          sceneLane={sceneLane}
+          visibleTabs={visibleLeftSidebarTabs}
+          activeTab={activeLeftSidebarTab}
+          onToggleCollapsed={() => setLeftSidebarCollapsed(collapsed => !collapsed)}
+          onTabChange={setLeftSidebarTab}
+          showcaseArtifact={showcaseArtifact}
+          showcaseLoading={showcaseLoading}
+          showcaseError={showcaseError}
+          frameIndex={frameIndex}
+          currentTimeSec={currentTimeSec}
+          showTeachingAuxiliaryUi={HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE}
+          campusVisible={campusVisible}
+          onCampusVisibleChange={() => setCampusVisible(current => !current)}
+          teachingMode={teachingMode}
+          onTeachingModeChange={handleTeachingModeChange}
+          teachingLinkSnapshot={teachingLinkSnapshot}
+          isWalkerSceneActive={isWalkerSceneActive}
+          handoverPolicyProps={{
+            draft: handoverPolicyDraft,
+            applied: appliedHandoverPolicy,
+            hasDraftChanges: hasHandoverPolicyDraftChanges,
+            hasOverrides: hasHandoverPolicyOverrides,
+            onDraftChange: handleHandoverPolicyDraftChange,
+            onApply: handleApplyHandoverPolicy,
+            onReset: handleResetHandoverPolicy,
+          }}
+          archivedBoundaryProps={{ homepageCanonicalAnalysis }}
+          signalTuningProps={{
+            baseProfile,
+            tuning: signalTuning,
+            topology: activeSceneTopology,
+            sceneVisualScale,
+            hasOverrides: hasSignalOverrides || hasTopologyOverrides || hasVisualScaleOverrides,
+            appMode,
+            formulaBudget: simState.physicalServingBudget,
+            isFormulaEvidenceStale: staleFormulaEvidenceKey !== null,
+            activeMainTab: isRootHomepage ? homepageSignalTuningMainTab : undefined,
+            onActiveMainTabChange: isRootHomepage ? setHomepageSignalTuningMainTab : undefined,
+            onTuningChange: handleSignalTuningChange,
+            onTopologyChange: handleSceneTopologyChange,
+            servingSatelliteId: simState.servingSatId,
+            candidateSatelliteId: simState.pendingTargetSatId ?? simState.comparisonSatId,
+            formulaFrame: simState.angleAwareFormulaFrame,
+            showHomepageEeThreshold: isRootHomepage,
+            homepageEeThresholdKbitPerJoule,
+            onHomepageEeThresholdKbitPerJouleChange: handleHomepageEeThresholdChange,
+            walkerScenarioDate,
+            walkerScenarioTime,
+            onWalkerScenarioDateChange: setWalkerScenarioDate,
+            onWalkerScenarioTimeChange: setWalkerScenarioTime,
+            onSceneVisualScaleChange: setSceneVisualScale,
+            onReset: handleResetSignalTuning,
+          }}
+          canonicalControlsProps={{
+            analysis: homepageCanonicalAnalysis,
+            activeTab: homepageCanonicalTab,
+            onActiveTabChange: setHomepageCanonicalTab,
+          }}
+        />
         <main
           className="leo-shell-canvas"
           data-testid="leo-shell-canvas"
@@ -3054,66 +2844,38 @@ export function App() {
               <strong>{showcaseError ?? 'Loading visual-showcase-v1 artifact'}</strong>
             </div>
           )}
-          {sceneLane === 'artifact-replay' && replaySceneFrame && (
-            <ArtifactSatelliteCompass satellites={replaySceneFrame.satellites} />
-          )}
-          {(directorCinematicEnabled || directorFocusEnabled) && (
-            <CinematicSeekFadeOverlay
-              pulseKey={cinematicFadePulse}
-              reducedMotion={runtime.reducedMotion}
-              suppressVisual={shouldSuppressInterSeekFade(handoverCinema.armFilter)}
-              onPeak={handleCinematicSeekPeak}
-            />
-          )}
-          {shellChromeVisibility.sceneOverlay && (
-            <>
-              {HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE && teachingMode === 'teaching' && sceneLane === 'sinr-live' && isWalkerSceneActive && sixActsSubtitle !== null && (
-                sixActsTeachingFactsRef.current === null ? null : (
-                  <SixActsTeachingOverlay
-                    beat={sixActsSubtitle.beat}
-                    facts={sixActsTeachingFactsRef.current}
-                    trace={sixActsTeachingTraceRef.current}
-                    offsetDb={appliedHandoverPolicy.offsetDb}
-                    tttSec={appliedHandoverPolicy.triggerTimeSec}
-                    receipt={sixActsTeachingReceipt}
-                  />
-                )
-              )}
-              {HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE && teachingMode === 'teaching' && sceneLane === 'sinr-live' && isWalkerSceneActive && sixActsSubtitle !== null && (
-                <div
-                  className="leo-six-acts-subtitle-overlay"
-                  data-testid="six-acts-subtitle-overlay"
-                  data-six-acts-beat={sixActsSubtitle.beat}
-                >
-                  <SixActsSubtitleBar
-                    eyebrow={sixActsSubtitle.eyebrow}
-                    text={sixActsSubtitle.text}
-                    rows={sixActsSubtitle.rows}
-                    tone={sixActsSubtitle.tone}
-                    provenance={sixActsTeachingFactsRef.current?.provenance}
-                    provenanceErrorCode={sixActsTeachingFactsRef.current?.provenanceErrorCode}
-                  />
-                </div>
-              )}
-            </>
-          )}
-          {teachingStageKind !== null && teachingLecture.frame !== null && (
-            <HandoverTeachingCaption frame={teachingLecture.frame} />
-          )}
+          <AppSceneOverlays
+            sceneLane={sceneLane}
+            replaySceneFrame={replaySceneFrame}
+            directorCinematicEnabled={directorCinematicEnabled}
+            directorFocusEnabled={directorFocusEnabled}
+            cinematicFadePulse={cinematicFadePulse}
+            reducedMotion={runtime.reducedMotion}
+            suppressCinematicFade={shouldSuppressInterSeekFade(handoverCinema.armFilter)}
+            onCinematicSeekPeak={handleCinematicSeekPeak}
+            shellOverlayVisible={shellChromeVisibility.sceneOverlay}
+            showTeachingAuxiliaryUi={HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE}
+            teachingMode={teachingMode}
+            isWalkerSceneActive={isWalkerSceneActive}
+            sixActsSubtitle={sixActsSubtitle}
+            sixActsFacts={sixActsTeachingFactsRef.current}
+            sixActsTrace={sixActsTeachingTraceRef.current}
+            sixActsReceipt={sixActsTeachingReceipt}
+            sixActsOffsetDb={appliedHandoverPolicy.offsetDb}
+            sixActsTttSec={appliedHandoverPolicy.triggerTimeSec}
+            teachingCaptionFrame={teachingLecture.frame}
+            teachingStageKind={teachingStageKind}
+          />
           {shellChromeVisibility.timeline
             && (isRootHomepage || homepageTeachingTimeline === null)
             ? timelineBar
             : null}
         </main>
-        <aside
-          className="leo-shell-right"
-          data-shell-visibility={shellChromeVisibility.rightSidebar ? 'visible' : 'hidden'}
-          aria-label="Calculated values panel"
-          aria-hidden={!shellChromeVisibility.rightSidebar}
-        >
-          {isArchivedTleSceneActive ? (
-            <HomepageCanonicalRightRail homepageCanonicalAnalysis={homepageCanonicalAnalysis} />
-          ) : teachingStageKind !== null && teachingLecture.frame !== null ? (
+        <AppRightSidebar
+          shellVisible={shellChromeVisibility.rightSidebar}
+          isArchivedTleSceneActive={isArchivedTleSceneActive}
+          homepageCanonicalRightRailProps={{ homepageCanonicalAnalysis }}
+          teachingRail={teachingStageKind !== null && teachingLecture.frame !== null ? (
             <HandoverTeachingRail
               frame={teachingLecture.frame}
               kind={teachingStageKind}
@@ -3123,94 +2885,52 @@ export function App() {
               onRestart={teachingLecture.restart}
               onClose={() => setTeachingStageKind(null)}
             />
-          ) : homepageRailPanel !== null ? (
-            homepageRailPanel
+          ) : null}
+          homepageRailPanel={homepageRailPanel}
+          visibleTabs={visibleRightSidebarTabs}
+          activeTab={activeRightSidebarTab}
+          onTabChange={setRightSidebarTab}
+          showcaseArtifact={showcaseArtifact}
+          showcaseError={showcaseError}
+          activeSceneFrame={activeSceneFrame}
+          frameIndex={frameIndex}
+          handoverEventRail={handoverEventRail}
+          liveRailSnapshotId={homepageRailProjection?.snapshotId ?? ''}
+          liveRailSourceFrameId={homepageRailProjection?.sourceFrameId ?? ''}
+          liveRailPhase={homepageRailProjection?.phase ?? ''}
+          liveStatusContent={sceneLane === 'sinr-live' && isWalkerSceneActive ? (
+            <WalkerResultsRail
+              profile={effectiveProfile}
+              physicalServing={simState.physicalServing}
+              physicalServingBudget={simState.physicalServingBudget}
+              servingCellId={simState.servingCellId}
+              pendingTargetSatId={simState.pendingTargetSatId}
+              angleAwareFormulaFrame={simState.angleAwareFormulaFrame}
+              simTimeSec={simState.simTimeSec}
+              beamHopEnabled={walkerBeamDisplayFrame.beamHoppingEnabled}
+              isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+            >
+              <InfoPanel
+                {...intraTeachingDisplayState}
+                profile={effectiveProfile}
+                handoverMode={handoverMode}
+                comparisonCellId={intraTeachingComparisonCellId}
+                isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+                channelMetricKind={activeSceneFrame?.channelMetricKind}
+              />
+            </WalkerResultsRail>
           ) : (
-            <>
-              {visibleRightSidebarTabs.length > 0 ? (
-                <SidebarTabShell
-                  label="Simulation status sidebar"
-                  side="right"
-                  tabs={visibleRightSidebarTabs}
-                  activeKey={activeRightSidebarTab}
-                  onChange={setRightSidebarTab}
-                >
-            {activeRightSidebarTab === 'artifact' ? (
-              <section
-                className="leo-sidebar-content-stack"
-                aria-label="Artifact truth status"
-                data-testid="artifact-truth-sidebar"
-                data-artifact-loaded={showcaseArtifact ? 'true' : 'false'}
-              >
-                {activeSceneFrame ? (
-                  <ClaimBoundaryBanner
-                    frame={activeSceneFrame}
-                  />
-                ) : null}
-                {handoverEventRail}
-                <div className="leo-replay-truth-summary" data-testid="artifact-truth-source-summary">
-                  <strong>{showcaseArtifact?.scenario.truthMode ?? 'artifact truth'}</strong>
-                  <span>{showcaseArtifact?.provenance.validation.status ?? showcaseError ?? 'loading'}</span>
-                </div>
-                {/* Per-frame decision metric tiles. The flowchart keeps the
-                    full-area Dashboard view (it needs the width); these number-row
-                    tiles read better co-visible with the 3D replay, so they live in
-                    the artifact-replay sidebar. Display-only, lane-owned, reads the
-                    same visual-showcase-v1 truth with per-tile provenance chips. */}
-                <AlgorithmDashboard
-                  artifact={showcaseArtifact}
-                  frameIndex={frameIndex}
-                  variant="sidebar"
-                  content="metrics"
-                />
-              </section>
-            ) : activeRightSidebarTab === 'live' ? (
-              <section
-                className="leo-live-status-stack"
-                aria-label="Live status for current scene"
-                data-homepage-rail-snapshot-id={homepageRailProjection?.snapshotId ?? ''}
-                data-homepage-rail-source-frame-id={homepageRailProjection?.sourceFrameId ?? ''}
-                data-homepage-rail-phase={homepageRailProjection?.phase ?? ''}
-              >
-                {sceneLane === 'sinr-live' && isWalkerSceneActive ? (
-                  <WalkerResultsRail
-                      profile={effectiveProfile}
-                      physicalServing={simState.physicalServing}
-                      physicalServingBudget={simState.physicalServingBudget}
-                      servingCellId={simState.servingCellId}
-                      pendingTargetSatId={simState.pendingTargetSatId}
-                      angleAwareFormulaFrame={simState.angleAwareFormulaFrame}
-                      simTimeSec={simState.simTimeSec}
-                      beamHopEnabled={walkerBeamDisplayFrame.beamHoppingEnabled}
-                      isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                    >
-                      <InfoPanel
-                        {...intraTeachingDisplayState}
-                        profile={effectiveProfile}
-                        handoverMode={handoverMode}
-                        comparisonCellId={intraTeachingComparisonCellId}
-                        isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                        channelMetricKind={activeSceneFrame?.channelMetricKind}
-                      />
-                  </WalkerResultsRail>
-                ) : (
-                  <InfoPanel
-                    {...intraTeachingDisplayState}
-                    profile={effectiveProfile}
-                    handoverMode={handoverMode}
-                    comparisonCellId={intraTeachingComparisonCellId}
-                    showFormulaTerms
-                    isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
-                    channelMetricKind={activeSceneFrame?.channelMetricKind}
-                  />
-                )}
-              </section>
-            ) : null}
-                </SidebarTabShell>
-              ) : null}
-            </>
+            <InfoPanel
+              {...intraTeachingDisplayState}
+              profile={effectiveProfile}
+              handoverMode={handoverMode}
+              comparisonCellId={intraTeachingComparisonCellId}
+              showFormulaTerms
+              isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
+              channelMetricKind={activeSceneFrame?.channelMetricKind}
+            />
           )}
-        </aside>
+        />
       </div>
     </div>
     </LocaleProvider>
