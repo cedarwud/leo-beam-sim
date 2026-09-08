@@ -60,3 +60,17 @@ test('preserves exact beam identity when a presentation pair shares a cell', () 
   assert.equal(identities.has('source|0|11'), true);
   assert.equal(identities.has('source|0|12'), true);
 });
+
+test('prefers the already-rendered candidate over a stale pending target', () => {
+  const identities = resolveHomepageSceneBeamVisibility({
+    ...baseInput(),
+    renderedCandidateSatelliteId: 'rendered-candidate',
+    primaryServingRecord: {
+      pendingTargetSatId: 'stale-pending-target',
+    } as unknown as NonNullable<HomepageSceneBeamVisibilityInput['primaryServingRecord']>,
+    handoverPresentationCandidate: null,
+  });
+
+  assert.equal(identities.has('rendered-candidate|0'), true);
+  assert.equal(identities.has('stale-pending-target|0'), false);
+});

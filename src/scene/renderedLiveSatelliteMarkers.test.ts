@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { resolveRenderedLiveSatelliteMarkers } from './renderedLiveSatelliteMarkers';
+import { selectOtherHandoverUeIds } from './otherHandoverUeSelector';
 
 test('retains ambient markers, applies identity colours, and adds only requested apex markers', () => {
   const markers = resolveRenderedLiveSatelliteMarkers({
@@ -40,4 +41,16 @@ test('does not duplicate a displayed satellite when it is also in the event set'
   });
 
   assert.deepEqual(markers.map(marker => marker.id), ['sat-a', 'sat-b']);
+});
+
+test('does not select a secondary handover at the exact trigger boundary', () => {
+  assert.deepEqual(
+    selectOtherHandoverUeIds({
+      primaryUeId: 'primary',
+      triggerTimeSec: 3,
+      maxOtherHandoverUes: 1,
+      ues: [{ id: 'secondary', pendingTargetSatId: 'sat-target', triggerProgressSec: 3 }],
+    }),
+    [],
+  );
 });

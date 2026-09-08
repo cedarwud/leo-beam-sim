@@ -46,6 +46,17 @@ interface SatelliteMarkerProps {
 
 const SATELLITE_BODY_TINT_BLEND = 0.46;
 
+export function resolveSatelliteMarkerAccent(
+  satelliteTintColor: string | undefined,
+  satelliteId: string | undefined,
+): string {
+  const resolvedTint = satelliteTintColor
+    ?? (satelliteId && satelliteId.length > 0
+      ? resolveSatelliteIdentityColor(satelliteId, {})
+      : HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR);
+  return resolvedTint;
+}
+
 export function resolveSatelliteTintedColor(baseColor: string, tintColor: string): string {
   return `#${new THREE.Color(baseColor).lerp(new THREE.Color(tintColor), SATELLITE_BODY_TINT_BLEND).getHexString()}`;
 }
@@ -133,12 +144,8 @@ export function SatelliteMarker({
   // the foreground prevents the old serving-yellow / candidate-blue encoding
   // from overriding the stable hue assigned to this spacecraft.
   // Preserved for legacy regex test: const accent = satelliteTintColor ?? '#aaccff';
-  const resolvedTint = satelliteTintColor
-    ?? (satelliteId && satelliteId.length > 0
-      ? resolveSatelliteIdentityColor(satelliteId, {})
-      : HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR);
-  const accent = resolvedTint;
-  const markerLightColor = resolvedTint;
+  const accent = resolveSatelliteMarkerAccent(satelliteTintColor, satelliteId);
+  const markerLightColor = accent;
   const scale = (eventRole ? roleToken.markerScale : 5) * baseScaleMultiplier * scaleMultiplier;
 
   const modelInstance = useMemo(() => cloneSatelliteModel(scene), [scene]);

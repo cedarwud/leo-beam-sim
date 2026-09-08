@@ -29,6 +29,7 @@ import {
   resolveServingConeItems,
   type ServingConePresentationInput,
 } from '../scene/servingConeItems';
+import { resolveServingConeBudgetFan } from './beamVisibilityContract';
 import type {
   CellServingRecord,
   IlluminatedCellBeam,
@@ -85,6 +86,10 @@ const heroRecord: DisplayHeroRecord = {
 
 const dummyColor = (satId: string, beamId: number) => `${satId}/${beamId}`;
 const keepAll = (items: readonly SinrLiveCellBeamConeRenderItem[]) => items;
+
+test('homepage identity keeps the serving fan budget when non-serving cones are enabled', () => {
+  assert.equal(resolveServingConeBudgetFan(true, true), true);
+});
 
 export function recordPhotograph(): string[] {
   const lines: string[] = [];

@@ -33,6 +33,7 @@ test('adds archived-TLE provenance and claim metadata to the projected frame', (
     sceneSource: 'live',
     provenance: { kind: 'live' },
   } as unknown as NormalizedSceneFrame;
+  let projectedSource: 'archived-tle' | 'walker' | undefined;
   const result = resolveSceneFrame({
     sceneGeometry: geometry,
     sim,
@@ -44,9 +45,13 @@ test('adds archived-TLE provenance and claim metadata to the projected frame', (
         propagationModel: 'SGP4',
       },
     } as never,
-    projectLiveFrame: () => projected,
+    projectLiveFrame: (_sim, _geometry, options) => {
+      projectedSource = options.source;
+      return projected;
+    },
   });
 
+  assert.equal(projectedSource, 'archived-tle');
   assert.equal(result.sceneSource, 'archived-tle');
   assert.deepEqual(result.provenance, {
     kind: 'archived-tle',

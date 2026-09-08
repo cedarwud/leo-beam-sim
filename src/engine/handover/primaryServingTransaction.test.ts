@@ -166,8 +166,9 @@ function callbacks(log: string[], measurement: number | null = 31): PrimaryServi
 // Empty decision input is an explicit no-op and never invokes reducers.
 {
   let calls = 0;
+  const before = state();
   const result = applyPrimaryServingAssignmentTransaction({
-    state: state(),
+    state: before,
     engineCommitReceipt: null,
     selectedTarget: null,
     callbacks: {
@@ -177,7 +178,8 @@ function callbacks(log: string[], measurement: number | null = 31): PrimaryServi
   });
   assert.equal(result.status, 'no-op');
   assert.equal(result.receipt, null);
-  assert.equal(result.state, result.state);
+  assert.notStrictEqual(result.state, before);
+  assert.deepEqual(result.state, before);
   assert.equal(calls, 0);
 }
 

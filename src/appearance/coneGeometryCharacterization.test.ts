@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { SINR_LIVE_FOOTPRINT_RING_Y_LIFT } from '../constants/sinrLiveConeStyle';
+import { resolveVisualLabBeamRadius } from './coneGeometryContract';
 import { MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER } from '../scene/multiCandidateSceneDisplayPolicy';
 import { computeSinrLiveBeamFootprintEllipse } from '../scene/sinrLiveBeamGeometry';
 import { buildObliqueBeamConePositions } from '../viz/SinrLiveCellBeamCones';
@@ -166,4 +167,15 @@ test('resolveServingConeGeometry outputs match baseline serving cone items', () 
   assert.equal(fallbackItems[0].baseRadiusWorld, 4);
   assert.deepEqual([fallbackItems[0].apex.x, fallbackItems[0].apex.y, fallbackItems[0].apex.z], [0, 100, 0]);
   assert.deepEqual([fallbackItems[0].baseCenter.x, fallbackItems[0].baseCenter.y, fallbackItems[0].baseCenter.z], [10, 0, -20]);
+});
+
+test('an active Visual-Lab service beam keeps the primary radius when it is not an intra target', () => {
+  assert.equal(
+    resolveVisualLabBeamRadius({
+      active: true,
+      intraTarget: false,
+      cellRadiusWorld: 0.8,
+    }),
+    0.82,
+  );
 });

@@ -49,11 +49,13 @@ function primaryBeamLabel(satId: string, beams: BeamTarget[] | undefined): strin
   return beam ? formatBeamIdentityByIndex({ satId, beamId: beam.beamId, frequencyIndex: beam.frequencyIndex }) : null;
 }
 
-function markerColorForBeam(satId: string, beamId: number): string {
+/** The link's identity colour uses the same beam-id shade rung as the ladder. */
+export function markerColorForBeam(satId: string, beamId: number): string {
   return colorForServingBeam(satId, beamId).markerColor;
 }
 
-function identityColorForLink(
+/** Resolve the pure link paint, including the satellite-channel fallback. */
+export function identityColorForLink(
   satId: string,
   beams: BeamTarget[] | undefined,
   fallback: string,

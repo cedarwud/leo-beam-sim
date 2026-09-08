@@ -68,7 +68,7 @@ function lerp(a: number, b: number, t: number): number {
  * then ramps down from peak to tail by progress=1. Produces a single hump
  * that visually reads as a "shockwave" rather than a slow fade.
  */
-function targetOpacityFor(progress: number): number {
+export function targetOpacityFor(progress: number): number {
   const t = clamp01(progress);
   if (t <= TARGET_PEAK_PROGRESS) {
     return lerp(0, TARGET_OPACITY_PEAK, t / TARGET_PEAK_PROGRESS);
@@ -77,15 +77,15 @@ function targetOpacityFor(progress: number): number {
   return lerp(TARGET_OPACITY_PEAK, TARGET_OPACITY_TAIL, tail);
 }
 
-function sourceOpacityFor(progress: number): number {
+export function sourceOpacityFor(progress: number): number {
   return lerp(SOURCE_OPACITY_START, SOURCE_OPACITY_END, clamp01(progress));
 }
 
-function sourceScaleFor(progress: number): number {
+export function sourceScaleFor(progress: number): number {
   return lerp(SOURCE_SCALE_START, SOURCE_SCALE_END, clamp01(progress));
 }
 
-function targetScaleFor(progress: number): number {
+export function targetScaleFor(progress: number): number {
   return lerp(TARGET_SCALE_START, TARGET_SCALE_END, clamp01(progress));
 }
 

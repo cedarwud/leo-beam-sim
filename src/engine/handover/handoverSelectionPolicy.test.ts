@@ -208,6 +208,15 @@ test('SINR policy applies a compatibility gate mask without relabelling unavaila
   assert.equal(candidate.gates.find(item => item.code === 'throughput')?.result, 'unavailable');
 });
 
+test('SINR policy does not satisfy a candidate exactly at the configured margin', () => {
+  const result = new SinrOffsetPolicy(sinrConfig).evaluate({
+    serving: opportunity(SERVING, { sinrDb: 10 }),
+    alternatives: [opportunity(candidateLinkKey('SAT-EXACT-MARGIN', 1), { sinrDb: 13 })],
+  });
+
+  assert.equal(result.assessments[0]?.triggerStatus, 'not-satisfied');
+});
+
 test('a hard-ineligible pair cannot be reported as trigger-satisfied', () => {
   const candidate = opportunity(candidateLinkKey('SAT-B', 1), {
     sinrDb: 18,
@@ -373,6 +382,40 @@ test('instantaneous EE policy enforces the configured absolute candidate floor',
     })],
   });
   assert.equal(initialAttach.assessments[0]?.triggerStatus, 'not-satisfied');
+});
+
+test('instantaneous EE policy admits a candidate exactly at the absolute floor when it improves service', () => {
+  const result = new InstantaneousEePolicy({
+    initialTttSec: 0,
+    interTttSec: 3.5,
+    intraTttSec: 0.75,
+    eeToleranceRelative: 0,
+    minimumEeBitsPerJoule: 100,
+  }).evaluate({
+    serving: opportunity(SERVING, { instantaneousEeBitPerJ: 50 }),
+    alternatives: [
+      opportunity(candidateLinkKey('SAT-AT-FLOOR', 1), { instantaneousEeBitPerJ: 100 }),
+    ],
+  });
+
+  assert.equal(result.assessments[0]?.triggerStatus, 'satisfied');
+});
+
+test('instantaneous EE policy does not trigger while serving EE is exactly at its health floor', () => {
+  const result = new InstantaneousEePolicy({
+    initialTttSec: 0,
+    interTttSec: 3.5,
+    intraTttSec: 0.75,
+    eeToleranceRelative: 0,
+    servingEeThresholdBitsPerJoule: 100,
+  }).evaluate({
+    serving: opportunity(SERVING, { instantaneousEeBitPerJ: 100 }),
+    alternatives: [
+      opportunity(candidateLinkKey('SAT-ABOVE-HEALTH-FLOOR', 1), { instantaneousEeBitPerJ: 101 }),
+    ],
+  });
+
+  assert.equal(result.assessments[0]?.triggerStatus, 'not-satisfied');
 });
 
 test('instantaneous EE policy fails closed when same-frame EE is unavailable', () => {

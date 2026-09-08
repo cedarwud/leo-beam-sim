@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { MIN_VISIBLE_SINR_DB } from '../constants/sinr';
-import { satelliteTint, satelliteTintIndex } from '../constants/beamRoleTokens';
+import { satelliteTintIndex } from '../constants/beamRoleTokens';
+import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteAppearance';
 import type { Profile } from '../profiles/types';
 import { MAX_BEAMS_PER_SATELLITE, generateBeamOffsetsKm } from './beam-layout';
 import type {
@@ -479,7 +480,7 @@ export function useBeamViz(
       return {
         ...sat,
         satelliteVisualIndex,
-        satelliteTintColor: satelliteTint(sat.id, displayOrder),
+        satelliteTintColor: resolveSatelliteIdentityColor(sat.id, {}),
         satelliteGlyph: satelliteGlyph(satelliteVisualIndex),
       };
     });

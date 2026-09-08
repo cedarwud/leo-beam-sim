@@ -1751,9 +1751,10 @@ function SceneRenderContent({
   // The orbit trail is a SATELLITE SURFACE, so its colour comes from the
   // satellite table in `appearance/satelliteSurfaceModifiers.ts` — identity
   // first, then the `orbitTrail` row's paling. It used to read the
-  // `satelliteTintColor` channel that `useBeamViz` fills from the legacy
-  // `satelliteTint` hash, which is a SECOND palette: changing the identity
-  // palette moved the marker and left the trail behind.
+  // `satelliteTintColor` channel that `useBeamViz` now fills from the satellite
+  // identity ladder. The trail still has its own legitimate surface modifier,
+  // so it derives its paleness from that same identity rather than replacing it
+  // with a second palette.
   const orbitTrailSatellites = useMemo(() => viz.displaySats.map(satellite => ({
     ...satellite,
     satelliteTintColor: resolveSatelliteSurfaceColor(

@@ -1,0 +1,412 @@
+{
+  "target": "npm run test:all",
+  "mutations": [
+    {
+      "id": "appearance-budget-or-to-and",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/beamVisibilityContract.ts",
+      "lineAnchor": "resolveServingConeBudgetFan",
+      "mutation": {
+        "from": "return homepageVisualIdentity || !showNonServingCones;",
+        "to": "return homepageVisualIdentity && !showNonServingCones;"
+      }
+    },
+    {
+      "id": "appearance-serving-field-fails-open",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/beamVisibilityContract.ts",
+      "lineAnchor": "shouldRenderServingConeField",
+      "mutation": {
+        "from": "if (!presentation.showSinrLiveCellBeams || !presentation.renderServingField) return false;",
+        "to": "if (!presentation.showSinrLiveCellBeams || !presentation.renderServingField) return true;"
+      }
+    },
+    {
+      "id": "appearance-serving-fan-escape-disabled",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/beamVisibilityContract.ts",
+      "lineAnchor": "function filterHomepageBeamItems",
+      "mutation": {
+        "from": "if (allowAllBeamSatelliteIds.has(item.satId)) return true;",
+        "to": "if (allowAllBeamSatelliteIds.has(item.satId)) return false;"
+      }
+    },
+    {
+      "id": "appearance-cone-ellipse-clamp-min",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/coneGeometryContract.ts",
+      "lineAnchor": "const clampedSinElevation = Math.max(",
+      "mutation": {
+        "from": "const clampedSinElevation = Math.max(",
+        "to": "const clampedSinElevation = Math.min("
+      }
+    },
+    {
+      "id": "appearance-visual-lab-active-and-target",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/coneGeometryContract.ts",
+      "lineAnchor": "resolveVisualLabBeamRadius",
+      "mutation": {
+        "from": "if (active || intraTarget) {",
+        "to": "if (active && intraTarget) {"
+      }
+    },
+    {
+      "id": "appearance-intra-target-loses-target-shade",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/handoverAppearanceModifiers.ts",
+      "lineAnchor": "brighten the incoming beam so the arrival is legible",
+      "mutation": {
+        "from": "      shade: 'target',",
+        "to": "      shade: null,"
+      }
+    },
+    {
+      "id": "appearance-transition-source-opacity-flat",
+      "category": "appearance",
+      "priority": "high",
+      "file": "src/appearance/handoverAppearanceModifiers.ts",
+      "lineAnchor": "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.62;",
+      "mutation": {
+        "from": "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.62;",
+        "to": "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 1;"
+      }
+    },
+    {
+      "id": "appearance-side-from-becomes-target",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/handoverAppearanceModifiers.ts",
+      "lineAnchor": "  if (renderKey.endsWith('-from')) return 'source';",
+      "mutation": {
+        "from": "  if (renderKey.endsWith('-from')) return 'source';",
+        "to": "  if (renderKey.endsWith('-from')) return 'target';"
+      }
+    },
+    {
+      "id": "appearance-homepage-color-fallback-skipped",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/resolveSatelliteAppearance.ts",
+      "lineAnchor": "  if (homepage !== undefined && homepage.length > 0) return homepage;",
+      "mutation": {
+        "from": "  if (homepage !== undefined && homepage.length > 0) return homepage;",
+        "to": "  if (false) return homepage;"
+      }
+    },
+    {
+      "id": "appearance-envelope-from-uses-measuring",
+      "category": "appearance",
+      "priority": "critical",
+      "file": "src/appearance/handoverTimingEnvelope.ts",
+      "lineAnchor": "export function resolveHandoverConeEnvelope(",
+      "mutation": {
+        "from": "  const { serving, measuring, holding, releasing } = HANDOVER_CONE_PHASE_END;\n  const toOpacity = peak * smoothstep01((progress - serving) / (measuring - serving));\n  const fromOpacity = peak * (1 - smoothstep01((progress - holding) / (releasing - holding)));",
+        "to": "  const { serving, measuring, holding, releasing } = HANDOVER_CONE_PHASE_END;\n  const toOpacity = peak * smoothstep01((progress - serving) / (measuring - serving));\n  const fromOpacity = peak * (1 - smoothstep01((progress - measuring) / (releasing - measuring)));"
+      }
+    },
+    {
+      "id": "scene-prop-frame-reprojected",
+      "category": "scene-render",
+      "priority": "critical",
+      "file": "src/scene/sceneFrameResolver.ts",
+      "lineAnchor": "  if (input.propSceneFrame) return input.propSceneFrame;",
+      "mutation": {
+        "from": "  if (input.propSceneFrame) return input.propSceneFrame;",
+        "to": "  if (input.propSceneFrame && false) return input.propSceneFrame;"
+      }
+    },
+    {
+      "id": "scene-archived-source-label-swapped",
+      "category": "scene-render",
+      "priority": "critical",
+      "file": "src/scene/sceneFrameResolver.ts",
+      "lineAnchor": "simSource === 'archived-tle'",
+      "mutation": {
+        "from": "    source: input.simSource === 'archived-tle' ? 'archived-tle' : 'walker',",
+        "to": "    source: input.simSource === 'archived-tle' ? 'walker' : 'archived-tle',"
+      }
+    },
+    {
+      "id": "scene-candidate-frame-live-branch-inverted",
+      "category": "scene-render",
+      "priority": "high",
+      "file": "src/scene/sceneDisplayCellFrames.ts",
+      "lineAnchor": "sceneSource !== 'archived-tle'",
+      "mutation": {
+        "from": "    input.sceneSource !== 'archived-tle'",
+        "to": "    input.sceneSource === 'archived-tle'"
+      }
+    },
+    {
+      "id": "scene-inter-cinema-kind-inverted",
+      "category": "scene-render",
+      "priority": "critical",
+      "file": "src/scene/sceneDisplayCellFrames.ts",
+      "lineAnchor": "candidate?.kind !== 'inter'",
+      "mutation": {
+        "from": "  if (candidate?.kind !== 'inter' || input.source === undefined) return input.source;",
+        "to": "  if (candidate?.kind === 'inter' || input.source === undefined) return input.source;"
+      }
+    },
+    {
+      "id": "scene-display-beams-marked-serving",
+      "category": "scene-render",
+      "priority": "critical",
+      "file": "src/scene/sceneDisplayCellFrames.ts",
+      "lineAnchor": "satelliteIds.map(satelliteId",
+      "mutation": {
+        "from": "    serving: false,",
+        "to": "    serving: true,"
+      }
+    },
+    {
+      "id": "scene-marker-event-early-return-inverted",
+      "category": "scene-render",
+      "priority": "critical",
+      "file": "src/scene/renderedLiveSatelliteMarkers.ts",
+      "lineAnchor": "handoverMarkerSatelliteIds.size",
+      "mutation": {
+        "from": "  if (input.handoverMarkerSatelliteIds.size === 0) return markers;",
+        "to": "  if (input.handoverMarkerSatelliteIds.size !== 0) return markers;"
+      }
+    },
+    {
+      "id": "scene-marker-duplicate-guard-inverted",
+      "category": "scene-render",
+      "priority": "high",
+      "file": "src/scene/renderedLiveSatelliteMarkers.ts",
+      "lineAnchor": "existingIds.has(satelliteId)",
+      "mutation": {
+        "from": "    if (existingIds.has(satelliteId)) continue;",
+        "to": "    if (!existingIds.has(satelliteId)) continue;"
+      }
+    },
+    {
+      "id": "scene-candidate-precedence-swapped",
+      "category": "scene-render",
+      "priority": "critical",
+      "file": "src/scene/homepageSceneBeamVisibility.ts",
+      "lineAnchor": "      input.renderedCandidateSatelliteId ?? input.primaryServingRecord?.pendingTargetSatId,",
+      "mutation": {
+        "from": "      input.renderedCandidateSatelliteId ?? input.primaryServingRecord?.pendingTargetSatId,",
+        "to": "      input.primaryServingRecord?.pendingTargetSatId ?? input.renderedCandidateSatelliteId,"
+      }
+    },
+    {
+      "id": "scene-accepted-color-fallback-replaced",
+      "category": "scene-render",
+      "priority": "high",
+      "file": "src/scene/acceptedSatelliteIdentityColor.ts",
+      "lineAnchor": "identityAllocation.identitiesBySatelliteId",
+      "mutation": {
+        "from": "    ?? fallback;",
+        "to": "    ?? '#mutated';"
+      }
+    },
+    {
+      "id": "scene-color-map-overwrite-guard-inverted",
+      "category": "scene-render",
+      "priority": "critical",
+      "file": "src/scene/multiCandidateSatelliteColors.ts",
+      "lineAnchor": "    if (color !== undefined && !colors.has(satelliteId)) colors.set(satelliteId, color);",
+      "mutation": {
+        "from": "    if (color !== undefined && !colors.has(satelliteId)) colors.set(satelliteId, color);",
+        "to": "    if (color !== undefined && colors.has(satelliteId)) colors.set(satelliteId, color);"
+      }
+    },
+    {
+      "id": "engine-sinr-equality-admitted",
+      "category": "engine-handover",
+      "priority": "critical",
+      "file": "src/engine/handover/handoverSelectionPolicy.ts",
+      "lineAnchor": "candidate.sinr.value > serving.sinr.value",
+      "mutation": {
+        "from": "  return candidate.sinr.value > serving.sinr.value + offsetDb",
+        "to": "  return candidate.sinr.value >= serving.sinr.value + offsetDb"
+      }
+    },
+    {
+      "id": "engine-intra-inter-ttt-swapped",
+      "category": "engine-handover",
+      "priority": "critical",
+      "file": "src/engine/handover/handoverSelectionPolicy.ts",
+      "lineAnchor": "  return serving.key.satelliteId === candidate.key.satelliteId",
+      "mutation": {
+        "from": "    ? config.intraTttSec",
+        "to": "    ? config.interTttSec"
+      }
+    },
+    {
+      "id": "engine-ee-minimum-equality-admitted",
+      "category": "engine-handover",
+      "priority": "high",
+      "file": "src/engine/handover/handoverSelectionPolicy.ts",
+      "lineAnchor": "candidateEe < minimumEeBitsPerJoule",
+      "mutation": {
+        "from": "  if (candidateEe < minimumEeBitsPerJoule) return 'not-satisfied';",
+        "to": "  if (candidateEe <= minimumEeBitsPerJoule) return 'not-satisfied';"
+      }
+    },
+    {
+      "id": "engine-ee-service-floor-boundary-flipped",
+      "category": "engine-handover",
+      "priority": "critical",
+      "file": "src/engine/handover/handoverSelectionPolicy.ts",
+      "lineAnchor": "  if (servingEeThresholdBitsPerJoule > 0 && servingEe >= servingEeThresholdBitsPerJoule) {",
+      "mutation": {
+        "from": "  if (servingEeThresholdBitsPerJoule > 0 && servingEe >= servingEeThresholdBitsPerJoule) {",
+        "to": "  if (servingEeThresholdBitsPerJoule > 0 && servingEe > servingEeThresholdBitsPerJoule) {"
+      }
+    },
+    {
+      "id": "engine-ee-ranking-reversed",
+      "category": "engine-handover",
+      "priority": "critical",
+      "file": "src/engine/handover/handoverSelectionPolicy.ts",
+      "lineAnchor": "  if (leftEe !== null && rightEe !== null && leftEe !== rightEe) return rightEe - leftEe;",
+      "mutation": {
+        "from": "  if (leftEe !== null && rightEe !== null && leftEe !== rightEe) return rightEe - leftEe;",
+        "to": "  if (leftEe !== null && rightEe !== null && leftEe !== rightEe) return leftEe - rightEe;"
+      }
+    },
+    {
+      "id": "engine-qualification-equality-rejected",
+      "category": "engine-handover",
+      "priority": "critical",
+      "file": "src/engine/handover/handoverDecisionEngine.ts",
+      "lineAnchor": "qualificationSec >= requiredTttSec",
+      "mutation": {
+        "from": "    && qualificationSec >= requiredTttSec;",
+        "to": "    && qualificationSec > requiredTttSec;"
+      }
+    },
+    {
+      "id": "engine-guard-commit-condition-inverted",
+      "category": "engine-handover",
+      "priority": "critical",
+      "file": "src/engine/handover/handoverDecisionEngine.ts",
+      "lineAnchor": "if (!guardActive && decisionElapsedSec > 0",
+      "mutation": {
+        "from": "    if (!guardActive && decisionElapsedSec > 0",
+        "to": "    if (guardActive && decisionElapsedSec > 0"
+      }
+    },
+    {
+      "id": "engine-inter-selection-floor-suppresses-intra",
+      "category": "engine-handover",
+      "priority": "critical",
+      "file": "src/engine/handover/handoverDecisionEngine.ts",
+      "lineAnchor": "const selectionFloorAllows",
+      "mutation": {
+        "from": "      selectionFloorSatisfied\n      || (",
+        "to": "      selectionFloorSatisfied\n      && ("
+      }
+    },
+    {
+      "id": "engine-no-op-returns-uncloned-input",
+      "category": "engine-handover",
+      "priority": "high",
+      "file": "src/engine/handover/primaryServingTransaction.ts",
+      "lineAnchor": "no engine commit receipt or selected target was supplied",
+      "mutation": {
+        "from": "      return result('no-op', beforeState, 'no engine commit receipt or selected target was supplied', false);",
+        "to": "      return result('no-op', input.state, 'no engine commit receipt or selected target was supplied', false);"
+      }
+    },
+    {
+      "id": "new-wired-draft-position-scaled-wrong-way",
+      "category": "newly-wired",
+      "priority": "high",
+      "file": "src/app/walkerVisualLabUeGeometry.ts",
+      "lineAnchor": "selectedUeWorldPosition.x / scale",
+      "mutation": {
+        "from": "        input.selectedUeWorldPosition.x / scale,",
+        "to": "        input.selectedUeWorldPosition.x * scale,"
+      }
+    },
+    {
+      "id": "new-wired-draft-absence-uses-beam-center",
+      "category": "newly-wired",
+      "priority": "high",
+      "file": "src/app/walkerVisualLabUeGeometry.ts",
+      "lineAnchor": "const draftPositionKm",
+      "mutation": {
+        "from": "    ? acceptedPositionKm",
+        "to": "    ? beamCenterKm"
+      }
+    },
+    {
+      "id": "new-wired-zero-scale-admitted",
+      "category": "newly-wired",
+      "priority": "high",
+      "file": "src/app/walkerVisualLabUeGeometryInput.ts",
+      "lineAnchor": "worldUnitsPerKm <= 0",
+      "mutation": {
+        "from": "    || localScene.substrate.worldUnitsPerKm <= 0",
+        "to": "    || localScene.substrate.worldUnitsPerKm < 0"
+      }
+    },
+    {
+      "id": "new-wired-latched-event-match-inverted",
+      "category": "newly-wired",
+      "priority": "critical",
+      "file": "src/scene/latchedAuthorityTransition.ts",
+      "lineAnchor": "transition.eventId !== event.eventId",
+      "mutation": {
+        "from": "    || transition.eventId !== event.eventId",
+        "to": "    || transition.eventId === event.eventId"
+      }
+    },
+    {
+      "id": "new-wired-archived-cell-z-sign-flipped",
+      "category": "newly-wired",
+      "priority": "critical",
+      "file": "src/scene/sinrLiveCellPlacement.ts",
+      "lineAnchor": "worldZ: -cell.centerKm[1]",
+      "mutation": {
+        "from": "      worldZ: -cell.centerKm[1] * input.worldUnitsPerKm,",
+        "to": "      worldZ: cell.centerKm[1] * input.worldUnitsPerKm,"
+      }
+    },
+    {
+      "id": "new-wired-timeline-route-inverted",
+      "category": "newly-wired",
+      "priority": "high",
+      "file": "src/app/walkerTimelineSeek.ts",
+      "lineAnchor": "    input.scene.lane === 'sinr-live'",
+      "mutation": {
+        "from": "    input.scene.lane === 'sinr-live'",
+        "to": "    input.scene.lane !== 'sinr-live'"
+      }
+    },
+    {
+      "id": "unaggregated-satellite-marker-accent-constant",
+      "category": "unaggregated-source-text",
+      "priority": "medium",
+      "file": "src/viz/SatelliteMarker.tsx",
+      "lineAnchor": "return resolvedTint;",
+      "mutation": {
+        "from": "  return resolvedTint;",
+        "to": "  return '#ff0000';"
+      }
+    },
+    {
+      "id": "unaggregated-secondary-handover-boundary",
+      "category": "unaggregated-suite",
+      "priority": "high",
+      "file": "src/scene/otherHandoverUeSelector.ts",
+      "lineAnchor": "triggerProgressSec < triggerTimeSec",
+      "mutation": {
+        "from": "    && ue.triggerProgressSec < triggerTimeSec;",
+        "to": "    && ue.triggerProgressSec <= triggerTimeSec;"
+      }
+    }
+  ]
+}

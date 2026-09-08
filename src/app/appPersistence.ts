@@ -18,54 +18,11 @@ export type SceneSourceMode = 'live-sim' | 'artifact-replay';
 // 3D viewport; 'dashboard' = a future full-area data-flow surface. Deep-linkable
 // via ?view=dashboard, mirroring the sceneSource URL pattern (no react-router).
 // These helpers remain display-only and are currently unused by the app shell.
-export type ViewMode = 'scene' | 'dashboard';
-
-export function readViewModeFromUrl(): ViewMode {
-  if (typeof window === 'undefined') return 'scene';
-  const params = new URLSearchParams(window.location.search);
-  return params.get('view') === 'dashboard' ? 'dashboard' : 'scene';
-}
-
-export function syncViewModeToUrl(mode: ViewMode): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const url = new URL(window.location.href);
-    if (mode === 'dashboard') {
-      url.searchParams.set('view', 'dashboard');
-    } else {
-      url.searchParams.delete('view');
-    }
-    window.history.replaceState(window.history.state, '', url);
-  } catch {
-    // history / URL APIs can be unavailable in embedded browser contexts.
-  }
-}
-
 export function readSceneSourceFromUrl(): SceneSourceMode {
   if (typeof window === 'undefined') return 'live-sim';
   const params = new URLSearchParams(window.location.search);
   const src = params.get('sceneSource');
   return src === 'artifact-replay' ? 'artifact-replay' : 'live-sim';
-}
-
-// Keep the URL in sync with the internal runtime sceneSource switch so the lane
-// is deep-linkable and reload-stable. Display-only: it mirrors the
-// already-applied state, never drives truth. `live-sim` clears the param (the
-// default), `artifact-replay` sets it so readSceneSourceFromUrl re-resolves the
-// same lane on reload.
-export function syncSceneSourceToUrl(mode: SceneSourceMode): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const url = new URL(window.location.href);
-    if (mode === 'artifact-replay') {
-      url.searchParams.set('sceneSource', 'artifact-replay');
-    } else {
-      url.searchParams.delete('sceneSource');
-    }
-    window.history.replaceState(window.history.state, '', url);
-  } catch {
-    // history / URL APIs can be unavailable in embedded browser contexts.
-  }
 }
 
 export function readSceneTopologyOverrides(): SceneTopologyState {
