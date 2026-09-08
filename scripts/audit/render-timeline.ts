@@ -128,8 +128,10 @@ import {
   resolveServingConeFocusSatIds,
 } from '../../src/appearance/beamVisibilityContract.ts';
 import {
+  HANDOVER_CONE_PHASE_END,
   HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
   HOMEPAGE_INTER_HANDOVER_DISPLAY_MS,
+  INTER_HANDOVER_CINEMA_PHASE_END,
   INTRA_HANDOVER_CINEMA_DISPLAY_MS,
   INTER_HANDOVER_CINEMA_DISPLAY_MS,
 } from '../../src/appearance/handoverTimingEnvelope.ts';
@@ -207,6 +209,8 @@ interface TimelineItem {
   readonly id: string;
   readonly layer: SinrLiveConeMountLayer;
   readonly color: string;
+  /** The role-table colour before the item-identity authority is applied. */
+  readonly roleColor: string;
   /**
    * The colour this item would have with NO handover shade applied. When this
    * differs from `color`, the (kind, side) row in
@@ -1032,6 +1036,7 @@ function createDriver(options: DriverOptions): Driver {
     `eeThresholdKbitPerJ = ${DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE}`,
     `worldUnitsPerKm     = ${num(worldUnitsPerKm, 6)}  satPosScaleFactor=${num(satPosScaleFactor, 6)}`,
     `renderGeometry      = coneSegments=${SINR_LIVE_CONE_SEGMENTS} baseVertexAlpha=${num(SINR_LIVE_CONE_BASE_ALPHA_FACTOR)} footprintRingYLift=${num(SINR_LIVE_FOOTPRINT_RING_Y_LIFT)} minRenderElevationDeg=${num(MIN_RENDER_ELEVATION_DEG, 1)}`,
+    `renderTiming        = homepageIntraMs=${HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS} homepageInterMs=${HOMEPAGE_INTER_HANDOVER_DISPLAY_MS} intraCinemaMs=${INTRA_HANDOVER_CINEMA_DISPLAY_MS} interCinemaMs=${INTER_HANDOVER_CINEMA_DISPLAY_MS} intraPhase=${HANDOVER_CONE_PHASE_END.serving},${HANDOVER_CONE_PHASE_END.measuring},${HANDOVER_CONE_PHASE_END.holding},${HANDOVER_CONE_PHASE_END.releasing} interPhase=${INTER_HANDOVER_CINEMA_PHASE_END.serving},${INTER_HANDOVER_CINEMA_PHASE_END.measuring},${INTER_HANDOVER_CINEMA_PHASE_END.holding},${INTER_HANDOVER_CINEMA_PHASE_END.releasing}`,
     `presentationClock   = simTimeSec * ${MS_PER_SIM_SEC} ms (playback speed 1)`,
   ];
 
@@ -1087,6 +1092,7 @@ function finalizeItem(
     heroBeamId: hero.beamId,
     beamId,
   });
+  const roleStyle = resolveSinrLiveConeDisplayStyle(role, palette, item, 'semantic-role');
   const style = resolveSinrLiveConeDisplayStyle(role, palette, item, 'item-identity');
   const placement = placementByCellId.get(item.cellId);
   if (placement === undefined) {
@@ -1120,6 +1126,7 @@ function finalizeItem(
     id: `${layer}|${item.satId}|${item.cellId}|${beamId}|${role}|${item.renderKey ?? ''}`,
     layer,
     color: style.color,
+    roleColor: roleStyle.color,
     identityColor,
     identityRung: identity.rung,
     eeNormalized: resolveEeNormalized(item.satId, beamId),
@@ -1151,6 +1158,7 @@ function itemLine(item: TimelineItem): string {
     `beam=${String(item.beamId).padStart(2)}`,
     `freq=${String(item.frequencyIndex).padStart(2)}`,
     `color=${item.color}`,
+    `roleColor=${item.roleColor}`,
     `identity=${item.identityColor}`,
     `rung=${item.identityRung}`,
     `eeNorm=${item.eeNormalized === null ? '-' : num(item.eeNormalized)}`,
@@ -1208,7 +1216,7 @@ function printAt(second: TimelineSecond, lines: string[]): void {
 }
 
 const DIFFED_FIELDS = [
-  'layer', 'color', 'identityColor', 'identityRung', 'eeNormalized', 'shaded', 'opacity', 'role', 'satId',
+  'layer', 'color', 'roleColor', 'identityColor', 'identityRung', 'eeNormalized', 'shaded', 'opacity', 'role', 'satId',
   'cellId', 'beamId', 'frequencyIndex', 'serving', 'displayOnly', 'renderKey',
 ] as const;
 
