@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium, type Browser, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 import {
   ENERGY_LAB_ACT6_DURATION_SEC,
@@ -537,7 +538,14 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-energy-lab-browser',
+    appUrl: process.env.APP_URL ?? process.env.PLAYWRIGHT_BASE_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+).catch(error => {
   console.error(error);
   process.exitCode = 1;
 });

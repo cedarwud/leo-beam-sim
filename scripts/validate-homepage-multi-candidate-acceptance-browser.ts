@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium, type Browser, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 const APP_URL = process.env.APP_URL ?? 'http://127.0.0.1:3000';
 const OUTPUT_DIR = resolve('output/playwright/homepage-multi-candidate-acceptance');
@@ -681,7 +682,14 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-homepage-multi-candidate-acceptance-browser',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+).catch(error => {
   console.error('[homepage-multi-candidate-acceptance] FAILED:', error instanceof Error ? error.stack ?? error.message : error);
   process.exitCode = 1;
 });

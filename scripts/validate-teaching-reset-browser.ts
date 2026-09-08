@@ -8,6 +8,7 @@
  */
 import assert from 'node:assert/strict';
 import { chromium, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 import { SIX_ACTS_ROUTES, SIX_ACTS_VISIBLE_ROUTES } from '../src/course/nav/sixActsRoutes.ts';
 import { GOLDEN_FLOW_ACT3_HREF, GOLDEN_FLOW_ACT4_HREF } from '../src/prototype/golden-flow/goldenFlowRoutes.ts';
@@ -128,7 +129,14 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-teaching-reset-browser',
+    appUrl: BASE_URL,
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+).catch(error => {
   console.error('[teaching-reset-browser] FAILED:', error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });

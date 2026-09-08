@@ -14,6 +14,7 @@
  * Requires a running dev server. Run: `npm run validate:phase-h:sinr-live-render:browser`.
  */
 import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
 
@@ -25,16 +26,7 @@ async function numAttr(page: Page, selector: string, name: string): Promise<numb
   return v === null ? NaN : Number(v);
 }
 
-async function main(): Promise<void> {
-  const appUrl = process.env.APP_URL ?? process.argv[2] ?? (await detectAppUrl());
-  const browser: Browser = await chromium.launch();
-  try {
-    const page: Page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    const consoleErrors: string[] = [];
-    page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
-    page.on('pageerror', e => consoleErrors.push(`PAGEERROR ${e.message}`));
-
-    await page.goto(`${appUrl}/?sceneSource=live-sim&appMode=sinr-experiment`, { waitUntil: 'domcontentloaded' });
+export async function assertSinrLiveRender(page: Page, consoleErrors: readonly string[] = []): Promise<void> {
 
     // The live SINR lane is selected and the canvas mounts.
     assert.equal(await page.getAttribute(SHELL, 'data-scene-lane'), 'sinr-live', 'lane resolves to sinr-live');
@@ -69,12 +61,27 @@ async function main(): Promise<void> {
     const realErrors = consoleErrors.filter(e => !/ERR_CONNECTION_REFUSED|:8765|favicon/.test(e));
     assert.deepEqual(realErrors, [], `no real console errors: ${JSON.stringify(realErrors)}`);
     console.log('[sinr-live-render] PASS (DATA SOURCE = live SINR engine)');
+}
+
+async function main(): Promise<void> {
+  const appUrl = process.env.APP_URL ?? process.argv[2] ?? (await detectAppUrl());
+  const browser: Browser = await chromium.launch();
+  try {
+    const page: Page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const consoleErrors: string[] = [];
+    page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+    page.on('pageerror', e => consoleErrors.push(`PAGEERROR ${e.message}`));
+
+    await page.goto(`${appUrl}/?sceneSource=live-sim&appMode=sinr-experiment`, { waitUntil: 'domcontentloaded' });
+    await assertSinrLiveRender(page, consoleErrors);
   } finally {
     await browser.close();
   }
 }
 
-main().catch(err => {
-  console.error('[sinr-live-render] FAILED:', err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    console.error('[sinr-live-render] FAILED:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}

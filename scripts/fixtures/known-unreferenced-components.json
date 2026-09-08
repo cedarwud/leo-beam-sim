@@ -5,7 +5,6 @@
   "src/showcase/dashboard/AlgorithmDock.tsx",
   "src/ui/DegenerateDataBanner.tsx",
   "src/ui/LaneExperienceBar.tsx",
-  "src/ui/ModqnViewToggle.tsx",
   "src/ui/SinrOffsetExplainer.tsx",
   "src/ui/common/formulaText.tsx",
   "src/ui/homepage/HomepagePaletteTab.tsx",

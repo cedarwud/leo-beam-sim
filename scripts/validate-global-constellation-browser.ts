@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium, type Browser, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 import {
   GLOBAL_CONSTELLATION_BEATS,
@@ -1223,7 +1224,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-global-constellation-browser',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+).catch(error => {
   console.error('[global-constellation-browser] FAILED:', error instanceof Error ? error.message : error);
-  process.exit(1);
+  process.exitCode = 1;
 });

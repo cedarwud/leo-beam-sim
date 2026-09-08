@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 const BASE_URL = process.env.APP_URL ?? 'http://127.0.0.1:3000';
 const VIEWPORTS = [
@@ -7,6 +8,7 @@ const VIEWPORTS = [
   { width: 1280, height: 720 },
 ] as const;
 
+async function main(): Promise<void> {
 const browser = await chromium.launch({
   executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH ?? '/usr/bin/google-chrome',
   args: ['--no-sandbox', '--disable-crashpad', '--disable-breakpad'],
@@ -66,3 +68,13 @@ try {
 } finally {
   await browser.close();
 }
+}
+
+await runBrowserValidator(
+  {
+    validator: 'validate-homepage-sinr-formula-layout-browser',
+    appUrl: BASE_URL,
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+);

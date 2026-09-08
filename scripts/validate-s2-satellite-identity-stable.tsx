@@ -51,7 +51,8 @@ import {
 } from '../src/scene/runtimeFrameStep.ts';
 import { deriveRuntimeVisualSettings } from '../src/scene/runtimeConfig.ts';
 import { sceneGeometryFromProfile } from '../src/scene/SceneGeometry.ts';
-import { satelliteTint, satelliteTintIndex, SATELLITE_TINT_PALETTE } from '../src/constants/beamRoleTokens.ts';
+import { satelliteTintIndex } from '../src/constants/beamRoleTokens.ts';
+import { resolveSatelliteIdentityColor } from '../src/appearance/resolveSatelliteAppearance.ts';
 import { satelliteGlyph } from '../src/viz/glyphs.ts';
 import type { RuntimeConfig } from '../src/scene/types.ts';
 import { captureVizFrame } from '../src/validation/vizFrameProbe.tsx';
@@ -90,11 +91,9 @@ function run(): void {
     uePrimaryAnchorMode: 'observer',
   };
 
-  const PALETTE_LEN = SATELLITE_TINT_PALETTE.length;
-  // satId -> { tints seen, glyphs seen, displayOrders seen }
+  // satId -> { identity-channel colours seen, glyphs seen }
   const tintsBySatId = new Map<string, Set<string>>();
   const glyphsBySatId = new Map<string, Set<string>>();
-  const ordersBySatId = new Map<string, Set<number>>();
   const allTints = new Set<string>();
 
   for (let step = 0; step < STEP_COUNT; step += 1) {
@@ -106,15 +105,13 @@ function run(): void {
     });
     const viz = captureVizFrame({ sim: out.frame, geometry, runtime, beamHopping: profile.beamHopping });
     // viz.displaySats is in NATIVE display order — array index === displayOrder.
-    viz.displaySats.forEach((sat, displayOrder) => {
+    viz.displaySats.forEach(sat => {
       if (!tintsBySatId.has(sat.id)) {
         tintsBySatId.set(sat.id, new Set());
         glyphsBySatId.set(sat.id, new Set());
-        ordersBySatId.set(sat.id, new Set());
       }
       tintsBySatId.get(sat.id)!.add(sat.satelliteTintColor!);
       glyphsBySatId.get(sat.id)!.add(String(sat.satelliteGlyph));
-      ordersBySatId.get(sat.id)!.add(displayOrder);
       allTints.add(sat.satelliteTintColor!);
     });
   }
@@ -128,41 +125,24 @@ function run(): void {
     assert.equal(glyphs.size, 1, `[${GATE}] satellite ${satId} churned glyph: ${[...glyphs].join(', ')}`);
   }
 
-  // 2. NON-VACUOUS — at least one sat appeared at two display orders that differ
-  //    MODULO the palette length: the EXACT condition under which the retired
-  //    `displayOrder % len` mapping would have churned (orders that collide
-  //    mod-len, e.g. {0,4,8}, are a no-op for the old code and prove nothing).
-  let churnExposedSats = 0;
-  let maxOrderSpread = 0;
-  for (const orders of ordersBySatId.values()) {
-    maxOrderSpread = Math.max(maxOrderSpread, orders.size);
-    if (new Set([...orders].map(o => o % PALETTE_LEN)).size >= 2) churnExposedSats += 1;
-  }
-  assert.ok(
-    churnExposedSats > 0,
-    `[${GATE}] vacuous stability: no satellite spanned display orders differing mod ${PALETTE_LEN} (max distinct orders=${maxOrderSpread}) — the retired mapping's churn condition was never exercised`,
-  );
-
-  // 3. PURE — captured tint/glyph == the satId-keyed functions, displayOrder ignored.
+  // 2. IDENTITY-DERIVED — the channel is the satellite identity ladder's
+  // deterministic rung. The old equality to satelliteTint() is deliberately
+  // retired: that four-colour hash is no longer an authority for this channel.
   for (const [satId, tints] of tintsBySatId) {
     const tint = [...tints][0]!;
     const glyph = [...glyphsBySatId.get(satId)!][0]!;
-    assert.equal(tint, satelliteTint(satId), `[${GATE}] ${satId} captured tint ${tint} != satelliteTint(${satId})=${satelliteTint(satId)}`);
+    assert.equal(
+      tint,
+      resolveSatelliteIdentityColor(satId, {}),
+      `[${GATE}] ${satId} captured identity channel ${tint} != resolveSatelliteIdentityColor(${satId})=${resolveSatelliteIdentityColor(satId, {})}`,
+    );
     assert.equal(glyph, String(satelliteGlyph(satelliteTintIndex(satId))), `[${GATE}] ${satId} captured glyph ${glyph} != satelliteGlyph(satelliteTintIndex(${satId}))`);
-    for (const order of [0, 1, 7, 99]) {
-      assert.equal(satelliteTint(satId, order), tint, `[${GATE}] ${satId} satelliteTint not display-order-invariant at order ${order}`);
-      assert.equal(satelliteTintIndex(satId, order), satelliteTintIndex(satId), `[${GATE}] ${satId} satelliteTintIndex not display-order-invariant at order ${order}`);
-      assert.equal(String(satelliteGlyph(satelliteTintIndex(satId, order))), glyph, `[${GATE}] ${satId} satelliteGlyph not display-order-invariant at order ${order}`);
-    }
   }
 
-  // 4. EXERCISED — palette is not mono.
-  assert.ok(allTints.size >= 2, `[${GATE}] palette not exercised: only ${allTints.size} distinct tint(s) across all sats`);
-  for (const tint of allTints) {
-    assert.ok((SATELLITE_TINT_PALETTE as readonly string[]).includes(tint), `[${GATE}] tint ${tint} is not a palette colour`);
-  }
+  // 3. EXERCISED — the identity ladder is not mono.
+  assert.ok(allTints.size >= 2, `[${GATE}] identity ladder not exercised: only ${allTints.size} distinct colour(s) across all sats`);
 
-  console.log(`[${GATE}] PASS — ${tintsBySatId.size} sats tint+glyph stable across ${STEP_COUNT} steps; ${churnExposedSats} sats spanned mod-${PALETTE_LEN} display orders (max ${maxOrderSpread} ranks) yet kept their identity; ${allTints.size}/${SATELLITE_TINT_PALETTE.length} palette colours used`);
+  console.log(`[${GATE}] PASS — ${tintsBySatId.size} sats identity-channel colour+glyph stable across ${STEP_COUNT} steps; channel matches the satellite identity ladder; ${allTints.size} identity colours used`);
 }
 
 run();

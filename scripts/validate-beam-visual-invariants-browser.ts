@@ -19,6 +19,7 @@
  * DATA SOURCE: live-engine (in-browser live SINR cell simulation).
  */
 import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
 
@@ -32,12 +33,7 @@ async function numAttr(page: Page, name: string): Promise<number> {
   return v === null || v === '' ? NaN : Number(v);
 }
 
-async function main(): Promise<void> {
-  const appUrl = process.env.APP_URL ?? process.argv[2] ?? (await detectAppUrl());
-  const browser: Browser = await chromium.launch();
-  try {
-    const page: Page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    await page.goto(`${appUrl}/?sceneSource=live-sim&appMode=sinr-experiment`, { waitUntil: 'domcontentloaded' });
+export async function assertBeamVisualInvariants(page: Page): Promise<void> {
     assert.equal(await page.getAttribute(SHELL, 'data-scene-lane'), 'sinr-live', 'lane resolves to sinr-live');
     await page.waitForSelector(CANVAS, { timeout: 20000, state: 'attached' });
 
@@ -93,12 +89,23 @@ async function main(): Promise<void> {
       `COVERAGE INVARIANT VIOLATED — served cells with no rendered serving cone (every served UE must sit under a drawn beam):\n  ${violations.join('\n  ')}`,
     );
     console.log('[beam-visual-invariants] PASS — every served cell had a rendered serving cone on every sampled frame');
+}
+
+async function main(): Promise<void> {
+  const appUrl = process.env.APP_URL ?? process.argv[2] ?? (await detectAppUrl());
+  const browser: Browser = await chromium.launch();
+  try {
+    const page: Page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(`${appUrl}/?sceneSource=live-sim&appMode=sinr-experiment`, { waitUntil: 'domcontentloaded' });
+    await assertBeamVisualInvariants(page);
   } finally {
     await browser.close();
   }
 }
 
-main().catch(err => {
-  console.error('[beam-visual-invariants] FAILED:', err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    console.error('[beam-visual-invariants] FAILED:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}

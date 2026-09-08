@@ -7,6 +7,7 @@ import {
   resolveBeamVisualEncoding,
 } from '../src/constants/beamRoleTokens.ts';
 import { assertCanvasNonBlank, sampleCanvas, withVc2Browser } from './_vc2-browser-fixture.ts';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 function assertTokenContract(): void {
   assert.equal(BEAM_ROLE_TOKENS.serving.dashed, false, 'serving must stay solid');
@@ -158,7 +159,14 @@ async function main(): Promise<void> {
   }, null, 2));
 }
 
-main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-vc2d-role-pulse-envelopes',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.quickCanvas,
+  },
+  async () => main(),
+).catch(error => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

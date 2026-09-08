@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { satelliteTint, satelliteTintIndex } from '../src/constants/beamRoleTokens.ts';
@@ -949,4 +950,14 @@ async function main(): Promise<void> {
   }, null, 2));
 }
 
-main();
+void runBrowserValidator(
+  {
+    validator: 'validate-vc4a-duel-card',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+).catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

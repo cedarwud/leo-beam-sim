@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 import { BEAM_ROLE_TOKENS, SATELLITE_TINT_PALETTE, satelliteTint, satelliteTintIndex } from '../src/constants/beamRoleTokens.ts';
 import {
   GROUND_RIPPLE_RING_COUNT,
@@ -481,7 +482,14 @@ async function main(): Promise<void> {
   }, null, 2));
 }
 
-main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-vc3d-serving-ripple',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.quickCanvas,
+  },
+  async () => main(),
+).catch(error => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

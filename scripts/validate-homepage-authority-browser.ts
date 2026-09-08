@@ -8,6 +8,7 @@
  * gate.
  */
 import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
 import { chromium, type Page } from '@playwright/test';
 import {
   DEFAULT_WALKER_SCENARIO_DATE,
@@ -924,6 +925,24 @@ async function exercisePublicWalkerScenarioControls(page: Page): Promise<void> {
   await assertSharedWalkerSnapshot(page);
 }
 
+export async function assertHomepageAuthority(
+  page: Page,
+  archivedTleRequests: readonly string[] = [],
+  errors: readonly string[] = [],
+): Promise<void> {
+    await assertWalkerHomepage(page);
+    assert.deepEqual(
+      archivedTleRequests,
+      [],
+      'Walker-only homepage must not start archived-TLE catalog, snapshot, or run-artifact requests',
+    );
+    await assertSharedWalkerSnapshot(page);
+    await exercisePublicSinrControls(page);
+    await exercisePublicWalkerScenarioControls(page);
+    assert.deepEqual(errors, [], 'homepage browser console errors: ' + JSON.stringify(errors));
+    console.log('[homepage-authority-browser] PASS');
+}
+
 async function main(): Promise<void> {
   const browser = await chromium.launch({
     executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH ?? '/usr/bin/google-chrome',
@@ -946,17 +965,7 @@ async function main(): Promise<void> {
     ) archivedTleRequests.push(pathname);
   });
   try {
-    await assertWalkerHomepage(page);
-    assert.deepEqual(
-      archivedTleRequests,
-      [],
-      'Walker-only homepage must not start archived-TLE catalog, snapshot, or run-artifact requests',
-    );
-    await assertSharedWalkerSnapshot(page);
-    await exercisePublicSinrControls(page);
-    await exercisePublicWalkerScenarioControls(page);
-    assert.deepEqual(errors, [], 'homepage browser console errors: ' + JSON.stringify(errors));
-    console.log('[homepage-authority-browser] PASS');
+    await assertHomepageAuthority(page, archivedTleRequests, errors);
   } catch (error) {
     if (errors.length > 0) {
       const message = error instanceof Error ? error.message : String(error);
@@ -969,10 +978,12 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch(error => {
-  console.error(
-    '[homepage-authority-browser] FAILED:',
-    error instanceof Error ? error.stack ?? error.message : error,
-  );
-  process.exitCode = 1;
-});
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void main().catch(error => {
+    console.error(
+      '[homepage-authority-browser] FAILED:',
+      error instanceof Error ? error.stack ?? error.message : error,
+    );
+    process.exitCode = 1;
+  });
+}

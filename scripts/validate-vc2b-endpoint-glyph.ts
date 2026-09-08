@@ -7,6 +7,7 @@ import {
 } from '../src/viz/glyphs.ts';
 import { satelliteTintIndex } from '../src/constants/beamRoleTokens.ts';
 import { assertCanvasNonBlank, sampleCanvas, withVc2Browser } from './_vc2-browser-fixture.ts';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 function assertGlyphMapping(): void {
   const satIds = ['shell-pro-53-P0-S0', 'shell-pro-53-P0-S1', 'shell-pro-53-P0-S2', 'shell-pro-53-P0-S3'];
@@ -114,7 +115,14 @@ async function main(): Promise<void> {
   }, null, 2));
 }
 
-main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-vc2b-endpoint-glyph',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.quickCanvas,
+  },
+  async () => main(),
+).catch(error => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

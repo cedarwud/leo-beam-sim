@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { once } from 'node:events';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { spawn, type ChildProcess } from 'node:child_process';
-import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { chromium, type Browser, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 import {
   clipRect,
@@ -366,57 +364,6 @@ const SNAPSHOT_EXPRESSION = String.raw`(() => {
   };
 })()`;
 
-function delay(milliseconds: number): Promise<void> {
-  return new Promise(resolveDelay => setTimeout(resolveDelay, milliseconds));
-}
-
-async function unusedPort(): Promise<number> {
-  const server = createServer();
-  await new Promise<void>((resolveListen, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => resolveListen());
-  });
-  const address = server.address();
-  assert(address !== null && typeof address !== 'string');
-  const port = address.port;
-  await new Promise<void>((resolveClose, reject) => server.close(error => error ? reject(error) : resolveClose()));
-  return port;
-}
-
-async function startVite(): Promise<{ readonly process: ChildProcess; readonly baseUrl: string }> {
-  const port = await unusedPort();
-  const viteBin = join(REPO_ROOT, 'node_modules/.bin/vite');
-  const child = spawn(viteBin, ['--host', '127.0.0.1', '--port', String(port)], {
-    cwd: REPO_ROOT,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  const baseUrl = `http://127.0.0.1:${port}`;
-  const startedAt = Date.now();
-  let lastError = 'server did not respond';
-  while (Date.now() - startedAt < 15_000) {
-    if (child.exitCode !== null) {
-      throw new Error(`Vite exited before readiness: ${lastError}`);
-    }
-    try {
-      const response = await fetch(`${baseUrl}/visual-contract-fixture.html?case=valid`);
-      if (response.ok) return { process: child, baseUrl };
-      lastError = `HTTP ${response.status}`;
-    } catch (error) {
-      lastError = String(error);
-    }
-    await delay(100);
-  }
-  child.kill('SIGTERM');
-  throw new Error(`Timed out waiting for Vite: ${lastError}`);
-}
-
-async function stopVite(child: ChildProcess): Promise<void> {
-  if (child.exitCode !== null) return;
-  child.kill('SIGTERM');
-  await Promise.race([once(child, 'exit'), delay(2_000)]);
-  if (child.exitCode === null) child.kill('SIGKILL');
-}
-
 function asRect(value: RectPayload): AxisAlignedRect {
   return { left: value.left, top: value.top, right: value.right, bottom: value.bottom };
 }
@@ -770,51 +717,54 @@ function sha256(path: string, bytes: Uint8Array): { readonly path: string; reado
 
 async function main(): Promise<void> {
   await mkdir(OUTPUT_ROOT, { recursive: true });
-  const vite = await startVite();
-  let browser: Browser | null = null;
-  try {
-    browser = await chromium.launch();
+  await runBrowserValidator(
+    {
+      validator: 'validate-visual-contract-browser',
+      appUrl: process.env.APP_URL ?? 'http://127.0.0.1:3000',
+      floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+    },
+    async ({ browser, appUrl }) => {
     const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
     const page = await context.newPage();
-    await page.goto(`${vite.baseUrl}/visual-contract-fixture.html?case=valid`, { waitUntil: 'networkidle' });
+    await page.goto(`${appUrl}/visual-contract-fixture.html?case=valid`, { waitUntil: 'networkidle' });
     const validSnapshot = await collectSnapshot(page);
     const validEvaluation = evaluateVariant(validSnapshot);
     const validInteractionFindings = [
       ...(await verifyKeyboardAndReducedMotion(page)),
       await verifyReadableText(page),
     ];
-    const validResponsive = await verifyResponsive(vite.baseUrl);
+    const validResponsive = await verifyResponsive(appUrl);
     const validFindings = [...validEvaluation.findings, ...validInteractionFindings, validResponsive];
     await page.setViewportSize(VIEWPORT);
-    await page.goto(`${vite.baseUrl}/visual-contract-fixture.html?case=valid`, { waitUntil: 'networkidle' });
+    await page.goto(`${appUrl}/visual-contract-fixture.html?case=valid`, { waitUntil: 'networkidle' });
     await page.screenshot({ path: VALID_SCREENSHOT, fullPage: false });
 
     const badPage = await context.newPage();
-    await badPage.goto(`${vite.baseUrl}/visual-contract-fixture.html?case=bad-overlap`, { waitUntil: 'networkidle' });
+    await badPage.goto(`${appUrl}/visual-contract-fixture.html?case=bad-overlap`, { waitUntil: 'networkidle' });
     const badSnapshot = await collectSnapshot(badPage);
     const badEvaluation = evaluateVariant(badSnapshot);
     await badPage.screenshot({ path: BAD_SCREENSHOT, fullPage: false });
     await badPage.close();
     const badUnmarkedPage = await context.newPage();
-    await badUnmarkedPage.goto(`${vite.baseUrl}/visual-contract-fixture.html?case=bad-unmarked`, { waitUntil: 'networkidle' });
+    await badUnmarkedPage.goto(`${appUrl}/visual-contract-fixture.html?case=bad-unmarked`, { waitUntil: 'networkidle' });
     const badUnmarkedSnapshot = await collectSnapshot(badUnmarkedPage);
     const badUnmarkedEvaluation = evaluateVariant(badUnmarkedSnapshot);
     await badUnmarkedPage.screenshot({ path: BAD_UNMARKED_SCREENSHOT, fullPage: false });
     await badUnmarkedPage.close();
     const badAncestorHiddenPage = await context.newPage();
-    await badAncestorHiddenPage.goto(`${vite.baseUrl}/visual-contract-fixture.html?case=bad-ancestor-hidden`, { waitUntil: 'networkidle' });
+    await badAncestorHiddenPage.goto(`${appUrl}/visual-contract-fixture.html?case=bad-ancestor-hidden`, { waitUntil: 'networkidle' });
     const badAncestorHiddenSnapshot = await collectSnapshot(badAncestorHiddenPage);
     const badAncestorHiddenEvaluation = evaluateVariant(badAncestorHiddenSnapshot);
     await badAncestorHiddenPage.screenshot({ path: BAD_ANCESTOR_HIDDEN_SCREENSHOT, fullPage: false });
     await badAncestorHiddenPage.close();
     const badAllowedDecorationOversizePage = await context.newPage();
-    await badAllowedDecorationOversizePage.goto(`${vite.baseUrl}/visual-contract-fixture.html?case=bad-allowed-decoration-oversize`, { waitUntil: 'networkidle' });
+    await badAllowedDecorationOversizePage.goto(`${appUrl}/visual-contract-fixture.html?case=bad-allowed-decoration-oversize`, { waitUntil: 'networkidle' });
     const badAllowedDecorationOversizeSnapshot = await collectSnapshot(badAllowedDecorationOversizePage);
     const badAllowedDecorationOversizeEvaluation = evaluateVariant(badAllowedDecorationOversizeSnapshot);
     await badAllowedDecorationOversizePage.screenshot({ path: BAD_ALLOWED_DECORATION_OVERSIZE_SCREENSHOT, fullPage: false });
     await badAllowedDecorationOversizePage.close();
     const badAllowedDecorationShadowPage = await context.newPage();
-    await badAllowedDecorationShadowPage.goto(`${vite.baseUrl}/visual-contract-fixture.html?case=bad-allowed-decoration-shadow`, { waitUntil: 'networkidle' });
+    await badAllowedDecorationShadowPage.goto(`${appUrl}/visual-contract-fixture.html?case=bad-allowed-decoration-shadow`, { waitUntil: 'networkidle' });
     const badAllowedDecorationShadowSnapshot = await collectSnapshot(badAllowedDecorationShadowPage);
     const badAllowedDecorationShadowEvaluation = evaluateVariant(badAllowedDecorationShadowSnapshot);
     await badAllowedDecorationShadowPage.screenshot({ path: BAD_ALLOWED_DECORATION_SHADOW_SCREENSHOT, fullPage: false });
@@ -822,7 +772,7 @@ async function main(): Promise<void> {
     await page.close();
     await context.close();
 
-    const routeSmoke = await captureRouteSmoke(vite.baseUrl, browser);
+    const routeSmoke = await captureRouteSmoke(appUrl, browser);
 
     const validPassed = validFindings.every(item => item.passed);
     const badExpectedFailureIds = ['subject-overlay', 'inactive-cues', 'unregistered-painted-surfaces', 'hidden-mounted-nodes'];
@@ -935,10 +885,8 @@ async function main(): Promise<void> {
       await readFile(MACHINE_REPORT),
     );
     console.log(JSON.stringify({ status: 'PASS', valid: validPassed, badExpectedFailuresObserved, badUnmarkedExpectedFailuresObserved, badAncestorHiddenExpectedFailuresObserved, badAllowedDecorationOversizeExpectedFailuresObserved, badAllowedDecorationShadowExpectedFailuresObserved, artifacts, machineReport: machineReportHash }, null, 2));
-  } finally {
-    if (browser !== null) await browser.close();
-    await stopVite(vite.process);
-  }
+      },
+  );
 }
 
 await main();

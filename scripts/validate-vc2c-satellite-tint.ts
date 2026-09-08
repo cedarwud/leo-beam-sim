@@ -5,6 +5,7 @@ import {
 } from '../src/constants/beamRoleTokens.ts';
 import { resolveSatelliteTintedColor } from '../src/viz/SatelliteMarker.tsx';
 import { assertCanvasNonBlank, sampleCanvas, withVc2Browser } from './_vc2-browser-fixture.ts';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 function hexToRgb255(hex: string): [number, number, number] {
   const normalized = hex.replace('#', '');
@@ -86,7 +87,14 @@ async function main(): Promise<void> {
   }, null, 2));
 }
 
-main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-vc2c-satellite-tint',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.multiCanvas,
+  },
+  async () => main(),
+).catch(error => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

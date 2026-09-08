@@ -31,6 +31,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3001';
 const STAGE = process.env.STAGE ?? 'check';
@@ -38,8 +39,7 @@ const OUT_DIR = join('output', 'frontend-consolidation');
 const SHELL = '.leo-app-shell';
 
 function fail(message: string): never {
-  console.error(`FAIL ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }
 
 async function main(): Promise<void> {
@@ -98,7 +98,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-frontend-advanced-drawer-modality-browser',
+    appUrl: APP_URL,
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+).catch(error => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

@@ -21,6 +21,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type Page } from '@playwright/test';
+import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 import {
   BASELINE_THETA_DEG,
@@ -519,7 +520,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
+void runBrowserValidator(
+  {
+    validator: 'validate-scientific-explain-3d-browser',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: MEASURED_BROWSER_GATE_FLOORS_MS.layout,
+  },
+  async () => main(),
+).catch((err) => {
   console.error('[validator] FAILED:', err instanceof Error ? err.message : err);
-  process.exit(1);
+  process.exitCode = 1;
 });

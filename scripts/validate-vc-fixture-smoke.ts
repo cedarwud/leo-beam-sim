@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { chromium, type Browser } from '@playwright/test';
+import { DEFAULT_BROWSER_GATE_FLOOR_MS, runBrowserValidator } from './lib/browser-gate.ts';
 import { bootDeterministicPage } from './_v3-deterministic-fixture.ts';
 
 const DEFAULT_SEED = 1337;
@@ -87,7 +88,14 @@ async function main(): Promise<void> {
   }, null, 2));
 }
 
-main().catch(error => {
+void runBrowserValidator(
+  {
+    validator: 'validate-vc-fixture-smoke',
+    appUrl: process.env.APP_URL ?? process.argv[2],
+    floorMs: DEFAULT_BROWSER_GATE_FLOOR_MS,
+  },
+  async () => main(),
+).catch(error => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });
