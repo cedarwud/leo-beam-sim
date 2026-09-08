@@ -1,26 +1,11 @@
 import type { SinrLiveCellFrame, SinrLiveCellHandoverEvent } from './sinrLiveCellModel';
 
 /**
- * Wall-clock duration of the explicit top-bar handover demonstration.
- *
- * 2500 → 6000 → 8000 (2026-08-06). The cue is not a flash, it is a STORY
- * (`resolveHandoverConeEnvelope`, src/constants/sinrLiveConeStyle.ts): serve → candidate appears → both held
- * while the trigger timer runs → old link released → settled on the new link. At 2.5 s
- * each phase got ~600 ms, which is below the time it takes a student to move their eyes
- * from one cone to the other, so the whole thing read as "two beams blinked at once and
- * stopped" — the exact complaint.
- *
- * The last 2 s are the SETTLED tail (owner call: 結束時間再拉長2秒).
- *
- * This is the MANUAL window only. The envelope it walks is shared with the REAL handover
- * flash, which spends its own, shorter `SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS` on the
- * same shape — the envelope takes `progress01`, so shape and length are independent.
- *
- * NOTE: `src/App.tsx` imports this same const to schedule the button's reset timeout,
- * so the two ends can never disagree. The NAME and the export shape are load-bearing
- * for that import — change the value freely, never the identifier.
+ * Compatibility export for the explicit top-bar demo. Timing and envelope
+ * ownership live in `src/appearance/handoverTimingEnvelope.ts`; this module
+ * owns only the demo event construction below.
  */
-export const MANUAL_HANDOVER_DISPLAY_MS = 8000;
+export { MANUAL_HANDOVER_DISPLAY_MS } from '../appearance/handoverTimingEnvelope';
 
 export interface ManualHandoverDemoOptions {
   /** Snapshot captured when the teaching cue is armed; prevents target drift. */

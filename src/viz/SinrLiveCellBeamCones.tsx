@@ -65,6 +65,10 @@ import {
   resolveBeamBaseCenter,
   buildObliqueBeamConePositions,
 } from '../appearance/coneGeometryContract';
+import {
+  handoverRoleForSide,
+  resolveHandoverSide,
+} from '../appearance/handoverAppearanceModifiers';
 export { buildObliqueBeamConePositions } from '../appearance/coneGeometryContract';
 import type { WorldPoint } from './CellFootprints';
 
@@ -280,10 +284,13 @@ export function resolveSinrLiveConeRole(input: {
  * remain legible through scene fog, while contextual fans stay atmospheric.
  */
 export function resolveSinrLiveConeFog(role: SinrLiveConeRole): boolean {
+  if (resolveHandoverSide({ role }) !== null) return false;
   switch (role) {
     case 'hero':
     case 'candidatePrimary':
     case 'pulse':
+    // The side was already resolved above. These cases keep the role union
+    // exhaustive without re-deciding which side the role represents.
     case 'handoverSource':
     case 'handoverTarget':
     case 'triggered':
@@ -313,7 +320,7 @@ export function shouldDimSinrLiveConeRole(
   if (!dimShallowCones) return false;
   if (role === 'candidatePrimary') return false;
   if (role === 'hero') return heroExemptFromElevationDim === false;
-  if (role === 'pulse' || role === 'handoverSource' || role === 'handoverTarget' || role === 'triggered') return false;
+  if (role === 'pulse' || resolveHandoverSide({ role }) !== null || role === 'triggered') return false;
   return true;
 }
 
@@ -746,7 +753,7 @@ export function resolveSinrLiveHandoverPulseConeItems(
       opacity,
       renderKey: `${eventKey}-to`,
       kind: event.kind,
-      role: 'handoverTarget',
+      role: handoverRoleForSide('target'),
     });
     if (event.fromSatId !== null && event.fromCellId !== null && sideDraws(event, event.fromSatId)) {
       const from = buildCellConeItem({
@@ -762,7 +769,7 @@ export function resolveSinrLiveHandoverPulseConeItems(
         opacity,
         renderKey: `${eventKey}-from`,
         kind: event.kind,
-        role: 'handoverSource',
+        role: handoverRoleForSide('source'),
       });
     }
   }
@@ -1378,8 +1385,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             || beamId === props.primaryServingBeamId);
         const isPrimaryIdentityBeam = isPrimaryServing
           || role === 'candidatePrimary'
-          || role === 'handoverSource'
-          || role === 'handoverTarget'
+          || resolveHandoverSide({ role }) !== null
           || role === 'triggered';
         const color = homepageIdentity
           ? homepageSatelliteColorForBeam(cone.satId, beamId, {

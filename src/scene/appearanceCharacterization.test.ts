@@ -45,7 +45,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { resolveHandoverSide } from '../appearance/handoverAppearanceModifiers';
+import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
 import { colorForServingBeam } from '../constants/servingColour';
+import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
+import { buildCandidatePresentationPlan } from '../engine/handover/candidatePresentationPlan';
+import type { HandoverDecisionFrame } from '../engine/handover/candidateDecisionContract';
 import { Vector3 } from 'three';
 
 const observed: string[] = [];
@@ -61,6 +65,9 @@ import {
   resolveTriggeredIntraConeItems,
 } from './handoverConeResolvers';
 import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
+import { mosaicColorForServingBeam } from './sinrServingMosaic';
+import { resolvedBeamId } from '../appearance/beamAppearanceContract';
+import { buildMultiCandidateScenePresentation } from './multiCandidateScenePresentation';
 import type {
   CellServingRecord,
   IlluminatedCellBeam,
@@ -1029,6 +1036,84 @@ test('one beam in one situation has one colour, whichever lane draws it', () => 
     [],
     `the same beam is rendered in more than one colour:\n  ${divergences.join('\n  ')}`,
   );
+});
+
+// These timing-immune checks stop at the identity-authority path. They do not
+// assert that every rendered cone equals colorForServingBeam: semantic-role
+// surfaces and accepted/homepage presentation projections deliberately apply
+// their own display treatment downstream.
+test('a valid resolved beam identity maps to its canonical identity colour', () => {
+  const identity = { satId: 'sat-serving', cellId: 0, beamId: 1 };
+  const beamId = resolvedBeamId(identity, cellId => cellId + 1);
+
+  assert.equal(
+    resolveBaseIdentityColor(identity.satId, beamId, {}),
+    '#bee561',
+  );
+});
+
+test('the same (satellite, beam) resolves to ONE colour across the identity-authority surfaces', () => {
+  const satelliteId = 'sat-serving';
+  const beamId = 1;
+  const surfaceColours = [
+    colorForServingBeam(satelliteId, beamId).markerColor,
+    mosaicColorForServingBeam(satelliteId, beamId).markerColor,
+    resolveBaseIdentityColor(satelliteId, beamId, {}),
+  ];
+
+  assert.equal(new Set(surfaceColours).size, 1, `identity surfaces diverged: ${surfaceColours.join(' vs ')}`);
+});
+
+test('the published evaluation rail and scene agree for the same (satellite, beam)', () => {
+  // CandidatePresentationPlan is the authority for the full evaluation rail:
+  // CandidateSetPanel publishes link.beamIdentity.cssColor, and the scene
+  // consumes the same plan through buildMultiCandidateScenePresentation.
+  // This deliberately excludes HomepageBeamRail: its homepage-only
+  // homepageSatelliteColorForBeam projection remaps compact-family hues and
+  // is allowed to differ from this non-homepage shared-plan surface.
+  const decision: HandoverDecisionFrame = {
+    episodeId: 'appearance-characterization-rail',
+    sourceFrameId: 'appearance-characterization-frame',
+    simTimeMs: 0,
+    phase: 'monitoring',
+    serving: { satelliteId: 'sat-serving', beamId: 1 },
+    opportunities: [],
+    states: [],
+    provisionalLeader: null,
+    selectedTarget: null,
+    selectedKind: null,
+    selectionHoldSec: 0,
+    selectionHoldRequiredSec: 1,
+    mode: 'sinr-offset',
+    recentCommit: null,
+  };
+  const plan = buildCandidatePresentationPlan(decision);
+  const scene = buildMultiCandidateScenePresentation(plan);
+  const railLink = plan.displayedLinks.find(link => (
+    link.satelliteId === decision.serving?.satelliteId
+    && link.beamId === decision.serving?.beamId
+  ));
+  const sceneInstruction = scene.instructions.find(instruction => (
+    instruction.satelliteId === decision.serving?.satelliteId
+    && instruction.beamId === decision.serving?.beamId
+  ));
+
+  assert.ok(railLink?.beamIdentity, 'the published rail link must carry beam identity');
+  assert.ok(sceneInstruction?.identity.beam, 'the scene instruction must carry beam identity');
+  assert.equal(
+    railLink.beamIdentity.cssColor,
+    sceneInstruction.identity.beam.cssColor,
+    'the same published satellite/beam identity must not diverge between rail and scene',
+  );
+});
+
+test('a VALID identity never resolves to the neutral fallback HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR', () => {
+  // This checks only the pure identity resolver. Cone mount role colours are
+  // intentionally outside this invariant because they are semantic-role
+  // presentation, not identity authority.
+  const resolvedColour = resolveBaseIdentityColor('sat-serving', 1, {});
+
+  assert.notEqual(resolvedColour, HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR);
 });
 
 /**

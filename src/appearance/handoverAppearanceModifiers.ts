@@ -117,6 +117,18 @@ export const HANDOVER_TRANSITION_OPACITY_OVERLAY: {
 };
 
 /**
+ * The canonical render-role label for a resolved side.
+ *
+ * Geometry producers still know the domain fact that their `from` item is the
+ * source and their `to` item is the target. They must not each re-spell the
+ * renderer vocabulary, though: keeping this adapter here means every producer
+ * publishes the same role that {@link resolveHandoverSide} consumes.
+ */
+export function handoverRoleForSide(side: HandoverSide): 'handoverSource' | 'handoverTarget' {
+  return side === 'source' ? 'handoverSource' : 'handoverTarget';
+}
+
+/**
  * Which side of a handover an item is on — resolved ONCE, here.
  *
  * Accepts the three signals that used to be read independently at different

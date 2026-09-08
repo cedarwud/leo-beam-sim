@@ -52,7 +52,10 @@ async function attr(page: Page, selector: string, name: string): Promise<string 
 
 async function main(): Promise<void> {
   const appUrl = process.env.APP_URL ?? process.argv[2] ?? (await detectAppUrl());
-  const browser: Browser = await chromium.launch();
+    const browser: Browser = await chromium.launch({
+      executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH ?? '/usr/bin/google-chrome',
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-crashpad', '--disable-breakpad'],
+    });
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const consoleErrors: string[] = [];

@@ -59,9 +59,9 @@ import {
 } from '../constants/servingColour';
 import {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
-  homepageSatelliteBaseColor,
   homepageSatelliteColorForBeam,
 } from '../homepage/controller/homepageSatelliteVisualIdentity';
+import { resolveHomepageSatelliteIdentityColor } from '../appearance/satelliteIdentityPalette';
 import {
   homepageBeamEeKey,
   homepageBeamEeNormalizedByKey,
@@ -1991,12 +1991,10 @@ function SceneRenderContent({
   const resolveSceneSatelliteColorSources = useMemo((): SatelliteIdentitySources => ({
     // Rung 1. Present only while the homepage controller owns identity; absent
     // on every other surface.
-    homepageColorFor: homepageVisualIdentity
-      ? satelliteId => homepageSatelliteBaseColor(
-        satelliteId,
-        homepageIdentityPaletteIndexBySatelliteId?.get(satelliteId) ?? null,
-      )
-      : undefined,
+    homepageColorFor: satelliteId => resolveHomepageSatelliteIdentityColor(
+      satelliteId,
+      homepageVisualIdentity,
+    ),
     // Rung 2. `resolveAcceptedSatelliteIdentityColor` reports a miss by handing back
     // whatever fallback it was given. Giving it the empty string allows detecting a
     // miss without fabricating a sentinel colour.
@@ -2008,7 +2006,7 @@ function SceneRenderContent({
       );
       return published.length > 0 ? published : undefined;
     },
-  }), [acceptedHandoverPresentation, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
+  }), [acceptedHandoverPresentation, homepageVisualIdentity]);
   const resolveSceneSatelliteColor = useCallback((
     satelliteId: string,
   ): string => resolveSatelliteIdentityColor(

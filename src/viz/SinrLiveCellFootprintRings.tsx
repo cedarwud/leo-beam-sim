@@ -55,6 +55,7 @@ import {
   type SinrLiveConeColorAuthority,
   type SinrLiveConeMountLayer,
 } from './SinrLiveCellBeamCones';
+import { resolveHandoverSide } from '../appearance/handoverAppearanceModifiers';
 import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 
 export interface SinrLiveCellFootprintRingsProps {
@@ -167,8 +168,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
         });
         const isPrimaryIdentityBeam = isPrimaryServing
           || itemRole === 'candidatePrimary'
-          || itemRole === 'handoverSource'
-          || itemRole === 'handoverTarget'
+          || resolveHandoverSide({ role: itemRole }) !== null
           || itemRole === 'triggered';
         const homepageBeamColor = homepageIdentity
           ? homepageSatelliteColorForBeam(item.satId, beamId, {
@@ -240,7 +240,7 @@ export function SinrLiveCellFootprintRings(props: SinrLiveCellFootprintRingsProp
                 toneMapped={false}
               />
             </mesh>
-            {homepageIdentity && itemRole === 'handoverTarget' ? (
+            {homepageIdentity && resolveHandoverSide({ role: itemRole }) === 'target' ? (
               <mesh
                 name={`sinr-live-cell-footprint-target-highlight-${item.cellId}-${beamId}`}
                 renderOrder={16}

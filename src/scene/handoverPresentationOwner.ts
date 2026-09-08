@@ -8,8 +8,11 @@
  * TTT, orbit propagation, or serving selection.
  */
 
-import { INTER_HANDOVER_CINEMA_PHASE_END } from './handoverDisplayIsolation';
-import { HANDOVER_CONE_PHASE_END } from '../constants/sinrLiveConeStyle';
+import { resolveHandoverPresentationPhase } from '../appearance/handoverTimingEnvelope';
+
+// Compatibility export for scene consumers. The phase decision itself is
+// owned by the pure appearance timing contract.
+export { resolveHandoverPresentationPhase } from '../appearance/handoverTimingEnvelope';
 
 export type HandoverPresentationKind = 'intra' | 'inter';
 export type HandoverPresentationSource = 'walker' | 'tle' | 'manual' | 'cinema';
@@ -126,26 +129,6 @@ function clampProgress(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;
   if (value >= 1) return 1;
   return value;
-}
-
-/**
- * The inter lead-in keeps the serving link alone for one second of its
- * six-second story. The same shared phase boundaries drive the cone envelope,
- * badge phase, and HO Slow state.
- */
-export function resolveHandoverPresentationPhase(
-  kind: HandoverPresentationKind,
-  progress01: number,
-): HandoverPresentationPhase {
-  const progress = clampProgress(progress01);
-  const phases = kind === 'inter'
-    ? INTER_HANDOVER_CINEMA_PHASE_END
-    : HANDOVER_CONE_PHASE_END;
-  if (progress < phases.serving) return 'serving';
-  if (progress < phases.measuring) return 'measuring';
-  if (progress < phases.holding) return 'holding';
-  if (progress < phases.releasing) return 'releasing';
-  return 'settled';
 }
 
 export function createIdleHandoverPresentationView(): HandoverPresentationView {

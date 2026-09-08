@@ -82,9 +82,12 @@ import {
 } from './ui/HandoverEventRail';
 import { HOMEPAGE_NATURAL_HANDOVER_STORY_PRIMARY_JOG_KM } from './homepage/controller/homepageStoryScenario';
 import {
-  HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
   HOMEPAGE_TEACHING_PLAYBACK_SPEED,
 } from './homepage/controller/homepageHandoverTiming';
+import {
+  HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
+  MANUAL_HANDOVER_DISPLAY_MS,
+} from './appearance/handoverTimingEnvelope';
 import {
   HandoverTeachingCaption,
   HandoverTeachingRail,
@@ -142,7 +145,6 @@ import { AdvancedSetupDrawer } from './ui/AdvancedSetupDrawer';
 import { SinrLiveDisplayDrawer } from './ui/SinrLiveDisplayDrawer';
 import { SinrLiveQuickControls } from './ui/SinrLiveQuickControls';
 import { DEFAULT_BEAM_DISPLAY_SPEC } from './scene/beamDisplaySpec';
-import { MANUAL_HANDOVER_DISPLAY_MS } from './scene/manualHandoverDemo';
 import { ClaimBoundaryBanner } from './ui/ClaimBoundaryBanner';
 import {
   ArtifactSourceBadge,

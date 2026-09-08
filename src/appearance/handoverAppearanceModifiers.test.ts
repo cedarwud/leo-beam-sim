@@ -16,6 +16,7 @@ import {
   handoverModifierFor,
   resolveHandoverSide,
 } from './handoverAppearanceModifiers';
+import { resolveBaseIdentityColor } from './resolveBeamAppearance';
 
 test('intra shades both sides and inter shades neither', () => {
   assert.equal(HANDOVER_APPEARANCE_MODIFIERS.intra.source.shade, 'source');
@@ -97,4 +98,47 @@ test('a colour with no hue is passed through rather than given one', () => {
 test('an unreadable colour is returned untouched instead of guessed at', () => {
   assert.equal(applyHandoverShade('', HANDOVER_APPEARANCE_MODIFIERS.intra.source), '');
   assert.equal(applyHandoverShade('rebeccapurple', HANDOVER_APPEARANCE_MODIFIERS.intra.source), 'rebeccapurple');
+});
+
+test('the beam identity ladder preserves today values across its source grid', () => {
+  const sources = {
+    planColorFor: () => '#plan',
+    homepageColorFor: (_satId: string, _beamId: number, isServingOrCandidate: boolean) =>
+      isServingOrCandidate ? '#homepage-serving' : '#homepage-ambient',
+    acceptedColorFor: () => '#accepted',
+  };
+
+  assert.equal(
+    resolveBaseIdentityColor('shell-a-P0-S3', 2, sources),
+    '#plan',
+    'comparison plan outranks homepage and accepted colours',
+  );
+  assert.equal(
+    resolveBaseIdentityColor('shell-a-P0-S3', 2, {
+      homepageColorFor: sources.homepageColorFor,
+      acceptedColorFor: sources.acceptedColorFor,
+    }, { isServingOrCandidate: false }),
+    '#homepage-ambient',
+  );
+  assert.equal(
+    resolveBaseIdentityColor('shell-a-P0-S3', 2, {
+      homepageColorFor: sources.homepageColorFor,
+      acceptedColorFor: sources.acceptedColorFor,
+    }, { isServingOrCandidate: true }),
+    '#homepage-serving',
+  );
+  assert.equal(
+    resolveBaseIdentityColor('sat-serving', 1, {
+      acceptedColorFor: sources.acceptedColorFor,
+    }),
+    '#accepted',
+    'accepted snapshot is used when homepage has no source',
+  );
+  assert.equal(
+    resolveBaseIdentityColor('sat-serving', 1, {}),
+    '#bee561',
+    'deterministic identity is the final valid-id rung',
+  );
+  assert.equal(resolveBaseIdentityColor('', 1, {}), '#94a3b8');
+  assert.equal(resolveBaseIdentityColor('sat-serving', Number.NaN, {}), '#94a3b8');
 });

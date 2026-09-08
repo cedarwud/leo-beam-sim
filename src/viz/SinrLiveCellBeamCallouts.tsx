@@ -27,6 +27,7 @@ import { SINR_LIVE_CALLOUT_Y_LIFT } from '../constants/sinrLiveConeStyle';
 import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 import { formatHomepageEe } from '../homepage/controller/homepageMetricFormatters';
 import { formatEngineering } from '../ui/signal-tuning/formatters';
+import { resolveHandoverSide } from '../appearance/handoverAppearanceModifiers';
 import type { SinrLiveCellBeamConeRenderItem } from './SinrLiveCellBeamCones';
 import type { AngleAwareFormulaFrame } from '../engine/signal/types';
 
@@ -146,7 +147,7 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
           : null;
         const isPrimaryIdentity = isPrimary
           || item.role === 'candidatePrimary'
-          || item.role === 'handoverTarget'
+          || resolveHandoverSide(item) === 'target'
           || item.role === 'triggered';
         const renderColor = homepageVisualIdentity
           ? homepageSatelliteColorForBeam(item.satId, beamId, {

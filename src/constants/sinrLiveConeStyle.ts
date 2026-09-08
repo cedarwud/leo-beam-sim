@@ -204,7 +204,8 @@ export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.95;
  * beam", so a truncated story degrades to "handovers are coming fast", never back to the
  * two-beams-blinking-in-lockstep bug this replaced.
  */
-export const SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS = 5000;
+// Compatibility export: timing is owned by `src/appearance/handoverTimingEnvelope.ts`.
+export { SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS } from '../appearance/handoverTimingEnvelope';
 /** Peak (age-0) opacity of the triggered flash — dominates the ambient pulse (0.8 peak, fast sim-time fade). */
 export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.95;
 /** OLD (handed-off) cell colour — the serving YELLOW it currently is, fading out as the beam
@@ -217,110 +218,17 @@ export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = INTRA_HANDOVER_SOURCE_COLOR;
  * target-colour resolver. */
 export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = INTRA_HANDOVER_TARGET_COLOR;
 
-// ---------------------------------------------------------------------------
-// The SHARED handover cone envelope (2026-08-06).
-//
-// This used to be `resolveManualHandoverConeEnvelope` in `src/scene/manualHandoverDemo.ts`
-// and only the top-bar demonstration button walked it; the REAL handover flash handed both
-// of its cones ONE shared decay, so they lit together and died together. Owner: 「現在場景
-// 中央上方出現 intra handover 的 badge 時，根本就沒有動畫阿，現在場上的 intra/inter handover
-// 的呈現都要跟 show intra/inter 的效果一樣，2個波束要呈現出兩個交接的效果」. Both paths now
-// walk this one envelope, so the name lost its `Manual` and the function moved here — the
-// module that already owns "how bright is this cone", next to the sustain budget the real
-// path measures its progress against.
-//
-// The envelope's only input is `progress01`, so the SHAPE is shared while the LENGTH is
-// each caller's own: the manual demo spends `MANUAL_HANDOVER_DISPLAY_MS` (8 s, sim paused)
-// walking it, the real flash spends {@link SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS} (5 s,
-// mid-playback).
-// ---------------------------------------------------------------------------
-
-/**
- * The five teaching phases, as fractions of the caller's own window. Each boundary is
- * where a phase ENDS; the last phase (`settled`) runs from `releasing` to 1.
- *
- * | phase     | progress    | old beam   | new beam  | what the viewer is being shown |
- * |-----------|-------------|------------|-----------|--------------------------------|
- * | serving   | 0–18.75%    | full       | absent    | this is the current link |
- * | measuring | 18.75–37.5% | full       | fading in | a candidate appears, measurement starts |
- * | holding   | 37.5–56.25% | full       | full      | trigger timer running, both links up |
- * | releasing | 56.25–75%   | fading out | full      | handover done, old link released |
- * | settled   | 75–100%     | absent     | full      | one beam again, on the new link |
- *
- * The `settled` tail is a quarter of the window and is load-bearing: when `from` only
- * reached alpha 0 at progress exactly 1.0, the fade finished on the very last frame and
- * the "one beam again" state was never actually on screen — the story read as single →
- * double and then stopped, missing its third act.
- */
-export const HANDOVER_CONE_PHASE_END = {
-  serving: 0.1875,
-  measuring: 0.375,
-  holding: 0.5625,
-  releasing: 0.75,
-} as const;
-
-export type HandoverConePhase = 'serving' | 'measuring' | 'holding' | 'releasing' | 'settled';
-
-export interface HandoverConeEnvelope {
-  /** Alpha for the OLD (from) cone. 0 → the renderer emits no old cone. */
-  readonly fromOpacity: number;
-  /** Alpha for the NEW (to) cone. 0 → the renderer emits no new cone. */
-  readonly toOpacity: number;
-  readonly phase: HandoverConePhase;
-}
-
-/** Hermite smoothstep, clamped — a fade-in/out with no visible corner at either end. */
-function smoothstep01(t: number): number {
-  if (!Number.isFinite(t) || t <= 0) return 0;
-  if (t >= 1) return 1;
-  return t * t * (3 - 2 * t);
-}
-
-/**
- * (progress01, peakOpacity) → the two cone alphas + the phase label.
- *
- * Each cone owns its OWN alpha: the new beam ramps in over `measuring` and the old beam
- * only lets go over `releasing`, so the OVERLAP (`holding`) is visible as a deliberate
- * held state rather than being the whole event. The ramps are smoothstep, not linear, so
- * a fade has no hard start/stop edge.
- *
- * TIME-HONESTY — read this before believing the picture. On the REAL handover path this
- * envelope is a RETROSPECTIVE RE-ENACTMENT, not a live broadcast. The cell model classifies
- * a handover only AFTER it has already happened, so the flash starts at the moment the
- * event is first observed and then narrates "candidate appears → both held → old released"
- * forwards from there. The candidate did not appear at t+1 s of the animation; it appeared
- * some time BEFORE t=0. The ordering is the teaching truth (this is the sequence a handover
- * goes through), the timing is not the wall-clock truth. The MANUAL demonstration button is
- * the same shape and is not even tied to a real event. Neither path may be read as a live
- * timeline, and neither decides anything: this is display-only (Rule#6) — it returns two
- * alphas and changes no serving / SINR / handover state.
- *
- * @param progress01 elapsed / total, clamped internally to [0, 1].
- * @param peakOpacity the fully-on alpha (the caller's spec peak).
- */
-export function resolveHandoverConeEnvelope(
-  progress01: number,
-  peakOpacity: number,
-): HandoverConeEnvelope {
-  const peak = Number.isFinite(peakOpacity) ? Math.max(0, peakOpacity) : 0;
-  const p = !Number.isFinite(progress01) ? 0 : Math.min(1, Math.max(0, progress01));
-  const { serving, measuring, holding, releasing } = HANDOVER_CONE_PHASE_END;
-  // to: absent until `serving` ends, smooth in across the `measuring` window, then full.
-  const toOpacity = peak * smoothstep01((p - serving) / (measuring - serving));
-  // from: full until `holding` ends, then smooth out across the `releasing` window —
-  // which closes at `releasing`, not at 1.0, so the settled tail is real screen time.
-  const fromOpacity = peak * (1 - smoothstep01((p - holding) / (releasing - holding)));
-  const phase: HandoverConePhase = p < serving
-    ? 'serving'
-    : p < measuring
-      ? 'measuring'
-      : p < holding
-        ? 'holding'
-        : p < releasing
-          ? 'releasing'
-          : 'settled';
-  return { fromOpacity, toOpacity, phase };
-}
+// Compatibility exports: the handover timing/envelope decision is owned by
+// `src/appearance/handoverTimingEnvelope.ts`; existing renderer adapters keep
+// their import paths so the two worker-owned renderers need no edit here.
+export {
+  HANDOVER_CONE_PHASE_END,
+  resolveHandoverConeEnvelope,
+} from '../appearance/handoverTimingEnvelope';
+export type {
+  HandoverConeEnvelope,
+  HandoverConePhase,
+} from '../appearance/handoverTimingEnvelope';
 
 /**
  * SEMANTIC palette (docs/sinr-live-semantic-beam-colour-sdd.md). The PRIMARY serving

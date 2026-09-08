@@ -31,6 +31,19 @@ TEST="src/scene/appearanceCharacterization.test.ts"
 MODIFIERS="src/appearance/handoverAppearanceModifiers.ts"
 SHADE="src/appearance/intraHandoverShade.ts"
 SERVING="src/constants/servingColour.ts"
+VISIBILITY="src/appearance/beamVisibilityContract.ts"
+GEOMETRY="src/appearance/coneGeometryContract.ts"
+TIMING="src/appearance/handoverTimingEnvelope.ts"
+MARKERS="src/scene/renderedLiveSatelliteMarkers.ts"
+RAIL="src/homepage/controller/railProjection.ts"
+FINAL_COLOUR="src/viz/MultiCandidateBeamScene.tsx"
+SHADE_MAPPING="src/viz/HandoverLinks.tsx"
+
+VISIBILITY_TEST="src/appearance/beamVisibilityCharacterization.test.ts"
+GEOMETRY_TEST="src/appearance/coneGeometryCharacterization.test.ts"
+TIMING_TEST="src/appearance/handoverTimingEnvelopeCharacterization.test.ts"
+SINK_TEST="src/appearance/sinkAppearanceCharacterization.test.ts"
+RAIL_TEST="src/appearance/railPresentationCharacterization.test.ts"
 
 total_drills=0
 converged_count=0
@@ -46,7 +59,7 @@ unexpected_pass_prompts=()
 
 # How many rows of the pinned photograph differ. 0 means the edit was inert.
 changed_rows() {
-  node --import tsx/esm --test "$TEST" 2>&1 \
+  node --import tsx/esm --test "$1" 2>&1 \
     | grep -cE "^\s*[+-]\s+'" || true
 }
 
@@ -67,7 +80,7 @@ tree_fingerprint() {
 }
 
 is_green() {
-  node --import tsx/esm --test "$TEST" 2>&1 | grep -qE "^ℹ fail 0$"
+  node --import tsx/esm --test "$1" 2>&1 | grep -qE "^ℹ fail 0$"
 }
 
 # Refuse only on a TRACKED file with unstaged edits — those are work the drill
@@ -102,13 +115,13 @@ drill() {
     expect="$1"
     shift
   fi
-  local target="$1" prompt="$2" old="$3" new="$4"
+  local target="$1" prompt="$2" old="$3" new="$4" drill_test="${5:-$TEST}"
 
   total_drills=$((total_drills + 1))
   echo "────────────────────────────────────────────────────────────"
   echo "PROMPT: $prompt [$expect]"
 
-  if ! is_green; then
+  if ! is_green "$drill_test"; then
     echo "  ✗ SKIP — characterization test is not green before the drill;"
     echo "           a drill against a red baseline proves nothing."
     mismatches=$((mismatches + 1))
@@ -148,7 +161,7 @@ drill() {
   # make the metric useless exactly when it is most needed.
   local touched rows outcome
   touched=$(comm -13 <(printf '%s\n' "$before_tree") <(tree_fingerprint) | wc -l)
-  rows=$(changed_rows)
+  rows=$(changed_rows "$drill_test")
 
   echo "  files touched to make the change : $touched"
   echo "  characterization rows that moved : $rows"
@@ -242,9 +255,48 @@ drill expect_fail "$SERVING" "換掉衛星身分色的調色盤" \
 "  { hueDegrees: 48, baseLightness: 0.60 },  // gold" \
 "  { hueDegrees: 52, baseLightness: 0.60 },  // gold"
 
-drill expect_fail "$MODIFIERS" "改 handover source/target 的判定" \
+drill expect_pass "$MODIFIERS" "改 handover source/target 的判定" \
 "  if (renderKey.endsWith('-from')) return 'source';" \
 "  if (renderKey.endsWith('-from')) return 'target';"
+
+# ==================== Newly covered decisions ====================
+
+drill expect_pass "$VISIBILITY" "改哪些波束/錐體要顯示在畫面上，最近一次換手的 target 也要保留" \
+"  addBeamIdentity(identities, input.recentToBeam);" \
+"  addBeamIdentity(identities, input.recentFromBeam);" \
+"$VISIBILITY_TEST"
+
+drill expect_pass "$GEOMETRY" "把波束錐體的寬度放大一點，讓底面投影更容易讀" \
+"export const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1;" \
+"export const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1.05;" \
+"$GEOMETRY_TEST"
+
+drill expect_pass "$TIMING" "換手動畫的 serving 階段再多留一點時間" \
+"  serving: 0.1875," \
+"  serving: 0.20," \
+"$TIMING_TEST"
+
+drill expect_pass "$MARKERS" "把衛星標記的 fallback 身分色換成另一個穩定色" \
+"  return resolveSatelliteIdentityColor(satelliteId, {});" \
+"  return resolveSatelliteIdentityColor(satelliteId + '-marker', {});" \
+"$SINK_TEST"
+
+drill expect_pass "$RAIL" "候選軌有換手故事時要保留那一組候選卡片" \
+"  const shouldRetainCandidateRoster = handoverStory !== null;" \
+"  const shouldRetainCandidateRoster = handoverStory === null;" \
+"$RAIL_TEST"
+
+drill expect_fail "$FINAL_COLOUR" "改一支波束最終顏色的 precedence 順序" \
+"  const coneColor = homepageColor?.color
+    ?? source.identity.beam?.threeColor
+    ?? source.identity.satellite.threeColor;" \
+"  const coneColor = source.identity.beam?.threeColor
+    ?? homepageColor?.color
+    ?? source.identity.satellite.threeColor;"
+
+drill expect_fail "$SHADE_MAPPING" "改 beam id 怎麼對應到深淺階，handover link 也要跟著換" \
+"    : colorForServingBeam(satId, beam.beamId).markerColor;" \
+"    : colorForServingBeam(satId, beam.beamId + 1).markerColor;"
 
 echo "────────────────────────────────────────────────────────────"
 echo "APPEARANCE CONVERGENCE FRONTIER SUMMARY"

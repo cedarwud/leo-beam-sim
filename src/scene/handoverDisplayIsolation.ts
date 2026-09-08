@@ -1,7 +1,14 @@
-import {
-  resolveHandoverConeEnvelope,
-  type HandoverConeEnvelope,
-} from '../constants/sinrLiveConeStyle';
+// Compatibility exports: the timing/envelope decision itself lives in the
+// pure appearance owner. This scene module retains only display isolation.
+export {
+  INTER_HANDOVER_CINEMA_DISPLAY_MS,
+  INTER_HANDOVER_CINEMA_PHASE_END,
+  INTRA_HANDOVER_CINEMA_DISPLAY_MS,
+  resolveHandoverCinemaDisplayMs,
+  resolveHandoverCinemaEnvelope,
+  resolveInterHandoverCinemaEnvelope,
+} from '../appearance/handoverTimingEnvelope';
+export type { HandoverConeEnvelope } from '../appearance/handoverTimingEnvelope';
 
 export interface HandoverDisplayIsolationState {
   readonly active: boolean;
@@ -60,11 +67,6 @@ export function selectHandoverEventsForDisplay<T extends HandoverDisplayEventRef
   return latest === null ? [] : [latest];
 }
 
-/** Keep intra's existing 8 s teaching envelope unchanged. */
-export const INTRA_HANDOVER_CINEMA_DISPLAY_MS = 8000;
-/** Inter's six-second story keeps a one-second serving-only lead-in. */
-export const INTER_HANDOVER_CINEMA_DISPLAY_MS = 6000;
-
 /**
  * React may receive the seek-landed callback one render before the newly
  * reseated simulation frame is visible to MainScene.  Keep the cinema parked
@@ -73,69 +75,8 @@ export const INTER_HANDOVER_CINEMA_DISPLAY_MS = 6000;
  */
 export const HANDOVER_CINEMA_SEEK_LANDING_TOLERANCE_SEC = 1;
 
-/**
- * Inter's six-second story is allocated as approximately 1.0 s serving-only,
- * 1.55 s candidate arrival, 0.91 s overlap, 1.45 s source release, and 1.09 s
- * settled. The time removed from the old 2.7 s lead-in is distributed across
- * the later stages instead of shortening the handover story.
- */
-export const INTER_HANDOVER_CINEMA_PHASE_END = {
-  serving: 1 / 6,
-  measuring: 14 / 33,
-  holding: 19 / 33,
-  releasing: 9 / 11,
-} as const;
-
-function interSmoothstep01(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  if (value >= 1) return 1;
-  return value * value * (3 - 2 * value);
-}
-
-/**
- * Inter-only handover display envelope. This is a presentation mapping over
- * the already-selected cinema candidate; it never changes the live frame.
- */
-export function resolveInterHandoverCinemaEnvelope(
-  progress01: number,
-  peakOpacity: number,
-): HandoverConeEnvelope {
-  const peak = Number.isFinite(peakOpacity) ? Math.max(0, peakOpacity) : 0;
-  const progress = !Number.isFinite(progress01) ? 0 : Math.min(1, Math.max(0, progress01));
-  const { serving, measuring, holding, releasing } = INTER_HANDOVER_CINEMA_PHASE_END;
-  const toOpacity = peak * interSmoothstep01((progress - serving) / (measuring - serving));
-  const fromOpacity = peak * (1 - interSmoothstep01((progress - holding) / (releasing - holding)));
-  const phase: HandoverConeEnvelope['phase'] = progress < serving
-    ? 'serving'
-    : progress < measuring
-      ? 'measuring'
-      : progress < holding
-        ? 'holding'
-        : progress < releasing
-          ? 'releasing'
-          : 'settled';
-  return { fromOpacity, toOpacity, phase };
-}
-
-/** Select the inter-specific display envelope while preserving intra's existing shape. */
-export function resolveHandoverCinemaEnvelope(
-  kind: 'intra' | 'inter' | null,
-  progress01: number,
-  peakOpacity: number,
-): HandoverConeEnvelope {
-  return kind === 'inter'
-    ? resolveInterHandoverCinemaEnvelope(progress01, peakOpacity)
-    : resolveHandoverConeEnvelope(progress01, peakOpacity);
-}
-
 export function shouldSuppressInterSeekFade(filter: HandoverCinemaArmFilter): boolean {
   return filter === 'inter';
-}
-
-export function resolveHandoverCinemaDisplayMs(kind: 'intra' | 'inter' | null): number {
-  return kind === 'inter'
-    ? INTER_HANDOVER_CINEMA_DISPLAY_MS
-    : INTRA_HANDOVER_CINEMA_DISPLAY_MS;
 }
 
 /**

@@ -1,5 +1,6 @@
 import type { Vector3 } from 'three';
 import {
+  handoverRoleForSide,
   HANDOVER_TRANSITION_OPACITY_OVERLAY,
 } from '../appearance/handoverAppearanceModifiers';
 import type {
@@ -74,7 +75,7 @@ function pairSideColor(input: {
       // Never read. `paintConeItem` decides the colour; this slot exists only
       // because a real render item carries one.
       color: '',
-      role: input.side === 'source' ? 'handoverSource' : 'handoverTarget',
+      role: handoverRoleForSide(input.side),
     },
     {
       resolveIdentityColor: input.resolveIdentityColor,

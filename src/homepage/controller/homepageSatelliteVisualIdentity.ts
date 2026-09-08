@@ -3,16 +3,27 @@
  *
  * This is a presentation adapter, not a second serving/beam authority.  It
  * consumes the already-resolved satellite identity slot from the existing
- * serving-colour allocator, compresses that identity into a small homepage
- * palette, and varies only saturation/lightness for beam roles and shades.
- * Keeping this seam under
- * the homepage controller makes the later SceneProjection/RailProjection
- * integration use the same colour function without changing other routes.
+ * shared identity-palette authority, and varies only saturation/lightness for
+ * beam roles and shades. The palette and its 16→6 projection live in
+ * `src/appearance/satelliteIdentityPalette.ts`; this controller owns only the
+ * homepage's beam/EE projection after that hue decision.
  */
 
-import { servingIdentityPaletteIndex } from '../../constants/servingColour';
+import {
+  HOMEPAGE_SATELLITE_COLOR_COUNT,
+  HOMEPAGE_SATELLITE_HUE_FAMILIES,
+  HOMEPAGE_SATELLITE_PALETTE_REFERENCE_IDS,
+  homepageSatelliteBaseColor,
+  homepageSatellitePaletteIndex,
+} from '../../appearance/satelliteIdentityPalette';
 
-export const HOMEPAGE_SATELLITE_COLOR_COUNT = 6 as const;
+export {
+  HOMEPAGE_SATELLITE_COLOR_COUNT,
+  HOMEPAGE_SATELLITE_HUE_FAMILIES,
+  HOMEPAGE_SATELLITE_PALETTE_REFERENCE_IDS,
+  homepageSatelliteBaseColor,
+  homepageSatellitePaletteIndex,
+} from '../../appearance/satelliteIdentityPalette';
 
 /*
  * There is deliberately no fixed bits/J -> 0..1 EE scale here.
@@ -29,56 +40,6 @@ export const HOMEPAGE_SATELLITE_COLOR_COUNT = 6 as const;
  * `homepageBeamEeProjection.ts`. Reintroducing an absolute scale here would
  * recreate both the duplication and the flattening.
  */
-
-/**
- * Six restrained hue families are enough for the compact homepage stage. A
- * satellite may share a family with another satellite; its ID/glyph remains
- * the identity cue. No beam role is allowed to choose a different hue.
- */
-export const HOMEPAGE_SATELLITE_HUE_FAMILIES = Object.freeze([
-  // Keep the six families visibly separated on the hue wheel. The old 32° /
-  // 42° pair was only ten degrees apart, so an inter-satellite handover could
-  // read as one amber colour after blending. These anchors avoid red and
-  // violet while leaving blue as the only blue/purple-adjacent family.
-  Object.freeze({ name: 'gold', hueDegrees: 55 }),
-  Object.freeze({ name: 'blue', hueDegrees: 225 }),
-  Object.freeze({ name: 'green', hueDegrees: 115 }),
-  Object.freeze({ name: 'cyan', hueDegrees: 190 }),
-  // Keep the blue family, but remove the adjacent purple/violet family so
-  // the homepage never presents blue and purple as competing identities.
-  Object.freeze({ name: 'teal', hueDegrees: 155 }),
-  Object.freeze({ name: 'orange', hueDegrees: 25 }),
-] as const);
-
-/**
- * Lookup-only IDs for the palette catalogues. The IDs are deliberately passed
- * through the same source-slot allocator as runtime satellites; they are not
- * simulation entities and never enter a decision, snapshot, or scene join.
- */
-export const HOMEPAGE_SATELLITE_PALETTE_REFERENCE_IDS = Object.freeze([
-  'homepage-palette-ref-6',
-  'homepage-palette-ref-3',
-  'homepage-palette-ref-2',
-  'homepage-palette-ref-4',
-  'homepage-palette-ref-1',
-  'homepage-palette-ref-0',
-] as const);
-
-/**
- * Compress the existing 16-slot identity allocator without reintroducing its
- * neighbouring near-colours. The source allocator's Walker order is already
- * an interleaved contrast sequence; this table keeps that order spread across
- * the six homepage families instead of using `slot % 6` (which made adjacent
- * identities collapse onto the same gold/cyan family). The explicit sequence
- * also keeps the representative inter-satellite source/target pairs separated
- * after the 16-slot palette is compressed. The source slot remains the stable
- * identity authority, so the result is independent of render order and
- * unchanged by beam overlap or handover role.
- */
-const HOMEPAGE_SOURCE_SLOT_TO_FAMILY = Object.freeze([
-  2, 5, 1, 5, 2, 4, 2, 3,
-  2, 5, 5, 1, 1, 4, 0, 3,
-] as const);
 
 /** Context fallback lightness; keep ambient beams pale without washing to white. */
 export const HOMEPAGE_SATELLITE_BEAM_LIGHTNESS_LEVELS = Object.freeze([
@@ -180,46 +141,6 @@ export function homepageEeVisualOpacity(
 ): number {
   if (typeof eeNormalized !== 'number' || !Number.isFinite(eeNormalized)) return 1;
   return 0.30 + 0.70 * Math.max(0, Math.min(1, eeNormalized));
-}
-
-/**
- * Stable compact palette slot derived from the existing identity allocator.
- *
- * Unconditionally derives the slot from `servingIdentityPaletteIndex(satelliteId)`.
- * The `_identityPaletteIndex` parameter is accepted and deliberately ignored,
- * because a hue that changes with the caller is the bug, and removing it from
- * every call site is the follow-up.
- */
-export function homepageSatellitePaletteIndex(
-  satelliteId: string,
-  _identityPaletteIndex?: number | null,
-): number {
-  const sourceSlot = positiveModulo(
-    servingIdentityPaletteIndex(satelliteId),
-    HOMEPAGE_SOURCE_SLOT_TO_FAMILY.length,
-  );
-  return HOMEPAGE_SOURCE_SLOT_TO_FAMILY[sourceSlot]!;
-}
-
-/**
- * One satellite's base hue token, independent of beam and render order.
- *
- * Unconditionally derives the slot from `servingIdentityPaletteIndex(satelliteId)`.
- * The `_identityPaletteIndex` parameter is accepted and deliberately ignored,
- * because a hue that changes with the caller is the bug, and removing it from
- * every call site is the follow-up.
- */
-export function homepageSatelliteBaseColor(
-  satelliteId: string,
-  _identityPaletteIndex?: number | null,
-): string {
-  const paletteIndex = homepageSatellitePaletteIndex(satelliteId);
-  const family = HOMEPAGE_SATELLITE_HUE_FAMILIES[paletteIndex]!;
-  return hslToHex(
-    family.hueDegrees,
-    HOMEPAGE_SATELLITE_BASE_SATURATION,
-    HOMEPAGE_SATELLITE_BASE_LIGHTNESS,
-  );
 }
 
 /**

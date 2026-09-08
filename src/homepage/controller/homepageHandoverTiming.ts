@@ -1,18 +1,12 @@
 /**
- * Homepage-only teaching envelopes for the visible handover story.
- *
- * This changes only how long the accepted event remains readable on `/`.
- * Handover qualification, TTT, commit, and the simulation clock are not
- * changed by this constant.
+ * Compatibility exports for homepage wiring. The display-window decision is
+ * owned by `src/appearance/handoverTimingEnvelope.ts`; this controller keeps
+ * only the homepage playback-speed policy below.
  */
-export const HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS = 16_000;
-
-/**
- * Inter-satellite handover needs a shorter, but still narratable, envelope:
- * the bottom rail must have time to move from the serving satellite to the
- * candidate satellite's seven-beam roster before the scene settles.
- */
-export const HOMEPAGE_INTER_HANDOVER_DISPLAY_MS = 12_000;
+export {
+  HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
+  HOMEPAGE_INTER_HANDOVER_DISPLAY_MS,
+} from '../../appearance/handoverTimingEnvelope';
 
 /**
  * Playback rate the two teaching buttons pin while a story is armed.
