@@ -137,11 +137,14 @@ const sinrMarkup = markup('sinr');
 const powerMarkup = markup('power');
 const controlsMarkup = `${sinrMarkup}${powerMarkup}`;
 const renderedInputKeys = dataInputKeys(controlsMarkup);
-const selectedSinrAndPowerKeys = new Set([
-  'minimumRateBps',
-  ...VISUAL_LAB_INPUT_DEFINITIONS.filter((definition) => definition.group === 'power').map((definition) => definition.key),
-]);
-assert.equal(renderedInputKeys.length, selectedSinrAndPowerKeys.size, 'only the selected SINR term and Power controls are rendered');
+// The default SINR power term and the Power module are formula/readout
+// surfaces; retired QoS and power-ledger inputs are not editable here.
+const selectedSinrAndPowerKeys = new Set<string>();
+assert.equal(
+  renderedInputKeys.length,
+  selectedSinrAndPowerKeys.size,
+  'default SINR power and Power surfaces render no retired editable controls',
+);
 for (const key of renderedInputKeys) assert.equal(selectedSinrAndPowerKeys.has(key), true, `${key} belongs to the visible control owners`);
 for (const key of selectedSinrAndPowerKeys) assert.equal(renderedInputKeys.filter((renderedKey) => renderedKey === key).length, 1, `${key} has exactly one control card`);
 assert.equal((controlsMarkup.match(/type="range"/g) ?? []).length, selectedSinrAndPowerKeys.size);
