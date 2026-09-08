@@ -214,6 +214,35 @@ export const DECISIONS: readonly Decision[] = [
       { kind: 'symbol', name: 'formatHomepageBeamCellLabel', because: 'formats public B1..Bn beam identity labels rendered on the candidate rail cards' },
     ],
   },
+  {
+    id: 'satellite-surface-appearance',
+    prompt: '改衛星 marker / orbit trail 怎麼跟著身分色退讓，replay 也要一致',
+    probes: [
+      { kind: 'symbol', name: 'SATELLITE_SURFACE_MODIFIERS', because: 'the marker/orbit-trail surface table that shades one identity colour' },
+      { kind: 'symbol', name: 'paleSatelliteSurfaceColor', because: 'the hue-preserving trail paling transform' },
+      { kind: 'symbol', name: 'resolveSatelliteSurfaceColor', because: 'the single identity-then-surface resolver used by live/replay markers and orbit trails' },
+      { kind: 'symbol', name: 'SATELLITE_TRAIL_LIGHTNESS_FLOOR', because: 'lower bound of the orbit-trail lightness band' },
+      { kind: 'symbol', name: 'SATELLITE_TRAIL_LIGHTNESS_CEILING', because: 'upper bound of the orbit-trail lightness band' },
+      { kind: 'symbol', name: 'SATELLITE_TRAIL_SATURATION_FACTOR', because: 'orbit-trail desaturation factor' },
+    ],
+  },
+  {
+    id: 'mounted-cone-identity-rule',
+    prompt: '改首頁 mounted cone / callout 哪些 beam 算主要身分，以及換手色要不要套用',
+    probes: [
+      { kind: 'symbol', name: 'PRIMARY_IDENTITY_BEAM_RULES', because: 'the per-surface rule for which mounted beam counts as primary identity' },
+      { kind: 'symbol', name: 'resolvePrimaryIdentityBeam', because: 'the single primary-beam predicate shared by cone and callout mounts' },
+      { kind: 'symbol', name: 'MOUNT_APPLIES_HANDOVER_SHADE', because: 'the explicit homepage decision for whether mounted cones apply the handover shade' },
+      { kind: 'symbol', name: 'resolveMountedConeColor', because: 'the final mounted cone/callout colour resolver' },
+    ],
+  },
+  {
+    id: 'handover-overlay-identity-source',
+    prompt: '改比較疊層開著時 handover cone 用哪個 identity source、哪一側套明暗',
+    probes: [
+      { kind: 'symbol', name: 'handoverConePaintContext', because: 'chooses overlay rung-0 identity and lane-owned handover context' },
+    ],
+  },
 ];
 
 interface Site {
