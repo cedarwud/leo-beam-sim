@@ -97,6 +97,13 @@ import { SKY_DOME_V_RADIUS } from '../../src/scene/sceneScale.ts';
 import { NTPU_CONFIG, resolveInscribedPaperUserArea } from '../../src/config/ntpu.config.ts';
 import { resolveSinrLiveCellPlacementById } from '../../src/scene/sinrLiveCellPlacement.ts';
 import {
+  resolveCandidateConeItems,
+  selectCandidateConeGeometry,
+} from '../../src/scene/candidateConeItems.ts';
+import { resolveCandidateBeamConeItems } from '../../src/viz/SinrLiveCellBeamCones.tsx';
+import { resolveHandoverMarkerSatelliteIds } from '../../src/scene/handoverMarkerSatelliteIds.ts';
+import { resolveRenderedLiveSatelliteMarkers } from '../../src/scene/renderedLiveSatelliteMarkers.ts';
+import {
   cellLinkBudgetBeamId,
   type SinrLiveCellFrame,
   type SinrLiveCellHandoverEvent,
@@ -151,7 +158,10 @@ import {
   resolveBaseIdentityColorWithRung,
   type BaseIdentityColorResolution,
 } from '../../src/appearance/resolveBeamAppearance.ts';
-import { homepageSatelliteColorForBeam } from '../../src/homepage/controller/homepageSatelliteVisualIdentity.ts';
+import {
+  homepageBeamIdentityLookup,
+  homepageSatelliteColorForBeam,
+} from '../../src/homepage/controller/homepageSatelliteVisualIdentity.ts';
 import { resolveAcceptedBeamIdentityColor } from '../../src/scene/acceptedBeamIdentityColor.ts';
 import { resolveMultiCandidateComparisonPolicy } from '../../src/scene/multiCandidateSceneDisplayPolicy.ts';
 import { resolveAuthorityPresentationCandidate } from '../../src/scene/handoverPresentationDisplayPolicy.ts';
@@ -160,6 +170,28 @@ import {
   resolveHandoverAuthorityJoin,
 } from '../../src/scene/handoverAuthorityJoin.ts';
 import { resolveMultiCandidateBeamColors } from '../../src/scene/multiCandidateBeamColors.ts';
+import { resolveSatelliteSurfaceColor } from '../../src/appearance/satelliteSurfaceModifiers.ts';
+import {
+  formatHomepageBeamCellLabel,
+  HOMEPAGE_EE_SCALE_MAX_BITS_PER_JOULE,
+  resolveRailServingEeOpacity,
+} from '../../src/appearance/candidateRailPresentation.ts';
+import {
+  resolveMountedConeColor,
+  resolvePrimaryIdentityBeam,
+} from '../../src/appearance/mountedConeAppearance.ts';
+import { eeThresholdKbitPerJouleToBitsPerJoule } from '../../src/engine/handover/eeThreshold.ts';
+import {
+  resolveIntraGroundShockwaveColors,
+  sourceOpacityFor,
+  sourceScaleFor,
+  targetOpacityFor,
+  targetScaleFor,
+} from '../../src/viz/IntraGroundShockwave.tsx';
+import { resolveSatelliteTintedColor } from '../../src/viz/SatelliteMarker.tsx';
+import { resolveOrbitTrailPlans } from '../../src/viz/OrbitTrail.tsx';
+import { resolveVisualLabBeamRadius } from '../../src/appearance/coneGeometryContract.ts';
+import { DEFAULT_MAX_DISPLAY_SATS } from '../../src/scene/beamVizModel.ts';
 import {
   resolveSinrLiveConeDisplayStyle,
   resolveSinrLiveConeRole,
@@ -204,10 +236,14 @@ const MS_PER_SIM_SEC = 1000;
 
 type Surface = 'homepage' | 'scene';
 
+type TimelineItemLayer = SinrLiveConeMountLayer | 'marker' | 'orbitTrail' | 'shockwave';
+type TimelineItemKind = 'cone' | 'marker' | 'orbitTrail' | 'shockwave' | 'candidateGeometry' | 'candidateRail';
+
 interface TimelineItem {
   /** Stable identity for diffing across seconds. */
   readonly id: string;
-  readonly layer: SinrLiveConeMountLayer;
+  readonly kind: TimelineItemKind;
+  readonly layer: TimelineItemLayer;
   readonly color: string;
   /** The role-table colour before the item-identity authority is applied. */
   readonly roleColor: string;
@@ -218,22 +254,29 @@ interface TimelineItem {
    * only direct evidence the intra shading path was exercised.
    */
   readonly identityColor: string;
-  readonly identityRung: BaseIdentityColorResolution['rung'];
+  readonly identityRung: BaseIdentityColorResolution['rung'] | 'marker' | 'surface' | 'shockwave';
   /** The exact frame-relative EE input used by the homepage colour projection. */
   readonly eeNormalized: number | null;
   readonly shaded: boolean;
   readonly opacity: number;
   readonly role: string;
   readonly satId: string;
-  readonly cellId: number;
-  readonly beamId: number;
-  readonly frequencyIndex: number;
+  readonly cellId: number | null;
+  readonly beamId: number | null;
+  readonly frequencyIndex: number | null;
   readonly serving: boolean;
   readonly displayOnly: boolean;
   readonly renderKey: string | null;
-  readonly apex: WorldPoint;
-  readonly baseCenter: WorldPoint;
-  readonly baseRadiusWorld: number;
+  readonly apex: WorldPoint | null;
+  readonly baseCenter: WorldPoint | null;
+  readonly baseRadiusWorld: number | null;
+  readonly bodyColor: string | null;
+  readonly scale: number | null;
+  /** The colour the real React cone mount hands to its mesh. */
+  readonly mountedColor: string | null;
+  /** Candidate-rail-only projections; null for scene/marker/surface items. */
+  readonly railLabel: string | null;
+  readonly railOpacity: number | null;
 }
 
 interface TimelineEvent {
@@ -296,12 +339,15 @@ interface TimelineSecond {
 // Ordering. One total order, used everywhere, so two runs and two seconds are
 // comparable line by line.
 // ---------------------------------------------------------------------------
-const LAYER_ORDER: Record<SinrLiveConeMountLayer, number> = {
+const LAYER_ORDER: Record<TimelineItemLayer, number> = {
   nonServing: 0,
   serving: 1,
   candidate: 2,
   pulse: 3,
   triggered: 4,
+  marker: 5,
+  orbitTrail: 6,
+  shockwave: 7,
 };
 
 function compareText(left: string, right: string): number {
@@ -310,11 +356,13 @@ function compareText(left: string, right: string): number {
 
 function compareItems(left: TimelineItem, right: TimelineItem): number {
   return LAYER_ORDER[left.layer] - LAYER_ORDER[right.layer]
+    || compareText(left.kind, right.kind)
     || compareText(left.satId, right.satId)
-    || left.cellId - right.cellId
-    || left.beamId - right.beamId
+    || (left.cellId ?? -1) - (right.cellId ?? -1)
+    || (left.beamId ?? -1) - (right.beamId ?? -1)
     || compareText(left.role, right.role)
-    || compareText(left.renderKey ?? '', right.renderKey ?? '');
+    || compareText(left.renderKey ?? '', right.renderKey ?? '')
+    || compareText(left.id, right.id);
 }
 
 function num(value: number, digits = 4): string {
@@ -325,6 +373,14 @@ function num(value: number, digits = 4): string {
 
 function point(p: WorldPoint): string {
   return `(${num(p.x, 3)},${num(p.y, 3)},${num(p.z, 3)})`;
+}
+
+function optionalPoint(p: WorldPoint | null): string {
+  return p === null ? '-' : point(p);
+}
+
+function optionalNum(value: number | null, digits = 4): string {
+  return value === null ? '-' : num(value, digits);
 }
 
 // ---------------------------------------------------------------------------
@@ -625,6 +681,7 @@ function createDriver(options: DriverOptions): Driver {
       beamId,
       isServingOrCandidate,
     ).color;
+    const homepageIdentityColorFor = homepageBeamIdentityLookup(homepageEeByKey);
     // `resolveMultiCandidateBeamColors` is the production authority-map
     // constructor. Its values are then supplied as the pair lane's rung-0
     // source, exactly as MainScene supplies `beamColorBySatelliteBeam`.
@@ -935,6 +992,138 @@ function createDriver(options: DriverOptions): Driver {
       },
     });
 
+    const terms = primary?.servingLinkSample?.angleAware as
+      | { energyEfficiencyBitsPerJoule?: number; homepageDemoEeBitsPerJoule?: number }
+      | undefined;
+    const decisionEe = typeof terms?.energyEfficiencyBitsPerJoule === 'number'
+      && Number.isFinite(terms.energyEfficiencyBitsPerJoule)
+      ? terms.energyEfficiencyBitsPerJoule
+      : null;
+    const displayEe = typeof terms?.homepageDemoEeBitsPerJoule === 'number'
+      && Number.isFinite(terms.homepageDemoEeBitsPerJoule)
+      ? terms.homepageDemoEeBitsPerJoule
+      : null;
+
+    // Candidate cones are a separate production lane.  MainScene reaches the
+    // same pure resolver through useSinrLiveCandidateBeamConeItems; keep the
+    // selection/presentation inputs here identical to that call site so a
+    // candidate colour, opacity, cap, or role mutation changes this timeline.
+    const candidateSelection = selectCandidateConeGeometry({
+      presentedHandoverPairCandidate: displayPolicy.presentedHandoverPairCandidate,
+      showCinemaCandidateFan: displayPolicy.handoverDisplayIsolation.showCinemaCandidateFan,
+      renderedCandidateSatelliteId: primary?.pendingTargetSatId ?? null,
+      primaryServingRecord: primary === undefined
+        ? null
+        : { servingSatId: primary.servingSatId, cellId: primary.cellId },
+      candidateDisplayCellFrame: cellFrame,
+      cinemaInterDisplayCellFrame: cellFrame,
+      normalSatelliteWorldById: satelliteWorldById,
+      cinemaSatelliteWorldById: satelliteWorldById,
+      placementByCellId,
+      frequencyReuse: profile.beams.frequencyReuse,
+      maxFanCones: CANDIDATE_BEAM_COUNT,
+    });
+    const { isInterPresentation: candidateIsInterPresentation, ...candidateGeometry } = candidateSelection;
+    const routedCandidateItems = resolveCandidateConeItems({
+      geometry: candidateGeometry,
+      presentation: {
+        candidateComparisonSceneActive: comparisonPolicy?.centralOverlayActive ?? false,
+        renderCandidateField: geometryPolicy.renderCandidateField,
+        homepageVisualIdentity,
+        showSinrLiveCellBeams: true,
+        hideCandidateFan: displayPolicy.handoverDisplayIsolation.hideCandidateFan,
+        showCinemaCandidateFan: displayPolicy.handoverDisplayIsolation.showCinemaCandidateFan,
+        isInterPresentation: candidateIsInterPresentation,
+        handoverPhase: envelope.phase,
+        handoverToOpacity: envelope.toOpacity,
+        candidateFanConeOpacity: DEFAULT_BEAM_DISPLAY_SPEC.candidateFanConeOpacity,
+        triggeredIntraPeakOpacity: DEFAULT_BEAM_DISPLAY_SPEC.triggeredIntraPeakOpacity,
+        targetRole: presentation.targetRole,
+        acceptedHandoverPresentation: acceptedSnapshot,
+        restrictHomepageBeamItems: restrict,
+      },
+    });
+    const fallbackCandidateSatId = displayPolicy.presentedHandoverPairCandidate?.toSatId
+      ?? presentation.event?.to.satId
+      ?? primary?.pendingTargetSatId
+      ?? null;
+    const fallbackCandidateServingSatId = displayPolicy.presentedHandoverPairCandidate?.fromSatId
+      ?? presentation.event?.from.satId
+      ?? primary?.servingSatId
+      ?? null;
+    const fallbackCandidateCellId = displayPolicy.presentedHandoverPairCandidate?.toCellId
+      ?? presentation.event?.to.cellId
+      ?? primary?.cellId
+      ?? null;
+    const directCandidateItems = resolveCandidateBeamConeItems({
+      pendingTargetSatId: fallbackCandidateSatId,
+      servingSatId: fallbackCandidateServingSatId,
+      primaryCellId: fallbackCandidateCellId,
+      placementByCellId,
+      satelliteWorldById,
+      frequencyReuse: profile.beams.frequencyReuse,
+      cellFrame,
+      maxFanCones: DEFAULT_BEAM_DISPLAY_SPEC.candidateFanMaxCones,
+    });
+    // The routed scene adapter owns the normal lane. During the normalized
+    // handover pair the adapter intentionally suppresses the legacy fan, but
+    // the same production candidate resolver still owns the candidate readout;
+    // retain it in the audit plan so its role/colour/cap decisions remain
+    // observable at the exact pair seconds too.
+    const paintedDirectCandidateItems = paintConeItems(directCandidateItems, {
+      resolveIdentityColor,
+      prominence: 'candidate',
+    });
+    const candidateItems = [
+      ...routedCandidateItems,
+      ...paintedDirectCandidateItems,
+    ].filter((item, index, all) => all.findIndex(candidate => (
+      candidate.satId === item.satId
+      && candidate.cellId === item.cellId
+      && candidate.beamId === item.beamId
+      && candidate.role === item.role
+    )) === index);
+
+    // The teaching Visual-Lab candidate primary uses the same production
+    // geometry contract, including its candidate-primary radius ratio.  It is
+    // emitted only when the real candidate lane supplied a primary item; no
+    // synthetic candidate or alternate geometry is invented for empty frames.
+    const candidatePrimary = candidateItems.find(item => item.role === 'candidatePrimary');
+    const candidateGeometryItems: TimelineItem[] = candidatePrimary === undefined
+      ? []
+      : [{
+        id: `candidateGeometry|${candidatePrimary.satId}|${candidatePrimary.cellId}|${candidatePrimary.beamId ?? cellLinkBudgetBeamId(candidatePrimary.cellId)}`,
+        kind: 'candidateGeometry',
+        layer: 'candidate',
+        color: candidatePrimary.color,
+        roleColor: candidatePrimary.color,
+        identityColor: candidatePrimary.color,
+        identityRung: 'surface',
+        eeNormalized: null,
+        shaded: false,
+        opacity: candidatePrimary.opacity ?? 1,
+        role: 'candidatePrimary',
+        satId: candidatePrimary.satId,
+        cellId: candidatePrimary.cellId,
+        beamId: candidatePrimary.beamId ?? cellLinkBudgetBeamId(candidatePrimary.cellId),
+        frequencyIndex: candidatePrimary.frequencyIndex,
+        serving: false,
+        displayOnly: candidatePrimary.displayOnly === true,
+        renderKey: candidatePrimary.renderKey ?? null,
+        apex: { x: candidatePrimary.apex.x, y: candidatePrimary.apex.y, z: candidatePrimary.apex.z },
+        baseCenter: { x: candidatePrimary.baseCenter.x, y: candidatePrimary.baseCenter.y, z: candidatePrimary.baseCenter.z },
+        baseRadiusWorld: resolveVisualLabBeamRadius({
+          active: false,
+          role: 'candidatePrimary',
+          cellRadiusWorld: placementByCellId.get(candidatePrimary.cellId)?.radiusWorld ?? 0.8,
+        }),
+        bodyColor: null,
+        scale: null,
+        mountedColor: null,
+        railLabel: null,
+        railOpacity: null,
+      }];
+
     // The `isServingOrCandidate` flag each lane passes to the identity ladder is
     // NOT derivable from the finished item — the pair lanes decide their colour
     // before the item exists, and they pass `false` on cones whose `serving`
@@ -957,6 +1146,8 @@ function createDriver(options: DriverOptions): Driver {
       ['nonServing', nonServingItems, () => true, resolveIdentityAppearance],
       // servingConeItems.ts:65 paints with prominence 'serving' -> true.
       ['serving', servingItems, () => true, resolveIdentityAppearance],
+      // useSinrLiveCandidateBeamConeItems -> resolveCandidateConeItems.
+      ['candidate', candidateItems, () => true, resolveIdentityAppearance],
       // handoverConeResolvers.ts pulse lane: `isServingOrCandidate: item.kind === 'intra'`.
       ['pulse', pulseItems, item => item.kind === 'intra', resolveIdentityAppearance],
       // handoverConeResolvers.ts cinema pair lane: `isServingOrCandidate: false`.
@@ -966,32 +1157,344 @@ function createDriver(options: DriverOptions): Driver {
         displayPolicy.presentedHandoverPairCandidate?.kind === 'intra'
       ), resolveAuthorityIdentityAppearance],
     ];
-    const items = lanes
-      .flatMap(([layer, laneItems, laneServingFlag, laneIdentityAppearance]) => laneItems.map(
-        item => finalizeItem(
-          layer,
-          item,
-          placementByCellId,
-          palette,
-          hero,
-          laneIdentityAppearance,
-          (satId, beamId) => homepageEeByKey?.get(`${satId}:${beamId}`) ?? null,
-          laneServingFlag(item),
-        ),
-      ))
-      .sort(compareItems);
 
-    const terms = primary?.servingLinkSample?.angleAware as
-      | { energyEfficiencyBitsPerJoule?: number; homepageDemoEeBitsPerJoule?: number }
-      | undefined;
-    const decisionEe = typeof terms?.energyEfficiencyBitsPerJoule === 'number'
-      && Number.isFinite(terms.energyEfficiencyBitsPerJoule)
-      ? terms.energyEfficiencyBitsPerJoule
+    const coneItems = lanes.flatMap(([layer, laneItems, laneServingFlag, laneIdentityAppearance]) => laneItems.map(
+      item => finalizeItem(
+        layer,
+        item,
+        placementByCellId,
+        palette,
+        hero,
+        laneIdentityAppearance,
+        (satId, beamId) => homepageEeByKey?.get(`${satId}:${beamId}`) ?? null,
+        laneServingFlag(item),
+        homepageVisualIdentity,
+        homepageVisualIdentity ? homepageIdentityColorFor : undefined,
+      ),
+    ));
+
+    // The candidate rail is a DOM projection, but its public beam label and
+    // serving EE opacity are pure production authorities. Keep those values
+    // as line-oriented audit items so a rail-only mutation is still visible
+    // without pretending that a browser layout is part of this timeline.
+    const railOpacity = homepageVisualIdentity
+      ? resolveRailServingEeOpacity(
+        displayEe,
+        eeThresholdKbitPerJouleToBitsPerJoule(DEFAULT_EE_THRESHOLD_KBIT_PER_JOULE),
+        0,
+        HOMEPAGE_EE_SCALE_MAX_BITS_PER_JOULE,
+      )
       : null;
-    const displayEe = typeof terms?.homepageDemoEeBitsPerJoule === 'number'
-      && Number.isFinite(terms.homepageDemoEeBitsPerJoule)
-      ? terms.homepageDemoEeBitsPerJoule
-      : null;
+    const railAnchor = coneItems.find(item => item.role === 'candidatePrimary')
+      ?? coneItems.find(item => item.role === 'hero')
+      ?? null;
+    const railPair = displayPolicy.presentedHandoverPairCandidate;
+    const railPairItems: TimelineItem[] = railPair === null || railAnchor === null
+      ? []
+      : [
+        { satId: railPair.fromSatId, cellId: railPair.fromCellId, beamId: railPair.fromBeamId },
+        { satId: railPair.toSatId, cellId: railPair.toCellId, beamId: railPair.toBeamId },
+      ].map((endpoint, index) => {
+        const beamId = endpoint.beamId ?? cellLinkBudgetBeamId(endpoint.cellId ?? 0);
+        const source = coneItems.find(item => item.satId === endpoint.satId && item.beamId === beamId)
+          ?? railAnchor;
+        return {
+          ...source,
+          id: `candidateRail|endpoint|${endpoint.satId}|${beamId}|${index}`,
+          kind: 'candidateRail' as const,
+          layer: 'candidate' as const,
+          cellId: endpoint.cellId,
+          beamId,
+          shaded: false,
+          opacity: railOpacity ?? 0,
+          role: 'candidate-rail-endpoint',
+          serving: false,
+          displayOnly: true,
+          renderKey: `candidate-rail-endpoint-${index}`,
+          apex: null,
+          baseCenter: null,
+          baseRadiusWorld: null,
+          bodyColor: null,
+          scale: null,
+          mountedColor: null,
+          railLabel: formatHomepageBeamCellLabel(beamId),
+          railOpacity,
+        };
+      });
+    const candidateRailItems: TimelineItem[] = homepageVisualIdentity && railAnchor !== null
+      ? [
+        {
+          id: `candidateRail|serving|${railAnchor.satId}|${railAnchor.beamId ?? cellLinkBudgetBeamId(railAnchor.cellId ?? 0)}`,
+          kind: 'candidateRail',
+          layer: 'candidate',
+          color: railAnchor.color,
+          roleColor: railAnchor.roleColor,
+          identityColor: railAnchor.identityColor,
+          identityRung: 'surface',
+          eeNormalized: railAnchor.eeNormalized,
+          shaded: false,
+          opacity: railOpacity ?? 0,
+          role: 'candidate-rail-serving',
+          satId: railAnchor.satId,
+          cellId: railAnchor.cellId,
+          beamId: railAnchor.beamId,
+          frequencyIndex: railAnchor.frequencyIndex,
+          serving: true,
+          displayOnly: true,
+          renderKey: 'candidate-rail-serving',
+          apex: null,
+          baseCenter: null,
+          baseRadiusWorld: null,
+          bodyColor: null,
+          scale: null,
+          mountedColor: null,
+          railLabel: formatHomepageBeamCellLabel(railAnchor.beamId ?? cellLinkBudgetBeamId(railAnchor.cellId ?? 0)),
+          railOpacity,
+        },
+        ...coneItems
+          .filter(item => item.layer === 'candidate' && item.beamId !== null)
+          .map(item => ({
+            id: `candidateRail|candidate|${item.satId}|${item.beamId}|${item.role}`,
+            kind: 'candidateRail' as const,
+            layer: 'candidate' as const,
+            color: item.color,
+            roleColor: item.roleColor,
+            identityColor: item.identityColor,
+            identityRung: 'surface' as const,
+            eeNormalized: item.eeNormalized,
+            shaded: false,
+            opacity: railOpacity ?? 0,
+            role: 'candidate-rail-row',
+            satId: item.satId,
+            cellId: item.cellId,
+            beamId: item.beamId,
+            frequencyIndex: item.frequencyIndex,
+            serving: false,
+            displayOnly: true,
+            renderKey: `candidate-rail-row-${item.renderKey ?? item.beamId}`,
+            apex: null,
+            baseCenter: null,
+            baseRadiusWorld: null,
+            bodyColor: null,
+            scale: null,
+            mountedColor: null,
+            railLabel: formatHomepageBeamCellLabel(item.beamId!),
+            railOpacity,
+          })),
+        ...railPairItems,
+      ]
+      : [];
+
+    // SatelliteMarker and its scene projection are a separate production path
+    // from cone items.  Feed the same resolver a bounded ambient marker list,
+    // the production marker-id policy, the identity map, and the cone-apex map.
+    // The marker body tint helper is pure and is the exact calculation used by
+    // SatelliteMarker's material application; the representative GLB base
+    // colour is the canonical helper-validation material colour.
+    const markerSeeds = (frame as SimFrame).satellites.slice(0, DEFAULT_MAX_DISPLAY_SATS).map(satellite => ({
+      id: satellite.id,
+      world: new Vector3(satellite.world.x, satellite.world.y, satellite.world.z),
+      satelliteTintColor: resolveSatelliteSurfaceColor(
+        satellite.id,
+        'marker',
+      ),
+    }));
+    const markerIdentityColors = new Map(
+      markerSeeds.map(marker => [marker.id, marker.satelliteTintColor ?? '#aaccff'] as const),
+    );
+    const markerPair = displayPolicy.presentedHandoverPairCandidate;
+    const handoverMarkerSatelliteIds = resolveHandoverMarkerSatelliteIds({
+      multiCandidateSceneVisualActive: false,
+      multiCandidateCentralMarkerSatelliteIds: null,
+      renderedCandidateSatelliteId: primary?.pendingTargetSatId ?? null,
+      candidateComparisonSceneActive: comparisonPolicy?.centralOverlayActive ?? false,
+      candidateReviewRenderPlanPresent: false,
+      candidateComparisonVisibleSatelliteIds: null,
+      handoverCinemaCandidate: markerPair === null
+        ? null
+        : { fromSatId: markerPair.fromSatId, toSatId: markerPair.toSatId },
+      authorityTransition: null,
+    });
+    const renderedMarkers = resolveRenderedLiveSatelliteMarkers({
+      displaySats: markerSeeds,
+      handoverMarkerSatelliteIds,
+      identityColorBySatelliteId: markerIdentityColors,
+      coneApexWorldById: satelliteWorldById,
+      resolveFallbackColor: satelliteId => resolveSatelliteSurfaceColor(satelliteId, 'marker'),
+    });
+    const markerItems: TimelineItem[] = renderedMarkers.map(marker => {
+      const accent = marker.satelliteTintColor ?? '#aaccff';
+      return {
+        id: `marker|${marker.id}`,
+        kind: 'marker',
+        layer: 'marker',
+        color: resolveSatelliteTintedColor('#aaccff', accent),
+        roleColor: accent,
+        identityColor: accent,
+        identityRung: 'marker',
+        eeNormalized: null,
+        shaded: false,
+        opacity: 1,
+        role: 'marker',
+        satId: marker.id,
+        cellId: null,
+        beamId: null,
+        frequencyIndex: null,
+        serving: marker.id === hero.satId,
+        displayOnly: false,
+        renderKey: null,
+        apex: { x: marker.world.x, y: marker.world.y, z: marker.world.z },
+        baseCenter: null,
+        baseRadiusWorld: null,
+        bodyColor: resolveSatelliteTintedColor('#aaccff', accent),
+        scale: null,
+        mountedColor: null,
+        railLabel: null,
+        railOpacity: null,
+      };
+    });
+
+    // MainScene first resolves the orbit-trail surface colour and then passes
+    // that derived satellite list to OrbitTrail's production plan resolver.
+    const orbitTrailPlans = resolveOrbitTrailPlans({
+      satellites: markerSeeds.map(marker => ({
+        id: marker.id,
+        satelliteTintColor: resolveSatelliteSurfaceColor(marker.id, 'orbitTrail'),
+      })),
+      enabled: true,
+      reducedMotion: false,
+    });
+    const surfaceItems: TimelineItem[] = orbitTrailPlans.map(plan => ({
+      id: plan.id,
+      kind: 'orbitTrail',
+      layer: 'orbitTrail',
+      color: plan.color,
+      roleColor: plan.color,
+      identityColor: markerIdentityColors.get(plan.satelliteId) ?? plan.color,
+      identityRung: 'surface',
+      eeNormalized: null,
+      shaded: plan.color.toLowerCase() !== (markerIdentityColors.get(plan.satelliteId) ?? plan.color).toLowerCase(),
+      opacity: plan.opacities[0] ?? 0,
+      role: 'orbitTrail',
+      satId: plan.satelliteId,
+      cellId: null,
+      beamId: null,
+      frequencyIndex: null,
+      serving: plan.satelliteId === hero.satId,
+      displayOnly: false,
+      renderKey: plan.id,
+      apex: null,
+      baseCenter: null,
+      baseRadiusWorld: null,
+      bodyColor: null,
+      scale: null,
+      mountedColor: null,
+      railLabel: null,
+      railOpacity: null,
+    }));
+
+    // IntraGroundShockwave is mounted from the viz frame.  Its envelope
+    // functions are pure, so the audit can resolve the exact source/target
+    // colours, opacities, and scales without a renderer or wall clock.
+    const shockwaveEvent = (frame as SimFrame).intraHandoverEvent
+      ?? (() => {
+        const recentIntra = retained.find(event => (
+          event.kind === 'intra'
+          && event.ueId === primaryUeId
+          && event.fromSatId !== null
+          && event.fromCellId !== null
+          && event.fromBeamId !== null
+        ));
+        if (recentIntra === undefined || recentIntra.fromSatId === null) return null;
+        return {
+          satId: recentIntra.toSatId,
+          fromBeamId: recentIntra.fromBeamId ?? cellLinkBudgetBeamId(recentIntra.fromCellId ?? 0),
+          toBeamId: recentIntra.toBeamId ?? cellLinkBudgetBeamId(recentIntra.toCellId),
+          triggeredAtSec: recentIntra.sourceTimeSec,
+          expiresAtSec: recentIntra.sourceTimeSec + 1,
+          wallClockStartMs: recentIntra.sourceTimeSec * MS_PER_SIM_SEC,
+          wallClockExpiresMs: (recentIntra.sourceTimeSec + 1) * MS_PER_SIM_SEC,
+        };
+      })();
+    const shockwaveItems: TimelineItem[] = shockwaveEvent === null
+      ? []
+      : (() => {
+        const colors = resolveIntraGroundShockwaveColors({
+          event: shockwaveEvent,
+          identityColorBySatelliteId: markerIdentityColors,
+          identityColorBySatelliteBeamId: authorityBeamColors,
+        });
+        const progress = presentation.active && presentation.event?.kind === 'intra'
+          ? presentation.progress01
+          : 0;
+        return [
+          {
+            id: `shockwave|${shockwaveEvent.satId}|${shockwaveEvent.triggeredAtSec}|source`,
+            kind: 'shockwave' as const,
+            layer: 'shockwave' as const,
+            color: colors.sourceColor,
+            roleColor: colors.sourceColor,
+            identityColor: colors.sourceColor,
+            identityRung: 'shockwave' as const,
+            eeNormalized: null,
+            shaded: false,
+            opacity: sourceOpacityFor(progress),
+            role: 'shockwave-source',
+            satId: shockwaveEvent.satId,
+            cellId: null,
+            beamId: shockwaveEvent.fromBeamId,
+            frequencyIndex: null,
+            serving: false,
+            displayOnly: false,
+            renderKey: 'source',
+            apex: null,
+            baseCenter: null,
+            baseRadiusWorld: null,
+            bodyColor: null,
+            scale: sourceScaleFor(progress),
+            mountedColor: null,
+            railLabel: null,
+            railOpacity: null,
+          },
+          {
+            id: `shockwave|${shockwaveEvent.satId}|${shockwaveEvent.triggeredAtSec}|target`,
+            kind: 'shockwave' as const,
+            layer: 'shockwave' as const,
+            color: colors.targetColor,
+            roleColor: colors.targetColor,
+            identityColor: colors.targetColor,
+            identityRung: 'shockwave' as const,
+            eeNormalized: null,
+            shaded: false,
+            opacity: targetOpacityFor(progress),
+            role: 'shockwave-target',
+            satId: shockwaveEvent.satId,
+            cellId: null,
+            beamId: shockwaveEvent.toBeamId,
+            frequencyIndex: null,
+            serving: false,
+            displayOnly: false,
+            renderKey: 'target',
+            apex: null,
+            baseCenter: null,
+            baseRadiusWorld: null,
+            bodyColor: null,
+            scale: targetScaleFor(progress),
+            mountedColor: null,
+            railLabel: null,
+            railOpacity: null,
+          },
+        ];
+      })();
+
+    const items = [
+      ...candidateGeometryItems,
+      ...coneItems,
+      ...candidateRailItems,
+      ...markerItems,
+      ...surfaceItems,
+      ...shockwaveItems,
+    ].sort(compareItems);
 
     return {
       simTimeSec,
@@ -1080,6 +1583,8 @@ function finalizeItem(
   ) => BaseIdentityColorResolution,
   resolveEeNormalized: (satId: string, beamId: number) => number | null,
   laneIsServingOrCandidate: boolean,
+  homepageIdentity: boolean,
+  homepageColorFor: ((satId: string, beamId: number, isServingOrCandidate?: boolean) => string) | undefined,
 ): TimelineItem {
   const beamId = item.beamId ?? cellLinkBudgetBeamId(item.cellId);
   const role = resolveSinrLiveConeRole({
@@ -1122,8 +1627,23 @@ function finalizeItem(
   // this differs from `style.color`, the modifier table fired on this item.
   const identity = resolveIdentityAppearance(item.satId, beamId, laneIsServingOrCandidate);
   const identityColor = identity.color;
+  const primaryIdentityBeam = resolvePrimaryIdentityBeam({
+    surface: 'cone',
+    isPrimaryServing: item.satId === hero.satId
+      && item.cellId === hero.cellId
+      && (hero.beamId === null || beamId === hero.beamId),
+    role,
+  });
+  const mountedColor = resolveMountedConeColor({
+    item,
+    roleColor: roleStyle.color,
+    homepageIdentity,
+    primaryIdentityBeam,
+    homepageColorFor,
+  });
   return {
     id: `${layer}|${item.satId}|${item.cellId}|${beamId}|${role}|${item.renderKey ?? ''}`,
+    kind: 'cone',
     layer,
     color: style.color,
     roleColor: roleStyle.color,
@@ -1143,6 +1663,11 @@ function finalizeItem(
     apex: { x: item.apex.x, y: item.apex.y, z: item.apex.z },
     baseCenter: { x: item.baseCenter.x, y: item.baseCenter.y, z: item.baseCenter.z },
     baseRadiusWorld: placement.radiusWorld * DEFAULT_BEAM_DISPLAY_SPEC.coneWidthScale,
+    bodyColor: null,
+    scale: null,
+    mountedColor,
+    railLabel: null,
+    railOpacity: null,
   };
 }
 
@@ -1152,11 +1677,12 @@ function finalizeItem(
 function itemLine(item: TimelineItem): string {
   return [
     `  ${item.layer.padEnd(10)}`,
+    `kind=${item.kind}`,
     `${item.role.padEnd(15)}`,
     `${item.satId.padEnd(22)}`,
-    `cell=${String(item.cellId).padStart(2)}`,
-    `beam=${String(item.beamId).padStart(2)}`,
-    `freq=${String(item.frequencyIndex).padStart(2)}`,
+    `cell=${String(item.cellId ?? '-').padStart(2)}`,
+    `beam=${String(item.beamId ?? '-').padStart(2)}`,
+    `freq=${String(item.frequencyIndex ?? '-').padStart(2)}`,
     `color=${item.color}`,
     `roleColor=${item.roleColor}`,
     `identity=${item.identityColor}`,
@@ -1166,9 +1692,14 @@ function itemLine(item: TimelineItem): string {
     `opacity=${num(item.opacity)}`,
     `serving=${item.serving ? 'Y' : 'n'}`,
     `displayOnly=${item.displayOnly ? 'Y' : 'n'}`,
-    `apex=${point(item.apex)}`,
-    `base=${point(item.baseCenter)}`,
-    `r=${num(item.baseRadiusWorld, 3)}`,
+    `apex=${item.apex === null ? '-' : point(item.apex)}`,
+    `base=${item.baseCenter === null ? '-' : point(item.baseCenter)}`,
+    `r=${item.baseRadiusWorld === null ? '-' : num(item.baseRadiusWorld, 3)}`,
+    `body=${item.bodyColor ?? '-'}`,
+    `scale=${item.scale === null ? '-' : num(item.scale, 3)}`,
+    `mounted=${item.mountedColor ?? '-'}`,
+    `railLabel=${item.railLabel ?? '-'}`,
+    `railOpacity=${item.railOpacity === null ? '-' : num(item.railOpacity)}`,
     `key=${item.renderKey ?? '-'}`,
   ].join(' ');
 }
@@ -1216,8 +1747,8 @@ function printAt(second: TimelineSecond, lines: string[]): void {
 }
 
 const DIFFED_FIELDS = [
-  'layer', 'color', 'roleColor', 'identityColor', 'identityRung', 'eeNormalized', 'shaded', 'opacity', 'role', 'satId',
-  'cellId', 'beamId', 'frequencyIndex', 'serving', 'displayOnly', 'renderKey',
+  'kind', 'layer', 'color', 'roleColor', 'identityColor', 'identityRung', 'eeNormalized', 'shaded', 'opacity', 'role', 'satId',
+  'cellId', 'beamId', 'frequencyIndex', 'serving', 'displayOnly', 'renderKey', 'mountedColor', 'railLabel', 'railOpacity',
 ] as const;
 
 function formatFieldValue(value: unknown): string {
@@ -1265,12 +1796,12 @@ function printDiff(before: TimelineSecond, after: TimelineSecond, lines: string[
       if (left !== right) fieldDiffs.push(`${field}: ${left} -> ${right}`);
     }
     for (const geo of ['apex', 'baseCenter'] as const) {
-      const left = point(previous[geo]);
-      const right = point(item[geo]);
+      const left = optionalPoint(previous[geo]);
+      const right = optionalPoint(item[geo]);
       if (left !== right) fieldDiffs.push(`${geo}: ${left} -> ${right}`);
     }
-    if (num(previous.baseRadiusWorld, 3) !== num(item.baseRadiusWorld, 3)) {
-      fieldDiffs.push(`baseRadiusWorld: ${num(previous.baseRadiusWorld, 3)} -> ${num(item.baseRadiusWorld, 3)}`);
+    if (optionalNum(previous.baseRadiusWorld, 3) !== optionalNum(item.baseRadiusWorld, 3)) {
+      fieldDiffs.push(`baseRadiusWorld: ${optionalNum(previous.baseRadiusWorld, 3)} -> ${optionalNum(item.baseRadiusWorld, 3)}`);
     }
     if (fieldDiffs.length > 0) {
       changed.push(`  ~ ${item.id}`);
@@ -1322,7 +1853,7 @@ function detectChanges(before: TimelineSecond, after: TimelineSecond): VisibleCh
     if (previous === undefined) { appeared += 1; continue; }
     if (previous.color !== item.color) colorChanges += 1;
     if (num(previous.opacity) !== num(item.opacity)) opacityChanges += 1;
-    if (point(previous.apex) !== point(item.apex) || point(previous.baseCenter) !== point(item.baseCenter)) {
+    if (optionalPoint(previous.apex) !== optionalPoint(item.apex) || optionalPoint(previous.baseCenter) !== optionalPoint(item.baseCenter)) {
       geometryChanges += 1;
     }
   }

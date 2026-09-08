@@ -130,8 +130,8 @@ is_green() {
   local out status
   out=$(node --import tsx/esm --test "$1" 2>&1); status=$?
   [ "$status" -eq 0 ] || return 1
-  echo "$out" | grep -qE "^ℹ fail 0$" || return 1
-  echo "$out" | grep -qE "^ℹ pass [1-9][0-9]*$"
+  echo "$out" | grep -qE "^(ℹ|#) fail 0$" || return 1
+  echo "$out" | grep -qE "^(ℹ|#) pass [1-9][0-9]*$"
 }
 
 # Refuse only on a TRACKED file with unstaged edits — those are work the drill
