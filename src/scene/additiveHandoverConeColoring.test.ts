@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { colorForServingBeam, emphasizeIntraHandoverColor } from '../constants/servingColour';
+import { cellLinkBudgetBeamId } from './sinrLiveCellModel';
+import { colorForServingBeam } from '../constants/servingColour';
+import { emphasizeIntraHandoverColor } from '../appearance/intraHandoverShade';
 import { resolveAdditiveHandoverConeColoring, type HandoverConeColorItem } from './additiveHandoverConeColoring';
 
 type TestItem = HandoverConeColorItem & { readonly label: string };
@@ -57,7 +59,14 @@ test('uses the accepted pair colour and preserves intra source/target distinctio
     presentationPairKind: 'intra',
   });
 
-  const fallback = colorForServingBeam('sat-b', 1).markerColor;
+  // The fallback for a map MISS is now derived from the item's link-budget beam
+  // id, not from its cell id. Written as the rule rather than as the number: the
+  // point of the convergence is that one function decides which id identifies a
+  // beam, so a test that hard-codes the other id would re-create the drift it is
+  // meant to guard. (Before the convergence this read `colorForServingBeam(…, 1)`
+  // — the CELL id — while the lookup key was the BEAM id, which is exactly the
+  // mismatch that made one beam render in two shades.)
+  const fallback = colorForServingBeam('sat-b', cellLinkBudgetBeamId(1)).markerColor;
   assert.equal(result.pulseItems[0]?.color, '#112233');
   assert.equal(
     result.triggeredIntraItems[0]?.color,

@@ -58,6 +58,7 @@ import type {
   SinrLiveCinemaHandoverCandidate,
 } from '../viz/SinrLiveCellBeamCones';
 import type { WorldPoint } from '../viz/CellFootprints';
+import { colorForServingBeam } from '../constants/servingColour';
 
 const INTEGRATION_SOURCE_FRAME_ID = 'integration-scene-frame';
 
@@ -453,7 +454,7 @@ test('homepage transition colours stay on the accepted EE shade projection', () 
       isCandidate: true,
     }],
     authorityActive: true,
-    resolveBeamColor: (satelliteId, beamId, _fallback, highlighted) => {
+    resolveBeamColor: (satelliteId, beamId, highlighted) => {
       resolvedCalls.push(`${satelliteId}:${beamId}:${highlighted ? 'vivid' : 'plain'}`);
       return homepageSatelliteColorForBeam(satelliteId, beamId, {
         eeNormalized: eeByKey.get(`${satelliteId}:${beamId}`),
@@ -653,7 +654,7 @@ test('candidate authority is additive and cannot blanket-suppress the establishe
       protagonistUeId: null,
     },
     output: {
-      resolveSceneAcceptedBeamColor: (_satelliteId, _beamId, fallback) => fallback,
+      resolveSceneAcceptedBeamColor: (satelliteId, beamId) => colorForServingBeam(satelliteId, beamId).markerColor,
       restrictHomepageBeamItems: keepIntegrationConeItems,
     },
   });
@@ -680,7 +681,7 @@ test('candidate authority is additive and cannot blanket-suppress the establishe
       manualBaseCenterOverride: new Vector3(2, 0, 3),
     },
     output: {
-      resolveSceneAcceptedBeamColor: (_satelliteId, _beamId, fallback) => fallback,
+      resolveSceneAcceptedBeamColor: (satelliteId, beamId) => colorForServingBeam(satelliteId, beamId).markerColor,
       restrictHomepageBeamItems: keepIntegrationConeItems,
     },
   });
@@ -710,7 +711,7 @@ test('candidate authority is additive and cannot blanket-suppress the establishe
       manualHandoverGroundTarget: new Vector3(4, 0, 5),
     },
     output: {
-      resolveSceneAcceptedBeamColor: (_satelliteId, _beamId, fallback) => fallback,
+      resolveSceneAcceptedBeamColor: (satelliteId, beamId) => colorForServingBeam(satelliteId, beamId).markerColor,
       restrictHomepageBeamItems: keepIntegrationConeItems,
     },
   });
@@ -893,7 +894,7 @@ test('scene telemetry exposes rendered-output recovery and one-link browser gate
       homepageVisualIdentity: false,
       homepageBeamVisibility: new Set(),
       homepageBeamFanSatelliteIds: new Set(),
-      resolveSceneAcceptedBeamColor: (_satelliteId, _beamId, fallback) => fallback,
+      resolveSceneAcceptedBeamColor: (satelliteId, beamId) => colorForServingBeam(satelliteId, beamId).markerColor,
       restrictHomepageBeamItems: keepIntegrationConeItems,
     },
   });
@@ -1128,7 +1129,7 @@ test('homepage cinema pair render gate admits indexed intra handover', () => {
         manualHandoverGroundTarget: new Vector3(4, 0, 5),
       },
       output: {
-        resolveSceneAcceptedBeamColor: (_satelliteId, _beamId, fallback) => fallback,
+        resolveSceneAcceptedBeamColor: (satelliteId, beamId) => colorForServingBeam(satelliteId, beamId).markerColor,
         restrictHomepageBeamItems: keepIntegrationConeItems,
       },
     });

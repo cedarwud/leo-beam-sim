@@ -1,11 +1,12 @@
 import type { Vector3 } from 'three';
 import {
-  MULTI_CANDIDATE_TRANSITION_SOURCE_OPACITY_FACTOR,
-  MULTI_CANDIDATE_TRANSITION_TARGET_OPACITY_FACTOR,
-  resolveServingIdentityColor,
-} from './beamConeIdentityColors';
-import { emphasizeIntraHandoverColor } from '../constants/servingColour';
-import { HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR } from '../constants/handoverVisualIdentity';
+  HANDOVER_TRANSITION_OPACITY_OVERLAY,
+} from '../appearance/handoverAppearanceModifiers';
+import type {
+  BeamProminence,
+  HandoverSide,
+} from '../appearance/beamAppearanceContract';
+import { coneItemBeamId, paintConeItem } from '../appearance/paintConeItems';
 import {
   resolveSinrLiveHandoverPulseConeItems as resolvePulseGeometry,
   resolveTriggeredIntraConeItems as resolveTriggeredGeometry,
@@ -16,7 +17,6 @@ import {
 } from '../viz/SinrLiveCellBeamCones';
 import {
   SINR_LIVE_RECENT_HANDOVER_RETENTION_SEC,
-  cellLinkBudgetBeamId,
   type SinrLiveCellHandoverEvent,
 } from './sinrLiveCellModel';
 import { selectHandoverEventsForDisplay } from './handoverDisplayIsolation';
@@ -26,13 +26,65 @@ import { type WorldPoint } from '../viz/CellFootprints';
 type ResolveSceneAcceptedBeamColor = (
   satelliteId: string,
   beamId: number,
-  fallback: string,
   isServingOrCandidate?: boolean,
-) => string;
+) => string | undefined;
 
 type RestrictHomepageBeamItems = (
   items: readonly SinrLiveCellBeamConeRenderItem[],
 ) => readonly SinrLiveCellBeamConeRenderItem[];
+
+/**
+ * The colour for ONE SIDE of a pair lane.
+ *
+ * The three pair geometries take `fromColor`/`toColor` as ARGUMENTS, so the
+ * render item does not exist yet at the moment its colour has to be decided and
+ * there is nothing to hand to `paintConeItems`. Rather than let each lane keep
+ * its own copy of the ritual — which is exactly how they drifted apart — this
+ * hands the appearance module the identity the item is ABOUT to have and takes
+ * the answer it would give once the item exists.
+ *
+ * The consequence worth stating: the identity lookup's KEY and its fallback are
+ * now the same beam id. They were not before — these lanes passed a BEAM id as
+ * the key and a CELL-derived colour as the fallback — so on a snapshot miss the
+ * pair rendered one lightness rung away from the steady serving lane for the
+ * same beam.
+ */
+function pairSideColor(input: {
+  readonly satId: string;
+  readonly cellId: number;
+  readonly beamId: number | null | undefined;
+  /** Which table row applies. The pair lanes know their kind per lane. */
+  readonly kind: 'intra' | 'inter' | null;
+  readonly side: HandoverSide;
+  readonly prominence: BeamProminence;
+  /**
+   * The `isServingOrCandidate` flag the identity lookup takes; on the homepage
+   * it selects an EE shade. Passed explicitly rather than inferred from
+   * PROMINENCE, so the prominence axis keeps meaning loudness and only loudness.
+   */
+  readonly isServingOrCandidate: boolean;
+  readonly resolveIdentityColor?: ResolveSceneAcceptedBeamColor;
+  readonly planColorFor?: (satId: string, beamId: number) => string | undefined;
+}): string {
+  return paintConeItem(
+    {
+      satId: input.satId,
+      cellId: input.cellId,
+      beamId: input.beamId ?? undefined,
+      // Never read. `paintConeItem` decides the colour; this slot exists only
+      // because a real render item carries one.
+      color: '',
+      role: input.side === 'source' ? 'handoverSource' : 'handoverTarget',
+    },
+    {
+      resolveIdentityColor: input.resolveIdentityColor,
+      planColorFor: input.planColorFor,
+      laneKind: input.kind,
+      prominence: input.prominence,
+      isServingOrCandidate: input.isServingOrCandidate,
+    },
+  ).color;
+}
 
 export interface PulseConeInput {
   readonly policy: {
@@ -104,23 +156,14 @@ export function resolvePulseConeItems(
       ? geometry.protagonistIntraBaseCenterOverride
       : undefined,
   });
-  return output.restrictHomepageBeamItems(items.map(item => ({
-    ...item,
-    color: item.kind === 'intra'
-      ? emphasizeIntraHandoverColor(
-        output.resolveSceneAcceptedBeamColor(
-          item.satId,
-          item.beamId ?? cellLinkBudgetBeamId(item.cellId),
-          item.color,
-          true,
-        ),
-        item.role === 'handoverSource' ? 'source' : 'target',
-      )
-      : output.resolveSceneAcceptedBeamColor(
-        item.satId,
-        item.beamId ?? cellLinkBudgetBeamId(item.cellId),
-        item.color,
-      ),
+  // These items exist, so they are painted directly: identity from the lookup,
+  // shade from the (kind, side) table, side from the item's own role.
+  return output.restrictHomepageBeamItems(items.map(item => paintConeItem(item, {
+    resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+    // See `pairSideColor`: prominence carries the `isServingOrCandidate` flag,
+    // which this lane passed as `true` for intra and left unset for inter.
+    prominence: 'serving',
+    isServingOrCandidate: item.kind === 'intra',
   })));
 }
 
@@ -184,38 +227,35 @@ export function resolveTriggeredIntraConeItems(
     toCellId,
     toBeamId: candidate.toBeamId ?? null,
   };
-  const fromBeamId = event.fromBeamId ?? cellLinkBudgetBeamId(fromCellId);
-  const toBeamId = event.toBeamId ?? cellLinkBudgetBeamId(toCellId);
   return output.restrictHomepageBeamItems(resolveTriggeredGeometry({
     event,
     fromOpacity: envelope.fromOpacity,
     toOpacity: envelope.phase === 'settled'
       ? input.triggeredIntraPeakOpacity
       : envelope.toOpacity,
-    fromColor: emphasizeIntraHandoverColor(
-      output.resolveSceneAcceptedBeamColor(
-        candidate.fromSatId,
-        fromBeamId,
-        resolveServingIdentityColor(
-          candidate.fromSatId,
-          fromCellId,
-          HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-        ),
-      ),
-      'source',
-    ),
-    toColor: emphasizeIntraHandoverColor(
-      output.resolveSceneAcceptedBeamColor(
-        event.toSatId,
-        toBeamId,
-        resolveServingIdentityColor(
-          event.toSatId,
-          toCellId,
-          HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-        ),
-      ),
-      'target',
-    ),
+    // `kind: 'intra'` is the LANE's kind, not the candidate's: this resolver is
+    // gated to `handoverEventKind === 'intra'` above and shaded both sides
+    // unconditionally, so the lane row is the faithful one.
+    fromColor: pairSideColor({
+      satId: candidate.fromSatId,
+      cellId: fromCellId,
+      beamId: event.fromBeamId,
+      kind: 'intra',
+      side: 'source',
+      prominence: 'serving',
+      isServingOrCandidate: false,
+      resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+    }),
+    toColor: pairSideColor({
+      satId: event.toSatId,
+      cellId: toCellId,
+      beamId: event.toBeamId,
+      kind: 'intra',
+      side: 'target',
+      prominence: 'serving',
+      isServingOrCandidate: false,
+      resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+    }),
     placementByCellId: geometry.placementByCellId,
     satelliteWorldById: geometry.satelliteWorldById,
     frequencyReuse: geometry.frequencyReuse,
@@ -274,18 +314,6 @@ export function resolveCinemaPairConeItems(
 
   const fromCellId = candidate.fromCellId;
   const toCellId = candidate.toCellId;
-  const fromBeamId = candidate.fromBeamId ?? cellLinkBudgetBeamId(fromCellId);
-  const toBeamId = candidate.toBeamId ?? cellLinkBudgetBeamId(toCellId);
-  const fromFallback = resolveServingIdentityColor(
-    candidate.fromSatId,
-    fromCellId,
-    HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-  );
-  const toFallback = resolveServingIdentityColor(
-    candidate.toSatId,
-    toCellId,
-    HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-  );
   const intra = candidate.kind === 'intra';
   return output.restrictHomepageBeamItems(resolveCinemaPairGeometry({
     candidate,
@@ -293,18 +321,28 @@ export function resolveCinemaPairConeItems(
     toOpacity: envelope.phase === 'settled'
       ? input.triggeredIntraPeakOpacity
       : envelope.toOpacity,
-    fromColor: intra
-      ? emphasizeIntraHandoverColor(
-        output.resolveSceneAcceptedBeamColor(candidate.fromSatId, fromBeamId, fromFallback),
-        'source',
-      )
-      : output.resolveSceneAcceptedBeamColor(candidate.fromSatId, fromBeamId, fromFallback),
-    toColor: intra
-      ? emphasizeIntraHandoverColor(
-        output.resolveSceneAcceptedBeamColor(candidate.toSatId, toBeamId, toFallback),
-        'target',
-      )
-      : output.resolveSceneAcceptedBeamColor(candidate.toSatId, toBeamId, toFallback),
+    // The `intra ? shade : plain` branch is gone: the table's `inter` rows are
+    // the ones that say "no shade", so the kind alone decides.
+    fromColor: pairSideColor({
+      satId: candidate.fromSatId,
+      cellId: fromCellId,
+      beamId: candidate.fromBeamId,
+      kind: candidate.kind,
+      side: 'source',
+      prominence: 'serving',
+      isServingOrCandidate: false,
+      resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+    }),
+    toColor: pairSideColor({
+      satId: candidate.toSatId,
+      cellId: toCellId,
+      beamId: candidate.toBeamId,
+      kind: candidate.kind,
+      side: 'target',
+      prominence: 'serving',
+      isServingOrCandidate: false,
+      resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+    }),
     placementByCellId: geometry.placementByCellId,
     satelliteWorldById: geometry.satelliteWorldById,
     frequencyReuse: geometry.frequencyReuse,
@@ -365,43 +403,42 @@ export function resolveAuthorityPairConeItems(
 
   const fromCellId = candidate.fromCellId;
   const toCellId = candidate.toCellId;
-  const fromBeamId = candidate.fromBeamId ?? cellLinkBudgetBeamId(fromCellId);
-  const toBeamId = candidate.toBeamId ?? cellLinkBudgetBeamId(toCellId);
-  const fromFallback = resolveServingIdentityColor(
-    candidate.fromSatId,
-    fromCellId,
-    HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-  );
-  const toFallback = resolveServingIdentityColor(
-    candidate.toSatId,
-    toCellId,
-    HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-  );
-  const fromColor = input.policy.centralOverlayActive
-    ? input.beamColorBySatelliteBeam.get(`${candidate.fromSatId}/${fromBeamId}`)
-    : undefined;
-  const toColor = input.policy.centralOverlayActive
-    ? input.beamColorBySatelliteBeam.get(`${candidate.toSatId}/${toBeamId}`)
-    : undefined;
-  const fromResolvedColor = fromColor ?? output.resolveSceneAcceptedBeamColor(
-    candidate.fromSatId,
-    fromBeamId,
-    fromFallback,
-    candidate.kind === 'intra',
-  );
-  const toResolvedColor = toColor ?? output.resolveSceneAcceptedBeamColor(
-    candidate.toSatId,
-    toBeamId,
-    toFallback,
-    candidate.kind === 'intra',
+  const fromBeamId = coneItemBeamId({ cellId: fromCellId, beamId: candidate.fromBeamId ?? undefined });
+  const toBeamId = coneItemBeamId({ cellId: toCellId, beamId: candidate.toBeamId ?? undefined });
+  // The accepted comparison plan's OWN published colour for this beam. It is a
+  // legitimate identity source and outranks the scene lookup (ladder rung 0).
+  const planColorFor = (satId: string, beamId: number): string | undefined => (
+    input.policy.centralOverlayActive
+      ? input.beamColorBySatelliteBeam.get(`${satId}/${beamId}`)
+      : undefined
   );
   const intra = candidate.kind === 'intra';
   const pair = resolveCinemaPairGeometry({
     candidate,
-    fromOpacity: envelope.fromOpacity * MULTI_CANDIDATE_TRANSITION_SOURCE_OPACITY_FACTOR,
-    toOpacity: envelope.toOpacity * MULTI_CANDIDATE_TRANSITION_TARGET_OPACITY_FACTOR,
-    fromColor: intra ? emphasizeIntraHandoverColor(fromResolvedColor, 'source') : fromResolvedColor,
-    toColor: intra ? emphasizeIntraHandoverColor(toResolvedColor, 'target') : toResolvedColor,
+    fromOpacity: envelope.fromOpacity * HANDOVER_TRANSITION_OPACITY_OVERLAY.source,
+    toOpacity: envelope.toOpacity * HANDOVER_TRANSITION_OPACITY_OVERLAY.target,
+    fromColor: pairSideColor({
+      satId: candidate.fromSatId,
+      cellId: fromCellId,
+      beamId: candidate.fromBeamId,
+      kind: candidate.kind,
+      side: 'source',
+      prominence: 'serving',
+      isServingOrCandidate: intra,
+      resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+      planColorFor,
+    }),
+    toColor: pairSideColor({
+      satId: candidate.toSatId,
+      cellId: toCellId,
+      beamId: candidate.toBeamId,
+      kind: candidate.kind,
+      side: 'target',
+      prominence: 'serving',
+      isServingOrCandidate: intra,
+      resolveIdentityColor: output.resolveSceneAcceptedBeamColor,
+      planColorFor,
+    }),
     placementByCellId: geometry.placementByCellId,
     satelliteWorldById: geometry.satelliteWorldById,
     frequencyReuse: geometry.frequencyReuse,

@@ -182,26 +182,38 @@ export function homepageEeVisualOpacity(
   return 0.30 + 0.70 * Math.max(0, Math.min(1, eeNormalized));
 }
 
-/** Stable compact palette slot derived from the existing identity allocator. */
+/**
+ * Stable compact palette slot derived from the existing identity allocator.
+ *
+ * Unconditionally derives the slot from `servingIdentityPaletteIndex(satelliteId)`.
+ * The `_identityPaletteIndex` parameter is accepted and deliberately ignored,
+ * because a hue that changes with the caller is the bug, and removing it from
+ * every call site is the follow-up.
+ */
 export function homepageSatellitePaletteIndex(
   satelliteId: string,
-  identityPaletteIndex?: number | null,
+  _identityPaletteIndex?: number | null,
 ): number {
   const sourceSlot = positiveModulo(
-    Number.isInteger(identityPaletteIndex) && (identityPaletteIndex ?? -1) >= 0
-      ? identityPaletteIndex!
-      : servingIdentityPaletteIndex(satelliteId),
+    servingIdentityPaletteIndex(satelliteId),
     HOMEPAGE_SOURCE_SLOT_TO_FAMILY.length,
   );
   return HOMEPAGE_SOURCE_SLOT_TO_FAMILY[sourceSlot]!;
 }
 
-/** One satellite's base hue token, independent of beam and render order. */
+/**
+ * One satellite's base hue token, independent of beam and render order.
+ *
+ * Unconditionally derives the slot from `servingIdentityPaletteIndex(satelliteId)`.
+ * The `_identityPaletteIndex` parameter is accepted and deliberately ignored,
+ * because a hue that changes with the caller is the bug, and removing it from
+ * every call site is the follow-up.
+ */
 export function homepageSatelliteBaseColor(
   satelliteId: string,
-  identityPaletteIndex?: number | null,
+  _identityPaletteIndex?: number | null,
 ): string {
-  const paletteIndex = homepageSatellitePaletteIndex(satelliteId, identityPaletteIndex);
+  const paletteIndex = homepageSatellitePaletteIndex(satelliteId);
   const family = HOMEPAGE_SATELLITE_HUE_FAMILIES[paletteIndex]!;
   return hslToHex(
     family.hueDegrees,
@@ -216,13 +228,16 @@ export function homepageSatelliteBaseColor(
  * deterministic fallback for existing callers.  Serving beams stay vivid,
  * while non-serving/unknown beams are pale context.  Repeated beams receive
  * the exact same token rather than an opacity-dependent colour.
+ *
+ * The satellite hue slot is derived unconditionally from `satelliteId`;
+ * `options?.identityPaletteIndex` is deliberately ignored.
  */
 export function homepageSatelliteColorForBeam(
   satelliteId: string,
   beamId: number,
   options?: HomepageSatelliteColorOptions,
 ): HomepageSatelliteVisualColor {
-  const paletteIndex = homepageSatellitePaletteIndex(satelliteId, options?.identityPaletteIndex);
+  const paletteIndex = homepageSatellitePaletteIndex(satelliteId);
   const family = HOMEPAGE_SATELLITE_HUE_FAMILIES[paletteIndex]!;
   const eeBucket = finiteEeBucket(options?.eeNormalized);
   const shadeIndex = eeBucket
@@ -251,7 +266,7 @@ export function homepageSatelliteColorForBeam(
     shadeIndex,
     saturation,
     lightness,
-    baseColor: homepageSatelliteBaseColor(satelliteId, options?.identityPaletteIndex),
+    baseColor: homepageSatelliteBaseColor(satelliteId),
     color,
     emissiveColor: hslToHex(
       family.hueDegrees,

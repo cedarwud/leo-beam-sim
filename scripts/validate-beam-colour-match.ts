@@ -48,12 +48,14 @@ import {
   SINR_LIVE_CONE_PULSE_INTER_COLOR,
 } from '../src/constants/sinrLiveConeStyle.ts';
 import { INTRA_HANDOVER_TARGET_COLOR } from '../src/constants/beamRoleTokens.ts';
-import type {
-  IlluminatedCellBeam,
-  SinrLiveCellFrame,
-  UeCellServingRecord,
+import {
+  cellLinkBudgetBeamId,
+  type IlluminatedCellBeam,
+  type SinrLiveCellFrame,
+  type UeCellServingRecord,
 } from '../src/scene/sinrLiveCellModel.ts';
 import type { WorldPoint } from '../src/viz/CellFootprints.tsx';
+import { paintConeItem, coneItemBeamId } from '../src/appearance/paintConeItems.ts';
 
 let passed = 0;
 function assert(cond: boolean, label: string): void {
@@ -118,6 +120,10 @@ const illuminatedBeams: IlluminatedCellBeam[] = [
   // a couple of NON-serving illuminated beams (co-channel context)
   { satId: 'sat-B', cellId: 0, frequencyIndex: 0, serving: false },
   { satId: 'sat-C', cellId: 1, frequencyIndex: 1, serving: false },
+  // A same-cell VARIANT beam: cell 0 carrying link-budget beam 421, not the
+  // derived 1. Keyed by cellId this collapses onto the base beam and any colour
+  // divergence between the two is invisible; it is here so the gate can see it.
+  { satId: 'sat-B', cellId: 0, beamId: 421, frequencyIndex: 0, serving: false },
 ];
 
 const cellFrame: SinrLiveCellFrame = {
@@ -163,11 +169,63 @@ check('(e) the cone ITEM colour still routes through the ONE serving-identity au
   // asserted in check (b)); the resolver ITEM colour stays the serving-identity authority
   // — the per-cell DATA default that survives behind the override. Routing the resolver
   // through a SECOND colour authority would turn this RED.
+  // This pins the GEOMETRY layer's per-cell DEFAULT colour, which the painter overrides;
+  // the colour the viewer actually sees is pinned by check (f) below.
   for (const p of SERVING_PAIRS) {
     const key = `${p.satId}:${p.cellId}`;
-    const authority = colorForServingBeam(p.satId, p.cellId).markerColor;
+    const authority = colorForServingBeam(p.satId, cellLinkBudgetBeamId(p.cellId)).markerColor;
     assertEqual(coneColorByKey.get(key)!, authority, `cone(${key}) item colour == colorForServingBeam`);
   }
+});
+
+check('(f) the PAINTED cone colour is keyed by the resolved BEAM id, not the cell id', () => {
+  // A sentinel encoding the beam id the painter chose. Returning
+  // `colorForServingBeam(...)` here instead would make the assertion below
+  // circular — it would compare the painter's own arithmetic with itself and
+  // pass no matter which id was used. The sentinel tests the KEY directly.
+  const missingLookup = (_sat: string, beam: number): string => `stub:${beam}`;
+  let checked = 0;
+  for (const item of coneItems) {
+    const painted = paintConeItem(item, {
+      resolveIdentityColor: missingLookup,
+      prominence: 'serving',
+    });
+    const beamId = coneItemBeamId(item);
+    assertEqual(
+      painted.color,
+      `stub:${beamId}`,
+      `painted cone(${item.satId}) asked the identity lookup for BEAM ${beamId}`,
+    );
+    checked += 1;
+  }
+  assert(checked > 0, 'at least one cone was painted and checked');
+});
+
+check('(g) a same-cell VARIANT beam gets its own colour, distinct from the base beam of that cell', () => {
+  // The variant sits on a NON-serving illuminated beam, so it is resolved by
+  // `resolveSinrLiveNonServingConeItems`, not by the serving resolver. Looking
+  // for it in `coneItems` finds nothing — and an assertion that cannot find its
+  // subject proves nothing about colour.
+  const nonServingItems = resolveSinrLiveNonServingConeItems({
+    cellFrame, placementByCellId, satelliteWorldById, focusSatIds: null,
+  });
+  const variant = nonServingItems.find(c => c.satId === 'sat-B' && c.cellId === 0 && c.beamId === 421);
+  assert(variant !== undefined, 'the variant cone item (sat-B, cell 0, beam 421) reached the resolver');
+  // A sentinel encoding the beam id the painter chose. Returning
+  // `colorForServingBeam(...)` here instead would make the assertion below
+  // circular — it would compare the painter's own arithmetic with itself and
+  // pass no matter which id was used. The sentinel tests the KEY directly.
+  const missingLookup = (_sat: string, beam: number): string => `stub:${beam}`;
+  const paintedVariant = paintConeItem(variant!, { resolveIdentityColor: missingLookup, prominence: 'serving' });
+  assertEqual(
+    paintedVariant.color,
+    'stub:421',
+    'the variant beam asks the identity lookup for its OWN beam id 421',
+  );
+  assert(
+    paintedVariant.color !== 'stub:1',
+    'the variant beam does NOT collapse onto the cell-derived base beam id',
+  );
 });
 
 check('(b) the SEMANTIC render colour resolves: hero serving YELLOW / non-hero dim context / candidate BLUE', () => {
@@ -251,9 +309,27 @@ check('non-serving cones share the identity authority too (one colour scheme for
     cellFrame, placementByCellId, satelliteWorldById, focusSatIds: null,
   });
   assert(nonServing.length >= 1, 'the frame has non-serving illuminated beams');
+  // A `continue` inside the loop below means this check could silently assert
+  // NOTHING if the skip condition ever matched everything. Counting is what
+  // stops a skipped loop from reading as a pass.
+  let baseBeamsChecked = 0;
   for (const c of nonServing) {
-    assertEqual(c.color, colorForServingBeam(c.satId, c.cellId).markerColor, `non-serving cone ${c.satId}:${c.cellId} uses the identity authority`);
+    // This pins the GEOMETRY layer's DEFAULT colour. It is NOT what the viewer
+    // sees — `paintConeItem` overrides it, and check (f) pins that.
+    //
+    // The geometry default agrees with the painter (coneItemBeamId):
+    //   geometry default : `beamId ?? cellLinkBudgetBeamId(cellId)`
+    //   painter          : `beamId ?? cellId + 1`   (coneItemBeamId)
+    // Both stamp and colour from `cellLinkBudgetBeamId(cellId)` (i.e. cellId + 1).
+    //
+    // This loop checks base beams; a variant beam carries an explicit id and
+    // is coloured from it, and is asserted in check (g).
+    const isBaseBeam = c.beamId === c.cellId + 1;
+    if (!isBaseBeam) continue;
+    baseBeamsChecked += 1;
+    assertEqual(c.color, colorForServingBeam(c.satId, cellLinkBudgetBeamId(c.cellId)).markerColor, `non-serving cone ${c.satId}:cell${c.cellId} geometry default uses the identity authority`);
   }
+  assert(baseBeamsChecked >= 2, `at least two base beams were actually asserted (got ${baseBeamsChecked})`);
 });
 
 // ---------------------------------------------------------------------------

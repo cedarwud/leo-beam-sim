@@ -6,7 +6,8 @@ import { type BeamDisplaySpec } from './beamDisplaySpec';
 import { type SinrLiveCellHandoverEvent, type CellServingRecord, type SinrLiveCandidateProbeEvidence, type SinrLiveCellFrame, type SinrLivePrimaryBeamMetricEvidence, type UeCellServingRecord } from './sinrLiveCellModel';
 import { resolveSinrLiveConfiguredBeamCount } from './sinrLiveBeamDisplayFrame';
 import { type AcceptedHandoverPresentationSnapshot } from './acceptedHandoverPresentationSnapshot';
-import { resolveAcceptedCellIdentityColor } from './acceptedCellIdentityColor';
+import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
+import { paintConeItems } from '../appearance/paintConeItems';
 import { type HandoverConeEnvelope } from '../constants/sinrLiveConeStyle';
 import { type CandidateOpportunitySet } from '../engine/handover/candidateOpportunityProducer';
 import { type AngleAwareFormulaFrame } from '../engine/signal/types';
@@ -69,15 +70,14 @@ export function useSinrLiveCinemaInterServingFanConeItems({ acceptedHandoverPres
         role: 'servingFan',
         renderKeyPrefix: 'cinema-serving-display-fan',
       }).map(item => ({ ...item, opacity: sourceFanOpacity }));
-      return restrictHomepageBeamItems(items.map(item => ({
-        ...item,
-        color: resolveAcceptedCellIdentityColor(
-          acceptedHandoverPresentation,
-          item.satId,
-          item.cellId,
-          item.color,
-        ),
-      })));
+      // COLOUR is decided by `src/appearance/`, never here. Keyed on the item's
+      // own beam id so the cinema fan and the serving lane agree on the shade
+      // for the same beam. Opacity above is untouched by this pass.
+      return restrictHomepageBeamItems(paintConeItems(items, {
+        resolveIdentityColor: (satId, beamId) =>
+          resolveAcceptedBeamIdentityColor(acceptedHandoverPresentation, satId, beamId, ''),
+        prominence: 'candidate',
+      }));
     }, [
       showSinrLiveCellBeams,
       handoverDisplayIsolation.showCinemaCandidateFan,

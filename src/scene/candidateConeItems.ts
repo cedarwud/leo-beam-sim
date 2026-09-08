@@ -1,5 +1,6 @@
 import { type AcceptedHandoverPresentationSnapshot } from './acceptedHandoverPresentationSnapshot';
-import { resolveAcceptedCellIdentityColor } from './acceptedCellIdentityColor';
+import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
+import { paintConeItems } from '../appearance/paintConeItems';
 import {
   resolveCandidateBeamConeItems,
   resolveBudgetedSinrLiveBeamConeItems,
@@ -50,15 +51,16 @@ function colorizeCandidateItems(
   items: readonly SinrLiveCellBeamConeRenderItem[],
   input: CandidateConePresentationInput,
 ): readonly SinrLiveCellBeamConeRenderItem[] {
-  return input.restrictHomepageBeamItems(items.map(item => ({
-    ...item,
-    color: resolveAcceptedCellIdentityColor(
-      input.acceptedHandoverPresentation,
-      item.satId,
-      item.cellId,
-      item.color,
-    ),
-  })));
+  // COLOUR is decided by `src/appearance/`, never here. The lookup is keyed on
+  // the item's OWN beam id (`coneItemBeamId`), not on a beam id re-derived from
+  // the cell — the cell-keyed variant made this lane disagree with the serving
+  // lane about which rung of the identity ladder a beam sits on.
+  const snapshot = input.acceptedHandoverPresentation;
+  return input.restrictHomepageBeamItems(paintConeItems(items, {
+    resolveIdentityColor: (satId, beamId) =>
+      resolveAcceptedBeamIdentityColor(snapshot, satId, beamId, ''),
+    prominence: 'candidate',
+  }));
 }
 
 /**

@@ -48,7 +48,7 @@ import {
   type SinrLiveCellPlacement,
   type SinrLiveCinemaHandoverCandidate,
 } from './SinrLiveCellBeamCones';
-import type { SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
+import { cellLinkBudgetBeamId, type SinrLiveCellHandoverEvent } from '../scene/sinrLiveCellModel';
 import { computeSinrLiveBeamFootprintEllipse } from '../scene/sinrLiveBeamGeometry';
 import { MANUAL_HANDOVER_DISPLAY_MS } from '../scene/manualHandoverDemo';
 import {
@@ -238,7 +238,7 @@ check('Tier-2 non-serving resolver: the COMPLEMENT — only non-serving beams, s
   assert(nonServing.some(i => i.satId === 'sat-A') && nonServing.some(i => i.satId === 'sat-B'), 'both non-serving sats present');
   // Colour is the serving-identity colour keyed on (satId, cellId) — one authority
   // for the whole field (SDD §3.2), not the retired freq-reuse palette.
-  assertEqual(nonServing[0].color, colorForServingBeam(nonServing[0].satId, nonServing[0].cellId).markerColor, 'non-serving cone uses the serving-identity colour');
+  assertEqual(nonServing[0].color, colorForServingBeam(nonServing[0].satId, cellLinkBudgetBeamId(nonServing[0].cellId)).markerColor, 'non-serving cone uses the serving-identity colour');
   // Disjoint from the serving set (the two never double-draw the same cone).
   const servingKeys = new Set(serving.map(i => `${i.cellId}-${i.satId}`));
   assert(nonServing.every(i => !servingKeys.has(`${i.cellId}-${i.satId}`)), 'non-serving cones are disjoint from serving cones');
@@ -317,8 +317,8 @@ check('colour = SERVING-IDENTITY colour (matches the UE mosaic for the same satI
   }));
   const c0 = items.find(i => i.cellId === 0)!;
   const c2 = items.find(i => i.cellId === 2)!;
-  assertEqual(c0.color, colorForServingBeam('sat-A', 0).markerColor, 'cell-0 cone == UE-mosaic colour for (sat-A, cell 0)');
-  assertEqual(c2.color, colorForServingBeam('sat-A', 2).markerColor, 'cell-2 cone == UE-mosaic colour for (sat-A, cell 2)');
+  assertEqual(c0.color, colorForServingBeam('sat-A', cellLinkBudgetBeamId(0)).markerColor, 'cell-0 cone == UE-mosaic colour for (sat-A, cell 0)');
+  assertEqual(c2.color, colorForServingBeam('sat-A', cellLinkBudgetBeamId(2)).markerColor, 'cell-2 cone == UE-mosaic colour for (sat-A, cell 2)');
   assert(c0.color !== c2.color, 'same sat, different cell → a shade family (not mono)');
   assert(c0.color !== frequencyReuseColor(0), 'cone no longer uses the retired freq-reuse palette');
 });
@@ -614,7 +614,7 @@ check('pulse cone colour == the serving-identity colour (reads as the ambient co
   });
   assert(items.length >= 1, 'cell-3 pulse cone drew');
   assertEqual(items[0].frequencyIndex, 0, 'cell 3 under reuse 3 → telemetry frequency index 0 (cellId % reuse)');
-  assertEqual(items[0].color, colorForServingBeam('sat-A', 3).markerColor, 'pulse colour == serving-identity colour for (sat-A, cell 3)');
+  assertEqual(items[0].color, colorForServingBeam('sat-A', cellLinkBudgetBeamId(3)).markerColor, 'pulse colour == serving-identity colour for (sat-A, cell 3)');
   const ambient = resolveSinrLiveCellBeamConeItems({
     cellFrame: frameOf([beam('sat-A', 3, true)]),
     placementByCellId: placement3, satelliteWorldById, focusSatIds: null,
@@ -634,7 +634,7 @@ check('pulse cones carry the truth event.kind (C2 / Bug H) so the render can pai
   // The kind tag is ADDITIVE: the resolver colour stays serving-identity (the per-kind
   // hue is applied at the render from beamDisplaySpec), so the colour-match invariant
   // above is unaffected. Only the PULSE layer tags a kind; the ambient cone has none.
-  assertEqual(intra[0].color, colorForServingBeam(intra[0].satId, intra[0].cellId).markerColor, 'kind tag leaves the resolver colour = serving-identity');
+  assertEqual(intra[0].color, colorForServingBeam(intra[0].satId, cellLinkBudgetBeamId(intra[0].cellId)).markerColor, 'kind tag leaves the resolver colour = serving-identity');
   const ambient = resolveSinrLiveCellBeamConeItems({
     cellFrame: frameOf([beam('sat-A', 0, true)]),
     placementByCellId, satelliteWorldById, focusSatIds: null,

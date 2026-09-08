@@ -105,8 +105,10 @@ export interface SinrLiveCellBeamConeRenderItem {
    *  telemetry/userData + the retained frequency-plan colour mode; NOT the render
    *  colour (that is the serving-identity `color` below). */
   readonly frequencyIndex: number;
-  /** Serving-identity colour `colorForServingBeam(satId, cellId)` — matches this
-   *  cone's served UE dots (SDD §3.2). Role overrides (hero/candidate) apply at the mount. */
+  /** Serving-identity colour keyed by the link-budget BEAM id, derived from the
+   *  cell when the beam does not carry one (`colorForServingBeam(satId, beamId ?? cellLinkBudgetBeamId(cellId))`,
+   *  matching `coneItemBeamId` in `src/appearance/paintConeItems.ts` on purpose).
+   *  Role overrides (hero/candidate) apply at the mount. */
   readonly color: string;
   /** Always true on this render path — only SERVING beams draw a cone. */
   readonly serving: boolean;
@@ -444,8 +446,9 @@ export function resolveTopServingFocusSatIds(
  * legitimate display filter, the serving truth is unchanged. A serving sat not
  * RENDERED (absent from `satelliteWorldById`) or a cell with no placement is
  * skipped. Deterministic in beam order. Colour = serving-identity colour
- * (`colorForServingBeam(satId, cellId)`) — the same authority the UE mosaic uses,
- * so a cone matches its served UE dots (SDD §3.2).
+ * keyed by the link-budget BEAM id, derived from the cell when the beam does
+ * not carry one (`colorForServingBeam(satId, beamId ?? cellLinkBudgetBeamId(cellId))`,
+ * matching `coneItemBeamId` in `src/appearance/paintConeItems.ts` on purpose).
  */
 export function resolveSinrLiveCellBeamConeItems(
   props: SinrLiveCellBeamConesProps,
@@ -485,7 +488,7 @@ export function resolveSinrLiveCellBeamConeItems(
       // mosaic uses, so this serving cone is the SAME colour as the UE dots it
       // serves — beam↔UE matchable by colour (kills Bug E). `cellId` is the
       // serving unit on the cell lane (== the UE mosaic's `cellId`-as-beamId).
-      color: colorForServingBeam(beam.satId, beam.beamId ?? beam.cellId).markerColor,
+      color: colorForServingBeam(beam.satId, beam.beamId ?? cellLinkBudgetBeamId(beam.cellId)).markerColor,
       serving: true,
       apex,
       baseCenter,
@@ -540,7 +543,7 @@ export function resolveSinrLiveNonServingConeItems(
       // Serving-identity colour (SDD §3.2) keyed on (satId, cellId) — same authority
       // as the serving cones + UE mosaic, so the whole field is one colour scheme
       // (the freq-reuse palette is retired from the live render).
-      color: colorForServingBeam(beam.satId, beam.beamId ?? beam.cellId).markerColor,
+      color: colorForServingBeam(beam.satId, beam.beamId ?? cellLinkBudgetBeamId(beam.cellId)).markerColor,
       serving: false,
       apex,
       baseCenter,
@@ -580,7 +583,7 @@ function buildCellConeItem(input: {
     // Preserve the legacy cell-lane colour for ordinary beams while allowing
     // an explicit same-cell variant to select its real beam shade.  The
     // homepage identity mount uses `beamId` below for the EE-driven colour.
-    color: colorForServingBeam(input.satId, input.beamId ?? input.cellId).markerColor,
+    color: colorForServingBeam(input.satId, input.beamId ?? cellLinkBudgetBeamId(input.cellId)).markerColor,
     serving: true,
     apex,
     baseCenter,

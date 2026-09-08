@@ -65,12 +65,19 @@ function beam(
   return { satId, cellId, serving, beamId, frequencyIndex: cellId % 3 };
 }
 
+/**
+ * Records which (satellite, beam) the lane asked the identity ladder about.
+ *
+ * There is no `fallback` parameter any more: the ladder owns every rung,
+ * including the deterministic one, so there is no slot for a caller to put a
+ * colour in. What is worth pinning here is the KEY the lane asks with — that is
+ * what diverged between lanes and rendered one beam in two shades.
+ */
 function identityColor(
   satelliteId: string,
   beamId: number,
-  fallback: string,
 ): string {
-  return `${satelliteId}/${beamId}/${fallback}`;
+  return `${satelliteId}/${beamId}`;
 }
 
 function keepItems(
@@ -144,7 +151,7 @@ test('serving cone projection uses a small explicit geometry and display seam', 
   assert.equal(items.length, 1);
   assert.equal(items[0]?.satId, 'sat-serving');
   assert.equal(items[0]?.cellId, 0);
-  assert.equal(items[0]?.color?.startsWith('sat-serving/1/'), true);
+  assert.equal(items[0]?.color, 'sat-serving/1', 'the serving lane asks the ladder for beam 1 of sat-serving');
   assert.equal(items[0]?.baseCenter.y, 0);
 });
 

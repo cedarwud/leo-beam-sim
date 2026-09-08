@@ -3,7 +3,8 @@ import { type SimFrame, type VizFrame } from './types';
 import { resolveSinrLiveNonServingConeItems, type SinrLiveCellPlacement, type SinrLiveCellBeamConeRenderItem } from '../viz/SinrLiveCellBeamCones';
 import { type BeamDisplaySpec } from './beamDisplaySpec';
 import { type AcceptedHandoverPresentationSnapshot } from './acceptedHandoverPresentationSnapshot';
-import { resolveAcceptedCellIdentityColor } from './acceptedCellIdentityColor';
+import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
+import { paintConeItems } from '../appearance/paintConeItems';
 import { type HandoverDisplayIsolationState } from './handoverDisplayIsolation';
 
 export interface UseSinrLiveCellNonServingConeItemsParameters {
@@ -38,15 +39,14 @@ export function useSinrLiveCellNonServingConeItems({ acceptedHandoverPresentatio
           satelliteWorldById: viz.coneApexWorldById,
           focusSatIds: beamDisplaySpec.showNonServingCones ? null : sinrLiveTargetSatIds,
         });
-        return restrictHomepageBeamItems(items.map(item => ({
-          ...item,
-          color: resolveAcceptedCellIdentityColor(
-            acceptedHandoverPresentation,
-            item.satId,
-            item.cellId,
-            item.color,
-          ),
-        })));
+        // COLOUR is decided by `src/appearance/`, never here. Keyed on the
+        // item's own beam id so this lane and the serving lane name the same
+        // rung of the identity ladder for the same beam.
+        return restrictHomepageBeamItems(paintConeItems(items, {
+          resolveIdentityColor: (satId, beamId) =>
+            resolveAcceptedBeamIdentityColor(acceptedHandoverPresentation, satId, beamId, ''),
+          prominence: 'candidate',
+        }));
       },
       [
         showSinrLiveCellBeams,

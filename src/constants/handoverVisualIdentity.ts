@@ -551,8 +551,21 @@ function buildPaletteAssignment(
 function buildOverflowAssignment(
   satelliteId: string,
   overflowIndex: number,
+  palette: readonly NormalizedPaletteEntry[],
 ): HandoverVisualIdentityAssignment {
-  const color = HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR;
+  // Beyond palette capacity, falling back to a single shared neutral colour (#94a3b8)
+  // caused severe collision collapse: at N=32, 16 satellites collided into 1 group of 16;
+  // at N=64, 48 satellites funneled into 1 group of 48.
+  // Instead, overflow satellites fall back to their deterministic servingIdentityPaletteIndex
+  // colour, distributing collisions into small groups across the palette (e.g. worst group
+  // drops from 48 down to 4 at N=64 in pure servingColour).
+  // The neutral colour (#94a3b8) is reserved solely for invalid or unresolved identities.
+  const fallbackSlot = servingIdentityPaletteIndex(satelliteId) % palette.length;
+  const entry = palette[fallbackSlot];
+  if (entry === undefined) {
+    throw new Error(`palette slot ${fallbackSlot} unexpectedly missing`);
+  }
+  const color = entry.cssColor;
   const contrast = assignmentContrast(color);
   const glyph = satelliteGlyph(overflowIndex);
   const pattern = satellitePattern(overflowIndex);
@@ -569,9 +582,9 @@ function buildOverflowAssignment(
     color,
     cssColor: color,
     threeColor: color,
-    colorSpace: 'fallback',
-    colorName: 'overflow-neutral',
-    hueDegrees: OVERFLOW_FALLBACK_HUE_DEGREES,
+    colorSpace: entry.colorSpace,
+    colorName: entry.colorName,
+    hueDegrees: entry.hueDegrees,
     paletteIndex: null,
     paletteSlot: null,
     isOverflow: true,
@@ -946,7 +959,7 @@ export function allocateHandoverVisualIdentities(
       ? chooseContrastAwarePaletteIndex(preferred, palette, reservedPaletteSlots, assignments)
       : choosePaletteIndex(preferred, palette, reservedPaletteSlots, assignments);
     if (paletteIndex === null) {
-      assignments[satelliteId] = buildOverflowAssignment(satelliteId, overflowIndex);
+      assignments[satelliteId] = buildOverflowAssignment(satelliteId, overflowIndex, palette);
       overflowIndex += 1;
     } else {
       reservedPaletteSlots.add(paletteIndex);

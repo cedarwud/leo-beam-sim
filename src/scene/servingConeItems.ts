@@ -1,7 +1,7 @@
 import { type SinrLiveCellBeamConeRenderItem } from '../viz/SinrLiveCellBeamCones';
 import { filterHomepageBeamItems as filterHomepageBeamItemsBySatellite } from '../homepage/controller/homepageBeamVisibility';
 import { resolveServingConeGeometry } from './servingConeGeometry';
-import { cellLinkBudgetBeamId } from './sinrLiveCellModel';
+import { paintConeItems } from '../appearance/paintConeItems';
 
 export type ServingConeGeometryInput = Parameters<typeof resolveServingConeGeometry>[0];
 
@@ -20,7 +20,6 @@ export interface ServingConePresentationInput {
   readonly resolveSceneAcceptedBeamColor: (
     satelliteId: string,
     beamId: number,
-    fallback: string,
     isServingOrCandidate?: boolean,
   ) => string;
   readonly restrictHomepageBeamItems: (
@@ -56,15 +55,14 @@ export function resolveServingConeItems(
   ) return [];
 
   const items = resolveServingConeGeometry(geometry);
-  const identityItems = items.map(item => ({
-    ...item,
-    color: presentation.resolveSceneAcceptedBeamColor(
-      item.satId,
-      item.beamId ?? cellLinkBudgetBeamId(item.cellId),
-      item.color,
-      item.serving === true,
-    ),
-  }));
+  // COLOUR is decided by `src/appearance/`, never here. This lane's items are
+  // all `serving: true` (every builder that feeds `resolveServingConeGeometry`
+  // hard-codes it), so `prominence: 'serving'` reproduces the exact
+  // `isServingOrCandidate` flag the hand-rolled call used to pass.
+  const identityItems = paintConeItems(items, {
+    resolveIdentityColor: presentation.resolveSceneAcceptedBeamColor,
+    prominence: 'serving',
+  });
   const keepPrimary = (
     !presentation.hidePrimaryServingBeam
     || presentation.preserveConfiguredServingFan

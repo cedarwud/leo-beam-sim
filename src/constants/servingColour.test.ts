@@ -4,10 +4,10 @@ import test from 'node:test';
 import {
   colorForServingBeam,
   colorForServingSatellite,
-  emphasizeIntraHandoverColor,
   servingIdentityPaletteHueAt,
   servingIdentityPaletteIndex,
 } from './servingColour';
+import { emphasizeIntraHandoverColor } from '../appearance/intraHandoverShade';
 
 function circularHueDistance(left: number, right: number): number {
   const distance = Math.abs(left - right) % 360;

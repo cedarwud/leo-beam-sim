@@ -55,11 +55,7 @@ import {
 } from '../ui/handover-evaluation/candidateInspectionSelection';
 import { satelliteTint } from '../constants/beamRoleTokens';
 import {
-  resolveServingIdentityColor,
-} from './beamConeIdentityColors';
-import {
   colorForServingBeam,
-  colorForServingSatellite,
 } from '../constants/servingColour';
 import {
   HOMEPAGE_SATELLITE_COLOR_COUNT,
@@ -239,7 +235,12 @@ import {
 import { useHandoverConeItems } from './useHandoverConeItems';
 import { selectCandidateConeGeometry } from './candidateConeItems';
 import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
-import { resolveAcceptedCellIdentityColor } from './acceptedCellIdentityColor';
+import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
+import { type IdentitySources } from '../appearance/beamAppearanceContract';
+import {
+  resolveSatelliteIdentityColor,
+  type SatelliteIdentitySources,
+} from '../appearance/resolveSatelliteAppearance';
 import { useSinrLiveCellBeamConeItems } from './useSinrLiveCellBeamConeItems';
 import { useSinrLiveCandidateBeamConeItems } from './useSinrLiveCandidateBeamConeItems';
 import { useSinrLiveCinemaInterServingFanConeItems } from './useSinrLiveCinemaInterServingFanConeItems';
@@ -1924,49 +1925,94 @@ function SceneRenderContent({
   // the existing accepted-snapshot resolver as the default for every other
   // consumer, while making the root scene and its transition carriers use one
   // same-satellite hue family and bounded beam shade table.
+  //
+  // WHICH of those two sources wins is NOT decided here. MainScene supplies the
+  // two lookups as pure functions and `resolveBaseIdentityColor` — the one
+  // owner of the precedence ladder — runs the order. A source that has nothing
+  // to say answers `undefined`; neither lookup may invent a colour to stand in
+  // for a miss, because a fabricated miss colour is indistinguishable from a
+  // real hit one rung down.
+  const resolveSceneAcceptedBeamColorSources = useMemo((): IdentitySources => ({
+    // Rung 1. Present only while the homepage controller owns identity; absent
+    // — not merely empty — on every other surface.
+    homepageColorFor: homepageVisualIdentity
+      ? (satelliteId, beamId, isServingOrCandidate) => homepageSatelliteColorForBeam(satelliteId, beamId, {
+        identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(satelliteId) ?? null,
+        // The homepage shade is a projection of the accepted snapshot's
+        // published EE.  Do not fall back to beam-slot shading for transition
+        // carriers: that makes the same beam change tone when it moves between
+        // the rail, the live fan, and the handover cue.
+        eeNormalized: homepageBeamEeByKey?.get(`${satelliteId}:${beamId}`),
+        isServing: isServingOrCandidate,
+      }).color
+      : undefined,
+    // Rung 2. `resolveAcceptedBeamIdentityColor` reports a miss by handing back
+    // whatever fallback it was given, so the only way to see a miss from out
+    // here is to give it a value that can never be a published colour. The
+    // empty string is that value: not a fabricated colour, and already the
+    // ladder's own definition of "nothing to say".
+    acceptedColorFor: (satelliteId, beamId) => {
+      const published = resolveAcceptedBeamIdentityColor(
+        acceptedHandoverPresentation,
+        satelliteId,
+        beamId,
+        '',
+      );
+      return published.length > 0 ? published : undefined;
+    },
+  }), [acceptedHandoverPresentation, homepageBeamEeByKey, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
   const resolveSceneAcceptedBeamColor = useCallback((
     satelliteId: string,
     beamId: number,
-    fallback: string,
     isServingOrCandidate = false,
-  ): string => homepageVisualIdentity
-    ? homepageSatelliteColorForBeam(satelliteId, beamId, {
-      identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(satelliteId) ?? null,
-      // The homepage shade is a projection of the accepted snapshot's
-      // published EE.  Do not fall back to beam-slot shading for transition
-      // carriers: that makes the same beam change tone when it moves between
-      // the rail, the live fan, and the handover cue.
-      eeNormalized: homepageBeamEeByKey?.get(`${satelliteId}:${beamId}`),
-      isServing: isServingOrCandidate,
-    }).color
-    : resolveAcceptedBeamIdentityColor(
-      acceptedHandoverPresentation,
-      satelliteId,
-      beamId,
-      fallback,
-    ), [acceptedHandoverPresentation, homepageBeamEeByKey, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
+  ): string => resolveBaseIdentityColor(
+    satelliteId,
+    beamId,
+    resolveSceneAcceptedBeamColorSources,
+    { isServingOrCandidate },
+  ), [resolveSceneAcceptedBeamColorSources]);
+  // The cell lane is the same ladder reached through a different key: an
+  // earth-fixed cell id resolves to its link-budget beam id and then asks the
+  // identical question. `resolveAcceptedCellIdentityColor` did exactly that
+  // conversion before handing off to the beam resolver, so doing the conversion
+  // here and reusing the beam sources is the same lookup with one fewer
+  // wrapper — and, more to the point, one fewer place that could disagree about
+  // the order.
   const resolveSceneAcceptedCellColor = useCallback((
     satelliteId: string,
     cellId: number,
-    fallback: string,
-  ): string => homepageVisualIdentity
-    ? homepageSatelliteColorForBeam(satelliteId, cellLinkBudgetBeamId(cellId), {
-      identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(satelliteId) ?? null,
-      eeNormalized: homepageBeamEeByKey?.get(
-        `${satelliteId}:${cellLinkBudgetBeamId(cellId)}`,
-      ),
-    }).color
-    : resolveAcceptedCellIdentityColor(
-      acceptedHandoverPresentation,
-      satelliteId,
-      cellId,
-      fallback,
-    ), [acceptedHandoverPresentation, homepageBeamEeByKey, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
-  const resolveSceneSatelliteColor = useCallback((satelliteId: string, fallback: string): string => (
-    homepageVisualIdentity
-      ? homepageSatelliteBaseColor(satelliteId, homepageIdentityPaletteIndexBySatelliteId?.get(satelliteId) ?? null)
-      : fallback
-  ), [homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
+  ): string => resolveBaseIdentityColor(
+    satelliteId,
+    Number.isFinite(cellId) ? cellLinkBudgetBeamId(Math.trunc(cellId)) : Number.NaN,
+    resolveSceneAcceptedBeamColorSources,
+  ), [resolveSceneAcceptedBeamColorSources]);
+  const resolveSceneSatelliteColorSources = useMemo((): SatelliteIdentitySources => ({
+    // Rung 1. Present only while the homepage controller owns identity; absent
+    // on every other surface.
+    homepageColorFor: homepageVisualIdentity
+      ? satelliteId => homepageSatelliteBaseColor(
+        satelliteId,
+        homepageIdentityPaletteIndexBySatelliteId?.get(satelliteId) ?? null,
+      )
+      : undefined,
+    // Rung 2. `resolveAcceptedSatelliteIdentityColor` reports a miss by handing back
+    // whatever fallback it was given. Giving it the empty string allows detecting a
+    // miss without fabricating a sentinel colour.
+    acceptedColorFor: satelliteId => {
+      const published = resolveAcceptedSatelliteIdentityColor(
+        acceptedHandoverPresentation,
+        satelliteId,
+        '',
+      );
+      return published.length > 0 ? published : undefined;
+    },
+  }), [acceptedHandoverPresentation, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
+  const resolveSceneSatelliteColor = useCallback((
+    satelliteId: string,
+  ): string => resolveSatelliteIdentityColor(
+    satelliteId,
+    resolveSceneSatelliteColorSources,
+  ), [resolveSceneSatelliteColorSources]);
   const selectCandidateSceneInstructions = homepageVisualIdentity
     ? selectHomepageCandidateSceneInstructions
     : selectCentralMultiCandidateSceneInstructions;
@@ -2007,14 +2053,7 @@ function SceneRenderContent({
         })),
       ambientSatelliteIds: viz.displaySats.map(satellite => satellite.id),
       resolveSceneSatelliteColor,
-      resolveAmbientFallbackColor: satelliteId => resolveSceneSatelliteColor(
-        satelliteId,
-        resolveAcceptedSatelliteIdentityColor(
-          acceptedHandoverPresentation,
-          satelliteId,
-          colorForServingSatellite(satelliteId).markerColor,
-        ),
-      ),
+      resolveAmbientFallbackColor: satelliteId => resolveSceneSatelliteColor(satelliteId),
     }),
     [
       acceptedHandoverPresentation,
@@ -2050,7 +2089,6 @@ function SceneRenderContent({
           resolveSceneAcceptedBeamColor(
             satelliteId,
             beam.beamId,
-            colorForServingBeam(satelliteId, beam.beamId).markerColor,
           ),
         );
       }
@@ -2115,10 +2153,7 @@ function SceneRenderContent({
       handoverMarkerSatelliteIds,
       identityColorBySatelliteId: multiCandidateSatelliteColorById,
       coneApexWorldById: viz.coneApexWorldById,
-      resolveFallbackColor: satelliteId => resolveSceneSatelliteColor(
-        satelliteId,
-        colorForServingSatellite(satelliteId).markerColor,
-      ),
+      resolveFallbackColor: satelliteId => resolveSceneSatelliteColor(satelliteId),
     }),
     [
       handoverMarkerSatelliteIds,
@@ -3801,11 +3836,6 @@ function SceneRenderContent({
             ?? resolveSceneAcceptedCellColor(
               latchedAuthorityTransition.from.satelliteId,
               cellIdFromLinkBudgetBeamId(latchedAuthorityTransition.from.beamId),
-              resolveServingIdentityColor(
-                latchedAuthorityTransition.from.satelliteId,
-                cellIdFromLinkBudgetBeamId(latchedAuthorityTransition.from.beamId),
-                HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-              ),
             )}
         targetColor={latchedAuthorityTransition === null
           ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR
@@ -3817,11 +3847,6 @@ function SceneRenderContent({
             ?? resolveSceneAcceptedCellColor(
               latchedAuthorityTransition.to.satelliteId,
               cellIdFromLinkBudgetBeamId(latchedAuthorityTransition.to.beamId),
-              resolveServingIdentityColor(
-                latchedAuthorityTransition.to.satelliteId,
-                cellIdFromLinkBudgetBeamId(latchedAuthorityTransition.to.beamId),
-                HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR,
-              ),
             )}
       />
       <SceneSinrLiveBeamLayers
