@@ -250,7 +250,10 @@ body,
   padding: 7px;
   border: 1px solid rgba(112, 234, 210, .3);
   background: rgba(3, 17, 22, .8);
-  font-size: 16px;
+  // Every sibling teaching-chrome control in this route (.intra-teaching__prediction
+  // button, the shared transport, .intra-teaching__consequence strong) is 18px+; this
+  // was the one control left at 16px, below the route's own >=18px control-text floor.
+  font-size: 18px;
 }
 
 .intra-teaching__inspect span { color: var(--muted); padding: 0 4px; }
@@ -263,7 +266,7 @@ body,
   color: var(--ink);
   background: rgba(112, 234, 210, .08);
   font-family: inherit;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.1;
   cursor: pointer;
@@ -308,7 +311,12 @@ body,
 .intra-teaching__prediction output { grid-column: 1 / -1; color: rgba(244, 251, 247, .78); font-size: 18px; }
 .intra-teaching__consequence {
   grid-template-columns: auto minmax(0, 1fr);
-  max-width: min(32rem, 34vw);
+  // The wrong-prediction copy ("預測留在舊 beam，但來源事件切到新 beam") is longer than the
+  // switch-beat outcome copy; at min(32rem, 34vw) its natural width put this right-anchored
+  // panel's left edge inside the 28-72% central safe zone at 1920px (measured overlap:
+  // panel left 1373.5px vs safe-zone right 1382.4px). Narrower max-width forces the longer
+  // copy to wrap onto an extra line instead of growing left into the central visual.
+  max-width: min(26rem, 30vw);
   bottom: clamp(18rem, 34vh, 24rem);
   border-color: rgba(255, 158, 131, .5);
 }

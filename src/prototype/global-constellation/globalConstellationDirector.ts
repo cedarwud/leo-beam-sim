@@ -185,7 +185,14 @@ export const GLOBAL_CONSTELLATION_BEATS: readonly GlobalConstellationBeat[] = Ob
   {
     id: 'earth-question', order: 1, durationSec: 6, camera: 'earth-wide',
     eyebrow: '01 · 建立 LEO 全球尺度',
-    caption: ['畫面上的每個亮點，代表一筆封存 TLE 經 SGP4 推算的衛星位置。'],
+    // The opening beat must state this act's objective (compare Starlink and
+    // OneWeb's global distribution, then read NTPU visible-satellite counts)
+    // before the point-meaning explanation, per
+    // validate-teaching-reset-browser.ts's assertGlobalFirstFrameAndNtpU.
+    caption: [
+      '接下來比較 Starlink 與 OneWeb 的全球分布，並在 NTPU 判讀可見衛星數。',
+      '畫面上的每個亮點，代表一筆封存 TLE 經 SGP4 推算的衛星位置。',
+    ],
     primaryCue: 'earth-only-question',
     focusTarget: 'global-earth',
   },
@@ -213,7 +220,15 @@ export const GLOBAL_CONSTELLATION_BEATS: readonly GlobalConstellationBeat[] = Ob
   {
     id: 'ntpu-reveal', order: 5, durationSec: 12, camera: 'ntpu-approach',
     eyebrow: '05 · 判定 NTPU 幾何可見性',
-    caption: ['以下只判定 2026-08-25 12:00 UTC 這一個封存時刻。', '在 NTPU：α = atan2(U, √(E²+N²)) ≥ 10° 列入觀測範圍；不代表服務。'],
+    // Names the archived propagation source (封存 TLE / SGP4, already stated in
+    // GLOBAL_CONSTELLATION_NTPU_GEOMETRY_CHAIN and data-truth-boundary) and the
+    // geometric-visibility-is-not-service boundary (already established
+    // phrasing in ContactWindowLabRoute's own conclusion boundary) beside the
+    // formula, per validate-teaching-reset-browser.ts's NTPU reveal assertions.
+    caption: [
+      '依封存 TLE 經 SGP4 推算 2026-08-25 12:00 UTC，判定幾何可見。',
+      'NTPU：α = atan2(U, √(E²+N²)) ≥ 10° 為幾何可見性，非服務覆蓋。',
+    ],
     primaryCue: 'ntpu-reveal-control',
     focusTarget: 'ntpu-local',
   },

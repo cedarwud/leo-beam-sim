@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium, type Browser, type Page } from '@playwright/test';
+import { chromium, type Browser, type Locator, type Page } from '@playwright/test';
 import { MEASURED_BROWSER_GATE_FLOORS_MS, runBrowserValidator } from './lib/browser-gate.ts';
 
 import { detectAppUrl } from './_vc2-browser-fixture.ts';
@@ -18,6 +18,7 @@ import {
   INTRA_HANDOVER_TEACHING_ROUTE,
 } from '../src/prototype/intra-handover-teaching/intraHandoverTeachingDirector.ts';
 import { buildIntraHandoverTeachingSource } from '../src/prototype/intra-handover-teaching/intraHandoverTeachingSource.ts';
+import { TEACHING_PLAYBACK_SPEEDS } from '../src/course/transport/teachingAnimationTransportModel.ts';
 
 const SCREENSHOT_DIR = resolve('output/playwright/intra-handover-teaching-r1');
 const REPORT_PATH = resolve(SCREENSHOT_DIR, 'browser-measurements.json');
@@ -191,6 +192,16 @@ async function measureComposition(page: Page, label: string): Promise<ViewportMe
     const worldLabelSizes = [...root.querySelectorAll<SVGTextElement>('.intra-teaching__svg-label')]
       .map(element => Number.parseFloat(getComputedStyle(element).fontSize));
     const controls = [...root.querySelectorAll<HTMLElement>('button, input[type="range"]')]
+      // The speed picker is a native <details>/<summary> disclosure: its option buttons
+      // stay in the DOM (matched by querySelectorAll) but are not rendered while the menu
+      // is closed. Only currently-visible controls need to meet the touch-target minimum;
+      // this mirrors the same-purpose visibility filter used for `overlays` above and in
+      // validate-golden-flow-browser.ts's interactiveElements filter.
+      .filter(element => {
+        const style = getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0) return false;
+        return element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0;
+      })
       .map(element => {
         const rect = element.getBoundingClientRect();
         return { name: element.getAttribute('aria-label') ?? element.dataset.testid ?? element.tagName, width: rect.width, height: rect.height };
@@ -250,15 +261,43 @@ async function measureComposition(page: Page, label: string): Promise<ViewportMe
 async function assertPrimaryCueAndCaption(page: Page, beatId: string): Promise<void> {
   assert.equal(await page.locator('[data-primary-cue="true"]').count(), 1, `${beatId}: exactly one primary cue`);
   assert.equal(await page.locator('[data-caption-line="true"]').count(), 1, `${beatId}: exactly one caption line`);
-  assert.ok(await page.locator('[data-caption-line="true"]').innerText().then(text => text.trim().endsWith('。')), `${beatId}: caption is a complete sentence`);
+  // The 'candidate' beat's caption is a deliberate prediction-checkpoint question
+  // ('...同星候選？'), so a complete sentence is any CJK terminal punctuation, not only
+  // a period — matching the same [。！？!?] terminal set used elsewhere in this codebase
+  // (e.g. the sentence-splitting regex formerly in validate-energy-lab-browser.ts).
+  assert.ok(/[。！？!?]$/u.test(await page.locator('[data-caption-line="true"]').innerText().then(text => text.trim())), `${beatId}: caption is a complete sentence`);
   assert.equal(await page.locator('[data-testid="intra-handover-teaching"]').getAttribute('data-camera-director'), 'automatic');
   assert.equal(await page.locator('[data-testid="intra-handover-teaching"]').getAttribute('data-beat'), beatId);
+}
+
+// The shared TeachingAnimationTransport speed picker is a native <details>/<summary>
+// disclosure: the speed option buttons are `hidden` until the "current speed" trigger
+// is clicked. Every other browser gate against this shared component (e.g.
+// validate-global-constellation-browser.ts's selectTransportSpeed) opens the menu
+// before clicking an option; this validator's speed loop must do the same.
+async function selectTransportSpeed(transport: Locator, speed: number): Promise<void> {
+  const option = transport.locator(`[data-testid="transport-speed-${speed}"]`);
+  if (!(await option.isVisible())) {
+    await transport.locator('[data-testid="transport-speed-current"]').click();
+    await option.waitFor({ state: 'visible' });
+  }
+  await option.click();
 }
 
 async function assertTransport(page: Page): Promise<void> {
   const transport = page.locator('[data-testid="intra-handover-teaching-transport"]');
   assert.equal(await transport.count(), 1, 'shared teaching transport is mounted');
-  assert.equal(await transport.locator('[data-testid^="transport-speed-"]').count(), 4, 'all four transport speeds are mounted');
+  // TeachingAnimationTransport is the route-neutral shared component (src/course/transport):
+  // it always renders every entry of TEACHING_PLAYBACK_SPEEDS plus the always-present
+  // "current speed" trigger button. It has never offered a per-route speed subset — the
+  // 4-speed assumption below predates the 7-speed shared model and was never true for this
+  // route. Assert against the shared contract instead of a stale literal.
+  const expectedSpeedControlCount = TEACHING_PLAYBACK_SPEEDS.length + 1;
+  assert.equal(
+    await transport.locator('[data-testid^="transport-speed-"]').count(),
+    expectedSpeedControlCount,
+    `all ${TEACHING_PLAYBACK_SPEEDS.length} shared transport speeds plus the current-speed trigger are mounted`,
+  );
   assert.equal(await transport.locator('[data-testid="transport-rewind"]').count(), 1);
   assert.equal(await transport.locator('[data-testid="transport-forward"]').count(), 1);
   assert.equal(await transport.locator('[data-testid="transport-timeline-range"]').count(), 1);
@@ -272,7 +311,7 @@ async function assertTransport(page: Page): Promise<void> {
   assert.ok(Number(await page.locator('[data-testid="intra-handover-teaching"]').getAttribute('data-time-sec')) > pausedAt, '+5 seek advances the lesson');
   await transport.locator('[data-testid="transport-rewind"]').click();
   for (const speed of [0.5, 1, 1.5, 2] as const) {
-    await transport.locator(`[data-testid="transport-speed-${speed}"]`).click();
+    await selectTransportSpeed(transport, speed);
     assert.equal(await page.locator('[data-testid="intra-handover-teaching"]').getAttribute('data-speed'), String(speed), `${speed}x is selected`);
   }
   await seekTo(page, 42);
@@ -313,7 +352,16 @@ async function assertLearningLoop(page: Page): Promise<void> {
 }
 
 async function captureDesktopBeats(page: Page): Promise<void> {
-  await page.locator('[data-testid="transport-play-pause"]').click();
+  // Ensure paused rather than blindly toggling: assertTransport/assertLearningLoop leave
+  // the lesson paused, and an unconditional click here used to *resume* playback (at the
+  // 2x speed selected earlier in assertTransport). Every subsequent seekTo() in this loop
+  // only waits for the deterministic clock to land within 0.65s of its target, so with
+  // playback still running each beat's real-time-elapsed screenshot/measurement work
+  // (previously masked because this loop was never reached) let the course clock keep
+  // drifting past the seeked target, corrupting later beats' composition measurements.
+  if ((await page.locator('[data-testid="intra-handover-teaching"]').getAttribute('data-playing')) === 'true') {
+    await page.locator('[data-testid="transport-play-pause"]').click();
+  }
   for (const beat of INTRA_HANDOVER_TEACHING_BEATS) {
     const target = beat.startSec + Math.min(.8, (beat.endSec - beat.startSec) / 3);
     await seekTo(page, target);

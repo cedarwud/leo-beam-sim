@@ -26,7 +26,12 @@ async function assertSixActStageNavigation(page: Page, expectedHref: string): Pr
   assert.deepEqual(SIX_ACTS_ROUTES.map(route => route.actLabel), ['1', '2', '3', '4', '5', '6']);
   assert.deepEqual(SIX_ACTS_VISIBLE_ROUTES.map(route => route.actLabel), ['1', '2', '3', '4'], 'only the released four experiments appear in navigation');
   assert.equal(await nav.locator('a[href="/"]').count(), 1, `${expectedHref}: stage navigation can return home`);
-  assert.equal(await nav.locator('.six-acts-nav__acts a').count(), 6, `${expectedHref}: every act is directly reachable`);
+  // SixActsNav (src/course/nav/SixActsNav.tsx) renders SIX_ACTS_VISIBLE_ROUTES,
+  // not the full SIX_ACTS_ROUTES registry -- release-gating unreleased acts 5/6
+  // out of the stage strip is the same deliberate restriction asserted two
+  // lines above. This used to assert a hardcoded 6 from before the registry
+  // was split into a full 6-entry registry plus a 4-entry visible subset.
+  assert.equal(await nav.locator('.six-acts-nav__acts a').count(), SIX_ACTS_VISIBLE_ROUTES.length, `${expectedHref}: every released act is directly reachable`);
   const current = nav.locator('.six-acts-nav__acts a[aria-current="page"]');
   assert.equal(await current.count(), 1, `${expectedHref}: exactly one act is current`);
   const currentNumberColor = await current.locator('em').evaluate(node => getComputedStyle(node).color);
@@ -61,7 +66,10 @@ async function assertGlobalFirstFrameAndNtpU(page: Page): Promise<void> {
   await waitForMain(page);
   const caption = await page.getByTestId('global-constellation-caption').innerText();
   assert.match(caption, /封存 TLE.*SGP4/s, 'NTPU result names its archived propagation source at the moment of reveal');
-  assert.match(caption, /atan2\(U, √\(E²\+N²\)\).*≥ 0°/s, 'NTPU result keeps the visibility formula beside the reveal');
+  // GLOBAL_CONSTELLATION_NTPU_MINIMUM_ELEVATION_DEG is 10, not 0 -- every other
+  // occurrence of this formula in the app (GLOBAL_CONSTELLATION_NTPU_GEOMETRY_CHAIN,
+  // data-truth-boundary, this same file's own director.test.ts) reads "≥ 10°".
+  assert.match(caption, /atan2\(U, √\(E²\+N²\)\).*≥ 10°/s, 'NTPU result keeps the visibility formula beside the reveal');
   assert.match(caption, /幾何可見.*不(?:等於|代表).*服務/s, 'NTPU result states the scientific boundary beside the formula');
   const reveal = page.getByTestId('global-constellation-reveal');
   assert.equal(await reveal.count(), 1, 'NTPU reveal has an explicit action');
