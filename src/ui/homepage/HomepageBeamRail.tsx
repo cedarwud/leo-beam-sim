@@ -13,6 +13,7 @@ import type {
 } from '../../homepage/controller/contracts';
 import { useLocale } from '../../i18n';
 import { txBi } from '../signal-tuning/labels';
+import { ProvenanceBadge } from '../common/ProvenanceBadge';
 import { resolveHomepageSatelliteDisplayName } from '../../homepage/controller/homepageSatelliteDisplayName';
 import { formatHomepageEe } from '../../homepage/controller/homepageMetricFormatters';
 import { formatHomepageBeamCellLabel } from '../../homepage/controller/homepageBeamIdentity';
@@ -53,6 +54,8 @@ export type HomepageBeamRailSnapshotMetadata = Pick<
 
 export interface HomepageBeamRailProps {
   readonly projection: HomepageRailProjection;
+  /** Physical values on this rail are computed from the selected source frame. */
+  readonly sourceProvenance?: 'synthetic-walker' | 'archived-tle';
   readonly acceptedSnapshotMetadata?: HomepageBeamRailSnapshotMetadata | null;
   readonly playback?: HomepagePlaybackTransportState | null;
   /** The same presentation-owner pair currently rendered in the scene. */
@@ -238,8 +241,8 @@ function EeProgressSummary({
       ) : null}
       <span style={styles.eeDetailsHint}>
         {isEnglish
-          ? 'Stable display · click for SINR · Power · Throughput'
-          : '穩定顯示 · 點擊查看 SINR · Power · Throughput'}
+          ? 'Computed display · click for SINR · Power · Throughput'
+          : '計算顯示 · 點擊查看 SINR · Power · Throughput'}
       </span>
     </div>
   );
@@ -379,6 +382,8 @@ function BeamRow({
   const interactive = onFocusJoinKeyChange !== undefined;
   const hasMetricDetails = metric !== null;
   const rowInteractive = interactive || hasMetricDetails;
+  const displayOnlyEe = metric?.provenance === 'homepage-demo-ee-display-only'
+    || metric?.provenance === 'homepage-ee-hierarchy-display-only';
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const focusHook = joinKey.length > 0 ? `homepage-beam:${joinKey}` : 'unavailable';
   const unavailableMetricReason = metric === null
@@ -436,6 +441,7 @@ function BeamRow({
       data-role={role}
       data-ee-availability={eeAvailability}
       data-ee-basis={metric?.eeBasis ?? 'not-available'}
+      data-provenance-source={metric?.provenance ?? 'not-available'}
       data-selected={selected ? 'true' : 'false'}
       data-focus={selected ? 'true' : 'false'}
       data-focus-join-key={joinKey}
@@ -503,6 +509,13 @@ function BeamRow({
             showThresholdMarker={showThresholdMarker}
             visualOpacity={visualOpacity}
           />
+          {displayOnlyEe ? (
+            <ProvenanceBadge source={metric.provenance} testId="homepage-demo-ee-display-only-badge">
+              {isEnglish
+                ? 'DISPLAY-ONLY SYNTHESIS · NOT AN OBSERVATION'
+                : '僅供顯示的合成值 · 非觀測'}
+            </ProvenanceBadge>
+          ) : null}
           <MetricGrid metric={metric} isEnglish={isEnglish} expanded={detailsExpanded} />
         </>
       )}
@@ -926,6 +939,12 @@ function ProjectedSatelliteGroup({
   readonly eeScaleMax: number;
 }) {
   const rows = projectedRowsForGroup(group);
+  const bestRow = bestEeRowForGroup(group);
+  const displayOnlyEeSource = bestRow?.metric?.provenance === 'homepage-demo-ee-display-only'
+    ? 'homepage-demo-ee-display-only'
+    : bestRow?.metric?.provenance === 'homepage-ee-hierarchy-display-only'
+      ? 'homepage-ee-hierarchy-display-only'
+      : null;
 
   return (
     <details
@@ -941,9 +960,16 @@ function ProjectedSatelliteGroup({
         <span style={styles.groupSummaryInfo}>
           <span style={styles.groupTitle}>{resolveHomepageSatelliteDisplayName(group.satelliteId, satelliteNameById)}</span>
           <span style={styles.groupCount}>{rows.length} {isEnglish ? 'beams' : '個波束'}</span>
+          {displayOnlyEeSource !== null ? (
+            <ProvenanceBadge source={displayOnlyEeSource} testId="homepage-demo-ee-display-only-summary-badge">
+              {isEnglish
+                ? 'DISPLAY-ONLY SYNTHESIS · NOT AN OBSERVATION'
+                : '僅供顯示的合成值 · 非觀測'}
+            </ProvenanceBadge>
+          ) : null}
         </span>
         <GroupEeSummary
-          row={bestEeRowForGroup(group)}
+          row={bestRow}
           eeScaleMin={eeScaleMin}
           eeScaleMax={eeScaleMax}
         />
@@ -972,6 +998,7 @@ function ProjectedSatelliteGroup({
 
 export function HomepageBeamRail({
   projection,
+  sourceProvenance = 'synthetic-walker',
   selectedJoinKey = null,
   onFocusJoinKeyChange,
   satelliteNameById = null,
@@ -1146,6 +1173,7 @@ export function HomepageBeamRail({
     <aside
       aria-label={say('homepage.rail.ariaLabel', '首頁波束數值', 'Homepage beam values')}
       data-testid="homepage-beam-rail"
+      data-provenance-source={sourceProvenance}
       data-formula-contract="simplified-ee-c1-c9"
       data-formula-contract-version={ANGLE_AWARE_EE_CONTRACT_VERSION}
       data-power-metric="P^p_{s,v}"
@@ -1174,6 +1202,26 @@ export function HomepageBeamRail({
       data-focus-hook={selectedJoinKey === null ? 'none' : `homepage-beam:${selectedJoinKey}`}
       style={styles.rail}
     >
+      <div style={styles.sourceBlock} data-testid="homepage-beam-rail-source">
+        <ProvenanceBadge source={sourceProvenance} testId="homepage-beam-rail-source-badge">
+          {sourceProvenance === 'synthetic-walker'
+            ? say('homepage.rail.source.syntheticWalker', '來源 · 合成 Walker 計算值', 'SOURCE · SYNTHETIC WALKER COMPUTATION')
+            : say('homepage.rail.source.archivedTle', '來源 · 封存 TLE / SGP4', 'SOURCE · ARCHIVED TLE / SGP4')}
+        </ProvenanceBadge>
+        <span style={styles.sourceNote}>
+          {sourceProvenance === 'synthetic-walker'
+            ? say(
+              'homepage.rail.source.syntheticWalkerNote',
+              '數值由 Walker 影格計算；不含遙測。任何僅供顯示的 fallback 會在該列另行標示。',
+              'Values are computed from the Walker frame; there is no live telemetry. Any display-only fallback is labelled on its row.',
+            )
+            : say(
+              'homepage.rail.source.archivedTleNote',
+              '數值由封存 TLE / SGP4 影格計算；不是即時遙測。',
+              'Values are computed from an archived TLE / SGP4 frame; they are not live telemetry.',
+            )}
+        </span>
+      </div>
       {/*
         This was a `handoverComparison` REPLACEMENT slot, not an additive one:
         supplying it suppressed this explainer entirely. Its only intended
@@ -1371,6 +1419,17 @@ const styles: Readonly<Record<string, CSSProperties>> = {
     color: COLORS.ink,
     backgroundColor: COLORS.surface,
     fontFamily: 'inherit',
+  },
+  sourceBlock: {
+    display: 'grid',
+    gap: '5px',
+    justifyItems: 'start',
+    minWidth: 0,
+  },
+  sourceNote: {
+    color: COLORS.quiet,
+    fontSize: '12px',
+    lineHeight: 1.3,
   },
   header: {
     display: 'flex',

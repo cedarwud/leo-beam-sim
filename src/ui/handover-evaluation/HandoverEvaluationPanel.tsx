@@ -15,6 +15,7 @@ import { formatCandidateDisplayKey } from '../../engine/handover/candidateDispla
 import { useLocale } from '../../i18n';
 import type { AcceptedHandoverPresentationSnapshot } from '../../scene/acceptedHandoverPresentationSnapshot';
 import { CandidateSetPanel } from './CandidateSetPanel';
+import { ProvenanceBadge } from '../common/ProvenanceBadge';
 import {
   useCandidateInspectionSelection,
   type CandidateInspectionSnapshotInput,
@@ -110,7 +111,7 @@ function decisionBasis(
   copy: (zh: string, en: string) => string,
 ): string {
   if (receipt.mode === 'ee-optimization') {
-    return copy('選擇依據：預測能源效率較佳，且服務條件均成立', 'Basis: higher forecast EE with all service gates satisfied');
+    return copy('選擇依據：計算 EE 投影較佳，且服務條件均成立', 'Basis: higher computed EE projection with all service gates satisfied');
   }
   if (receipt.mode === 'service-continuity-protection') {
     return copy('選擇依據：維持服務連續性', 'Basis: service-continuity protection');
@@ -170,7 +171,7 @@ function phaseLabel(step: (typeof PHASE_STEPS)[number], copy: (zh: string, en: s
 function modeLabel(frame: HandoverDecisionFrame, copy: (zh: string, en: string) => string): string {
   switch (frame.mode) {
     case 'sinr-offset': return copy('SINR 換手評估', 'SINR handover evaluation');
-    case 'ee-optimization': return copy('預測能源效率評估', 'Forecast EE evaluation');
+    case 'ee-optimization': return copy('計算 EE 投影評估', 'Computed EE projection evaluation');
     case 'service-continuity-protection': return copy('服務連續性保護', 'Service-continuity protection');
   }
 }
@@ -318,6 +319,9 @@ export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelPro
     opportunity.sinrMeasurementContext?.purpose === 'sinr-offset-admission'
     && opportunity.sinrMeasurementContext.powerModel === 'profile-rated-rf'
   ));
+  const hasSyntheticWalkerSource = decision.opportunities.some(
+    opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate',
+  );
   const hardEligibleSatelliteCount = countHardEligibleCandidateSatellites(decision);
   // The engine's selection gate counts distinct alternate satellite identities
   // (not beams, and not other beams on the current serving satellite). Keep
@@ -410,13 +414,18 @@ export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelPro
         <div aria-live="polite" aria-atomic="true">
           <p>{modeLabel(decision, copy)}</p>
           <h2>{phaseTitle(decision.phase, copy)}</h2>
-          <small className="leo-handover-evaluation__source">
-            {decision.opportunities.some(opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate')
-              ? ratedAdmission
-                ? copy('資料來源：模擬星座，同一時刻的候選鏈路量測（額定功率）', 'Source: same-frame candidate-link measurements from the simulated constellation (rated power)')
-                : copy('資料來源：模擬星座，同一時刻的候選鏈路量測', 'Source: same-frame candidate-link measurements from the simulated constellation')
-              : copy('資料來源：同幀候選量測', 'Source: same-frame candidate measurements')}
-          </small>
+          <div className="leo-handover-evaluation__source">
+            <ProvenanceBadge
+              source={hasSyntheticWalkerSource ? 'synthetic-walker' : 'same-frame-computed'}
+              testId="handover-evaluation-source-badge"
+            >
+              {hasSyntheticWalkerSource
+                ? ratedAdmission
+                  ? copy('來源 · 合成 Walker 計算值 · 額定功率 RF', 'SOURCE · SYNTHETIC WALKER COMPUTATION · RATED-POWER RF')
+                  : copy('來源 · 合成 Walker 計算值', 'SOURCE · SYNTHETIC WALKER COMPUTATION')
+                : copy('來源 · 同幀計算值', 'SOURCE · SAME-FRAME COMPUTED VALUES')}
+            </ProvenanceBadge>
+          </div>
         </div>
         <time dateTime={decisionTime.dateTime}>
           {decisionTime.label}
@@ -458,16 +467,16 @@ export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelPro
           <summary>
             {copy(
               `資格波束配對 ${snapshot.counts.hardEligible} 組 · 候選衛星 ${eligibleDistinctAlternateSatelliteCount} 顆 · 畫面列出 ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible} 組`,
-              `${snapshot.counts.hardEligible} eligible beam measurements · ${eligibleDistinctAlternateSatelliteCount} candidate satellites · ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible} shown`,
+              `${snapshot.counts.hardEligible} eligible computed beam values · ${eligibleDistinctAlternateSatelliteCount} candidate satellites · ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible} shown`,
             )}
           </summary>
           <p>
             {copy(
-              `服務資格通過 ${snapshot.counts.hardEligible} 組波束量測（涉及 ${hardEligibleSatelliteCount} 顆衛星；候選衛星 ${eligibleDistinctAlternateSatelliteCount} 顆）· 畫面列出 ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible} 組`
+              `服務資格通過 ${snapshot.counts.hardEligible} 組波束計算值（涉及 ${hardEligibleSatelliteCount} 顆衛星；候選衛星 ${eligibleDistinctAlternateSatelliteCount} 顆）· 畫面列出 ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible} 組`
                 + (decision.selectionGate?.satisfied === false
                   ? ` · 尚不足 ${minimumDistinctCandidateSatellites} 顆，不進入選定`
                   : ''),
-              `${snapshot.counts.hardEligible} service-eligible beam measurements (${hardEligibleSatelliteCount} satellites; ${eligibleDistinctAlternateSatelliteCount} distinct candidate satellites) · ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible} shown`
+              `${snapshot.counts.hardEligible} service-eligible computed beam values (${hardEligibleSatelliteCount} satellites; ${eligibleDistinctAlternateSatelliteCount} distinct candidate satellites) · ${displayedHardEligibleCount} / ${snapshot.counts.hardEligible} shown`
                 + (decision.selectionGate?.satisfied === false
                   ? ` · waiting for ${minimumDistinctCandidateSatellites} distinct alternates before selection`
                   : ''),
@@ -475,7 +484,7 @@ export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelPro
           </p>
         </details>
         <dl>
-          <div><dt>{copy('已觀測', 'Observed')}</dt><dd>{snapshot.counts.observed}</dd></div>
+          <div><dt>{copy('已計算', 'Computed')}</dt><dd>{snapshot.counts.observed}</dd></div>
           <div>
             <dt>{copy('服務資格通過', 'Hard eligible')}</dt>
             <dd>{snapshot.counts.hardEligible}</dd>
@@ -542,10 +551,10 @@ export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelPro
           <div className="leo-handover-evaluation__footnote-body">
             <span>
               {ratedAdmission
-                ? copy('目前依額定功率 RF 資格量測、SINR 偏移量與持續時間評估；預測能源效率尚未啟用。', 'Current evaluation uses rated-power RF admission, SINR offset, and timing; forecast EE is not active.')
+                ? copy('目前依額定功率 RF 資格計算、SINR 偏移量與持續時間評估；計算 EE 投影尚未啟用。', 'Current evaluation uses rated-power RF admission computation, SINR offset, and timing; computed EE projection is not active.')
                 : decision.mode === 'sinr-offset'
-                  ? copy('目前依 SINR、偏移量與持續時間評估；預測能源效率尚未啟用。', 'Current evaluation uses SINR, offset, and timing; forecast EE is not active.')
-                  : copy('所有候選均以相同預測時域與服務條件比較。', 'All candidates are compared over the same forecast horizon and service gates.')}
+                  ? copy('目前依 SINR、偏移量與持續時間評估；計算 EE 投影尚未啟用。', 'Current evaluation uses SINR, offset, and timing; computed EE projection is not active.')
+                  : copy('所有候選均以相同計算時域與服務條件比較。', 'All candidates are compared over the same computed horizon and service gates.')}
             </span>
             {decision.opportunities.some(opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate') && (
               <span>

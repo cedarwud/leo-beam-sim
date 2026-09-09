@@ -12,6 +12,7 @@ import {
   type TeachingLinkFrame,
 } from '../../homepage/teaching/handoverTeachingScript';
 import { useLocale } from '../../i18n';
+import { ProvenanceBadge } from '../common/ProvenanceBadge';
 
 /**
  * The homepage handover lecture, rendered onto the existing shell.
@@ -23,7 +24,8 @@ import { useLocale } from '../../i18n';
  *
  * One frame feeds the rail, the step chips, and the caption, so they cannot
  * disagree with each other. The numbers are authored teaching data and the
- * badge says so; the identities are live.
+ * badge says so; identity/elevation use the live binding when supplied, with
+ * authored fallbacks kept explicit below.
  */
 
 const COLORS = {
@@ -253,11 +255,20 @@ export function HandoverTeachingRail({
             {frame.elapsedSec.toFixed(0)} / {totalSec.toFixed(0)} s
           </span>
         </div>
-        <span style={{
-          justifySelf: 'start', padding: '3px 8px', borderRadius: 999, fontSize: 13, fontWeight: 800,
-          color: COLORS.warn, background: 'rgba(255,190,69,.12)', border: '1px solid rgba(255,190,69,.45)',
-        }}>
-          {isEnglish ? 'AUTHORED TEACHING VALUES · NOT MEASURED' : '教學用模擬數值 · 非實測'}
+        <ProvenanceBadge source="authored-teaching" testId="teaching-values-source-badge">
+          {isEnglish
+            ? 'AUTHORED TEACHING VALUES · EE / POLICY · NOT MEASURED'
+            : '教學用模擬數值 · EE／規則 · 非實測'}
+        </ProvenanceBadge>
+        <ProvenanceBadge source="synthetic-walker-conditional" testId="teaching-identity-source-badge">
+          {isEnglish
+            ? 'IDENTITY / ELEVATION · LIVE SYNTHETIC WALKER WHEN SUPPLIED'
+            : '身分／仰角 · 有資料時為即時合成 Walker'}
+        </ProvenanceBadge>
+        <span style={{ color: COLORS.quiet, fontSize: 12, lineHeight: 1.3 }}>
+          {isEnglish
+            ? 'If the Walker binding is absent, identity/elevation use authored teaching fallbacks.'
+            : '若 Walker 綁定缺少，身分／仰角使用教學用 fallback。'}
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" style={button} data-testid="teaching-pause"

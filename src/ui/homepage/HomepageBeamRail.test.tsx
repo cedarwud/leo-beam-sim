@@ -28,6 +28,7 @@ function metric({
   role,
   isPrimaryServing = false,
   unavailable = false,
+  provenance,
   // An `idle` beam is a CONFIGURED beam with no source measurement this frame.
   // `beamMetrics` synthesises these deliberately, to complete a sparse roster up
   // to the configured budget "so the rail still shows every configured row".
@@ -41,6 +42,7 @@ function metric({
   readonly role: HomepageBeamMetric['role'];
   readonly isPrimaryServing?: boolean;
   readonly unavailable?: boolean;
+  readonly provenance?: HomepageBeamMetric['provenance'];
   readonly idle?: boolean;
   readonly throughputBps?: number;
 }): HomepageBeamMetric {
@@ -61,6 +63,7 @@ function metric({
     energyEfficiencyBitsPerJoule: unavailable ? null : 141_176,
     eeNormalized: unavailable ? null : 0.5,
     eeBasis: unavailable ? 'not-available' : 'active-assignment',
+    provenance,
     reason: unavailable ? 'counterfactual sample was not supplied' : null,
     isPrimaryServing,
     color,
@@ -409,7 +412,8 @@ assert.match(zhMarkup, />EE</);
 assert.doesNotMatch(zhMarkup, /即時/);
 assert.match(zhMarkup, /全部展開/);
 assert.doesNotMatch(zhMarkup, /N\/A|無資料/);
-assert.doesNotMatch(zhMarkup, /Snapshot|Source frame|Phase|Walker/);
+assert.match(zhMarkup, /來源 · 合成 Walker 計算值/);
+assert.doesNotMatch(zhMarkup, /Snapshot|Source frame|Phase/);
 assert.doesNotMatch(zhMarkup, /homepage-beam-rail-transport|homepage-beam-rail-counts|選定速度|實際速度|已暫停|>波束數值</);
 assert.doesNotMatch(zhMarkup, /候選計數|觀測|硬條件合格|觸發滿足|TTT 穩定|溢出/);
 assert.doesNotMatch(zhMarkup, /sat-observed/);
@@ -538,12 +542,13 @@ const sparseRosterMarkup = renderRail('en', {
     metrics: [
       metric({ satelliteId: 'sat-serving', beamId: 1, role: 'serving', isPrimaryServing: true }),
       metric({ satelliteId: 'sat-serving', beamId: 2, role: 'observed' }),
-      // Beams 3..7 are configured but had no source measurement this frame.
-      ...Array.from({ length: 5 }, (_, index) => metric({
+      // Beams 3..7 are configured but had no source row this frame.
+        ...Array.from({ length: 5 }, (_, index) => metric({
         satelliteId: 'sat-serving',
         beamId: index + 3,
         role: 'observed',
         idle: true,
+        provenance: 'homepage-demo-ee-display-only',
       })),
     ],
   },
@@ -559,6 +564,7 @@ assert.match(
   /data-ee-availability="idle"/,
   'an idle beam must render as idle, not be dropped',
 );
+assert.match(sparseRosterMarkup, /DISPLAY-ONLY SYNTHESIS · NOT AN OBSERVATION/);
 assert.equal(
   (sparseRosterMarkup.match(/data-ee-availability="idle"/g) ?? []).length,
   5,

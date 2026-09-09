@@ -237,12 +237,12 @@ assert.match(zhMarkup, /data-central-marker="S"/);
 assert.match(zhMarkup, /data-central-marker="C1"/);
 assert.match(zhMarkup, /跨衛星候選/);
 assert.match(zhMarkup, /暫列第一/);
-assert.match(zhMarkup, /預測能源效率尚未啟用/);
-assert.match(zhMarkup, /模擬星座，同一時刻的候選鏈路量測（額定功率）/);
+assert.match(zhMarkup, /計算 EE 投影尚未啟用/);
+assert.match(zhMarkup, /來源 · 合成 Walker 計算值 · 額定功率 RF/);
 assert.match(zhMarkup, /目前決策依據：候選 SINR、換手偏移量與 TTT/);
 assert.match(zhMarkup, /服務資格與 TTT 均已通過/);
 assert.match(zhMarkup, /服務資格已通過；TTT 計時中/);
-assert.doesNotMatch(zhMarkup, />[^<]*Walker[^<]*</);
+assert.match(zhMarkup, /data-testid="handover-evaluation-source-badge"/);
 assert.match(zhMarkup, /STARLINK-101 \/ B1 \/ C1/);
 assert.match(zhMarkup, /STARLINK-101 \/ B2 \/ C2/);
 assert.match(zhMarkup, /資格 SINR/);
@@ -289,10 +289,10 @@ assert.match(enMarkup, /Multi-candidate handover evaluation/);
 assert.match(enMarkup, /Leader confirmation/);
 assert.match(enMarkup, /Only active data link/);
 assert.match(enMarkup, /STARLINK-101 \/ B1 \/ C1/);
-assert.match(enMarkup, /forecast EE is not active/i);
+assert.match(enMarkup, /computed EE projection is not active/i);
 assert.match(enMarkup, /rated-power RF admission/i);
 assert.match(enMarkup, /Admission SINR/);
-assert.doesNotMatch(enMarkup, />[^<]*Walker[^<]*</);
+assert.match(enMarkup, /SOURCE · SYNTHETIC WALKER COMPUTATION · RATED-POWER RF/);
 
 const committedTarget = candidateLinkKey('STARLINK-202', 1);
 const committedDecision = createHandoverDecisionFrame({
@@ -343,19 +343,19 @@ const pinnedMarkup = renderToStaticMarkup(
   />,
 );
 
-assert.match(pinnedMarkup, /預測吞吐量/);
+assert.match(pinnedMarkup, /計算吞吐量/);
 assert.match(pinnedMarkup, /預估剩餘服務時間/);
-assert.doesNotMatch(pinnedMarkup, /共同預測時域 H/);
-assert.doesNotMatch(pinnedMarkup, /預測傳輸資料量/);
-assert.doesNotMatch(pinnedMarkup, /預測耗能/);
+assert.doesNotMatch(pinnedMarkup, /共同計算時域 H/);
+assert.doesNotMatch(pinnedMarkup, /計算傳輸資料量/);
+assert.doesNotMatch(pinnedMarkup, /計算耗能/);
 assert.doesNotMatch(pinnedMarkup, /維持目前連線基準/);
 assert.doesNotMatch(pinnedMarkup, /相對基準變化/);
 assert.doesNotMatch(pinnedMarkup, /模型版本/);
 assert.doesNotMatch(pinnedMarkup, /證據識別/);
 assert.match(pinnedMarkup, new RegExp(`data-source-frame-id="${SOURCE_FRAME_ID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
-assert.doesNotMatch(pinnedMarkup, /預測能源效率增益/);
-assert.doesNotMatch(pinnedMarkup, /預測 EE/);
-assert.match(pinnedMarkup, /量測/);
+assert.doesNotMatch(pinnedMarkup, /計算能源效率增益/);
+assert.doesNotMatch(pinnedMarkup, /計算 EE 投影/);
+assert.match(pinnedMarkup, /計算值/);
 assert.match(pinnedMarkup, /門檻/);
 assert.match(pinnedMarkup, /資格 SINR/);
 assert.match(pinnedMarkup, /class="leo-handover-satellite-group__roster"/);
@@ -378,13 +378,13 @@ const eeModePinnedMarkup = renderToStaticMarkup(
     copy={(zh) => zh}
   />,
 );
-assert.match(eeModePinnedMarkup, /共同預測時域 H/);
-assert.match(eeModePinnedMarkup, /預測傳輸資料量/);
-assert.match(eeModePinnedMarkup, /預測耗能/);
+assert.match(eeModePinnedMarkup, /共同計算時域 H/);
+assert.match(eeModePinnedMarkup, /計算傳輸資料量/);
+assert.match(eeModePinnedMarkup, /計算耗能/);
 assert.match(eeModePinnedMarkup, /維持目前連線基準/);
 assert.match(eeModePinnedMarkup, /相對基準變化/);
 assert.match(eeModePinnedMarkup, /尚未計算/);
-assert.match(eeModePinnedMarkup, /預測能源效率增益/);
+assert.match(eeModePinnedMarkup, /計算能源效率增益/);
 assert.match(eeModePinnedMarkup, /展開其餘/);
 assert.doesNotMatch(
   eeModePinnedMarkup,

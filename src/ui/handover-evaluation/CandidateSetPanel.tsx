@@ -5,9 +5,9 @@
  * (mounted by App.tsx). This panel is the handover-evaluation candidate board,
  * mounted inside `InfoPanel` via `HandoverEvaluationPanel`.
  *
- * Measured trap: told 「右欄的波束列表不要顯示 idle 的波束」, a model edited this
+ * Provenance trap: told 「右欄的波束列表不要顯示 idle 的波束」, a model edited this
  * file. Its change was internally consistent and every gate passed. It landed
- * here because this file contains the words matching "no measurement"
+ * here because this file contains the words matching "no evidence"
  * (`zero-activity`, 「此時域無活動量」) while the real rail spells the same
  * concept `availability === 'idle'` -- so a search for the concept finds only
  * this one. Its own report called the region it edited 「主比較區」, which is
@@ -41,6 +41,7 @@ import type {
 } from '../../engine/handover/candidatePresentationPlan';
 import { formatCandidateDisplayKey } from '../../engine/handover/candidateDisplayKey';
 import { formatSatelliteLabel } from '../../utils/formatSatelliteLabel';
+import { ProvenanceBadge } from '../common/ProvenanceBadge';
 
 type Copy = (zh: string, en: string) => string;
 
@@ -56,9 +57,9 @@ const GATE_LABELS: Readonly<Record<GateCode, readonly [string, string]>> = Objec
   steering: ['波束轉向角', 'steering angle'],
   'scheduled-illumination': ['目前時槽照明', 'scheduled illumination'],
   sinr: ['SINR', 'SINR'],
-  throughput: ['預測吞吐量', 'predicted throughput'],
+  throughput: ['計算吞吐量', 'computed throughput'],
   'remaining-service-time': ['預估剩餘服務時間', 'estimated remaining service time'],
-  'ee-advantage': ['預測能源效率增益', 'forecast EE advantage'],
+  'ee-advantage': ['計算能源效率增益', 'computed EE advantage'],
 });
 
 function formatNumber(value: number, digits = 1): string {
@@ -125,7 +126,7 @@ function roleLabel(role: CandidatePresentationRole, state: CandidateDecisionStat
     case 'observed':
       if (state?.hardEligibility === 'unavailable') return copy('資料不足', 'Evidence unavailable');
       if (state?.hardEligibility === 'ineligible') return copy('未通過資格', 'Not eligible');
-      return copy('已觀測', 'Observed');
+      return copy('已計算', 'Computed');
   }
 }
 
@@ -135,15 +136,15 @@ function beamRosterStatusLabel(
   displayed: boolean,
   copy: Copy,
 ): string {
-  if (status === 'not-observed') return copy('未觀測', 'Not observed');
+  if (status === 'not-observed') return copy('未計算值', 'No computed value');
   if (!displayed) return observed
-    ? copy('已量測／未列入場景', 'Measured / not in scene')
+    ? copy('已計算／未列入場景', 'Computed / not in scene')
     : copy('未列入場景', 'Not in scene');
   if (status === 'hard-eligible') return copy('資格通過', 'Eligible');
   if (status === 'qualified') return copy('TTT中', 'TTT');
   if (status === 'provisional-leader') return copy('暫列第一', 'Provisional');
   if (status === 'selected-target') return copy('選定', 'Selected');
-  if (status === 'observed') return copy('已觀測', 'Observed');
+  if (status === 'observed') return copy('已計算', 'Computed');
   return copy('服務中', 'Serving');
 }
 
@@ -191,7 +192,7 @@ function candidateReason(
   showForecastEe: boolean,
   copy: Copy,
 ): string {
-  if (opportunity === null) return copy('資料不足：候選量測', 'Evidence unavailable: candidate measurement');
+  if (opportunity === null) return copy('資料不足：候選計算值', 'Evidence unavailable: candidate computed value');
   if (state === null) return copy('資料不足：候選決策狀態', 'Evidence unavailable: candidate decision state');
 
   if (opportunity.sinr.status !== 'available') {
@@ -217,12 +218,12 @@ function candidateReason(
 
   if (state.triggerStatus === 'unavailable') {
     return showForecastEe
-      ? copy('資料不足：預測 EE', 'Evidence unavailable: forecast EE')
+      ? copy('資料不足：計算 EE 投影', 'Evidence unavailable: computed EE projection')
       : copy('資料不足：換手觸發條件', 'Evidence unavailable: handover trigger');
   }
   if (state.triggerStatus === 'not-satisfied') {
     return showForecastEe
-      ? copy('預測 EE 尚未達到換手門檻', 'Forecast EE has not reached the handover threshold')
+      ? copy('計算 EE 投影尚未達到換手門檻', 'Computed EE projection has not reached the handover threshold')
       : copy('服務資格已通過；換手觸發條件尚未成立', 'Service eligibility passed; handover trigger not yet satisfied');
   }
   return state.stable
@@ -248,7 +249,7 @@ function CandidateDetails({
 }) {
   const opportunity = link.opportunity;
   if (opportunity === null) {
-    return <p className="leo-handover-candidate__missing">{copy('本畫面尚無同幀量測資料', 'No same-frame measurement is available')}</p>;
+    return <p className="leo-handover-candidate__missing">{copy('本畫面尚無同幀計算值', 'No same-frame computed value is available')}</p>;
   }
   const ratedAdmission = opportunity.sinrMeasurementContext?.powerModel === 'profile-rated-rf';
   const ee = opportunity.forecastEe;
@@ -263,13 +264,13 @@ function CandidateDetails({
         <div><dt>{copy('仰角', 'Elevation')}</dt><dd>{formatMetric(opportunity.elevation, 1)}</dd></div>
         <div><dt>{copy('轉向角', 'Steering')}</dt><dd>{formatMetric(opportunity.steering, 1)}</dd></div>
         <div><dt>{copy('距離', 'Range')}</dt><dd>{formatMetric(opportunity.range, 0)}</dd></div>
-        <div><dt>{copy('預測吞吐量', 'Predicted throughput')}</dt><dd>{formatEvidence(opportunity.predictedThroughput, 0, copy)}</dd></div>
+        <div><dt>{copy('計算吞吐量', 'Computed throughput')}</dt><dd>{formatEvidence(opportunity.predictedThroughput, 0, copy)}</dd></div>
         <div><dt>{copy('預估剩餘服務時間', 'Estimated remaining service time')}</dt><dd>{formatEvidence(opportunity.remainingServiceTime, 1, copy)}</dd></div>
         {showForecastEe && <>
-          <div><dt>{copy('預測 EE', 'Forecast EE')}</dt><dd>{forecastAvailability(ee, copy)}</dd></div>
-          <div><dt>{copy('共同預測時域 H', 'Common forecast horizon H')}</dt><dd>{formatOptionalValue(ee?.horizonSec, 's', 1)}</dd></div>
-          <div><dt>{copy('預測傳輸資料量', 'Forecast delivered data')}</dt><dd>{formatOptionalValue(ee?.deliveredBits, 'bit', 0)}</dd></div>
-          <div><dt>{copy('預測耗能', 'Forecast energy')}</dt><dd>{formatOptionalValue(ee?.consumedJoules, 'J', 2)}</dd></div>
+          <div><dt>{copy('計算 EE 投影', 'Computed EE projection')}</dt><dd>{forecastAvailability(ee, copy)}</dd></div>
+          <div><dt>{copy('共同計算時域 H', 'Common computed horizon H')}</dt><dd>{formatOptionalValue(ee?.horizonSec, 's', 1)}</dd></div>
+          <div><dt>{copy('計算傳輸資料量', 'Computed delivered data')}</dt><dd>{formatOptionalValue(ee?.deliveredBits, 'bit', 0)}</dd></div>
+          <div><dt>{copy('計算耗能', 'Computed energy')}</dt><dd>{formatOptionalValue(ee?.consumedJoules, 'J', 2)}</dd></div>
           <div><dt>{copy('維持目前連線基準', 'Keep-serving baseline')}</dt><dd>{formatOptionalValue(ee?.baselineEeBitPerJ, 'bit/J', 2)}</dd></div>
           <div><dt>{copy('相對基準變化', 'Relative to baseline')}</dt><dd>{relativeDelta}</dd></div>
           {ee !== null && <div><dt>{copy('模型版本', 'Model version')}</dt><dd>{ee.modelVersion}</dd></div>}
@@ -283,7 +284,7 @@ function CandidateDetails({
           const [zh, en] = gate.code === 'sinr' && ratedAdmission
             ? ['資格 SINR', 'admission SINR']
             : GATE_LABELS[gate.code];
-          const measurement = gate.measured === null
+          const computedValue = gate.measured === null
             ? null
             : gate.unit === 'boolean'
               ? gate.measured === 1 ? copy('已照明', 'illuminated') : copy('未照明', 'not illuminated')
@@ -300,7 +301,7 @@ function CandidateDetails({
                 : gate.result === 'fail'
                   ? copy('未通過', 'fail')
                   : copy('資料不足', 'unavailable')}
-              {measurement === null ? '' : copy(`；量測 ${measurement}`, `; measured ${measurement}`)}
+              {computedValue === null ? '' : copy(`；計算值 ${computedValue}`, `; computed ${computedValue}`)}
               {threshold === null ? '' : copy(`；門檻 ${threshold}`, `; threshold ${threshold}`)}
             </span>
           );
@@ -370,7 +371,7 @@ function CandidateRow({
         <span><small>{copy('轉向角', 'Steering')}</small><strong>{link.opportunity === null ? copy('資料不足', 'Evidence unavailable') : formatEvidence(link.opportunity.steering, 1, copy)}</strong></span>
         <span><small>{copy('獨立 TTT', 'Independent TTT')}</small><strong>{tttLabel(state, copy)}</strong></span>
         {showForecastEe && (
-          <span><small>{copy('預測 EE', 'Forecast EE')}</small><strong>{forecastSummary(link.opportunity?.forecastEe ?? null, copy)}</strong></span>
+          <span><small>{copy('計算 EE 投影', 'Computed EE projection')}</small><strong>{forecastSummary(link.opportunity?.forecastEe ?? null, copy)}</strong></span>
         )}
       </div>
       <p
@@ -491,8 +492,8 @@ function comparisonDecisionNote(
     return decision.recentCommit === null
       ? copy('換手程序已進入執行階段；中央畫面仍只保留一條作用中資料鏈路。', 'The handover is executing; the centre still has exactly one active data link.')
       : copy(
-        `已由 ${leadingLink?.displayKey ?? formatCandidateDisplayKey({ key: decision.recentCommit.to, beamIdentitySource: 'walker-cell-surrogate' })} 接手；候選量測不代表同時承載資料。`,
-        `${leadingLink?.displayKey ?? formatCandidateDisplayKey({ key: decision.recentCommit.to, beamIdentitySource: 'walker-cell-surrogate' })} has taken over; candidate measurements never carry data simultaneously.`,
+        `已由 ${leadingLink?.displayKey ?? formatCandidateDisplayKey({ key: decision.recentCommit.to, beamIdentitySource: 'walker-cell-surrogate' })} 接手；候選計算值不代表同時承載資料。`,
+        `${leadingLink?.displayKey ?? formatCandidateDisplayKey({ key: decision.recentCommit.to, beamIdentitySource: 'walker-cell-surrogate' })} has taken over; candidate computed values never carry data simultaneously.`,
       );
   }
   if (leadingLink !== null) {
@@ -558,8 +559,8 @@ function CandidateComparisonBoard({
             data-testid="handover-central-marker-legend"
           >
             {copy(
-              '中央標記 S＝目前唯一作用中鏈路；C1、C2＝場景中以同色標記呈現的候選衛星。候選僅量測，不會同時承載資料。',
-              'Centre marker S is the only active data link; C1 and C2 are the candidate spacecraft highlighted in the scene. Candidates measure only and do not carry data simultaneously.',
+              '中央標記 S＝目前唯一作用中鏈路；C1、C2＝場景中以同色標記呈現的候選衛星。候選僅供比較，不會同時承載資料。',
+              'Centre marker S is the only active data link; C1 and C2 are the candidate spacecraft highlighted in the scene. Candidates provide comparison values only and do not carry data simultaneously.',
             )}
           </p>
         </div>
@@ -613,7 +614,7 @@ function CandidateComparisonBoard({
               </header>
               <div className="leo-handover-comparison-board__beams">
                 {group.links.length === 0 && (
-                  <span className="leo-handover-comparison-board__empty">{copy('尚無同幀波束量測', 'No same-frame beam measurement')}</span>
+                  <span className="leo-handover-comparison-board__empty">{copy('尚無同幀波束計算值', 'No same-frame computed beam value')}</span>
                 )}
                 {group.links.map(link => {
                   const metric = compactCandidateMetric(link, copy);
@@ -778,7 +779,7 @@ function CandidateOverflowTable({
             <th scope="col">{comparisonMetric}</th>
             <th scope="col">{copy('轉向角', 'Steering')}</th>
             <th scope="col">{copy('獨立 TTT', 'Independent TTT')}</th>
-            {showForecastEe && <th scope="col">{copy('預測 EE', 'Forecast EE')}</th>}
+            {showForecastEe && <th scope="col">{copy('計算 EE 投影', 'Computed EE projection')}</th>}
             <th scope="col">{copy('失敗／不可用理由', 'Failed/unavailable reason')}</th>
           </tr>
         </thead>
@@ -847,6 +848,9 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRows = hiddenComparisonRows(plan);
   const showForecastEe = plan.decision.mode === 'ee-optimization';
+  const hasSyntheticWalkerSource = plan.decision.opportunities.some(
+    opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate',
+  );
   const displayedCandidateSatelliteCount = plan.groups.filter(group => (
     !group.isServingSatellite && group.links.some(link => link.isCandidate)
   )).length;
@@ -859,7 +863,19 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
     }
   }
   return (
-    <section className="leo-handover-candidate-set" aria-labelledby={titleId}>
+    <section
+      className="leo-handover-candidate-set"
+      aria-labelledby={titleId}
+      data-provenance-source={hasSyntheticWalkerSource ? 'synthetic-walker' : 'same-frame-computed'}
+    >
+      <ProvenanceBadge
+        source={hasSyntheticWalkerSource ? 'synthetic-walker' : 'same-frame-computed'}
+        testId="handover-candidate-source-badge"
+      >
+        {hasSyntheticWalkerSource
+          ? copy('來源 · 合成 Walker 計算值', 'SOURCE · SYNTHETIC WALKER COMPUTATION')
+          : copy('來源 · 同幀計算值', 'SOURCE · SAME-FRAME COMPUTED VALUES')}
+      </ProvenanceBadge>
       <header className="leo-handover-candidate-set__header">
         <h3 id={titleId}>{copy('候選連線比較', 'Candidate-link comparison')}</h3>
         <span className="leo-handover-candidate-set__summary">
@@ -871,8 +887,8 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
           </strong>
           <small>
             {copy(
-              `波束量測 ${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount} 組 · 顯示 ${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount}`,
-              `${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount} beam measurements shown`,
+              `波束計算值 ${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount} 組 · 顯示 ${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount}`,
+              `${plan.displayedCandidatePairCount} / ${plan.scientificCandidatePairCount} computed beam values shown`,
             )}
           </small>
         </span>
@@ -893,8 +909,8 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
             data-scene-join-contract="same-accepted-snapshot"
           >
             {copy(
-              '中央畫面保留服務鏈路，並以每顆候選衛星一條測量連線呈現；本清單列出同一來源幀的波束比較。',
-              'The centre keeps the serving link and one measured link per candidate satellite; this list compares beams from the same source frame.',
+              '中央畫面保留服務鏈路，並以每顆候選衛星一條候選比較連線呈現；本清單列出同一來源幀的波束比較。',
+              'The centre keeps the serving link and one comparison link per candidate satellite; this list compares beams from the same source frame.',
             )}
           </p>
         </div>
@@ -964,8 +980,8 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
                   <span>{copy('波束狀態', 'Beam status')}</span>
                   <small>
                     {copy(
-                      `${group.beamRoster.length} 個設定波束 · 已量測 ${beamRosterSummary}`,
-                      `${group.beamRoster.length} configured beams · measured ${beamRosterSummary}`,
+                      `${group.beamRoster.length} 個設定波束 · 已計算 ${beamRosterSummary}`,
+                      `${group.beamRoster.length} configured beams · computed ${beamRosterSummary}`,
                     )}
                   </small>
                 </summary>
@@ -1035,7 +1051,7 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
               </div>
               {group.hiddenCandidatePairCount > 0 && (
                 <small className="leo-handover-satellite-group__overflow">
-                  {copy(`另有 ${group.hiddenCandidatePairCount} 組波束量測`, `${group.hiddenCandidatePairCount} more measured beam pair(s)`)}
+                  {copy(`另有 ${group.hiddenCandidatePairCount} 組波束計算值`, `${group.hiddenCandidatePairCount} more computed beam pair(s)`)}
                 </small>
               )}
             </section>
