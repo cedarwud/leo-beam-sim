@@ -16,6 +16,7 @@ import {
   handoverModifierFor,
   resolveHandoverSide,
 } from './handoverAppearanceModifiers';
+import { makeIdentitySources } from './beamAppearanceContract';
 import { resolveBaseIdentityColor } from './resolveBeamAppearance';
 
 test('intra shades both sides and inter shades neither', () => {
@@ -101,12 +102,15 @@ test('an unreadable colour is returned untouched instead of guessed at', () => {
 });
 
 test('the beam identity ladder preserves today values across its source grid', () => {
-  const sources = {
-    planColorFor: () => '#plan',
-    homepageColorFor: (_satId: string, _beamId: number, isServingOrCandidate: boolean) =>
-      isServingOrCandidate ? '#homepage-serving' : '#homepage-ambient',
-    acceptedColorFor: () => '#accepted',
-  };
+  const planColorFor = () => '#plan';
+  const homepageColorFor = (_satId: string, _beamId: number, isServingOrCandidate: boolean) =>
+    isServingOrCandidate ? '#homepage-serving' : '#homepage-ambient';
+  const acceptedColorFor = () => '#accepted';
+  const sources = makeIdentitySources({
+    plan: planColorFor,
+    homepageProjection: homepageColorFor,
+    acceptedSnapshot: acceptedColorFor,
+  });
 
   assert.equal(
     resolveBaseIdentityColor('shell-a-P0-S3', 2, sources),
@@ -114,31 +118,44 @@ test('the beam identity ladder preserves today values across its source grid', (
     'comparison plan outranks homepage and accepted colours',
   );
   assert.equal(
-    resolveBaseIdentityColor('shell-a-P0-S3', 2, {
-      homepageColorFor: sources.homepageColorFor,
-      acceptedColorFor: sources.acceptedColorFor,
-    }, { isServingOrCandidate: false }),
+    resolveBaseIdentityColor('shell-a-P0-S3', 2, makeIdentitySources({
+      plan: null,
+      homepageProjection: homepageColorFor,
+      acceptedSnapshot: acceptedColorFor,
+    }), { isServingOrCandidate: false }),
     '#homepage-ambient',
   );
   assert.equal(
-    resolveBaseIdentityColor('shell-a-P0-S3', 2, {
-      homepageColorFor: sources.homepageColorFor,
-      acceptedColorFor: sources.acceptedColorFor,
-    }, { isServingOrCandidate: true }),
+    resolveBaseIdentityColor('shell-a-P0-S3', 2, makeIdentitySources({
+      plan: null,
+      homepageProjection: homepageColorFor,
+      acceptedSnapshot: acceptedColorFor,
+    }), { isServingOrCandidate: true }),
     '#homepage-serving',
   );
   assert.equal(
-    resolveBaseIdentityColor('sat-serving', 1, {
-      acceptedColorFor: sources.acceptedColorFor,
-    }),
+    resolveBaseIdentityColor('sat-serving', 1, makeIdentitySources({
+      plan: null,
+      homepageProjection: null,
+      acceptedSnapshot: acceptedColorFor,
+    })),
     '#accepted',
     'accepted snapshot is used when homepage has no source',
   );
   assert.equal(
-    resolveBaseIdentityColor('sat-serving', 1, {}),
+    resolveBaseIdentityColor('sat-serving', 1, makeIdentitySources({
+      plan: null,
+      homepageProjection: null,
+      acceptedSnapshot: null,
+    })),
     '#bee561',
     'deterministic identity is the final valid-id rung',
   );
-  assert.equal(resolveBaseIdentityColor('', 1, {}), '#94a3b8');
-  assert.equal(resolveBaseIdentityColor('sat-serving', Number.NaN, {}), '#94a3b8');
+  const noPublishedIdentitySources = makeIdentitySources({
+    plan: null,
+    homepageProjection: null,
+    acceptedSnapshot: null,
+  });
+  assert.equal(resolveBaseIdentityColor('', 1, noPublishedIdentitySources), '#94a3b8');
+  assert.equal(resolveBaseIdentityColor('sat-serving', Number.NaN, noPublishedIdentitySources), '#94a3b8');
 });

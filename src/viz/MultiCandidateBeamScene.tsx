@@ -3,6 +3,7 @@ import { Billboard, Html, Line } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 
+import { makeIdentitySources } from '../appearance/beamAppearanceContract';
 import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
 import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteAppearance';
 import type {
@@ -740,16 +741,17 @@ function resolveMultiCandidateBeamIdentityColor(
   return resolveBaseIdentityColor(
     source.satelliteId,
     source.beamId,
-    {
-      homepageColorFor: homepageVisualIdentity
+    makeIdentitySources({
+      plan: null,
+      homepageProjection: homepageVisualIdentity
         ? () => homepageMultiCandidateBeamColor(
           source,
           homepageBeamEeByKey,
           homepageIdentityPaletteIndexBySatelliteId,
         )
-        : undefined,
-      acceptedColorFor: () => acceptedMultiCandidateBeamColor(source),
-    },
+        : null,
+      acceptedSnapshot: () => acceptedMultiCandidateBeamColor(source),
+    }),
     { isServingOrCandidate: source.isServing },
   );
 }

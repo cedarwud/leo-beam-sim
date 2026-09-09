@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { makeIdentitySources } from '../appearance/beamAppearanceContract';
 import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
-import type { IdentitySources } from '../appearance/beamAppearanceContract';
 import type { RuntimeConfig, VizFrame, VizIntraHandoverEvent } from '../scene/types';
 
 /**
@@ -302,11 +302,16 @@ export function resolveIntraGroundShockwaveColors(input: {
   readonly identityColorBySatelliteId?: ReadonlyMap<string, string>;
   readonly identityColorBySatelliteBeamId?: ReadonlyMap<string, string>;
 }): { readonly sourceColor: string; readonly targetColor: string } {
-  const sources: IdentitySources = {
-    acceptedColorFor: (satId: string, beamId: number) =>
-      input.identityColorBySatelliteBeamId?.get(`${satId}/${beamId}`)
-      ?? input.identityColorBySatelliteId?.get(satId),
-  };
+  const sources = makeIdentitySources({
+    plan: null,
+    homepageProjection: null,
+    acceptedSnapshot: input.identityColorBySatelliteBeamId !== undefined
+      || input.identityColorBySatelliteId !== undefined
+      ? (satId: string, beamId: number) =>
+          input.identityColorBySatelliteBeamId?.get(`${satId}/${beamId}`)
+          ?? input.identityColorBySatelliteId?.get(satId)
+      : null,
+  });
   return Object.freeze({
     sourceColor: resolveBaseIdentityColor(
       input.event.satId,

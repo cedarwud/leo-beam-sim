@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BEAM_ROLE_TOKENS } from '../constants/beamRoleTokens';
+import { makeIdentitySources } from '../appearance/beamAppearanceContract';
 import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
-import type { IdentitySources } from '../appearance/beamAppearanceContract';
 import type { BeamTarget } from '../scene/beamTargetTypes';
 
 export type GroundRippleRole = 'serving' | 'pending';
@@ -147,11 +147,16 @@ export function resolveGroundRippleTargets(input: {
       //
       // Timing and envelope (cycleSec, expandSec, radiusMultiplier, maxOpacity)
       // remain governed by roleSpec as leftovers not yet modeled on the ladder.
-      const sources: IdentitySources = {
-        acceptedColorFor: (satId: string, beamId: number) =>
-          input.identityColorBySatelliteBeamId?.get(`${satId}/${beamId}`)
-          ?? input.identityColorBySatelliteId?.get(satId),
-      };
+      const sources = makeIdentitySources({
+        plan: null,
+        homepageProjection: null,
+        acceptedSnapshot: input.identityColorBySatelliteBeamId !== undefined
+          || input.identityColorBySatelliteId !== undefined
+          ? (satId: string, beamId: number) =>
+              input.identityColorBySatelliteBeamId?.get(`${satId}/${beamId}`)
+              ?? input.identityColorBySatelliteId?.get(satId)
+          : null,
+      });
 
       targets.push({
         ...roleSpec,

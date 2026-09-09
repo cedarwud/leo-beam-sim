@@ -66,7 +66,7 @@ import {
 } from './handoverConeResolvers';
 import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
 import { mosaicColorForServingBeam } from './sinrServingMosaic';
-import { resolvedBeamId } from '../appearance/beamAppearanceContract';
+import { makeIdentitySources, resolvedBeamId } from '../appearance/beamAppearanceContract';
 import { buildMultiCandidateScenePresentation } from './multiCandidateScenePresentation';
 import type {
   CellServingRecord,
@@ -1047,7 +1047,11 @@ test('a valid resolved beam identity maps to its canonical identity colour', () 
   const beamId = resolvedBeamId(identity, cellId => cellId + 1);
 
   assert.equal(
-    resolveBaseIdentityColor(identity.satId, beamId, {}),
+    resolveBaseIdentityColor(identity.satId, beamId, makeIdentitySources({
+      plan: null,
+      homepageProjection: null,
+      acceptedSnapshot: null,
+    })),
     '#bee561',
   );
 });
@@ -1058,7 +1062,11 @@ test('the same (satellite, beam) resolves to ONE colour across the identity-auth
   const surfaceColours = [
     colorForServingBeam(satelliteId, beamId).markerColor,
     mosaicColorForServingBeam(satelliteId, beamId).markerColor,
-    resolveBaseIdentityColor(satelliteId, beamId, {}),
+    resolveBaseIdentityColor(satelliteId, beamId, makeIdentitySources({
+      plan: null,
+      homepageProjection: null,
+      acceptedSnapshot: null,
+    })),
   ];
 
   assert.equal(new Set(surfaceColours).size, 1, `identity surfaces diverged: ${surfaceColours.join(' vs ')}`);
@@ -1111,7 +1119,11 @@ test('a VALID identity never resolves to the neutral fallback HANDOVER_VISUAL_ID
   // This checks only the pure identity resolver. Cone mount role colours are
   // intentionally outside this invariant because they are semantic-role
   // presentation, not identity authority.
-  const resolvedColour = resolveBaseIdentityColor('sat-serving', 1, {});
+  const resolvedColour = resolveBaseIdentityColor('sat-serving', 1, makeIdentitySources({
+    plan: null,
+    homepageProjection: null,
+    acceptedSnapshot: null,
+  }));
 
   assert.notEqual(resolvedColour, HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR);
 });

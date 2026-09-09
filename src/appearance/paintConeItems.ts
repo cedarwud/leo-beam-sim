@@ -45,6 +45,7 @@
  */
 import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 import {
+  makeIdentitySources,
   resolveServingOrCandidateFlag,
   resolvedBeamId,
   type BeamProminence,
@@ -161,9 +162,10 @@ function identitySourcesFromLookup(
   planColorFor: ((satId: string, beamId: number) => string | undefined) | undefined,
   isServingOrCandidate: boolean,
 ): IdentitySources {
-  return {
-    planColorFor,
-    acceptedColorFor: lookup !== undefined
+  return makeIdentitySources({
+    plan: planColorFor ?? null,
+    homepageProjection: null,
+    acceptedSnapshot: lookup !== undefined
       ? (satId, beamId) => {
           const result = lookup.length >= 4
             ? (lookup as unknown as (s: string, b: number, f: string, sc?: boolean) => string | undefined)(
@@ -175,8 +177,8 @@ function identitySourcesFromLookup(
             : lookup(satId, beamId, isServingOrCandidate);
           return result !== undefined && result.length > 0 ? result : undefined;
         }
-      : undefined,
-  };
+      : null,
+  });
 }
 
 /**

@@ -154,6 +154,7 @@ import {
   resolvePulseConeItems,
 } from '../../src/scene/handoverConeResolvers.ts';
 import { paintConeItems } from '../../src/appearance/paintConeItems.ts';
+import { makeIdentitySources } from '../../src/appearance/beamAppearanceContract.ts';
 import {
   resolveBaseIdentityColorWithRung,
   type BaseIdentityColorResolution,
@@ -651,25 +652,27 @@ function createDriver(options: DriverOptions): Driver {
     ): BaseIdentityColorResolution => resolveBaseIdentityColorWithRung(
       satelliteId,
       beamId,
-      {
-        planColorFor,
-        homepageColorFor: homepageVisualIdentity
+      makeIdentitySources({
+        plan: planColorFor ?? null,
+        homepageProjection: homepageVisualIdentity
           ? (satId, beam, serving) => homepageSatelliteColorForBeam(satId, beam, {
             identityPaletteIndex: homepageIdentityPaletteIndexBySatelliteId?.get(satId) ?? null,
             eeNormalized: homepageEeByKey?.get(`${satId}:${beam}`),
             isServing: serving,
           }).color
-          : undefined,
-        acceptedColorFor: (satId, beam) => {
-          const published = resolveAcceptedBeamIdentityColor(
-            acceptedSnapshot,
-            satId,
-            beam,
-            '',
-          );
-          return published.length > 0 ? published : undefined;
-        },
-      },
+          : null,
+        acceptedSnapshot: acceptedSnapshot === null
+          ? null
+          : (satId, beam) => {
+              const published = resolveAcceptedBeamIdentityColor(
+                acceptedSnapshot,
+                satId,
+                beam,
+                '',
+              );
+              return published.length > 0 ? published : undefined;
+            },
+      }),
       { isServingOrCandidate },
     );
     const resolveIdentityColor = (

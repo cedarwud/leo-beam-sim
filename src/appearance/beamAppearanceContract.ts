@@ -102,8 +102,49 @@ export interface HandoverSituation {
   readonly phase: 'serving' | 'measuring' | 'holding' | 'releasing' | 'settled' | null;
 }
 
+/** A pure lookup for the comparison plan's published beam colour. */
+export type IdentityPlanLookup = (
+  satId: string,
+  beamId: number,
+) => string | undefined;
+
+/** A pure lookup for the homepage's compact-family beam projection. */
+export type IdentityHomepageProjectionLookup = (
+  satId: string,
+  beamId: number,
+  isServingOrCandidate: boolean,
+) => string | undefined;
+
+/** A pure lookup for the accepted presentation snapshot's published beam colour. */
+export type IdentityAcceptedSnapshotLookup = (
+  satId: string,
+  beamId: number,
+) => string | undefined;
+
+/**
+ * The complete, named input to {@link makeIdentitySources}.
+ *
+ * Every rung is required at the seam. `null` means that the rung is genuinely
+ * unavailable; omitting a property is not another way to spell that state.
+ */
+export interface IdentitySourcesInput {
+  /** Rung 0: the accepted comparison plan's own published colour. */
+  readonly plan: IdentityPlanLookup | null;
+  /** Rung 1: the homepage's compact-family projection. */
+  readonly homepageProjection: IdentityHomepageProjectionLookup | null;
+  /** Rung 2: the accepted presentation snapshot's published colour. */
+  readonly acceptedSnapshot: IdentityAcceptedSnapshotLookup | null;
+}
+
 /**
  * Where the identity colour comes from, supplied by the caller as pure lookups.
+ *
+ * This is an opaque value. Callers can consume it, but cannot hand-assemble a
+ * partial source set that TypeScript will accept; {@link makeIdentitySources}
+ * is the only factory. The implementation class is not exported and its
+ * nominal member is private, so consumers cannot name or instantiate that
+ * implementation; the three fields are always present in the factory result
+ * (with `undefined` for a rung whose input was explicitly `null`).
  *
  * These are FUNCTIONS, not resolved colours, so the precedence between them is
  * decided in one place ({@link resolveBaseIdentityColor}) instead of being
@@ -112,24 +153,44 @@ export interface HandoverSituation {
  * invention, because a sink inventing a fallback colour is how the same
  * satellite ends up different colours on different surfaces.
  */
-export interface IdentitySources {
+class IdentitySourcesRecord {
   /** The accepted comparison plan's own published colour. Outranks everything. */
-  readonly planColorFor?: (satId: string, beamId: number) => string | undefined;
+  readonly planColorFor: IdentityPlanLookup | undefined;
   /**
    * The accepted presentation snapshot's published colour for this beam, if the
    * snapshot has one. Highest precedence: it is what the right-hand rail shows,
    * and the scene must agree with the rail.
    */
-  readonly acceptedColorFor?: (satId: string, beamId: number) => string | undefined;
+  readonly acceptedColorFor: IdentityAcceptedSnapshotLookup | undefined;
   /**
    * The homepage's compact-family projection, when the homepage owns identity.
    * Present only on the homepage; absent elsewhere.
    */
-  readonly homepageColorFor?: (
-    satId: string,
-    beamId: number,
-    isServingOrCandidate: boolean,
-  ) => string | undefined;
+  readonly homepageColorFor: IdentityHomepageProjectionLookup | undefined;
+
+  private declare readonly identitySourcesBrand: void;
+
+  constructor(input: IdentitySourcesInput) {
+    this.planColorFor = input.plan ?? undefined;
+    this.acceptedColorFor = input.acceptedSnapshot ?? undefined;
+    this.homepageColorFor = input.homepageProjection ?? undefined;
+  }
+}
+
+export type IdentitySources = IdentitySourcesRecord;
+
+/**
+ * Construct the complete identity-source set at the appearance seam.
+ *
+ * Keeping the brand and the normalization here means every consumer names all
+ * three ladder inputs, while the resolver receives one immutable value with no
+ * caller-controlled omissions. `null` is normalized to the resolver's existing
+ * `undefined`-on-miss convention without changing any colour decision.
+ */
+export function makeIdentitySources(input: IdentitySourcesInput): IdentitySources {
+  const sources = new IdentitySourcesRecord(input);
+  Object.freeze(sources);
+  return sources;
 }
 
 /**

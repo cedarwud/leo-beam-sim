@@ -2,7 +2,10 @@ import { useCallback, useMemo } from 'react';
 import { homepageSatelliteColorForBeam } from '../homepage/controller/homepageSatelliteVisualIdentity';
 import { resolveHomepageSatelliteIdentityColor } from '../appearance/satelliteIdentityPalette';
 import { resolveBaseIdentityColor } from '../appearance/resolveBeamAppearance';
-import { type IdentitySources } from '../appearance/beamAppearanceContract';
+import {
+  makeIdentitySources,
+  type IdentitySources,
+} from '../appearance/beamAppearanceContract';
 import {
   resolveSatelliteIdentityColor,
   type SatelliteIdentitySources,
@@ -73,25 +76,29 @@ export function useSceneIdentityColorLadder({
         isServing: isServingOrCandidate,
       }).color
     );
-    return {
-      // Rung 1. Present only while the homepage controller owns identity; absent
-      // — not merely empty — on every other surface.
-      homepageColorFor: homepageVisualIdentity ? homepageColorFor : undefined,
-    // Rung 2. `resolveAcceptedBeamIdentityColor` reports a miss by handing back
-    // whatever fallback it was given, so the only way to see a miss from out
-    // here is to give it a value that can never be a published colour. The
-    // empty string is that value: not a fabricated colour, and already the
-    // ladder's own definition of "nothing to say".
-    acceptedColorFor: (satelliteId, beamId) => {
-      const published = resolveAcceptedBeamIdentityColor(
-        acceptedHandoverPresentation,
-        satelliteId,
-        beamId,
-        '',
-      );
-      return published.length > 0 ? published : undefined;
-    },
-    };
+    return makeIdentitySources({
+      // Rung 0 is not available on this scene-owned source set.
+      plan: null,
+      // Rung 1. Present only while the homepage controller owns identity; null
+      // makes the unavailable rung explicit on every other surface.
+      homepageProjection: homepageVisualIdentity ? homepageColorFor : null,
+      // Rung 2. `resolveAcceptedBeamIdentityColor` reports a miss by handing
+      // back whatever fallback it was given, so the only way to see a miss from
+      // here is to give it a value that can never be a published colour. The
+      // empty string is that value: not a fabricated colour, and already the
+      // ladder's own definition of "nothing to say".
+      acceptedSnapshot: acceptedHandoverPresentation === null
+        ? null
+        : (satelliteId, beamId) => {
+            const published = resolveAcceptedBeamIdentityColor(
+              acceptedHandoverPresentation,
+              satelliteId,
+              beamId,
+              '',
+            );
+            return published.length > 0 ? published : undefined;
+          },
+    });
   }, [acceptedHandoverPresentation, homepageBeamEeByKey, homepageIdentityPaletteIndexBySatelliteId, homepageVisualIdentity]);
   const resolveSceneAcceptedBeamColor = useCallback((
     satelliteId: string,
