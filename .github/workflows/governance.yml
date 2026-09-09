@@ -58,6 +58,31 @@ jobs:
       - run: npm run test:adopted-orphans
       - run: npm run test:multi-candidate
       - run: npm run test:homepage-projections
+      # APPEARANCE / RENDERING-CONVERGENCE GATES — added 2026-09-09.
+      #
+      # Until today NONE of these ran in CI. `test:appearance` is the 19-file
+      # characterization net, including `src/scene/appearanceCharacterization.test.ts`
+      # — the 284-row photograph the appearance drill depends on to judge whether
+      # pixels moved. `grep -rn "test:appearance" .github/workflows/` returned
+      # EMPTY while the npm key existed, so the drill's own instrument was
+      # unguarded on every PR: the photograph could be emptied or re-baselined and
+      # nothing server-side would notice. `validate:static:all` cannot cover them
+      # either — it auto-discovers only keys starting with `validate:` AND runs
+      # each as a single `node --import tsx/esm <file>` command, which neither a
+      # multi-file `--test` invocation nor a bash script can be. Renaming them to
+      # `validate:*` would make the runner execute only the FIRST file of
+      # test:appearance and call that a pass, so they are wired explicitly here.
+      #
+      # Placed at the END of the job on this file's own advice: a new step that
+      # turns red at the top silently deletes every gate below it.
+      - run: npm run test:appearance
+      - run: npm run audit:appearance-cost
+      # The empirical drill. It EDITS files under src/ and restores them
+      # byte-exactly; safe on a throwaway checkout, and it refuses to run at all
+      # if a guarded file has unstaged edits. Measured 23s on a clean tree
+      # (14 drills); never yet run on a hosted runner (same caveat as the rest of
+      # this job).
+      - run: npm run audit:appearance-drill
 
   visual-gates:
     # The END-TO-END VISUAL gates (the loop-3 fix: what the USER sees, not just

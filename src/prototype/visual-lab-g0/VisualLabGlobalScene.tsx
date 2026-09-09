@@ -242,12 +242,18 @@ function GlobalArtifactSummary({ artifact, palette, copy }: { readonly artifact:
   </Html>;
 }
 
-function markerColor(role: VisualLabGlobalSatellite['role'], palette: GlobalScenePalette): string {
+// Named for its own decision (role -> palette slot), not `markerColor`. The
+// generic name collided with the private `markerColor` in
+// `src/scene/renderedLiveSatelliteMarkers.ts`, which owns a completely different
+// decision — the live satellite marker's identity-colour fallback. Two unrelated
+// functions under one name is how "I changed markerColor and nothing happened"
+// starts; the appearance drill's single-authority check flags it.
+function roleMarkerColor(role: VisualLabGlobalSatellite['role'], palette: GlobalScenePalette): string {
   return role === 'serving' ? palette.serving : palette.candidate;
 }
 
 function VisualLabGlobalSatelliteMarker({ satellite, palette, copy }: { readonly satellite: VisualLabGlobalSatellite; readonly palette: GlobalScenePalette; readonly copy: (typeof VISUAL_LAB_GLOBAL_SCENE_COPY)[VisualLabGlobalSceneLocale] }): ReactElement {
-  const color = markerColor(satellite.role, palette);
+  const color = roleMarkerColor(satellite.role, palette);
   return <group position={point(satellite.positionWorld)} name={`${satellite.role}-satellite-${satellite.satelliteId}`}>
     <mesh>
       <sphereGeometry args={[satellite.role === 'serving' ? .065 : .055, 16, 12]} />

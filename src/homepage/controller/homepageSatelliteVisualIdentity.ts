@@ -16,6 +16,7 @@ import {
   homepageSatelliteBaseColor,
   homepageSatellitePaletteIndex,
 } from '../../appearance/satelliteIdentityPalette';
+import { clampUnit, hslToHex } from '../../constants/hsl';
 import { servingBeamShadeIndex } from '../../constants/servingColour';
 
 export {
@@ -104,21 +105,31 @@ export interface HomepageSatelliteVisualColor {
   readonly emissiveColor: string;
 }
 
-function positiveModulo(value: number, modulus: number): number {
-  return ((value % modulus) + modulus) % modulus;
-}
-
-function hslToHex(hueDegrees: number, saturation: number, lightness: number): string {
-  const h = positiveModulo(hueDegrees, 360) / 360;
-  const boundedSaturation = Math.min(1, Math.max(0, saturation));
-  const boundedLightness = Math.min(1, Math.max(0, lightness));
-  const a = boundedSaturation * Math.min(boundedLightness, 1 - boundedLightness);
-  const channel = (n: number): string => {
-    const k = positiveModulo(n + h * 12, 12);
-    const c = boundedLightness - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-    return Math.round(255 * c).toString(16).padStart(2, '0');
-  };
-  return `#${channel(0)}${channel(8)}${channel(4)}`;
+/**
+ * Degrees -> unit ADAPTER over the one HSL formula, in `constants/hsl.ts`.
+ *
+ * This file used to carry a third private copy of that formula, differing only
+ * in its interface: hue in [0, 360) instead of [0, 1], with the clamps folded
+ * in. An interface difference is not a reason to own a second implementation —
+ * it is a reason to own an adapter. The copy is why `constants/hsl.ts`'s own
+ * header ("Extracted so the two are not maintained as separate copies of the
+ * same formula") was true of two of the three copies and silently false of this
+ * one: every homepage satellite colour went through the private one.
+ *
+ * The adapter is behaviour-preserving, not merely equivalent-looking:
+ *   - `positiveModulo(hueDegrees, 360) / 360` is reproduced here, so any hue
+ *     outside [0, 360) normalises exactly as before;
+ *   - `clampUnit` is the same clamp the private copy applied to s and l;
+ *   - inside the formula, the copy's `positiveModulo(n + h * 12, 12)` and the
+ *     shared `(n + h * 12) % 12` agree for every h >= 0, which is all this
+ *     adapter can produce.
+ */
+function hueFamilyColor(hueDegrees: number, saturation: number, lightness: number): string {
+  return hslToHex(
+    (((hueDegrees % 360) + 360) % 360) / 360,
+    clampUnit(saturation),
+    clampUnit(lightness),
+  );
 }
 
 function homepageBeamShadeIndex(beamId: number): number {
@@ -182,7 +193,7 @@ export function homepageSatelliteColorForBeam(
   const lightness = isServing
     ? mix(0.72, 0.48)
     : mix(0.74, 0.52);
-  const color = hslToHex(family.hueDegrees, saturation, lightness);
+  const color = hueFamilyColor(family.hueDegrees, saturation, lightness);
   return Object.freeze({
     satelliteId,
     paletteIndex,
@@ -193,7 +204,7 @@ export function homepageSatelliteColorForBeam(
     lightness,
     baseColor: homepageSatelliteBaseColor(satelliteId),
     color,
-    emissiveColor: hslToHex(
+    emissiveColor: hueFamilyColor(
       family.hueDegrees,
       saturation,
       isServing

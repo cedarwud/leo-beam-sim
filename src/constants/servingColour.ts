@@ -34,6 +34,14 @@
  * colour-match invariant false-greens.
  */
 
+// The hex/HSL formula has ONE home: `constants/hsl.ts`. It used to be copied
+// here verbatim, alongside private `hexToHsl` / `clampUnit` copies and a second
+// live definition of `emphasizeIntraHandoverColor` — the appearance owner was
+// COPIED to `appearance/intraHandoverShade.ts`, never moved, so editing the
+// owner left this definition in place. All four are deleted; only the shared
+// formula is imported.
+import { hslToHex } from './hsl';
+
 /** Marker/cone colour pair for one serving (satId, beamId). */
 export interface ServingIdentityColor {
   readonly markerColor: string;
@@ -179,74 +187,6 @@ function hashStringToUnit(value: string): number {
   return ((hash >>> 0) % 1_000_000) / 1_000_000;
 }
 
-/** Pure HSL→hex (h,s,l in [0,1]); avoids a THREE dependency in the model. */
-function hslToHex(h: number, s: number, l: number): string {
-  const a = s * Math.min(l, 1 - l);
-  const channel = (n: number): string => {
-    const k = (n + h * 12) % 12;
-    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-    return Math.round(255 * c).toString(16).padStart(2, '0');
-  };
-  return `#${channel(0)}${channel(8)}${channel(4)}`;
-}
-
-interface HslColor {
-  readonly hue: number;
-  readonly saturation: number;
-  readonly lightness: number;
-}
-
-function hexToHsl(color: string): HslColor | null {
-  const match = /^#?([0-9a-f]{6})$/i.exec(color.trim());
-  if (match === null) return null;
-  const channels = match[1]!.match(/../g)!.map(channel => Number.parseInt(channel, 16) / 255);
-  const [red, green, blue] = channels;
-  const maximum = Math.max(red!, green!, blue!);
-  const minimum = Math.min(red!, green!, blue!);
-  const delta = maximum - minimum;
-  const lightness = (maximum + minimum) / 2;
-  if (delta <= Number.EPSILON) {
-    return { hue: 0, saturation: 0, lightness };
-  }
-  const saturation = delta / (1 - Math.abs((2 * lightness) - 1));
-  const hue = maximum === red
-    ? ((green! - blue!) / delta) % 6
-    : maximum === green
-      ? ((blue! - red!) / delta) + 2
-      : ((red! - green!) / delta) + 4;
-  return {
-    hue: ((hue / 6) % 1 + 1) % 1,
-    saturation,
-    lightness,
-  };
-}
-
-function clampUnit(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}
-
-/**
- * Make the two sides of an intra-satellite handover readable for the short
- * transition envelope while retaining the allocated satellite hue.  This is
- * intentionally a transient render treatment: steady-state beam colours and
- * the right-rail identity allocation continue to use their original tokens.
- * The source is a restrained darker shade and the target is a brighter shade;
- * both are derived from the same input hue, so the change cannot be mistaken
- * for an inter-satellite identity swap or for a role colour.
- */
-export function emphasizeIntraHandoverColor(
-  color: string,
-  side: 'source' | 'target',
-): string {
-  const hsl = hexToHsl(color);
-  if (hsl === null) return color;
-  const saturation = clampUnit(Math.max(0.78, Math.min(0.92, hsl.saturation * 1.12)));
-  const lightness = side === 'source'
-    ? Math.min(0.62, Math.max(0.42, hsl.lightness * 0.64 + 0.12))
-    : Math.min(0.94, Math.max(0.74, hsl.lightness * 0.50 + 0.48));
-  return hslToHex(hsl.hue, saturation, lightness);
-}
-
 function positiveModulo(value: number, modulus: number): number {
   return ((value % modulus) + modulus) % modulus;
 }
@@ -385,3 +325,4 @@ export function colorForServingSatellite(satId: string): ServingIdentityColor {
     markerEmissive: hslToHex(hue, SERVING_IDENTITY_SATURATION, Math.max(0.28, lightness - 0.18)),
   };
 }
+
