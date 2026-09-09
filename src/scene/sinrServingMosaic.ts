@@ -171,6 +171,33 @@ export function buildSinrServingUeColorMapFromCells(
 }
 
 /**
+ * WHICH SOURCE colours the UE markers, and whether they are coloured at all.
+ *
+ * The serving truth is the EARTH-FIXED CELL model, so the cell frame wins whenever
+ * it is present; the steered lattice is the fallback for a frame that has no cell
+ * truth (never a healthy sinr-live frame). `enabled` is the render-plan's lane gate
+ * — off the sinr-live lane there is no mosaic at all, and `null` means "no mosaic",
+ * which is not the same as "every UE unserved".
+ *
+ * The two builders above decide what colour a served/unserved UE gets; this decides
+ * which of them is asked. Both halves of that question now live in this one module.
+ */
+export function resolveSinrServingUeColorMap({
+  enabled,
+  cellFrame,
+  sceneUes,
+}: {
+  readonly enabled: boolean;
+  readonly cellFrame: { readonly ues: ReadonlyArray<SinrServingCellUe> } | null | undefined;
+  readonly sceneUes: ReadonlyArray<{ id: string; servingSatelliteId: string; servingBeamId: string }>;
+}): Map<string, SinrServingMarkerColor> | null {
+  if (!enabled) return null;
+  return cellFrame
+    ? buildSinrServingUeColorMapFromCells(cellFrame.ues)
+    : buildSinrServingUeColorMap(sceneUes);
+}
+
+/**
  * Aggregate readout (served N/N, per-beam load, mean served SINR) over the
  * published per-UE serving samples (`SimState.perUePositions` shape). All
  * counting is over real serving truth; this model never invents a serving or a

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { HANDOVER_CONE_PHASE_END } from '../constants/sinrLiveConeStyle';
+import { HANDOVER_CONE_PHASE_END } from '../appearance/handoverTimingEnvelope';
 import { resolveLegacyAutoSlowActive } from '../usePlaybackControls';
 import {
   advanceHandoverPresentation,

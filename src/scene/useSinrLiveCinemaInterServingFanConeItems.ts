@@ -8,7 +8,7 @@ import { resolveSinrLiveConfiguredBeamCount } from './sinrLiveBeamDisplayFrame';
 import { type AcceptedHandoverPresentationSnapshot } from './acceptedHandoverPresentationSnapshot';
 import { resolveAcceptedBeamIdentityColor } from './acceptedBeamIdentityColor';
 import { paintConeItems } from '../appearance/paintConeItems';
-import { type HandoverConeEnvelope } from '../constants/sinrLiveConeStyle';
+import { type HandoverConeEnvelope } from '../appearance/handoverTimingEnvelope';
 import { type CandidateOpportunitySet } from '../engine/handover/candidateOpportunityProducer';
 import { type AngleAwareFormulaFrame } from '../engine/signal/types';
 import { type HandoverDisplayIsolationState } from './handoverDisplayIsolation';

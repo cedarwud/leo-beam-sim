@@ -242,12 +242,29 @@ const servingConePaletteSource = await readFile(
   new URL('../appearance/servingConePalette.ts', import.meta.url),
   'utf8',
 );
+// The scene's identity-colour rungs moved out of MainScene into their owning
+// module; this pin follows the owner, unchanged in what it asserts.
+const identityLadderSource = await readFile(
+  new URL('./useSceneIdentityColorLadder.ts', import.meta.url),
+  'utf8',
+);
+// The cone palette pair moved out of MainScene into its owning module; these
+// pins follow the owner and additionally pin the hand-off, so the chain
+// MainScene -> useSinrLiveConePalette -> resolveServingConePalette stays whole.
+const conePaletteSource = await readFile(
+  new URL('./useSinrLiveConePalette.ts', import.meta.url),
+  'utf8',
+);
 const railSource = await readFile(
   new URL('../ui/handover-evaluation/HandoverEvaluationPanel.tsx', import.meta.url),
   'utf8',
 );
 const publisherSource = await readFile(
   new URL('./useSimStatePublisher.ts', import.meta.url),
+  'utf8',
+);
+const homepageRenderAuthoritySource = await readFile(
+  new URL('../homepage/controller/homepageRenderAuthority.ts', import.meta.url),
   'utf8',
 );
 const infoPanelSource = await readFile(
@@ -269,7 +286,7 @@ test('MainScene mounts the bounded multi-candidate presentation from one accepte
   assert.match(publisherSource, /buildAcceptedHandoverPresentationSession\(\{/);
   assert.match(snapshotSource, /buildCandidatePresentationPlan\(input\.decision/);
   assert.match(
-    publisherSource,
+    homepageRenderAuthoritySource,
     /displayAllHardEligibleCandidates:\s*true,[\s\S]{0,240}displayOnlyTriggerSatisfiedCandidates:\s*true,/,
     'homepage rail must expose only hard-eligible alternatives that also satisfy the active trigger',
   );
@@ -430,9 +447,10 @@ test('MainScene mounts the bounded multi-candidate presentation from one accepte
 });
 
 test('homepage transition colours stay on the accepted EE shade projection', () => {
-  const resolverStart = source.indexOf('const resolveSceneAcceptedBeamColor');
-  const resolverEnd = source.indexOf('const resolveSceneAcceptedCellColor', resolverStart);
-  const resolver = source.slice(resolverStart, resolverEnd);
+  const resolverStart = identityLadderSource.indexOf('const resolveSceneAcceptedBeamColor');
+  const resolverEnd = identityLadderSource.indexOf('const resolveSceneAcceptedCellColor', resolverStart);
+  assert.ok(resolverStart >= 0 && resolverEnd > resolverStart, 'the identity-colour ladder module must still declare both resolvers');
+  const resolver = identityLadderSource.slice(resolverStart, resolverEnd);
   assert.match(
     resolver,
     /homepageSatelliteColorForBeam\([\s\S]*eeNormalized:\s*homepageBeamEeByKey\?\.get\(/,
@@ -560,7 +578,9 @@ test('candidate authority is additive and cannot blanket-suppress the establishe
   // explicitly presented candidate pairs. The rest of the serving satellite's
   // fan must retain the semantic neutral treatment.
   assert.match(source, /const multiCandidateServingBeamColor = multiCandidateSceneRenderPlan\?\.instructions\.find/);
-  assert.match(source, /resolveServingConePalette\(/);
+  assert.match(source, /useSinrLiveConePalette\(\{[\s\S]{0,200}multiCandidateServingBeamColor,/);
+  assert.match(conePaletteSource, /resolveServingConePalette\(/);
+  assert.match(conePaletteSource, /multiCandidateServingBeamColor,\n\s*\),/);
   assert.match(servingConePaletteSource, /heroColor: activeServingBeamColor \?\? basePalette\.heroColor/);
   assert.doesNotMatch(source, /items\.map\(item => \{[\s\S]{0,500}beamIdentitiesBySatelliteId/);
   const servingItems = resolveServingConeItems({

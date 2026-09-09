@@ -86,6 +86,7 @@ export interface SceneSinrLiveBeamCalloutLayer {
   readonly homepageVisualIdentity: boolean;
   readonly satelliteNameById: SinrLiveCellBeamCalloutsProps['satelliteNameById'];
   readonly telemetryCountDatasetKey: string;
+  readonly sourceProvenance?: SinrLiveCellBeamCalloutsProps['sourceProvenance'];
 }
 
 export interface SceneSinrLiveTeachingLayer {
@@ -193,6 +194,7 @@ export function SceneSinrLiveBeamLayers({
           homepageVisualIdentity={callouts.homepageVisualIdentity}
           satelliteNameById={callouts.satelliteNameById}
           telemetryCountDatasetKey={callouts.telemetryCountDatasetKey}
+          sourceProvenance={callouts.sourceProvenance}
         />
       )}
       {teaching?.mounted && (

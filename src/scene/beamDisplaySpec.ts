@@ -47,11 +47,11 @@ import {
   SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR,
   SINR_LIVE_TRIGGERED_INTRA_TO_COLOR,
   SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY,
-  SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
   SINR_LIVE_CONE_DIM_ELEVATION_FLOOR_DEG,
   SINR_LIVE_CONE_DIM_ELEVATION_CEIL_DEG,
   SINR_LIVE_CONE_DIM_MIN_FACTOR,
 } from '../constants/sinrLiveConeStyle';
+import { SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS } from '../appearance/handoverTimingEnvelope';
 
 /**
  * WHICH satellites' beams the sinr-live cell lane draws (display-only render focus, Rule#6 —

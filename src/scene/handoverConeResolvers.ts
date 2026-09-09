@@ -29,7 +29,7 @@ import {
   type SinrLiveCellHandoverEvent,
 } from './sinrLiveCellModel';
 import { selectHandoverEventsForDisplay } from './handoverDisplayIsolation';
-import { type HandoverConeEnvelope } from '../constants/sinrLiveConeStyle';
+import { type HandoverConeEnvelope } from '../appearance/handoverTimingEnvelope';
 import { type WorldPoint } from '../viz/CellFootprints';
 
 type ResolveSceneAcceptedBeamColor = (

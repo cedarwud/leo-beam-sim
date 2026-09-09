@@ -8,7 +8,7 @@ import {
   type SinrLiveCellPlacement,
   type SinrLiveCinemaHandoverCandidate,
 } from '../viz/SinrLiveCellBeamCones';
-import { type HandoverConeEnvelope } from '../constants/sinrLiveConeStyle';
+import { type HandoverConeEnvelope } from '../appearance/handoverTimingEnvelope';
 import { type SinrLiveCellFrame, type UeCellServingRecord } from './sinrLiveCellModel';
 import { type WorldPoint } from '../viz/CellFootprints';
 
