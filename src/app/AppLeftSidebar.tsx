@@ -90,7 +90,6 @@ export function AppLeftSidebar({
         aria-controls="left-sidebar-content"
         aria-expanded={!collapsed}
         aria-label={collapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
-        title={collapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
         onClick={onToggleCollapsed}
       >
         <span className="leo-left-sidebar-toggle__icon" aria-hidden="true">

@@ -12,7 +12,6 @@ import {
   type TeachingLinkFrame,
 } from '../../homepage/teaching/handoverTeachingScript';
 import { useLocale } from '../../i18n';
-import { ProvenanceBadge } from '../common/ProvenanceBadge';
 
 /**
  * The homepage handover lecture, rendered onto the existing shell.
@@ -255,16 +254,6 @@ export function HandoverTeachingRail({
             {frame.elapsedSec.toFixed(0)} / {totalSec.toFixed(0)} s
           </span>
         </div>
-        <ProvenanceBadge source="authored-teaching" testId="teaching-values-source-badge">
-          {isEnglish
-            ? 'AUTHORED TEACHING VALUES · EE / POLICY · NOT MEASURED'
-            : '教學用模擬數值 · EE／規則 · 非實測'}
-        </ProvenanceBadge>
-        <ProvenanceBadge source="synthetic-walker-conditional" testId="teaching-identity-source-badge">
-          {isEnglish
-            ? 'IDENTITY / ELEVATION · LIVE SYNTHETIC WALKER WHEN SUPPLIED'
-            : '身分／仰角 · 有資料時為即時合成 Walker'}
-        </ProvenanceBadge>
         <span style={{ color: COLORS.quiet, fontSize: 12, lineHeight: 1.3 }}>
           {isEnglish
             ? 'If the Walker binding is absent, identity/elevation use authored teaching fallbacks.'

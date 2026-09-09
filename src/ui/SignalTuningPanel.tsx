@@ -28,7 +28,6 @@ import {
   LossControlSection,
 } from './signal-tuning/ControlSections';
 import { HelpPopover } from './common/HelpPopover';
-import { ProvenanceBadge } from './common/ProvenanceBadge';
 import { NumericControl, PathLossTermControl, SelectControl } from './signal-tuning/Controls';
 import {
   FormulaFraction,
@@ -229,17 +228,6 @@ export function SignalTuningPanel({
         data-testid="signal-tuning-drawer-content"
         style={drawerContentStyle}
       >
-        <div
-          data-testid="signal-tuning-provenance"
-          style={{ display: 'grid', gap: 5, justifyItems: 'start', marginBottom: 8 }}
-        >
-          <ProvenanceBadge source="synthetic-walker" testId="signal-tuning-source-badge">
-            {isEnglish ? 'SOURCE · SYNTHETIC WALKER FORMULA OUTPUTS' : '來源 · 合成 Walker 公式輸出'}
-          </ProvenanceBadge>
-          <ProvenanceBadge source="authored-input-controls" testId="signal-tuning-input-source-badge">
-            {isEnglish ? 'AUTHORED INPUT CONTROLS · NOT MEASURED' : '教學用輸入控制 · 非實測'}
-          </ProvenanceBadge>
-        </div>
         <MainTabList
           activeTab={mainTab}
           showHandoverTab={handoverPolicySection != null}

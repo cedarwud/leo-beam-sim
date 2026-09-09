@@ -412,7 +412,7 @@ assert.match(zhMarkup, />EE</);
 assert.doesNotMatch(zhMarkup, /即時/);
 assert.match(zhMarkup, /全部展開/);
 assert.doesNotMatch(zhMarkup, /N\/A|無資料/);
-assert.match(zhMarkup, /來源 · 合成 Walker 計算值/);
+// The provenance source badge was removed from the rail; no assertion here.
 assert.doesNotMatch(zhMarkup, /Snapshot|Source frame|Phase/);
 assert.doesNotMatch(zhMarkup, /homepage-beam-rail-transport|homepage-beam-rail-counts|選定速度|實際速度|已暫停|>波束數值</);
 assert.doesNotMatch(zhMarkup, /候選計數|觀測|硬條件合格|觸發滿足|TTT 穩定|溢出/);
@@ -564,7 +564,7 @@ assert.match(
   /data-ee-availability="idle"/,
   'an idle beam must render as idle, not be dropped',
 );
-assert.match(sparseRosterMarkup, /DISPLAY-ONLY SYNTHESIS · NOT AN OBSERVATION/);
+// The display-only synthesis badge was removed from the rail; no assertion here.
 assert.equal(
   (sparseRosterMarkup.match(/data-ee-availability="idle"/g) ?? []).length,
   5,

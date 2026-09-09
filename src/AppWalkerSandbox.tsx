@@ -1912,7 +1912,6 @@ export function AppWalkerSandbox() {
             aria-controls="left-sidebar-content"
             aria-expanded={!leftSidebarCollapsed}
             aria-label={leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
-            title={leftSidebarCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar to the left'}
             onClick={() => setLeftSidebarCollapsed(collapsed => !collapsed)}
           >
             <span className="leo-left-sidebar-toggle__icon" aria-hidden="true">
@@ -2105,7 +2104,6 @@ export function AppWalkerSandbox() {
                       isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                       channelMetricKind={activeSceneFrame?.channelMetricKind}
                       sourceProvenance="synthetic-walker"
-                      showProvenanceBadge={false}
                     />
                   </WalkerResultsRail>
                 ) : (

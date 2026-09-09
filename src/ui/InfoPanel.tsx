@@ -13,7 +13,6 @@ import { FormulaTermsReadout } from './info-panel/FormulaTermsReadout';
 import { usePanelCopy } from './info-panel/panelHelp';
 import { HandoverEvaluationPanel } from './handover-evaluation/HandoverEvaluationPanel';
 import { useLocale } from '../i18n';
-import { ProvenanceBadge } from './common/ProvenanceBadge';
 
 type InfoPanelProps = SimState & {
   /**
@@ -37,8 +36,6 @@ type InfoPanelProps = SimState & {
   channelMetricKind?: VisualShowcaseChannelMetricKind;
   /** Source boundary for the physical values in this panel. */
   sourceProvenance?: 'synthetic-walker' | 'archived-tle' | 'artifact-replay';
-  /** Nested under WalkerResultsRail when that parent owns the source badge. */
-  showProvenanceBadge?: boolean;
 };
 
 interface LiveStatusModeCopy {
@@ -103,7 +100,6 @@ export function InfoPanel({
   handoverTriggerSec,
   hoCount,
   sourceProvenance = 'synthetic-walker',
-  showProvenanceBadge = true,
 }: InfoPanelProps) {
   const { tx } = usePanelCopy();
   const { locale } = useLocale();
@@ -207,20 +203,6 @@ export function InfoPanel({
 
   return (
     <div className="leo-info-panel" data-provenance-source={sourceProvenance}>
-      {showProvenanceBadge && (
-        <div
-          data-testid="info-panel-source"
-          style={{ display: 'grid', gap: 5, justifyItems: 'start', marginBottom: 8 }}
-        >
-          <ProvenanceBadge source={sourceProvenance} testId="info-panel-source-badge">
-            {sourceProvenance === 'synthetic-walker'
-              ? (isEnglish ? 'SOURCE · SYNTHETIC WALKER COMPUTATION' : '來源 · 合成 Walker 計算值')
-              : sourceProvenance === 'archived-tle'
-                ? (isEnglish ? 'SOURCE · ARCHIVED TLE / SGP4' : '來源 · 封存 TLE / SGP4')
-                : (isEnglish ? 'SOURCE · ARTIFACT REPLAY' : '來源 · Artifact replay')}
-          </ProvenanceBadge>
-        </div>
-      )}
       <div className="leo-info-panel__grid">
         {/* SIGNAL PROFILE + HANDOVER MODE cards removed (older-tuning right-sidebar
             restore): the right sidebar leads straight with the BEAM DUEL. Profile +

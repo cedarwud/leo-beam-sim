@@ -77,8 +77,7 @@ const markup = renderToStaticMarkup(
 );
 
 assert.match(markup, /data-testid="walker-results-rail"/);
-assert.match(markup, /data-testid="walker-results-source-badge"/);
-assert.match(markup, /來源 · 合成 Walker 計算值/);
+// The provenance source badge was removed from the rail; no assertion here.
 assert.match(markup, /data-right-rail-source="walker-live-scene-frame"/);
 assert.doesNotMatch(markup, /目前波束配置|Current beam configuration|walker-beam-frame-status/);
 assert.ok(

@@ -15,7 +15,6 @@ import { formatCandidateDisplayKey } from '../../engine/handover/candidateDispla
 import { useLocale } from '../../i18n';
 import type { AcceptedHandoverPresentationSnapshot } from '../../scene/acceptedHandoverPresentationSnapshot';
 import { CandidateSetPanel } from './CandidateSetPanel';
-import { ProvenanceBadge } from '../common/ProvenanceBadge';
 import {
   useCandidateInspectionSelection,
   type CandidateInspectionSnapshotInput,
@@ -319,9 +318,6 @@ export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelPro
     opportunity.sinrMeasurementContext?.purpose === 'sinr-offset-admission'
     && opportunity.sinrMeasurementContext.powerModel === 'profile-rated-rf'
   ));
-  const hasSyntheticWalkerSource = decision.opportunities.some(
-    opportunity => opportunity.beamIdentitySource === 'walker-cell-surrogate',
-  );
   const hardEligibleSatelliteCount = countHardEligibleCandidateSatellites(decision);
   // The engine's selection gate counts distinct alternate satellite identities
   // (not beams, and not other beams on the current serving satellite). Keep
@@ -414,18 +410,6 @@ export function HandoverEvaluationPanel({ snapshot }: HandoverEvaluationPanelPro
         <div aria-live="polite" aria-atomic="true">
           <p>{modeLabel(decision, copy)}</p>
           <h2>{phaseTitle(decision.phase, copy)}</h2>
-          <div className="leo-handover-evaluation__source">
-            <ProvenanceBadge
-              source={hasSyntheticWalkerSource ? 'synthetic-walker' : 'same-frame-computed'}
-              testId="handover-evaluation-source-badge"
-            >
-              {hasSyntheticWalkerSource
-                ? ratedAdmission
-                  ? copy('來源 · 合成 Walker 計算值 · 額定功率 RF', 'SOURCE · SYNTHETIC WALKER COMPUTATION · RATED-POWER RF')
-                  : copy('來源 · 合成 Walker 計算值', 'SOURCE · SYNTHETIC WALKER COMPUTATION')
-                : copy('來源 · 同幀計算值', 'SOURCE · SAME-FRAME COMPUTED VALUES')}
-            </ProvenanceBadge>
-          </div>
         </div>
         <time dateTime={decisionTime.dateTime}>
           {decisionTime.label}

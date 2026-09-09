@@ -238,11 +238,10 @@ assert.match(zhMarkup, /data-central-marker="C1"/);
 assert.match(zhMarkup, /跨衛星候選/);
 assert.match(zhMarkup, /暫列第一/);
 assert.match(zhMarkup, /計算 EE 投影尚未啟用/);
-assert.match(zhMarkup, /來源 · 合成 Walker 計算值 · 額定功率 RF/);
+// The provenance source badge was removed from the panel; no assertion here.
 assert.match(zhMarkup, /目前決策依據：候選 SINR、換手偏移量與 TTT/);
 assert.match(zhMarkup, /服務資格與 TTT 均已通過/);
 assert.match(zhMarkup, /服務資格已通過；TTT 計時中/);
-assert.match(zhMarkup, /data-testid="handover-evaluation-source-badge"/);
 assert.match(zhMarkup, /STARLINK-101 \/ B1 \/ C1/);
 assert.match(zhMarkup, /STARLINK-101 \/ B2 \/ C2/);
 assert.match(zhMarkup, /資格 SINR/);
@@ -292,7 +291,7 @@ assert.match(enMarkup, /STARLINK-101 \/ B1 \/ C1/);
 assert.match(enMarkup, /computed EE projection is not active/i);
 assert.match(enMarkup, /rated-power RF admission/i);
 assert.match(enMarkup, /Admission SINR/);
-assert.match(enMarkup, /SOURCE · SYNTHETIC WALKER COMPUTATION · RATED-POWER RF/);
+// The provenance source badge was removed from the panel; no assertion here.
 
 const committedTarget = candidateLinkKey('STARLINK-202', 1);
 const committedDecision = createHandoverDecisionFrame({

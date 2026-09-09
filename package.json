@@ -79,7 +79,6 @@
     "audit:appearance-cost": "node --import tsx/esm scripts/audit/appearance-change-cost.ts",
     "audit:appearance-drill": "bash scripts/audit/appearance-change-drill.sh",
     "audit:render-timeline": "node --import tsx/esm scripts/audit/render-timeline.ts",
-    "check:provenance-labels": "node --import tsx/esm src/ui/provenanceLabelGuard.test.ts",
     "validate:phase1a:recent-ho-ui": "node --import tsx/esm scripts/validate-phase1a-recent-ho-ui.tsx",
     "validate:phase2d:forced-role-state-visuals": "node --import tsx/esm scripts/validate-phase2d-forced-role-state-visuals.ts",
     "validate:phase-3:cpu-budget": "node --import tsx/esm scripts/validate-phase-3-cpu-budget.tsx",

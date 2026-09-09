@@ -31,7 +31,6 @@ import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 import { formatHomepageEe } from '../homepage/controller/homepageMetricFormatters';
 import { formatEngineering } from '../ui/signal-tuning/formatters';
 import { useLocale } from '../i18n';
-import { ProvenanceBadge } from '../ui/common/ProvenanceBadge';
 import type { SinrLiveCellBeamConeRenderItem } from './SinrLiveCellBeamCones';
 import type { AngleAwareFormulaFrame } from '../engine/signal/types';
 
@@ -95,7 +94,6 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
     sourceProvenance = 'synthetic-walker',
   } = props;
   const { locale } = useLocale();
-  const isEnglish = locale === 'en';
   // ONE injected identity source for the whole mount; see the cone mount for
   // why this is built once rather than at each call.
   const homepageIdentityColorFor = homepageBeamIdentityLookup(homepageBeamEeByKey);
@@ -135,22 +133,9 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
 
   if (computedItems.length === 0) return null;
 
-  const sourceAnchor = computedItems[0]!.baseCenter;
 
   return (
     <group name="sinr-live-cell-beam-callouts">
-      <Html
-        position={[sourceAnchor.x, sourceAnchor.y + SINR_LIVE_CALLOUT_Y_LIFT + 24, sourceAnchor.z]}
-        center
-        zIndexRange={[90, 30]}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        <ProvenanceBadge source={sourceProvenance} testId="beam-callout-source-badge">
-          {sourceProvenance === 'synthetic-walker'
-            ? (isEnglish ? 'SOURCE · SYNTHETIC WALKER COMPUTATION' : '來源 · 合成 Walker 計算值')
-            : (isEnglish ? 'SOURCE · ARCHIVED TLE / SGP4' : '來源 · 封存 TLE / SGP4')}
-        </ProvenanceBadge>
-      </Html>
       {computedItems.map(item => {
         const isPrimary =
           item.satId === primaryServingSatId && item.cellId === primaryServingCellId;

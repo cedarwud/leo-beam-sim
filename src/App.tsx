@@ -2919,7 +2919,6 @@ export function App() {
                 isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                 channelMetricKind={activeSceneFrame?.channelMetricKind}
                 sourceProvenance="synthetic-walker"
-                showProvenanceBadge={false}
               />
             </WalkerResultsRail>
           ) : (

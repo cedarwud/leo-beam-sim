@@ -19,7 +19,6 @@ import {
 } from './FormulaSymbols';
 import { txBi } from './labels';
 import { formatPower } from './formatters';
-import { ProvenanceBadge } from '../common/ProvenanceBadge';
 
 type WalkerResultsRailState = Pick<
   SimState,
@@ -193,9 +192,6 @@ export function WalkerResultsRail({
       data-candidate-satellite-id={pendingTargetSatId ?? ''}
       data-beam-hopping-enabled={beamHopEnabled ? 'true' : 'false'}
     >
-      <ProvenanceBadge source="synthetic-walker" testId="walker-results-source-badge">
-        {isEnglish ? 'SOURCE · SYNTHETIC WALKER COMPUTATION' : '來源 · 合成 Walker 計算值'}
-      </ProvenanceBadge>
       {children}
 
       <div className="leo-walker-results-rail__sections" data-testid="walker-calculation-results">

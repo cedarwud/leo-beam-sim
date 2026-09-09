@@ -41,7 +41,6 @@ import type {
 } from '../../engine/handover/candidatePresentationPlan';
 import { formatCandidateDisplayKey } from '../../engine/handover/candidateDisplayKey';
 import { formatSatelliteLabel } from '../../utils/formatSatelliteLabel';
-import { ProvenanceBadge } from '../common/ProvenanceBadge';
 
 type Copy = (zh: string, en: string) => string;
 
@@ -868,14 +867,6 @@ export function CandidateSetPanel({ plan, pinnedKey, onTogglePin, copy }: Candid
       aria-labelledby={titleId}
       data-provenance-source={hasSyntheticWalkerSource ? 'synthetic-walker' : 'same-frame-computed'}
     >
-      <ProvenanceBadge
-        source={hasSyntheticWalkerSource ? 'synthetic-walker' : 'same-frame-computed'}
-        testId="handover-candidate-source-badge"
-      >
-        {hasSyntheticWalkerSource
-          ? copy('來源 · 合成 Walker 計算值', 'SOURCE · SYNTHETIC WALKER COMPUTATION')
-          : copy('來源 · 同幀計算值', 'SOURCE · SAME-FRAME COMPUTED VALUES')}
-      </ProvenanceBadge>
       <header className="leo-handover-candidate-set__header">
         <h3 id={titleId}>{copy('候選連線比較', 'Candidate-link comparison')}</h3>
         <span className="leo-handover-candidate-set__summary">
