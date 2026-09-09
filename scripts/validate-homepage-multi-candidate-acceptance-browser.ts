@@ -523,9 +523,6 @@ async function runFlow(page: Page, kind: 'intra' | 'inter'): Promise<FlowEvidenc
     const sample = await collectTelemetry(page);
     samples.push(sample);
     const phase = phaseOf(sample);
-    if (process.env.DEBUG_LIVE_SAMPLES && sample.canvas?.multiCandidateSceneRenderStatus === 'active') {
-      console.error(`[LIVE] t=${sample.timeline?.currentTimeSec} phase=${phase} status=${sample.canvas?.multiCandidateSceneRenderStatus} sameSnapshot=${hasSameAcceptedSnapshot(sample)} candidateRows=${sample.candidateRows.length} sceneJoinKeys=${sample.sceneJoinKeys.length}`);
-    }
     if (phase === 'switching') sampledSwitching = true;
     if (phase === 'guard' || sample.canvas?.handoverPresentationPhase === 'settled') sampledGuard = true;
     // Keep sampling lightweight so the browser clock remains representative of
@@ -575,15 +572,6 @@ async function runFlow(page: Page, kind: 'intra' | 'inter'): Promise<FlowEvidenc
     });
   }
   assert.ok(comparisonSamples.length > 0, `${kind}: no active multi-candidate scene sample was observed`);
-  if (process.env.DEBUG_COMPARISON_SAMPLES) {
-    console.error(`[DEBUG] ${kind} comparisonSamples:`, comparisonSamples.map(sample => ({
-      t: sample.timeline?.currentTimeSec,
-      phase: phaseOf(sample),
-      candidateRows: sample.candidateRows.length,
-      sceneJoinKeys: sample.sceneJoinKeys,
-      snapshotId: sample.rail?.snapshotId,
-    })));
-  }
   const representative = comparisonSamples.find(sample => sample.candidateRows.length >= 2) ?? comparisonSamples[0]!;
   assertSameAcceptedSnapshot(representative, `${kind} comparison`);
   assertCandidateSceneRailJoin(representative, `${kind} comparison`);
