@@ -7,9 +7,10 @@ const frameResolverSource = await readFile(
   'utf8',
 );
 const extractedLayerSources = await Promise.all([
+  // SceneCellPresentationLayers.tsx and SceneBeamLoadLayers.tsx were removed as
+  // dead code (zero production importers). THE SUBJECT IS GONE: they are no
+  // longer part of the extracted-layer surface this contract test checks.
   'SceneGroundUeLayer.tsx',
-  'SceneCellPresentationLayers.tsx',
-  'SceneBeamLoadLayers.tsx',
   'SceneHandoverMotionLayers.tsx',
   'SceneSatelliteMarkerLayer.tsx',
   'SceneMultiCandidateLayer.tsx',
