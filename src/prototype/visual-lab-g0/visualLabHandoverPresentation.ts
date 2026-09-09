@@ -1,3 +1,4 @@
+import { clampUnit } from '../../constants/hsl';
 import type { VisualLabGuidedReplayProgress } from '../../visualLab/guidedReplay';
 import type { VisualLabStorySceneDirection } from '../../visualLab/story';
 import type { VisualLabLocalHandover } from './visualLabLocalSceneAdapter';
@@ -14,7 +15,6 @@ export interface VisualLabDirectedHandoverPresentation {
   readonly source: 'canonical-trace' | 'guided-source-story';
 }
 
-const clampUnit = (value: number): number => Math.min(1, Math.max(0, value));
 const smooth = (value: number): number => {
   const t = clampUnit(value);
   return t * t * (3 - 2 * t);

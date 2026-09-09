@@ -1,0 +1,176 @@
+{
+  "_README": [
+    "KNOWN-VIOLATION LEDGER for scripts/validate-architecture-boundaries.ts (R1, R2, R3a, R3b).",
+    "",
+    "This is a RATCHET, not an allowlist. The runner fails BOTH ways:",
+    "  - a violation not listed here          -> FAIL (something new was added);",
+    "  - a row here that no longer violates   -> FAIL (stale; delete the row).",
+    "So the list can only shrink, and it can never grow without a reviewed diff.",
+    "",
+    "NEVER weaken a rule to make the tree pass. Add a row here instead, with a reason",
+    "that says what judgement call the fix needs. `--print-observed` prints the current",
+    "set in this shape; it deliberately does NOT write this file.",
+    "",
+    "Seeded 2026-09-09, after fixing: clampUnit (R1, 4 declarations -> 1) and the four",
+    "constants/ -> appearance/ re-exports in src/constants/sinrLiveConeStyle.ts (R3b),",
+    "one of which closed the repo's only runtime import cycle."
+  ],
+  "violations": [
+    {
+      "rule": "R3a",
+      "key": "src/appearance/paintConeItems.ts -> src/scene/sinrLiveCellModel",
+      "count": 1,
+      "reason": "paintConeItems imports the VALUE `cellLinkBudgetBeamId` (declared in src/scene/sinrLiveCellBeamIdentity.ts, re-exported by the sinrLiveCellModel barrel) and paintConeItems has 9 importers, so the whole simulation model is pulled under the appearance layer for a `cellId + offset` function. Both fixes are judgement calls, not refactors: relocate scene's beam-id ENCODING to a lower layer (a decision move), or inject the encoder through paintConeItems' signature (an API change across 9 call sites). Narrowing the import to sinrLiveCellBeamIdentity would drop the barrel weight but leave the layer edge, so it is not a fix. NOT a cycle: sinrLiveCellModel imports nothing from src/appearance."
+    },
+    {
+      "rule": "R1",
+      "key": "formatCount",
+      "count": 1,
+      "reason": "Name collision, not duplicate authority: src/appearance/candidateRailPresentation.ts exports formatCount(value) (SI-compact, k/M/G prefix) while src/prototype/global-constellation/GlobalConstellationPrototype.tsx:102 declares an unrelated formatCount(value) => toLocaleString. Cheapest real fix is to rename the four over-generic candidateRailPresentation exports (formatCount, formatNumber, phaseLabel, roleLabel) to rail-qualified names — their ONLY importer is src/ui/homepage/HomepageBeamRail.tsx, which is held by another worker, so the rename cannot land from here."
+    },
+    {
+      "rule": "R1",
+      "key": "formatNumber",
+      "count": 1,
+      "reason": "Name collision across SIX unrelated declarations with THREE different signatures: appearance formatNumber(value, unit), CandidateSetPanel formatNumber(value, digits), the c120 locale hook formatNumber(value, Intl options), plus subtitleStateMachine / AlgorithmDashboard / SimulatorRoute / storyRailModel copies. R1 cannot distinguish this from real duplicate authority, and that is not purely a false positive — the hslToHex bug this rule exists for was also same-name/incompatible-signature. Fix is the rail-qualified rename described under formatCount; blocked on held src/ui/homepage/HomepageBeamRail.tsx."
+    },
+    {
+      "rule": "R1",
+      "key": "phaseLabel",
+      "count": 1,
+      "reason": "Name collision: appearance phaseLabel(phase: RailPhase, isEnglish) vs local label helpers in src/course/canonical-experiments/CanonicalExperimentRoute.tsx:349 and src/ui/handover-evaluation/HandoverEvaluationPanel.tsx:161 over different phase vocabularies. Same rail-qualified rename; blocked on held src/ui/**."
+    },
+    {
+      "rule": "R1",
+      "key": "roleLabel",
+      "count": 1,
+      "reason": "Name collision with different signatures: appearance roleLabel(role: string, isEnglish) vs CandidateSetPanel roleLabel(role, state, copy) vs a local `const roleLabel` in src/viz/SatelliteMarker.tsx:141 assigned from operatorLabelForEventRole. Two of the three sites are in held src/ui/**. Same rail-qualified rename."
+    },
+    {
+      "rule": "R2",
+      "key": "src/course/canonical-experiments/CanonicalExperimentScene.tsx|color|'#5b7772'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — a STATE colour, not an identity colour: `active ? color : '#5b7772'` dims an inactive ring. The received branch is an identity colour, so the rule fires, but nothing upstream was absent. Settling it needs an owner for 'what does inactive look like', which is a rendering decision."
+    },
+    {
+      "rule": "R2",
+      "key": "src/course/contact-window-labs/MultiSatScheduleCarrier.tsx|satColor|'#58a6ff'",
+      "count": 1,
+      "reason": "Real substitution: `satColors[sat.satelliteId] ?? '#58a6ff'` invents a per-satellite colour for a satellite the local satColors map does not cover. The fix is to ask the appearance layer for the identity colour instead of a local rung, which CHANGES the rendered colour for the uncovered case — a behaviour decision, not a refactor."
+    },
+    {
+      "rule": "R2",
+      "key": "src/course/contact-window-labs/MultiSatScheduleCarrier.tsx|color|'#58a6ff'",
+      "count": 1,
+      "reason": "Second occurrence of the same substitution at line 448 (`satColors[p.satelliteId] ?? '#58a6ff'`), same judgement call."
+    },
+    {
+      "rule": "R2",
+      "key": "src/prototype/golden-flow/GoldenFlowScene.tsx|color|'#1e353d'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — INTERACTION state (`dragging ? '#1e353d' : ...`) rather than identity. Flagged because the alternative branch carries GOLDEN_FLOW_LIGHT_CAPTURE_COLOURS.elevation."
+    },
+    {
+      "rule": "R2",
+      "key": "src/prototype/golden-flow/GoldenFlowScene.tsx|color|'#72ead4'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — teaching-MODE state (`lightCapture ? GOLDEN_FLOW_LIGHT_CAPTURE_COLOURS.elevation : '#72ead4'`): the literal is the default look, not a fallback for an absent value. Real cleanup would give the non-lightCapture rung a name in the same palette module; that is a palette decision."
+    },
+    {
+      "rule": "R2",
+      "key": "src/prototype/golden-flow/GoldenFlowScene.tsx|color|'#ffffff'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — same lightCapture MODE switch at line 753 against GOLDEN_FLOW_LIGHT_CAPTURE_COLOURS.terminal."
+    },
+    {
+      "rule": "R2",
+      "key": "src/prototype/visual-lab-g0/VisualLabGlobalScene.tsx|context|'#4e7981'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — ROUTE-mode override (`isConstellationComparison ? '#4e7981' : palette.context`), documented in-file as readability-only for the comparison route. The comparison route's palette should live beside the default palette, which is a palette decision."
+    },
+    {
+      "rule": "R2",
+      "key": "src/prototype/visual-lab-g0/VisualLabGlobalScene.tsx|visible|'#b9f5f7'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — same comparison-route override for palette.visibleContext."
+    },
+    {
+      "rule": "R2",
+      "key": "src/prototype/visual-lab-g0/VisualLabGlobalScene.tsx|color|'#ff9f68'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — same comparison-route override for palette.text at line 360."
+    },
+    {
+      "rule": "R2",
+      "key": "src/scene/SceneGroundUeLayer.tsx|markerColor|'#facc15'",
+      "count": 1,
+      "reason": "Mixed: `isOtherHandover ? '#facc15' : (primary ? HOMEPAGE_PRIMARY_UE_MARKER_COLOR : mosaic?.markerColor)` decides a UE marker's EVENT colour at the sink, ahead of two identity rungs. Fixing it means appearance owning the other-handover UE colour, which changes who decides the event palette."
+    },
+    {
+      "rule": "R2",
+      "key": "src/scene/SceneSatelliteMarkerLayer.tsx|labelOutlineColor|'#000000'",
+      "count": 1,
+      "reason": "Real substitution: `satellite.satelliteTintColor ?? '#000000'` invents a label OUTLINE colour when the satellite tint is absent. Whether an untinted satellite's label outlines black or takes the appearance-resolved identity hue is a legibility decision no one has made."
+    },
+    {
+      "rule": "R2",
+      "key": "src/ui/homepage/HomepageBeamRail.tsx|servingAccent|'#16303b'",
+      "count": 1,
+      "reason": "Real substitution named in the task brief: `servingMetric?.color.color ?? '#16303b'` — the rail invents a serving accent when no serving metric is projected. src/ui/** is HELD by the provenance-labelling worker, so this cannot be edited from here; reported instead."
+    },
+    {
+      "rule": "R2",
+      "key": "src/ui/signal-tuning/ControlSections.tsx|sectionAccent|'#f7d97b'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — UI CHROME, not satellite identity: a panel accent choosing between UI_TOKENS.color.semantic.loss and a literal. R2 sees a colour-named slot substituting a literal for a received token and cannot tell chrome from identity. Also in HELD src/ui/**."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/BeamCalloutContent.tsx|color|'#ffffff'",
+      "count": 1,
+      "reason": "SHAPE R2 CANNOT DISTINGUISH — TEXT-legibility switch (`style.operatorLabel ? '#ffffff' : color`): when an operator label is shown the line is drawn white instead of the identity hue. Deliberate, but the rule cannot tell it from a substitution because the other branch is the identity colour."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/CellOverlay.tsx|color|ACTIVE_FALLBACK_COLOR",
+      "count": 1,
+      "reason": "Real substitution: `props.satelliteTintById.get(assignment.satId) ?? ACTIVE_FALLBACK_COLOR` (a viz-local '#93c5fd'). The overlay invents a colour for an assigned satellite whose tint is missing. Fixing it means appearance answering 'identity colour for a satellite with no tint', which changes the rendered colour."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/EarthFixedCells.tsx|fillColor|'#1d2f46'",
+      "count": 1,
+      "reason": "Real substitution named in the task brief: `coveringBeam?.frequencyColor ?? '#1d2f46'` — the uncovered-cell fill. The literal is a real rendering decision (what an UNCOVERED cell looks like) that appearance does not currently own; giving it an owner means naming the uncovered state in the appearance contract."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/EarthFixedCells.tsx|borderColor|'#6b7f93'",
+      "count": 1,
+      "reason": "Real substitution named in the task brief: `coveringBeam?.satTintColor ?? '#6b7f93'` — the uncovered-cell border, same unowned uncovered-state decision as fillColor above."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/HandoverLinks.tsx|identityColor|'#aaccff'",
+      "count": 1,
+      "reason": "Real substitution: `satellite.satelliteTintColor ?? '#aaccff'` feeds identityColorForLink. '#aaccff' is the legacy neutral (src/viz/SatelliteMarker.tsx:147 still records it in a comment as the pre-appearance default). Replacing it with an appearance-resolved hue changes the rendered link colour for untinted satellites."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/MultiCandidateBeamScene.tsx|footprintColor|HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR",
+      "count": 1,
+      "reason": "Real violation named in the task brief: `source.role === 'observed' && !source.isPinned ? HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR : coneColor`. Nothing is absent — the sink is making a ROLE-based colour decision that resolveBeamAppearance's prose reserves for the appearance layer. The fix is to move the observed/unpinned rung into the appearance resolver, i.e. move a decision."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/OrbitTrail.tsx|color|ORBIT_TRAIL_FALLBACK_COLOR",
+      "count": 2,
+      "reason": "Real substitution at lines 115 and 176: `satellite.satelliteTintColor ?? ORBIT_TRAIL_FALLBACK_COLOR` with a viz-local '#ffffff'. Relocating that constant into appearance would move the decision without settling it (an untinted satellite would still trail white by fiat); settling it means appearance answering for absent tints, which changes rendered output."
+    },
+    {
+      "rule": "R2",
+      "key": "src/viz/SatelliteMarker.tsx|resolvedTint|HANDOVER_VISUAL_IDENTITY_NEUTRAL_FALLBACK_COLOR",
+      "count": 1,
+      "reason": "The closest to correct of the set — resolveSatelliteMarkerAccent already calls into appearance (resolveSatelliteIdentityColor) — but it still picks the neutral rung ITSELF when the satellite has no id. This is the only site matching the rule's originally-specified shape (an appearance CALL on the other side of the operator). Fix = let appearance answer for the id-less case."
+    }
+  ]
+}

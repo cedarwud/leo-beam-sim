@@ -3,6 +3,7 @@ import type {
   CanonicalTleHandoverEvent,
   CanonicalTleHandoverState,
 } from '../../simulator/canonicalTleHandover';
+import { clampUnit } from '../../constants/hsl';
 import { NTPU_TLE_OBSERVER } from '../../simulator/observer';
 import {
   DEFAULT_SIMULATOR_PARAMETERS,
@@ -472,10 +473,6 @@ function positiveFinite(value: number, label: string): number {
   const next = finite(value, label);
   if (next <= 0) throw new RangeError(`visual-lab local ${label} must be positive`);
   return next;
-}
-
-function clampUnit(value: number): number {
-  return Math.max(0, Math.min(1, value));
 }
 
 /**

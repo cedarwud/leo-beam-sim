@@ -1,3 +1,4 @@
+import { clampUnit } from '../../constants/hsl';
 import type { VisualLabLocale } from '../experiment';
 import type {
   VisualLabGuidedReplayDefinition,
@@ -151,10 +152,6 @@ function phaseOffsetMs(phase: VisualLabGuidedReplayPhase): number {
     offset += guidedReplayPhaseTiming(candidate).durationMs;
   }
   return offset;
-}
-
-function clampUnit(value: number): number {
-  return Math.min(1, Math.max(0, value));
 }
 
 /** Resolve deterministic presentation progress without touching source data. */

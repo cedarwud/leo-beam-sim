@@ -120,8 +120,13 @@ export const SINR_LIVE_FOOTPRINT_RING_OPACITY = 0.9;
  * crisp white outline DISTINCT from the role-colour inner ring (the ab861c4 two-tone). */
 export const SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR = 0.96;
 export const SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR = 1.04;
-/** Tiny ground lift (world units) so the flat hexes never z-fight the terrain. Owned by coneGeometryContract. */
-export { SINR_LIVE_FOOTPRINT_RING_Y_LIFT } from '../appearance/coneGeometryContract';
+/* Tiny ground lift (world units) so the flat hexes never z-fight the terrain:
+ * `SINR_LIVE_FOOTPRINT_RING_Y_LIFT`, owned by and imported from
+ * `src/appearance/coneGeometryContract.ts`. It is NOT re-exported here — that
+ * re-export closed the repo's only runtime import cycle
+ * (coneGeometryContract -> sinrLiveConeStyle -> coneGeometryContract), which made
+ * module init order load-bearing. R3b in scripts/validate-architecture-boundaries.ts
+ * now forbids the edge. */
 /**
  * ab861c4 fill-glow restore: a faint additive hexagon FILL under the two border rings,
  * so each served cell reads as the rich 3-layer hex (faint fill + outer border + bright
@@ -204,8 +209,8 @@ export const SINR_LIVE_FOOTPRINT_INNER_BAND_OPACITY = 0.95;
  * beam", so a truncated story degrades to "handovers are coming fast", never back to the
  * two-beams-blinking-in-lockstep bug this replaced.
  */
-// Compatibility export: timing is owned by `src/appearance/handoverTimingEnvelope.ts`.
-export { SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS } from '../appearance/handoverTimingEnvelope';
+/* Timing is owned by `src/appearance/handoverTimingEnvelope.ts`:
+ * `SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS` is imported from there directly. */
 /** Peak (age-0) opacity of the triggered flash — dominates the ambient pulse (0.8 peak, fast sim-time fade). */
 export const SINR_LIVE_TRIGGERED_INTRA_PEAK_OPACITY = 0.95;
 /** OLD (handed-off) cell colour — the serving YELLOW it currently is, fading out as the beam
@@ -218,17 +223,12 @@ export const SINR_LIVE_TRIGGERED_INTRA_FROM_COLOR = INTRA_HANDOVER_SOURCE_COLOR;
  * target-colour resolver. */
 export const SINR_LIVE_TRIGGERED_INTRA_TO_COLOR = INTRA_HANDOVER_TARGET_COLOR;
 
-// Compatibility exports: the handover timing/envelope decision is owned by
-// `src/appearance/handoverTimingEnvelope.ts`; existing renderer adapters keep
-// their import paths so the two worker-owned renderers need no edit here.
-export {
-  HANDOVER_CONE_PHASE_END,
-  resolveHandoverConeEnvelope,
-} from '../appearance/handoverTimingEnvelope';
-export type {
-  HandoverConeEnvelope,
-  HandoverConePhase,
-} from '../appearance/handoverTimingEnvelope';
+/* The handover timing/envelope decision — `HANDOVER_CONE_PHASE_END`,
+ * `resolveHandoverConeEnvelope`, `HandoverConeEnvelope`, `HandoverConePhase` — is
+ * owned by `src/appearance/handoverTimingEnvelope.ts`. Consumers import it from
+ * there. The compatibility re-exports that used to sit here were an UP-pointing
+ * constants -> appearance edge (R3b): they let a caller reach an appearance
+ * decision through a constants path, so "who owns this timing?" had two answers. */
 
 /**
  * SEMANTIC palette (docs/sinr-live-semantic-beam-colour-sdd.md). The PRIMARY serving
