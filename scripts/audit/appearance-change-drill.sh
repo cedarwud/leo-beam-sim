@@ -75,6 +75,7 @@ SHADE_MAPPING_TEST="src/appearance/satelliteIdentityChannelCharacterization.test
 total_drills=0
 converged_count=0
 frontier_count=0
+visible_unproven_count=0
 regressions=0
 unexpected_passes=0
 # A drill that could not be APPLIED measured nothing. It is neither a pass nor a
@@ -93,10 +94,203 @@ totality_unobservable=0
 
 converged_prompts=()
 frontier_prompts=()
+visible_unproven_prompts=()
 regression_prompts=()
 unexpected_pass_prompts=()
 invalid_prompts=()
 totality_unobservable_prompts=()
+
+# The render timeline is an emitted-plan instrument, not a rasteriser or a
+# replay runner. Its measured coverage is 30/42 = 71.4%; the fraction is a
+# property of the instrument and must remain visible in every board run. A
+# passing contract therefore means "the named emitted surfaces propagated and
+# the named preserved surfaces did not", never "the whole product is complete".
+TIMELINE_DETECTION_RATE="30/42 = 71.4%"
+run_timeline_capture() {
+  local output_dir="$1" query_spec surface seconds sec query
+  shift
+  query_spec="$1"
+  mkdir -p "$output_dir"
+  IFS=';' read -r -a queries <<< "$query_spec"
+  for query in "${queries[@]}"; do
+    surface="${query%%:*}"
+    seconds="${query#*:}"
+    if [ -z "$surface" ] || [ "$surface" = "$query" ]; then
+      echo "TIMELINE QUERY INVALID: '$query' (expected surface:seconds)" >&2
+      return 2
+    fi
+    for sec in ${seconds//,/ }; do
+      if ! node --import tsx/esm scripts/audit/render-timeline.ts \
+        --surface "$surface" --at "$sec" --json \
+        > "$output_dir/$surface-$sec.json" \
+        2> "$output_dir/$surface-$sec.stderr"; then
+        echo "TIMELINE QUERY FAILED: surface=$surface second=$sec" >&2
+        return 1
+      fi
+    done
+  done
+}
+
+# Compare exact render-plan fields emitted by render-timeline. A surface is a
+# lane (or the named global presentation object), not a vague "some row moved":
+# every changed item must belong to an intended selector, and every preserved
+# selector must have zero changed items. Expected selectors are comma-separated;
+# terms inside one selector are joined with &, for example
+# layer=triggered&renderKeySuffix=-to.
+surface_contract() {
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import json
+import pathlib
+import sys
+
+before_dir, after_dir, move_text, fixed_text = sys.argv[1:5]
+move = [item for item in move_text.split(',') if item]
+fixed = [item for item in fixed_text.split(',') if item]
+
+def matches(selector, item, global_name):
+    if selector == 'presentation':
+        return global_name == 'presentation'
+    if item is None:
+        return False
+    for term in selector.split('&'):
+        key, sep, expected = term.partition('=')
+        if sep == '':
+            return False
+        if key == 'kind' and item.get('kind') != expected:
+            return False
+        if key == 'layer' and item.get('layer') != expected:
+            return False
+        if key == 'role' and item.get('role') != expected:
+            return False
+        if key == 'satId' and item.get('satId') != expected:
+            return False
+        if key == 'renderKeySuffix':
+            render_key = item.get('renderKey')
+            if not isinstance(render_key, str) or not render_key.endswith(expected):
+                return False
+        if key == 'idPrefix':
+            if not str(item.get('id', '')).startswith(expected):
+                return False
+        if key not in {'kind', 'layer', 'role', 'satId', 'renderKeySuffix', 'idPrefix'}:
+            return False
+    return True
+
+def render_value(item):
+    if item is None:
+        return None
+    # id is the join key, not a rendered output. Every other timeline field is
+    # part of the contract: colour, opacity, geometry, identity rung, rail
+    # projection, and item presence all count.
+    return {key: value for key, value in item.items() if key != 'id'}
+
+def item_surface(item):
+    if item is None:
+        return 'missing'
+    return f"kind={item.get('kind')} layer={item.get('layer')} id={item.get('id')}"
+
+before_files = sorted(pathlib.Path(before_dir).glob('*.json'))
+after_files = sorted(pathlib.Path(after_dir).glob('*.json'))
+before_by_name = {path.name: path for path in before_files}
+after_by_name = {path.name: path for path in after_files}
+names = sorted(set(before_by_name) | set(after_by_name))
+
+move_counts = {selector: [0, 0] for selector in move}
+fixed_changes = {selector: [] for selector in fixed}
+unexpected = []
+uncovered = []
+changed = []
+errors = []
+
+for name in names:
+    if name not in before_by_name or name not in after_by_name:
+        errors.append(f"snapshot pair missing for {name}")
+        continue
+    before_result = json.loads(before_by_name[name].read_text())['result']
+    after_result = json.loads(after_by_name[name].read_text())['result']
+
+    before_presentation = before_result.get('presentation')
+    after_presentation = after_result.get('presentation')
+    presentation_changed = before_presentation != after_presentation
+    move_matches = [selector for selector in move if selector == 'presentation']
+    fixed_matches = [selector for selector in fixed if selector == 'presentation']
+    if presentation_changed:
+        changed.append((name, 'presentation', 'presentation changed'))
+    for selector in move_matches:
+        move_counts[selector][0] += 1
+        if presentation_changed:
+            move_counts[selector][1] += 1
+    if presentation_changed and not move_matches:
+        if fixed_matches:
+            for selector in fixed_matches:
+                fixed_changes[selector].append((name, 'presentation'))
+        else:
+            unexpected.append((name, 'presentation', 'presentation'))
+
+    before_items = {item['id']: item for item in before_result.get('items', [])}
+    after_items = {item['id']: item for item in after_result.get('items', [])}
+    for item_id in sorted(set(before_items) | set(after_items)):
+        before_item = before_items.get(item_id)
+        after_item = after_items.get(item_id)
+        reference = after_item if after_item is not None else before_item
+        if reference is None:
+            continue
+        reference = dict(reference)
+        reference['id'] = item_id
+        item_changed = render_value(before_item) != render_value(after_item)
+        item_move_matches = [selector for selector in move if matches(selector, reference, '')]
+        item_fixed_matches = [selector for selector in fixed if matches(selector, reference, '')]
+        surface = item_surface(reference)
+        if not item_move_matches and not item_fixed_matches:
+            uncovered.append((name, surface))
+        if item_changed:
+            changed.append((name, ','.join(item_move_matches or item_fixed_matches) or 'UNDECLARED', surface))
+            if item_move_matches:
+                for selector in item_move_matches:
+                    move_counts[selector][0] += 1
+                    move_counts[selector][1] += 1
+            elif item_fixed_matches:
+                for selector in item_fixed_matches:
+                    fixed_changes[selector].append((name, item_id))
+            else:
+                unexpected.append((name, 'UNDECLARED', surface))
+        else:
+            for selector in item_move_matches:
+                move_counts[selector][0] += 1
+
+for selector, (matched, changed_count) in move_counts.items():
+    if matched == 0:
+        errors.append(f"INTENDED surface was not present in the queried timeline: {selector}")
+    elif changed_count == 0:
+        errors.append(f"INTENDED surface did not move: {selector}")
+
+for selector, entries in fixed_changes.items():
+    if entries:
+        preview = ', '.join(f"{name}:{item_id}" for name, item_id in entries[:3])
+        errors.append(f"PRESERVED surface moved: {selector} ({preview})")
+
+for name, selector, surface in unexpected:
+    errors.append(f"SURFACE OUTSIDE CONTRACT MOVED: {surface} ({name}; selector={selector})")
+
+for name, surface in uncovered:
+    errors.append(f"UNDECLARED SURFACE in contract: {surface} ({name})")
+
+print(f"  timeline snapshots compared            : {len(names)}")
+print(f"  intended selectors                     : {', '.join(move) or '(none)'}")
+print(f"  preserved selectors                    : {', '.join(fixed) or '(none)'}")
+if changed:
+    print('  observed changed surfaces:')
+    for name, selector, surface in changed[:12]:
+        print(f"    - {surface} @ {name} [{selector}]")
+    if len(changed) > 12:
+        print(f"    ... {len(changed) - 12} more changed item(s)")
+if errors:
+    print('FAIL')
+    for error in errors:
+        print(f"  ✗ {error}")
+    sys.exit(1)
+print('PASS')
+PY
+}
 
 # ---------------------------------------------------------------------------
 # CHECK A — does this decision have exactly ONE authority?
@@ -346,23 +540,26 @@ open(path, "w").write(text.replace(old, new))
 PY
 }
 
-# drill [expect_pass|expect_fail] TARGET PROMPT SYMBOL OLD NEW [TEST]
+# drill TARGET PROMPT SYMBOL OLD NEW [TEST] [CONTRACT_KIND] [QUERIES] [MOVE] [FIXED] [NOTE]
 #
 # SYMBOL is the declaration the perturbation edits (or the one that encloses it).
 # It is stated per drill rather than inferred, because the whole point of check A
 # is that the answer must be derivable from the code — and a symbol name guessed
 # by regex from an anchor is neither derivable nor auditable.
 drill() {
-  local expect="expect_pass"
+  # Keep accepting the old leading expectation token while migrating the board;
+  # it is ignored. The verdict now comes only from the explicit surface
+  # contract below, never from sensitivity alone.
   if [ "$1" = "expect_pass" ] || [ "$1" = "expect_fail" ]; then
-    expect="$1"
     shift
   fi
   local target="$1" prompt="$2" symbol="$3" old="$4" new="$5" drill_test="${6:-$TEST}"
+  local contract_kind="${7:-unverified}" contract_queries="${8:-}" contract_move="${9:-}" contract_fixed="${10:-}" contract_note="${11:-}"
 
   total_drills=$((total_drills + 1))
   echo "────────────────────────────────────────────────────────────"
-  echo "PROMPT: $prompt [$expect]"
+  echo "PROMPT: $prompt"
+  echo "  OWNER: $target"
 
   if ! is_green "$drill_test"; then
     echo "  ✗ SKIP — characterization test is not green before the drill;"
@@ -396,11 +593,29 @@ drill() {
   # RED, and only then trust anything it says. A drill whose test stays green
   # under its own perturbation is a BROKEN DRILL, reported as such — never as a
   # finding about the code.
-  local before_tree backup out_file
+  local before_tree backup out_file timeline_before timeline_after contract_report contract_status
   before_tree=$(tree_fingerprint)
   backup=$(mktemp)
   out_file=$(mktemp)
+  timeline_before=""
+  timeline_after=""
+  contract_report=""
+  contract_status="UNVERIFIED-COMPLETENESS"
   cp "$target" "$backup"
+
+  if [ "$contract_kind" = "contract" ]; then
+    timeline_before=$(mktemp -d)
+    if ! run_timeline_capture "$timeline_before" "$contract_queries"; then
+      echo "  ✗ INVALID — render-timeline could not produce the pristine snapshots."
+      cp "$backup" "$target"
+      rm -f "$backup" "$out_file"
+      rm -rf "$timeline_before"
+      mismatches=$((mismatches + 1))
+      invalid_count=$((invalid_count + 1))
+      invalid_prompts+=("$prompt (timeline baseline failed)")
+      return
+    fi
+  fi
 
   if ! apply_edit "$target" "$old" "$new"; then
     echo "  ✗ FAIL — could not apply the edit (see above)."
@@ -412,17 +627,45 @@ drill() {
     return
   fi
 
+  if [ "$contract_kind" = "contract" ]; then
+    timeline_after=$(mktemp -d)
+    if ! run_timeline_capture "$timeline_after" "$contract_queries"; then
+      echo "  ✗ INVALID — render-timeline could not produce the perturbed snapshots."
+      cp "$backup" "$target"
+      rm -f "$backup" "$out_file"
+      rm -rf "$timeline_before" "$timeline_after"
+      mismatches=$((mismatches + 1))
+      invalid_count=$((invalid_count + 1))
+      invalid_prompts+=("$prompt (timeline perturbed run failed)")
+      return
+    fi
+  fi
+
   # Integrity, measured RELATIVE to the pre-drill working tree, not against a
   # clean checkout: the tree legitimately carries other in-progress work.
-  local changed_paths outcome rows totality
+  local changed_paths outcome rows totality contract_exit
   changed_paths=$(comm -13 <(printf '%s\n' "$before_tree") <(tree_fingerprint) | awk '{print $2}')
   run_test_capture "$drill_test" "$out_file"
   rows=$(changed_rows_from "$out_file")
   totality=$(totality_report "$drill_test" "$out_file")
 
+  if [ "$contract_kind" = "contract" ]; then
+    contract_report=$(surface_contract "$timeline_before" "$timeline_after" "$contract_move" "$contract_fixed")
+    contract_exit=$?
+    if [ "$contract_exit" -eq 0 ]; then
+      contract_status="PASS"
+    else
+      contract_status="FAIL"
+    fi
+  else
+    contract_report="  reason: ${contract_note:-no constrained surface set was expressible}"
+  fi
+
   echo "  A. declarations of '$symbol' under src/ : $authority_files"
   echo "  B. characterization rows that moved     : $rows"
   echo "  C. totality of the move                 : $(printf '%s' "$totality" | head -1)"
+  echo "  D. intended/preserved surface contract  : $contract_status"
+  printf '%s\n' "$contract_report" | sed 's/^/     /'
 
   outcome="pass"
 
@@ -451,10 +694,9 @@ drill() {
 
   case "$totality" in
     PARTIAL*)
-      outcome="fail"
-      echo "  ✗ FAIL (C) — PARTIAL MOVE. Some surfaces adopted the new value and"
-      echo "           others kept the old one, from a single-file edit. That is the"
-      echo "           'I changed the owner and nothing happened' bug, half-visible:"
+      echo "     NOTE (C) — characterization values moved only in part of that"
+      echo "           photograph. C is a diagnostic; the constrained contract above"
+      echo "           decides whether the preserved surfaces were intended or a hole."
       printf '%s\n' "$totality" | tail -n +2
       ;;
     NA*)
@@ -465,9 +707,20 @@ drill() {
       ;;
   esac
 
-  if [ "$outcome" = "pass" ]; then
-    echo "  ✓ PASS — one authority, $rows rendered rows moved, and every pinned"
-    echo "           occurrence of every moved row moved with it."
+  if [ "$contract_status" = "FAIL" ]; then
+    outcome="fail"
+    echo "  ✗ FAIL (D) — the intended/preserved surface contract was violated."
+  elif [ "$contract_status" = "UNVERIFIED-COMPLETENESS" ] && [ "$rows" -eq 0 ]; then
+    outcome="fail"
+    echo "  ✗ FRONTIER — no visible characterization move and completeness is unverified."
+  fi
+
+  if [ "$outcome" = "pass" ] && [ "$contract_status" = "PASS" ]; then
+    echo "  ✓ CONTRACT SATISFIED — visible, intended surfaces moved and preserved"
+    echo "           surfaces stayed fixed in the queried render timeline."
+  elif [ "$outcome" = "pass" ] && [ "$contract_status" = "UNVERIFIED-COMPLETENESS" ]; then
+    echo "  ~ VISIBLE-BUT-UNPROVEN — the characterization noticed the edit, but"
+    echo "           no complete intended/preserved surface contract was asserted."
   fi
 
   # Restore byte-exactly. `git checkout --` would fail silently on an
@@ -476,37 +729,42 @@ drill() {
   cp "$backup" "$target"
   rm -f "$backup" "$out_file"
 
-  # Evaluate against expectation
-  if [ "$expect" = "expect_pass" ]; then
-    if [ "$outcome" = "pass" ]; then
-      converged_count=$((converged_count + 1))
-      converged_prompts+=("$prompt ($rows rows moved)")
-      echo "  Expectation: MATCH (converged decision)"
-    else
-      regressions=$((regressions + 1))
-      mismatches=$((mismatches + 1))
-      regression_prompts+=("$prompt ($rows rows moved; $authority_files declaration(s) of '$symbol')")
-      echo "  Expectation: MISMATCH — REGRESSION! Expected single-authority effective pass, but drill failed."
-    fi
+  rm -rf "$timeline_before" "$timeline_after"
+
+  # The verdict is deliberately three-way. Sensitivity alone cannot enter the
+  # converged bucket; it is only evidence for the visible-but-unproven bucket.
+  if [ "$outcome" = "pass" ] && [ "$contract_status" = "PASS" ]; then
+    converged_count=$((converged_count + 1))
+    converged_prompts+=("$prompt ($rows characterization rows; contract PASS)")
+  elif [ "$contract_status" = "UNVERIFIED-COMPLETENESS" ] && [ "$rows" -gt 0 ] && [ "$outcome" = "pass" ]; then
+    visible_unproven_count=$((visible_unproven_count + 1))
+    visible_unproven_prompts+=("$prompt ($rows rows moved; $contract_note)")
   else
-    if [ "$outcome" = "fail" ]; then
-      frontier_count=$((frontier_count + 1))
-      frontier_prompts+=("$prompt (rows moved: $rows)")
-      echo "  Expectation: MATCH (known frontier: unconverged decision)"
-    else
-      unexpected_passes=$((unexpected_passes + 1))
-      mismatches=$((mismatches + 1))
-      unexpected_pass_prompts+=("$prompt ($rows rows moved)")
-      echo "  Expectation: MISMATCH — UNEXPECTED PASS! Drill was expected to fail as frontier, but passed ($rows rows moved). Decision has converged; board is stale!"
-    fi
+    frontier_count=$((frontier_count + 1))
+    frontier_prompts+=("$prompt ($rows rows moved; contract=$contract_status)")
+  fi
+
+  if [ "$outcome" != "pass" ] || [ "$contract_status" != "PASS" ]; then
+    mismatches=$((mismatches + 1))
   fi
 }
 
 echo "APPEARANCE CHANGE DRILL"
-echo "one owner-phrased prompt at a time; each must have ONE authority, be visible, and move ALL of its surface"
+echo "one owner-phrased prompt at a time; sensitivity is evidence, not a completeness verdict"
+echo "render-timeline contract coverage: $TIMELINE_DETECTION_RATE (emitted plan only; not raster/replay completeness)"
 echo
 
-# ==================== Converged decisions (expect_pass) ====================
+# Contract clauses are explicit lane sets. A PASS means every changed emitted
+# item belongs to the intended set and every preserved selector stayed bytewise
+# fixed. The complement is not silently treated as preserved: it is listed.
+FIXED_HANDOVER_TARGET="layer=serving,layer=candidate,kind=marker,kind=orbitTrail,kind=shockwave,kind=candidateGeometry,kind=candidateRail,layer=pulse,layer=nonServing,presentation,layer=triggered&renderKeySuffix=-from"
+FIXED_HANDOVER_SOURCE="layer=serving,layer=candidate,kind=marker,kind=orbitTrail,kind=shockwave,kind=candidateGeometry,kind=candidateRail,layer=pulse,layer=nonServing,presentation,layer=triggered&renderKeySuffix=-to"
+FIXED_BEAM_IDENTITY="kind=marker,kind=orbitTrail,kind=shockwave,kind=candidateGeometry,kind=candidateRail,layer=pulse,layer=nonServing,presentation"
+FIXED_PALETTE="layer=serving,layer=candidate,layer=triggered,layer=pulse,layer=nonServing,kind=shockwave,kind=candidateGeometry,kind=candidateRail,presentation"
+FIXED_TIMING="layer=serving,layer=candidate,layer=triggered,layer=pulse,layer=nonServing,kind=marker,kind=orbitTrail,kind=shockwave,kind=candidateGeometry,kind=candidateRail"
+FIXED_FINAL_COLOUR="kind=marker,kind=orbitTrail,presentation,layer=pulse,layer=nonServing"
+
+# ==================== Explicitly contracted decisions ====================
 
 drill expect_pass "$MODIFIERS" "inter 換手的 target 也要有強調（原本完全沒有）" \
 "HANDOVER_APPEARANCE_MODIFIERS" \
@@ -515,19 +773,25 @@ drill expect_pass "$MODIFIERS" "inter 換手的 target 也要有強調（原本�
       rationale: 'different satellites already differ in hue; the hue jump IS the inter cue'," \
 "    target: {
       shade: 'target',
-      rationale: 'owner asked for an explicit incoming-beam cue on inter as well as intra',"
+      rationale: 'owner asked for an explicit incoming-beam cue on inter as well as intra'," \
+"$TEST" "contract" "homepage:74;scene:74" \
+"layer=triggered&renderKeySuffix=-to" "$FIXED_HANDOVER_TARGET" ""
 
 drill expect_pass "$MODIFIERS" "intra 換手的 source 不要再變暗了" \
 "HANDOVER_APPEARANCE_MODIFIERS" \
 "    source: {
       shade: 'source'," \
 "    source: {
-      shade: null,"
+      shade: null," \
+"$TEST" "contract" "homepage:10" \
+"layer=triggered&renderKeySuffix=-from" "$FIXED_HANDOVER_SOURCE" ""
 
 drill expect_pass "$MODIFIERS" "換手兩側的透明度對比再拉開一點" \
 "HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR" \
 "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.62;" \
-"export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.40;"
+"export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.40;" \
+"$TEST" "contract" "homepage:10,74" \
+"layer=triggered&renderKeySuffix=-from" "$FIXED_HANDOVER_SOURCE" ""
 
 # This one is here because "把 intra target 改亮一點" was measured as a TWO-file
 # change while emphasizeIntraHandoverColor still lived in constants/servingColour.ts:
@@ -540,21 +804,26 @@ drill expect_pass "$MODIFIERS" "換手兩側的透明度對比再拉開一點" \
 drill expect_pass "$SHADE" "把 intra 換手的 target 再亮一點" \
 "emphasizeIntraHandoverColor" \
 "    : Math.min(0.94, Math.max(0.74, hsl.lightness * 0.50 + 0.48));" \
-"    : Math.min(0.98, Math.max(0.86, hsl.lightness * 0.50 + 0.60));"
+"    : Math.min(0.98, Math.max(0.86, hsl.lightness * 0.50 + 0.60));" \
+"$TEST" "contract" "homepage:14" \
+"layer=triggered&renderKeySuffix=-to" "$FIXED_HANDOVER_TARGET" ""
 
 drill expect_pass "$SERVING" "改同一顆衛星裡不同 beam 的深淺階梯" \
 "SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS" \
 "const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.56, 0.64, 0.72, 0.80, 0.87, 0.92, 0.96, 0.99] as const;" \
-"const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.50, 0.60, 0.70, 0.80, 0.87, 0.92, 0.96, 0.99] as const;"
+"const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.50, 0.60, 0.70, 0.80, 0.87, 0.92, 0.96, 0.99] as const;" \
+"$TEST" "contract" "scene:10,74,88" \
+"layer=serving,layer=candidate,layer=triggered" "$FIXED_BEAM_IDENTITY" ""
 
-# ==================== Frontier decisions (expect_fail) ====================
+# ==================== Visible but not fully instrumented ====================
 
 HUE_TEST="src/appearance/satelliteIdentityHueCharacterization.test.ts"
 drill expect_pass "$SERVING" "換掉衛星身分色的調色盤" \
 "SERVING_IDENTITY_PALETTE" \
 "  { hueDegrees: 48, baseLightness: 0.60 },  // gold" \
 "  { hueDegrees: 52, baseLightness: 0.60 },  // gold" \
-"$HUE_TEST"
+"$HUE_TEST" "contract" "homepage:74,88;scene:74,88" \
+"kind=marker,kind=orbitTrail" "$FIXED_PALETTE" ""
 
 # Checked against the side characterization, not the default cone photograph:
 # the side rule is exercised by renderKey-only items, which the 284-row cone
@@ -566,7 +835,8 @@ drill expect_pass "$MODIFIERS" "改 handover source/target 的判定" \
 "resolveHandoverSide" \
 "  if (renderKey.endsWith('-from')) return 'source';" \
 "  if (renderKey.endsWith('-from')) return 'target';" \
-"$SIDE_TEST"
+"$SIDE_TEST" "unverified" "" "" "" \
+"render-timeline does not invoke this fallback-only side resolver; preserved surfaces are not asserted"
 
 # ==================== Newly covered decisions ====================
 
@@ -574,25 +844,29 @@ drill expect_pass "$VISIBILITY" "改哪些波束/錐體要顯示在畫面上，�
 "resolveHomepageBeamVisibility" \
 "  addBeamIdentity(identities, input.recentToBeam);" \
 "  addBeamIdentity(identities, input.recentFromBeam);" \
-"$VISIBILITY_TEST"
+"$VISIBILITY_TEST" "unverified" "" "" "" \
+"the fixed live route already supplies the same identities, so this allow-list mutation is not observable in the timeline"
 
 drill expect_pass "$GEOMETRY" "把波束錐體的寬度放大一點，讓底面投影更容易讀" \
 "MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER" \
 "export const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1;" \
 "export const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1.05;" \
-"$GEOMETRY_TEST"
+"$GEOMETRY_TEST" "unverified" "" "" "" \
+"the timeline does not mount MainScene's candidate width multiplier or footprint geometry"
 
 drill expect_pass "$TIMING" "換手動畫的 serving 階段再多留一點時間" \
 "HANDOVER_CONE_PHASE_END" \
 "  serving: 0.1875," \
 "  serving: 0.20," \
-"$TIMING_TEST"
+"$TIMING_TEST" "contract" "homepage:10" \
+"presentation" "$FIXED_TIMING" ""
 
 drill expect_pass "$MARKERS" "把衛星標記的 fallback 身分色換成另一個穩定色" \
 "markerColor" \
 "  return resolveSatelliteIdentityColor(satelliteId, {});" \
 "  return resolveSatelliteIdentityColor(satelliteId + '-marker', {});" \
-"$SINK_TEST"
+"$SINK_TEST" "unverified" "" "" "" \
+"render-timeline supplies an explicit marker tint, so the fallback/replay branch is not exercised"
 
 # expect_fail on purpose, and NOT because the seam is missing — railProjection
 # does own this decision in one file. It is here because NOTHING PINS IT: flipping
