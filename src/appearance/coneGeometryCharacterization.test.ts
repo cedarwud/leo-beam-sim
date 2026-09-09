@@ -10,8 +10,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { SINR_LIVE_FOOTPRINT_RING_Y_LIFT } from '../constants/sinrLiveConeStyle';
-import { resolveVisualLabBeamRadius } from './coneGeometryContract';
+import { SINR_LIVE_FOOTPRINT_RING_Y_LIFT, resolveVisualLabBeamRadius } from './coneGeometryContract';
 import { MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER } from '../scene/multiCandidateSceneDisplayPolicy';
 import { computeSinrLiveBeamFootprintEllipse } from '../scene/sinrLiveBeamGeometry';
 import { buildObliqueBeamConePositions } from '../viz/SinrLiveCellBeamCones';

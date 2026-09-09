@@ -76,14 +76,16 @@ import {
   SINR_LIVE_CONE_CANDIDATE_OPACITY,
   SINR_LIVE_CONE_DIM_MIN_FACTOR,
   SINR_LIVE_CANDIDATE_FAN_MAX_CONES,
-  SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
-  HANDOVER_CONE_PHASE_END,
-  resolveHandoverConeEnvelope,
   resolveSinrLiveConeColor,
   resolveSinrLiveConeLayerOpacity,
   resolveSinrLiveConeRoleStyle,
   type SinrLiveConeRole,
 } from '../constants/sinrLiveConeStyle';
+import {
+  HANDOVER_CONE_PHASE_END,
+  SINR_LIVE_TRIGGERED_INTRA_SUSTAIN_MS,
+  resolveHandoverConeEnvelope,
+} from '../appearance/handoverTimingEnvelope';
 import {
   DEFAULT_BEAM_DISPLAY_SPEC,
   resolveTriggeredHandoverTargetColor,

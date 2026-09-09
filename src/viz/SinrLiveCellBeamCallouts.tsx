@@ -5,7 +5,7 @@
  * old `BeamCalloutContent` only ever mounted inside the retired steered
  * <SatelliteBeams>, so on the cell-cone lane the Beam Info toggle flipped a flag with
  * NO renderer behind it (broke c8d211d / b64cd9a). This is a DUMB renderer (mirrors
- * `SinrLiveCellFootprintRings`): one compact <Html> chip per measured serving-cone
+ * `SinrLiveCellFootprintRings`): one compact <Html> chip per computed serving-cone
  * item, floated above the cone ({@link SINR_LIVE_CALLOUT_Y_LIFT}), in the cone's
  * serving-identity colour. Geometric substrate entries without a UE/SINR sample
  * are deliberately omitted from this information layer. It does NOT fake a
@@ -14,7 +14,8 @@
  * the homepage, the value line reads the accepted live EE projection; other
  * lanes retain their existing SINR readout.
  * Display-only (Rule#6): it surfaces the model's own serving identity + metric,
- * no truth. Lane gating lives in MainScene (mounted under `showBeamCallouts`).
+ * not an observation. Lane gating lives in MainScene (mounted under
+ * `showBeamCallouts`).
  */
 import { useEffect, useLayoutEffect, type JSX } from 'react';
 import { Html } from '@react-three/drei';
@@ -29,6 +30,8 @@ import { SINR_LIVE_CALLOUT_Y_LIFT } from '../constants/sinrLiveConeStyle';
 import { cellLinkBudgetBeamId } from '../scene/sinrLiveCellModel';
 import { formatHomepageEe } from '../homepage/controller/homepageMetricFormatters';
 import { formatEngineering } from '../ui/signal-tuning/formatters';
+import { useLocale } from '../i18n';
+import { ProvenanceBadge } from '../ui/common/ProvenanceBadge';
 import type { SinrLiveCellBeamConeRenderItem } from './SinrLiveCellBeamCones';
 import type { AngleAwareFormulaFrame } from '../engine/signal/types';
 
@@ -54,6 +57,8 @@ export interface SinrLiveCellBeamCalloutsProps {
   readonly satelliteNameById?: ReadonlyMap<string, string> | null;
   /** Optional canvas dataset key for the rendered-callout count (validator proof). */
   readonly telemetryCountDatasetKey?: string;
+  /** Source boundary for the physical values shown in these callouts. */
+  readonly sourceProvenance?: 'synthetic-walker' | 'archived-tle';
 }
 
 function formatCalloutSinr(sinrDb: number | null | undefined): string {
@@ -87,15 +92,18 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
     satelliteNameById = null,
     homepageVisualIdentity = false,
     homepageBeamEeByKey = null,
+    sourceProvenance = 'synthetic-walker',
   } = props;
+  const { locale } = useLocale();
+  const isEnglish = locale === 'en';
   // ONE injected identity source for the whole mount; see the cone mount for
   // why this is built once rather than at each call.
   const homepageIdentityColorFor = homepageBeamIdentityLookup(homepageBeamEeByKey);
   // The beam fan contains a geometric substrate for beams that have no UE/SINR
   // sample. That substrate is useful for the cone renderer, but it is not an
-  // information record. Do not turn it into a pile of "unmeasured" cards: Beam
-  // Info is an inspection surface for measured links only.
-  const measuredItems = props.items.filter(item => {
+  // information record. Do not turn it into a pile of unavailable cards: Beam
+  // Info is an inspection surface for computed links only.
+  const computedItems = props.items.filter(item => {
     if (item.displayOnly === true) return false;
     const isPrimary = item.satId === primaryServingSatId && item.cellId === primaryServingCellId;
     const beamId = item.beamId ?? cellLinkBudgetBeamId(item.cellId);
@@ -118,18 +126,32 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
   useLayoutEffect(() => {
     const key = props.telemetryCountDatasetKey;
     if (!key) return;
-    gl.domElement.dataset[key] = String(measuredItems.length);
+    gl.domElement.dataset[key] = String(computedItems.length);
   });
 
   useEffect(() => () => {
     if (props.telemetryCountDatasetKey) delete gl.domElement.dataset[props.telemetryCountDatasetKey];
   }, [gl, props.telemetryCountDatasetKey]);
 
-  if (measuredItems.length === 0) return null;
+  if (computedItems.length === 0) return null;
+
+  const sourceAnchor = computedItems[0]!.baseCenter;
 
   return (
     <group name="sinr-live-cell-beam-callouts">
-      {measuredItems.map(item => {
+      <Html
+        position={[sourceAnchor.x, sourceAnchor.y + SINR_LIVE_CALLOUT_Y_LIFT + 24, sourceAnchor.z]}
+        center
+        zIndexRange={[90, 30]}
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        <ProvenanceBadge source={sourceProvenance} testId="beam-callout-source-badge">
+          {sourceProvenance === 'synthetic-walker'
+            ? (isEnglish ? 'SOURCE · SYNTHETIC WALKER COMPUTATION' : '來源 · 合成 Walker 計算值')
+            : (isEnglish ? 'SOURCE · ARCHIVED TLE / SGP4' : '來源 · 封存 TLE / SGP4')}
+        </ProvenanceBadge>
+      </Html>
+      {computedItems.map(item => {
         const isPrimary =
           item.satId === primaryServingSatId && item.cellId === primaryServingCellId;
         const satLabel = resolveHomepageSatelliteDisplayName(item.satId, satelliteNameById);

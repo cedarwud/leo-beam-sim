@@ -551,7 +551,7 @@ function HandoverDecisionReadout({
           : '來源錨點達到門檻'
         : beat.id === 'candidate'
           ? '比較候選集合與服務 SINR'
-          : '比較服務 SINR 與候選量測';
+          : '比較服務 SINR 與候選比較值';
   return (
     <div
       className="golden-flow-primary-cue golden-flow-handover-decision"
@@ -595,7 +595,7 @@ function HandoverDecisionReadout({
             <b>{formatSigned(frame.servingSinrDb, 1)} dB</b>
           </div>
           <div className="is-candidate">
-            <span>{sourceIsActive ? '候選量測・未連線' : '唯一服務鏈路'}</span>
+            <span>{sourceIsActive ? '候選比較值・未連線' : '唯一服務鏈路'}</span>
             <strong>{truth.targetSatelliteName}</strong>
             <b>{formatSigned(frame.candidateSinrDb, 1)} dB</b>
           </div>
@@ -698,7 +698,7 @@ const LEGACY_CARRIER_NARRATIVE: Readonly<Record<GoldenFlowBeat['id'], {
   }),
   candidate: Object.freeze({
     question: '系統如何從候選集合選出換手目標？',
-    body: '黃色仍是唯一服務鏈路；三條青色虛線只代表候選量測。系統先比較 SINR，選出目前最佳的 B1，再檢查換手門檻。',
+    body: '黃色仍是唯一服務鏈路；三條青色虛線只代表候選比較值。系統先比較 SINR，選出目前最佳的 B1，再檢查換手門檻。',
   }),
   qualification: Object.freeze({
     question: '什麼時候開始累積 TTT？',
@@ -764,8 +764,8 @@ const FORCED_CONTINUITY_NARRATIVE: Readonly<Record<GoldenFlowBeat['id'], {
   }),
   candidate: Object.freeze({
     eyebrow: '06 · 目前服務與接替目標',
-    question: '哪一顆衛星正在服務，哪一顆僅接受量測？',
-    body: '黃色是唯一服務鏈路；候選衛星只顯示量測狀態，尚未建立第二條服務鏈路。',
+    question: '哪一顆衛星正在服務，哪一顆僅提供比較值？',
+    body: '黃色是唯一服務鏈路；候選衛星只顯示比較狀態，尚未建立第二條服務鏈路。',
     caption: ['服務鏈路失去可見性，接替目標進入場景。', '這是 forced-continuity，不是 Offset+TTT。'],
   }),
   qualification: Object.freeze({
@@ -1148,7 +1148,7 @@ export function GoldenFlowPrototype() {
     && beat.id === 'candidate'
     && truth.eventKind === 'inter-handover'
     ? Object.freeze({
-      eyebrow: '06 · 來源事件中的候選量測',
+      eyebrow: '06 · 來源事件中的候選比較值',
       question: '來源事件記錄了哪一個換手候選？',
       body: '黃色仍是唯一服務鏈路；青色虛線只標示來源事件中已選定的候選。來源資料未提供完整候選排序。',
     })
@@ -1225,7 +1225,7 @@ export function GoldenFlowPrototype() {
       data-angle-elevation-deg={angleLessonElevationDeg.toFixed(3)}
       data-angle-off-axis-deg={angleLessonOffAxisDeg.toFixed(3)}
       data-link-visual-state={linkVisualState}
-      data-link-visual-source="中央場景單一服務鏈路與候選量測"
+      data-link-visual-source="中央場景單一服務鏈路與候選比較值"
       data-active-service={isHandoverPresentation ? handoverFrame.activeService : 'source'}
       data-active-service-count="1"
       data-dual-connectivity="false"
@@ -1294,7 +1294,7 @@ export function GoldenFlowPrototype() {
               {isHandoverPresentation ? (
                 <>
                   <span><i className="is-source" />目前服務</span>
-                  <span><i className="is-target" />候選量測・未連線</span>
+                  <span><i className="is-target" />候選比較值・未連線</span>
                 </>
               ) : (
                 <span><i className="is-elevation" />本段：地面端仰角 α</span>

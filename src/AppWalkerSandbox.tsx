@@ -2104,6 +2104,8 @@ export function AppWalkerSandbox() {
                       comparisonCellId={intraTeachingComparisonCellId}
                       isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                       channelMetricKind={activeSceneFrame?.channelMetricKind}
+                      sourceProvenance="synthetic-walker"
+                      showProvenanceBadge={false}
                     />
                   </WalkerResultsRail>
                 ) : (
@@ -2115,6 +2117,11 @@ export function AppWalkerSandbox() {
                     showFormulaTerms
                     isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                     channelMetricKind={activeSceneFrame?.channelMetricKind}
+                    sourceProvenance={isLegacyWalkerRoute
+                      ? 'synthetic-walker'
+                      : sceneLane === 'sinr-live' && !isLegacyWalkerRoute
+                        ? 'archived-tle'
+                        : 'artifact-replay'}
                   />
                 )}
               </section>

@@ -2472,6 +2472,7 @@ export function App() {
     homepageRailContent = (
       <HomepageBeamRail
         projection={homepageRailProjection}
+        sourceProvenance="synthetic-walker"
         acceptedSnapshotMetadata={simState.acceptedHandoverPresentation}
         satelliteNameById={homepageSatelliteNameById}
         playback={{
@@ -2917,6 +2918,8 @@ export function App() {
                 comparisonCellId={intraTeachingComparisonCellId}
                 isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
                 channelMetricKind={activeSceneFrame?.channelMetricKind}
+                sourceProvenance="synthetic-walker"
+                showProvenanceBadge={false}
               />
             </WalkerResultsRail>
           ) : (
@@ -2928,6 +2931,11 @@ export function App() {
               showFormulaTerms
               isFormulaEvidenceStale={staleFormulaEvidenceKey !== null}
               channelMetricKind={activeSceneFrame?.channelMetricKind}
+              sourceProvenance={isArchivedTleSceneActive
+                ? 'archived-tle'
+                : sceneSource === 'artifact-replay'
+                  ? 'artifact-replay'
+                  : 'synthetic-walker'}
             />
           )}
         />

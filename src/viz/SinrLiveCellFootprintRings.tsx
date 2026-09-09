@@ -38,9 +38,9 @@ import {
   SINR_LIVE_FOOTPRINT_RING_INNER_FACTOR,
   SINR_LIVE_FOOTPRINT_RING_OPACITY,
   SINR_LIVE_FOOTPRINT_RING_OUTER_FACTOR,
-  SINR_LIVE_FOOTPRINT_RING_Y_LIFT,
   type SinrLiveConePalette,
 } from '../constants/sinrLiveConeStyle';
+import { SINR_LIVE_FOOTPRINT_RING_Y_LIFT } from '../appearance/coneGeometryContract';
 import { resolveSatelliteIdentityColor } from '../appearance/resolveSatelliteAppearance';
 import {
   HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR,

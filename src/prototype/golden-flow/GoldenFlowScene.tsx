@@ -725,7 +725,7 @@ function LinkSpotlight({
           data-link-state={state}
         >
           <span>{label}</span>
-          <small>{role === 'source' ? '唯一服務鏈路' : '只量測，尚未連線'}</small>
+          <small>{role === 'source' ? '唯一服務鏈路' : '只供比較，尚未連線'}</small>
         </div>
       </Html>
     </group>
@@ -1085,8 +1085,8 @@ function SceneContent({
             intensity={candidateMeasurementStrength}
             role="candidate"
             label={isForcedContinuity
-              ? '候選量測・未連線'
-              : beat === 'ttt' ? '候選量測・優勢持續' : '候選量測・未連線'}
+              ? '候選比較值・未連線'
+              : beat === 'ttt' ? '候選比較值・優勢持續' : '候選比較值・未連線'}
             state="measurement-only"
           />
         </>

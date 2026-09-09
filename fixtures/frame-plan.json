@@ -1,0 +1,1036 @@
+{
+  "protocol": "deterministic-frame-plan-v1",
+  "inputs": {
+    "epochUtcMs": 1767225600000,
+    "profileId": "hobs-2024-candidate-rich",
+    "stepSec": 1,
+    "stepCount": 89,
+    "targetSimTimeSec": 88,
+    "worldUnitsPerKm": 0.25,
+    "ueIds": [
+      "ue-primary"
+    ],
+    "satellites": [
+      {
+        "id": "SAT-A",
+        "shellId": "frame-plan-shell",
+        "altitudeKm": 550,
+        "latDeg": 40,
+        "lonOffsetDegBeforeSwitch": 0,
+        "lonOffsetDegAfterSwitch": 5.5,
+        "switchAtSec": 84,
+        "world": {
+          "x": -45,
+          "y": 140,
+          "z": 20
+        }
+      },
+      {
+        "id": "SAT-B",
+        "shellId": "frame-plan-shell",
+        "altitudeKm": 550,
+        "latDeg": 40,
+        "lonOffsetDegBeforeSwitch": 1.8,
+        "lonOffsetDegAfterSwitch": 0,
+        "switchAtSec": 84,
+        "world": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        }
+      },
+      {
+        "id": "SAT-C",
+        "shellId": "frame-plan-shell",
+        "altitudeKm": 550,
+        "latDeg": 40,
+        "lonOffsetDegBeforeSwitch": -1.5,
+        "lonOffsetDegAfterSwitch": -1.5,
+        "switchAtSec": 1000000000,
+        "world": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        }
+      }
+    ]
+  },
+  "truth": {
+    "simTimeSec": 88,
+    "primaryUeId": "ue-primary",
+    "primaryServing": {
+      "satId": "SAT-B",
+      "cellId": 0,
+      "beamId": 1
+    },
+    "recentHandoverEvents": 1,
+    "handoverEvents": [
+      {
+        "kind": "inter",
+        "ueId": "ue-primary",
+        "sourceTimeSec": 88,
+        "fromSatId": "SAT-A",
+        "fromCellId": 0,
+        "fromBeamId": 1,
+        "toSatId": "SAT-B",
+        "toCellId": 0,
+        "toBeamId": 1
+      }
+    ]
+  },
+  "timing": {
+    "progress01": 0.5,
+    "phase": "holding",
+    "envelope": {
+      "fromOpacity": 0.95,
+      "toOpacity": 0.95,
+      "phase": "holding"
+    },
+    "pulseOpacity": 0.8,
+    "triggeredProgress01": 0.5,
+    "triggeredIntraSustainMs": 5000,
+    "homepageDisplayMs": {
+      "intra": 16000,
+      "inter": 12000
+    },
+    "cinemaDisplayMs": {
+      "intra": 8000,
+      "inter": 6000
+    },
+    "manualDisplayMs": 8000,
+    "phaseBoundaries": {
+      "intra": {
+        "serving": 0.1875,
+        "measuring": 0.375,
+        "holding": 0.5625,
+        "releasing": 0.75
+      },
+      "inter": {
+        "serving": 0.16666666666666666,
+        "measuring": 0.42424242424242425,
+        "holding": 0.5757575757575758,
+        "releasing": 0.8181818181818182
+      }
+    }
+  },
+  "items": [
+    {
+      "layer": "serving",
+      "color": "#61e596",
+      "opacity": 0.8,
+      "role": "hero",
+      "satId": "SAT-B",
+      "cellId": 0,
+      "beamId": 1,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": false,
+      "renderKey": null,
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": 0.5982927307998671,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "serving",
+      "color": "#84ebad",
+      "opacity": 0.17,
+      "role": "servingFan",
+      "satId": "SAT-B",
+      "cellId": 1,
+      "beamId": 2,
+      "frequencyIndex": 1,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "serving-display-fan-SAT-B-1-2",
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": -3.3740886647873776,
+          "y": 0,
+          "z": -8.076951865798204
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "serving",
+      "color": "#a7f1c5",
+      "opacity": 0.17,
+      "role": "servingFan",
+      "satId": "SAT-B",
+      "cellId": 2,
+      "beamId": 3,
+      "frequencyIndex": 2,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "serving-display-fan-SAT-B-2-3",
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": -7.346470060374623,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "serving",
+      "color": "#c6f6d9",
+      "opacity": 0.17,
+      "role": "servingFan",
+      "satId": "SAT-B",
+      "cellId": 3,
+      "beamId": 4,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "serving-display-fan-SAT-B-3-4",
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": -3.3740886647873776,
+          "y": 0,
+          "z": 5.6837809425987365
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "serving",
+      "color": "#dcf9e8",
+      "opacity": 0.17,
+      "role": "servingFan",
+      "satId": "SAT-B",
+      "cellId": 4,
+      "beamId": 5,
+      "frequencyIndex": 1,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "serving-display-fan-SAT-B-4-5",
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": 4.570674126387112,
+          "y": 0,
+          "z": 5.6837809425987365
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "serving",
+      "color": "#edfcf3",
+      "opacity": 0.17,
+      "role": "servingFan",
+      "satId": "SAT-B",
+      "cellId": 5,
+      "beamId": 6,
+      "frequencyIndex": 2,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "serving-display-fan-SAT-B-5-6",
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": 4.570674126387112,
+          "y": 0,
+          "z": -8.076951865798204
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "serving",
+      "color": "#fbfefc",
+      "opacity": 0.17,
+      "role": "servingFan",
+      "satId": "SAT-B",
+      "cellId": 6,
+      "beamId": 7,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "serving-display-fan-SAT-B-6-7",
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": 8.543055521974356,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "candidate",
+      "color": "#9fd2ef",
+      "opacity": 0.8,
+      "role": "candidatePrimary",
+      "satId": "SAT-C",
+      "cellId": 0,
+      "beamId": 1,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": false,
+      "renderKey": "candidate-SAT-C-0-1",
+      "geometry": {
+        "apex": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        },
+        "baseCenter": {
+          "x": 0.5982927307998671,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "candidate",
+      "color": "#b9def4",
+      "opacity": 0.13,
+      "role": "candidateFan",
+      "satId": "SAT-C",
+      "cellId": 1,
+      "beamId": 2,
+      "frequencyIndex": 1,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "candidate-display-fan-SAT-C-1-2",
+      "geometry": {
+        "apex": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        },
+        "baseCenter": {
+          "x": -3.3740886647873776,
+          "y": 0,
+          "z": -8.076951865798204
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "candidate",
+      "color": "#cfe8f7",
+      "opacity": 0.13,
+      "role": "candidateFan",
+      "satId": "SAT-C",
+      "cellId": 2,
+      "beamId": 3,
+      "frequencyIndex": 2,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "candidate-display-fan-SAT-C-2-3",
+      "geometry": {
+        "apex": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        },
+        "baseCenter": {
+          "x": -7.346470060374623,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "candidate",
+      "color": "#e0f1fa",
+      "opacity": 0.13,
+      "role": "candidateFan",
+      "satId": "SAT-C",
+      "cellId": 3,
+      "beamId": 4,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": false,
+      "renderKey": "candidate-fan-SAT-C-3-4",
+      "geometry": {
+        "apex": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        },
+        "baseCenter": {
+          "x": -3.3740886647873776,
+          "y": 0,
+          "z": 5.6837809425987365
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "candidate",
+      "color": "#edf7fc",
+      "opacity": 0.13,
+      "role": "candidateFan",
+      "satId": "SAT-C",
+      "cellId": 4,
+      "beamId": 5,
+      "frequencyIndex": 1,
+      "serving": true,
+      "displayOnly": false,
+      "renderKey": "candidate-fan-SAT-C-4-5",
+      "geometry": {
+        "apex": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        },
+        "baseCenter": {
+          "x": 4.570674126387112,
+          "y": 0,
+          "z": 5.6837809425987365
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "candidate",
+      "color": "#f6fbfe",
+      "opacity": 0.13,
+      "role": "candidateFan",
+      "satId": "SAT-C",
+      "cellId": 5,
+      "beamId": 6,
+      "frequencyIndex": 2,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "candidate-display-fan-SAT-C-5-6",
+      "geometry": {
+        "apex": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        },
+        "baseCenter": {
+          "x": 4.570674126387112,
+          "y": 0,
+          "z": -8.076951865798204
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "candidate",
+      "color": "#fbfdfe",
+      "opacity": 0.13,
+      "role": "candidateFan",
+      "satId": "SAT-C",
+      "cellId": 6,
+      "beamId": 7,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": true,
+      "renderKey": "candidate-display-fan-SAT-C-6-7",
+      "geometry": {
+        "apex": {
+          "x": 45,
+          "y": 140,
+          "z": -20
+        },
+        "baseCenter": {
+          "x": 8.543055521974356,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "pulse",
+      "color": "#9fa9ef",
+      "opacity": 0.8,
+      "role": "handoverSource",
+      "satId": "SAT-A",
+      "cellId": 0,
+      "beamId": 1,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": false,
+      "renderKey": "ue-primary-88-from",
+      "geometry": {
+        "apex": {
+          "x": -45,
+          "y": 140,
+          "z": 20
+        },
+        "baseCenter": {
+          "x": 0.5982927307998671,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    },
+    {
+      "layer": "pulse",
+      "color": "#61e596",
+      "opacity": 0.8,
+      "role": "handoverTarget",
+      "satId": "SAT-B",
+      "cellId": 0,
+      "beamId": 1,
+      "frequencyIndex": 0,
+      "serving": true,
+      "displayOnly": false,
+      "renderKey": "ue-primary-88-to",
+      "geometry": {
+        "apex": {
+          "x": 0,
+          "y": 140,
+          "z": 0
+        },
+        "baseCenter": {
+          "x": 0.5982927307998671,
+          "y": 0,
+          "z": -1.1965854615997342
+        },
+        "baseRadiusWorld": 3.9886182053324473
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "real-intra-commit",
+      "inputs": {
+        "targetSimTimeSec": 1.75,
+        "stepSec": 0.25,
+        "stepCount": 8,
+        "profileId": "hobs-2024-candidate-rich",
+        "maxGainDbiOverrideDbi": 30,
+        "eeThresholdKbitPerJoule": 220,
+        "ueIds": [
+          "ue-intra"
+        ],
+        "satellites": [
+          {
+            "id": "SAT-INTRA",
+            "shellId": "frame-plan-intra-shell",
+            "altitudeKm": 550,
+            "latDeg": 40,
+            "lonOffsetDegBeforeSwitch": 0,
+            "lonOffsetDegAfterSwitch": 0,
+            "switchAtSec": 1000000000,
+            "world": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "truth": {
+        "simTimeSec": 1.75,
+        "primaryUeId": "ue-intra",
+        "primaryServing": {
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 421
+        },
+        "handoverEvents": [
+          {
+            "kind": "intra",
+            "ueId": "ue-intra",
+            "sourceTimeSec": 1.75,
+            "fromSatId": "SAT-INTRA",
+            "fromCellId": 0,
+            "fromBeamId": 1,
+            "toSatId": "SAT-INTRA",
+            "toCellId": 0,
+            "toBeamId": 421
+          }
+        ],
+        "selectedKind": "intra-satellite",
+        "committedKind": "intra-satellite"
+      },
+      "items": [
+        {
+          "layer": "nonServing",
+          "color": "#9fbfef",
+          "opacity": 0.07,
+          "role": "nonServing",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 1,
+          "frequencyIndex": 0,
+          "serving": false,
+          "displayOnly": false,
+          "renderKey": null,
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0.5982927307998671,
+              "y": 0,
+              "z": -1.1965854615997342
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "serving",
+          "color": "#9fbfef",
+          "opacity": 0.17,
+          "role": "servingFan",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 1,
+          "frequencyIndex": 0,
+          "serving": true,
+          "displayOnly": true,
+          "renderKey": "serving-display-fan-SAT-INTRA-0-1",
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0.5982927307998671,
+              "y": 0,
+              "z": -1.1965854615997342
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "serving",
+          "color": "#edf3fc",
+          "opacity": 0.8,
+          "role": "hero",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 421,
+          "frequencyIndex": 1,
+          "serving": true,
+          "displayOnly": false,
+          "renderKey": null,
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0.5982927307998671,
+              "y": 0,
+              "z": -1.1965854615997342
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "pulse",
+          "color": "#508eec",
+          "opacity": 0.8,
+          "role": "handoverSource",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 1,
+          "frequencyIndex": 0,
+          "serving": true,
+          "displayOnly": false,
+          "renderKey": "ue-intra-1.75-from",
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "pulse",
+          "color": "#e3edfc",
+          "opacity": 0.8,
+          "role": "handoverTarget",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 421,
+          "frequencyIndex": 0,
+          "serving": true,
+          "displayOnly": false,
+          "renderKey": "ue-intra-1.75-to",
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "triggered",
+          "color": "#508eec",
+          "opacity": 0.95,
+          "role": "triggered",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 1,
+          "frequencyIndex": 0,
+          "serving": true,
+          "displayOnly": false,
+          "renderKey": "cinema-ue-intra-1.75-SAT-INTRA-1-SAT-INTRA-421-from",
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "triggered",
+          "color": "#508eec",
+          "opacity": 0.589,
+          "role": "triggered",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 1,
+          "frequencyIndex": 0,
+          "serving": true,
+          "displayOnly": false,
+          "renderKey": "cinema-ue-intra-1.75-SAT-INTRA-1-SAT-INTRA-421-from",
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "triggered",
+          "color": "#e3edfc",
+          "opacity": 0.95,
+          "role": "triggered",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 421,
+          "frequencyIndex": 0,
+          "serving": true,
+          "displayOnly": false,
+          "renderKey": "cinema-ue-intra-1.75-SAT-INTRA-1-SAT-INTRA-421-to",
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        },
+        {
+          "layer": "triggered",
+          "color": "#e3edfc",
+          "opacity": 0.836,
+          "role": "triggered",
+          "satId": "SAT-INTRA",
+          "cellId": 0,
+          "beamId": 421,
+          "frequencyIndex": 0,
+          "serving": true,
+          "displayOnly": false,
+          "renderKey": "cinema-ue-intra-1.75-SAT-INTRA-1-SAT-INTRA-421-to",
+          "geometry": {
+            "apex": {
+              "x": 0,
+              "y": 140,
+              "z": 0
+            },
+            "baseCenter": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "baseRadiusWorld": 3.9886182053324473
+          }
+        }
+      ],
+      "visibility": {
+        "allowedBeamIdentities": [
+          "SAT-INTRA|0|1",
+          "SAT-INTRA|0|1261",
+          "SAT-INTRA|0|421"
+        ],
+        "probeAllowedBeamIdentities": [
+          "SAT-INTRA|0|1261",
+          "SAT-INTRA|0|421"
+        ],
+        "sceneAllowedBeamIdentities": [
+          "SAT-INTRA|0|1",
+          "SAT-INTRA|0|421"
+        ],
+        "renderedBeamIdentities": [
+          "SAT-INTRA|0|1",
+          "SAT-INTRA|0|421"
+        ]
+      },
+      "markers": [
+        {
+          "id": "SAT-INTRA",
+          "world": {
+            "x": 0,
+            "y": 140,
+            "z": 0
+          },
+          "satelliteTintColor": "#9fbfef"
+        }
+      ],
+      "timing": {
+        "progress01": 0.5,
+        "phase": "holding",
+        "envelope": {
+          "fromOpacity": 0.95,
+          "toOpacity": 0.95,
+          "phase": "holding"
+        },
+        "pulseOpacity": 0.8,
+        "triggeredProgress01": 0.5,
+        "triggeredIntraSustainMs": 5000,
+        "homepageDisplayMs": {
+          "intra": 16000,
+          "inter": 12000
+        },
+        "cinemaDisplayMs": {
+          "intra": 8000,
+          "inter": 6000
+        },
+        "manualDisplayMs": 8000,
+        "phaseBoundaries": {
+          "intra": {
+            "serving": 0.1875,
+            "measuring": 0.375,
+            "holding": 0.5625,
+            "releasing": 0.75
+          },
+          "inter": {
+            "serving": 0.16666666666666666,
+            "measuring": 0.42424242424242425,
+            "holding": 0.5757575757575758,
+            "releasing": 0.8181818181818182
+          }
+        }
+      },
+      "groundEffects": {
+        "servingRipple": {
+          "spec": {
+            "role": "serving",
+            "color": "#facc15",
+            "cycleSec": 2,
+            "expandSec": 1.6,
+            "radiusMultiplier": 1.6,
+            "maxOpacity": 0.42
+          },
+          "envelope": {
+            "progress": 0.4750000000000001,
+            "radius": 3.789187295065826,
+            "opacity": 0.17062499999999994,
+            "visible": true
+          }
+        },
+        "pendingRipple": {
+          "spec": {
+            "role": "pending",
+            "color": "#38bdf8",
+            "cycleSec": 3,
+            "expandSec": 2.4,
+            "radiusMultiplier": 1.12,
+            "maxOpacity": 0.26
+          },
+          "envelope": {
+            "progress": 0.3500000000000001,
+            "radius": 1.9544229206129002,
+            "opacity": 0.14624999999999994,
+            "visible": true
+          }
+        },
+        "intraShockwave": {
+          "progress01": 0.5,
+          "sourceOpacity": 0.425,
+          "targetOpacity": 0.6642857142857143,
+          "sourceScale": 0.8,
+          "targetScale": 0.8500000000000001,
+          "sourceColor": "#9fbfef",
+          "targetColor": "#edf3fc"
+        }
+      },
+      "rail": {
+        "snapshotId": "walker-primary:1767225600000:2:0:2c00bbd5",
+        "sourceFrameId": "walker:1767225600000:1767225601750",
+        "candidateRosterRetained": true,
+        "candidateRosterSourceFrameId": "walker:1767225600000:1767225601500",
+        "candidates": [
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 1,
+            "cellLabel": "B1",
+            "role": "hard-eligible",
+            "isServing": false,
+            "isCandidate": true,
+            "joinKey": "walker-primary:1767225600000:2:0/link/SAT-INTRA%7C1"
+          },
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 1261,
+            "cellLabel": "B4",
+            "role": "hard-eligible",
+            "isServing": false,
+            "isCandidate": true,
+            "joinKey": "walker-primary:1767225600000:2:0/link/SAT-INTRA%7C1261"
+          }
+        ],
+        "visibleCandidates": [
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 421,
+            "cellLabel": "B2",
+            "role": "selected-target",
+            "isServing": false,
+            "isCandidate": true,
+            "joinKey": "walker-primary:1767225600000:2:0/link/SAT-INTRA%7C421"
+          },
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 841,
+            "cellLabel": "B3",
+            "role": "qualified",
+            "isServing": false,
+            "isCandidate": true,
+            "joinKey": "walker-primary:1767225600000:2:0/link/SAT-INTRA%7C841"
+          }
+        ],
+        "overflowKeys": [
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 1681
+          },
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 2101
+          },
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 2521
+          },
+          {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 841
+          }
+        ],
+        "counts": {
+          "observed": 6,
+          "hardEligible": 5,
+          "triggerSatisfied": 0,
+          "tttStable": 0,
+          "displayed": 2,
+          "overflow": 4
+        },
+        "activeDataLinkCount": 1,
+        "handoverStory": {
+          "snapshotId": "walker-primary:1767225600000:2:0:2c00bbd5",
+          "sourceFrameId": "walker:1767225600000:1767225601750",
+          "phase": "switching",
+          "kind": "intra",
+          "cellCount": 7,
+          "cellExample": "seven-cell",
+          "source": {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 1
+          },
+          "target": {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 421
+          },
+          "winner": {
+            "satelliteId": "SAT-INTRA",
+            "beamId": 421
+          },
+          "sourceEeBitsPerJoule": 65704.32131041776,
+          "targetEeBitsPerJoule": 67496.44807878228,
+          "winnerEeBitsPerJoule": 67496.44807878228,
+          "winnerBasis": "instantaneous-ee-max",
+          "targetIsWinner": true,
+          "qualifiedCandidateCount": 2,
+          "qualifiedCandidateSatelliteCount": 1,
+          "selectionStatus": "committed",
+          "sameSatellite": true
+        }
+      }
+    }
+  ]
+}
