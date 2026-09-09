@@ -10,15 +10,40 @@
 # decision is spread across. This script answers it EMPIRICALLY: it performs each
 # change for real, one owner-phrased prompt at a time, and reports
 #
-#   - how many files the edit touched,
-#   - whether the change actually reached the rendered output (proved by rows of
-#     the 270-row characterization photograph moving),
+#   - whether the decision has exactly ONE authority (check A),
+#   - whether the change actually reached the rendered output (check B),
+#   - whether it reached ALL of it, not just some of it (check C),
 #   - and that reverting restores the exact prior state.
 #
-# The middle check is the one that matters and the one a file count alone cannot
-# give you. A one-file edit that changes nothing on screen is not a win — it is
-# the same "I changed it and nothing happened" the owner already reports. So each
-# drill asserts BOTH that the blast radius was one file AND that pixels moved.
+# ## Why the file-count check was replaced (2026-09-09)
+#
+# This script used to compute a "blast radius":
+#
+#     touched=$(comm -13 <(printf '%s\n' "$before_tree") <(tree_fingerprint) | wc -l)
+#     if [ "$touched" -ne 1 ]; then echo "not confined to one file"; fi
+#
+# `apply_edit` opens exactly one path for writing, so `touched` was 1 BY
+# CONSTRUCTION. "The change was confined to one file" was a guarantee that could
+# not fail, and therefore could not detect the one thing it existed to detect: a
+# change that NEEDS a second file. It proved itself empty in the field — the
+# board reported `intra-handover-shade` as converged and single-file while
+# `npm run audit:appearance-cost` reported FILES TO EDIT: 2 for the same
+# decision, because `emphasizeIntraHandoverColor` had been COPIED into
+# `appearance/intraHandoverShade.ts` and never deleted from
+# `constants/servingColour.ts`. Two live definitions of the same 12 lines.
+#
+# Check A replaces it with the property the old check was pretending to assert:
+# the symbol each drill perturbs must be DECLARED EXACTLY ONCE under src/.
+#
+# ## Why "at least one row moved" was replaced (2026-09-09)
+#
+# The old effect check was `rows -eq 0` means fail — i.e. "at least one
+# characterization row moved". "At least one" is satisfied by a HALF-applied
+# change, which is exactly the shape of the bug above: edit the owner, half the
+# surfaces move, half keep the old colour, and the drill says PASS. Check C
+# demands TOTALITY instead: every pinned occurrence of a row that moved must
+# have moved. A row that still carries the old value somewhere in the same
+# photograph is a partial move and fails.
 #
 # Usage:  bash scripts/audit/appearance-change-drill.sh
 # Exit 0 only if every drill matches its expectation (expect_pass passes, expect_fail fails).
@@ -59,12 +84,63 @@ unexpected_passes=0
 # a convergence that was never observed. Invalid is its own outcome.
 invalid_count=0
 mismatches=0
+# Check C cannot observe totality on every test. A table-driven `assert.equal`
+# loop THROWS on its first mismatch, so node reports one failure no matter how
+# many rows moved, and "did every pinned occurrence move" is not answerable from
+# that output. Those drills are counted here, by name, so the board states how
+# much of itself has a total-effect check rather than implying all of it does.
+totality_unobservable=0
 
 converged_prompts=()
 frontier_prompts=()
 regression_prompts=()
 unexpected_pass_prompts=()
 invalid_prompts=()
+totality_unobservable_prompts=()
+
+# ---------------------------------------------------------------------------
+# CHECK A — does this decision have exactly ONE authority?
+#
+# Counts DECLARATIONS of the perturbed symbol under src/, exported or not. Not
+# exported-only: the three-way `hslToHex` split that motivated this check was one
+# export plus two PRIVATE copies, and an exported-only count reported 1 — green,
+# and wrong. Test files are excluded: a local helper in a test is not a rendering
+# authority.
+#
+# Zero declarations is INVALID, never a pass. The documented worst measurement
+# bug in this repo is a query that quietly returns the empty set which is then
+# read as a fact (NEXT-SESSION-RENDERING-CONVERGENCE.md, 教訓 #5).
+# ---------------------------------------------------------------------------
+authority_declarations() {
+  grep -rnE "^[[:space:]]*(export[[:space:]]+)?(default[[:space:]]+)?(async[[:space:]]+)?(function|const|let|var|class)[[:space:]]+$1[[:space:]]*[(:=<]" src \
+    --include='*.ts' --include='*.tsx' 2>/dev/null \
+    | grep -v '\.test\.ts:' | grep -v '\.test\.tsx:'
+}
+
+# Blast radius by CONTENT, not by git status.
+#
+# `git status --porcelain` reports an untracked file as "??" whether or not you
+# just edited it, so a drill against a not-yet-committed module measured ZERO
+# files touched and failed for the wrong reason. Hashing the tree is independent
+# of what is committed, which is what a measurement of "how many files did this
+# change touch" has to be.
+#
+# This is now an INTEGRITY check, not a metric: it names the paths that differ
+# and asserts the drill's own edit is the only one, so a concurrent worker
+# writing to src/ during a run is reported instead of being silently folded into
+# the measurement. It is deliberately no longer reported as "files touched to
+# make the change" — that number was always 1 and meant nothing.
+tree_fingerprint() {
+  find src scripts -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.sh' \) -print0 \
+    | sort -z | xargs -0 md5sum | sort
+}
+
+# Run one characterization test and keep its full output, so the effect count
+# and the totality analysis are derived from the SAME observation instead of two
+# separate runs that could disagree.
+run_test_capture() {
+  node --import tsx/esm --test "$1" > "$2" 2>&1
+}
 
 # How many rows of the pinned photograph differ. 0 means the edit was inert.
 # Did the edit actually reach the rendered output?
@@ -79,16 +155,14 @@ invalid_prompts=()
 # Count FAILING ASSERTIONS instead: that is the property actually being asked
 # about ("did the pinned behaviour move"), and it is independent of which
 # assertion style the test happens to use.
-changed_rows() {
-  local out
-  out=$(node --import tsx/esm --test "$1" 2>&1)
-  local failed
+changed_rows_from() {
+  local out failed rows
+  out=$(cat "$1")
   failed=$(printf '%s' "$out" | grep -oE "^# fail [0-9]+|^ℹ fail [0-9]+" | grep -oE "[0-9]+$" | head -1)
   [ -z "$failed" ] && failed=0
   if [ "$failed" -gt 0 ]; then
     # Prefer the row count when the test IS a row-diff photograph, since it is
     # the more informative number; otherwise report the failing-assertion count.
-    local rows
     rows=$(printf '%s' "$out" | grep -cE "^\s*[+-]\s+'" || true)
     [ "$rows" -gt 0 ] && echo "$rows" || echo "$failed"
   else
@@ -96,20 +170,132 @@ changed_rows() {
   fi
 }
 
-# Green means ZERO failures, not "pass N" for a hard-coded N. Pinning the count
-# meant the guard silently broke the moment a third test was added, and reported
-# "not green" for a green suite — a false negative that would have made every
-# drill below skip while looking like a considered result.
-# Blast radius by CONTENT, not by git status.
+# ---------------------------------------------------------------------------
+# CHECK C — did the change reach ALL of the surface, or only part of it?
 #
-# `git status --porcelain` reports an untracked file as "??" whether or not you
-# just edited it, so a drill against a not-yet-committed module measured ZERO
-# files touched and failed for the wrong reason. Hashing the tree is independent
-# of what is committed, which is what a measurement of "how many files did this
-# change touch" has to be.
-tree_fingerprint() {
-  find src scripts -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.sh' \) -print0 \
-    | sort -z | xargs -0 md5sum | sort
+# The baseline is green, so every string literal in the test file is a value the
+# code produces TODAY. After the perturbation, node's deepEqual diff prints each
+# changed row once as `- 'old'` / `+ 'new'`; unchanged runs are elided, which is
+# safe here because elided means "did not move".
+#
+# So for each distinct row that moved, compare
+#   how many times it appears on the `-` side  (occurrences that moved)
+# against
+#   how many times it is pinned in the test file (occurrences that exist).
+# A shortfall means some surface produced that exact row before the edit and
+# still produces it after — a PARTIAL move. That is the duplicate-definition bug
+# expressed in pixels, and "at least one row moved" cannot see it.
+#
+# Rows, not colour tokens: a bare `#aee726` also appears in this file's prose
+# header, and counting tokens reported phantom shortfalls. A whole row is a long,
+# quoted, unambiguous literal.
+#
+# Every REMOVED value in the failure output is read, whatever shape it arrives
+# in — an element of an array diff (`-   'row'`), a property of an object diff
+# (`-   key: 'value'`), or the expected side of a scalar `assert.equal`
+# (`- '#5d80e9'`). They are all occurrences of a pinned value that moved, and
+# they are all compared against the same corpus: every string literal in the test
+# file. Mixing shapes is not sloppiness, it is required for correctness — the
+# first version of this check counted array elements only while still counting
+# ALL literals in the corpus, and reported two phantom PARTIAL moves
+# (`#5d80e9`, `#bee561`) whose "missing" occurrences had in fact moved through a
+# shape the scan was ignoring. Both were run by hand to confirm the code was
+# innocent before the check was corrected.
+#
+# A value that the test file does not pin at all (corpus 0) is never flagged: it
+# is a computed value passing through the diff, not a photograph row.
+#
+# ONLY SELF-IDENTIFYING ROWS ARE COMPARED. The rule behind check C — "two
+# occurrences of the same recorded value describe the same decision, so they must
+# move together" — holds for a row that names its own situation
+# (`{"satId":...,"color":"#eaf9c8"}`, `LOOKUP sat=x key=1 serving=1`,
+# `GRID: case=y -> phase=z`) and is FALSE for a bare token. Measured: perturbing
+# `HANDOVER_CONE_PHASE_END.serving` moves one probe from `'measuring'` to
+# `'serving'` and correctly leaves four other `'measuring'` probes alone; reading
+# those as a partial move was wrong, and was verified wrong by hand before this
+# filter was added. So a value qualifies only if it is >= 20 chars AND carries a
+# structural marker (`{`, `=`, or `->`). Everything else is reported NA rather
+# than judged.
+#
+# KNOWN LIMIT, stated rather than hidden: two identical rows under different
+# section labels are two different observations, and a change that legitimately
+# reaches only one of them would be reported as PARTIAL. No drill does that today
+# (all five photograph drills report TOTAL). If one ever does, adjudicate it by
+# hand — the message names the exact row.
+# ---------------------------------------------------------------------------
+totality_report() {
+  python3 - "$1" "$2" <<'PY'
+import sys, re, ast
+from collections import Counter
+
+test_path, out_path = sys.argv[1], sys.argv[2]
+out = open(out_path, encoding="utf-8", errors="replace").read()
+src = open(test_path, encoding="utf-8").read()
+
+STRTOK = r"\"(?:[^\"\\\n]|\\.)*\"|'(?:[^'\\\n]|\\.)*'"
+# `-   'row',`  |  `-   key: 'value',`  |  `- 'scalar'`
+REMOVED = re.compile(r"^\s*-\s+(?:[A-Za-z_$][A-Za-z0-9_$]*\s*:\s*)?(" + STRTOK + r")\s*,?\s*$")
+STACK = re.compile(r"^\s+at ")
+
+
+def lit(tok):
+    try:
+        return ast.literal_eval(tok)
+    except Exception:
+        return None
+
+
+def is_record(value):
+    """A row that names its own situation, so two equal rows mean one decision."""
+    return len(value) >= 20 and ("{" in value or "=" in value or "->" in value)
+
+
+moved = Counter()
+in_diff = False
+for line in out.splitlines():
+    if "+ actual - expected" in line:
+        in_diff = True
+        continue
+    if not in_diff:
+        continue
+    # The stack trace ends the diff. Everything after it (node's own
+    # `actual:` / `expected:` object dump) is a TRUNCATED re-print of the same
+    # data — reading it would double-count the head of the array and silently
+    # drop its tail.
+    if STACK.match(line) or line.startswith("test at ") or line.startswith("\u2716"):
+        in_diff = False
+        continue
+    match = REMOVED.match(line)
+    if match is None:
+        continue
+    value = lit(match.group(1))
+    if value is not None and is_record(value):
+        moved[value] += 1
+
+if not moved:
+    # Nothing string-shaped moved (a purely numeric diff, or no diff at all).
+    # Say so; never report an unobservable property as satisfied.
+    print("NA")
+    sys.exit(0)
+
+corpus = Counter()
+for tok in re.findall(STRTOK, src):
+    value = lit(tok)
+    if value is not None:
+        corpus[value] += 1
+
+short = [(corpus.get(value, 0) - n, value)
+         for value, n in sorted(moved.items())
+         if corpus.get(value, 0) > n]
+
+if short:
+    print("PARTIAL")
+    for missing, value in short:
+        print(f"      {missing} pinned occurrence(s) of this value did NOT move:")
+        print(f"        {value[:150]}")
+else:
+    print(f"TOTAL {len(moved)} distinct value(s), {sum(moved.values())} pinned occurrence(s), all moved")
+PY
 }
 
 is_green() {
@@ -160,13 +346,19 @@ open(path, "w").write(text.replace(old, new))
 PY
 }
 
+# drill [expect_pass|expect_fail] TARGET PROMPT SYMBOL OLD NEW [TEST]
+#
+# SYMBOL is the declaration the perturbation edits (or the one that encloses it).
+# It is stated per drill rather than inferred, because the whole point of check A
+# is that the answer must be derivable from the code — and a symbol name guessed
+# by regex from an anchor is neither derivable nor auditable.
 drill() {
   local expect="expect_pass"
   if [ "$1" = "expect_pass" ] || [ "$1" = "expect_fail" ]; then
     expect="$1"
     shift
   fi
-  local target="$1" prompt="$2" old="$3" new="$4" drill_test="${5:-$TEST}"
+  local target="$1" prompt="$2" symbol="$3" old="$4" new="$5" drill_test="${6:-$TEST}"
 
   total_drills=$((total_drills + 1))
   echo "────────────────────────────────────────────────────────────"
@@ -181,6 +373,22 @@ drill() {
     return
   fi
 
+  # CHECK A runs on the pristine tree, before the edit: it is a static property
+  # of the code, and a drill whose symbol cannot be found measured nothing.
+  local declarations authority_files
+  declarations=$(authority_declarations "$symbol")
+  authority_files=$(printf '%s' "$declarations" | grep -c . || true)
+
+  if [ "$authority_files" -eq 0 ]; then
+    echo "  ✗ INVALID — no declaration of '$symbol' found under src/."
+    echo "           An empty query is not evidence that a decision converged."
+    echo "           Repair the drill's symbol; do not read this as a result."
+    mismatches=$((mismatches + 1))
+    invalid_count=$((invalid_count + 1))
+    invalid_prompts+=("$prompt (symbol '$symbol' resolved to zero declarations)")
+    return
+  fi
+
   # A drill pointed at a test that cannot observe its edit reports a working
   # seam as decorative. That misread FOUR drills in this session before it was
   # caught, every time by a human noticing the number looked wrong. So the drill
@@ -188,51 +396,85 @@ drill() {
   # RED, and only then trust anything it says. A drill whose test stays green
   # under its own perturbation is a BROKEN DRILL, reported as such — never as a
   # finding about the code.
-  local before_tree backup
+  local before_tree backup out_file
   before_tree=$(tree_fingerprint)
   backup=$(mktemp)
+  out_file=$(mktemp)
   cp "$target" "$backup"
 
   if ! apply_edit "$target" "$old" "$new"; then
     echo "  ✗ FAIL — could not apply the edit (see above)."
     cp "$backup" "$target"
-    rm -f "$backup"
+    rm -f "$backup" "$out_file"
     mismatches=$((mismatches + 1))
     invalid_count=$((invalid_count + 1))
     invalid_prompts+=("$prompt (anchor did not match — the drill is stale, not the code)")
     return
   fi
 
-  # Blast radius is measured RELATIVE to the pre-drill working tree, not against
-  # a clean checkout. The tree legitimately carries other in-progress work, and
-  # counting that as "files this change touched" would inflate every drill and
-  # make the metric useless exactly when it is most needed.
-  local touched rows outcome
-  touched=$(comm -13 <(printf '%s\n' "$before_tree") <(tree_fingerprint) | wc -l)
-  rows=$(changed_rows "$drill_test")
+  # Integrity, measured RELATIVE to the pre-drill working tree, not against a
+  # clean checkout: the tree legitimately carries other in-progress work.
+  local changed_paths outcome rows totality
+  changed_paths=$(comm -13 <(printf '%s\n' "$before_tree") <(tree_fingerprint) | awk '{print $2}')
+  run_test_capture "$drill_test" "$out_file"
+  rows=$(changed_rows_from "$out_file")
+  totality=$(totality_report "$drill_test" "$out_file")
 
-  echo "  files touched to make the change : $touched"
-  echo "  characterization rows that moved : $rows"
+  echo "  A. declarations of '$symbol' under src/ : $authority_files"
+  echo "  B. characterization rows that moved     : $rows"
+  echo "  C. totality of the move                 : $(printf '%s' "$totality" | head -1)"
 
-  if [ "$touched" -ne 1 ]; then
+  outcome="pass"
+
+  if [ "$authority_files" -ne 1 ]; then
     outcome="fail"
-    echo "  ✗ FAIL — the change was not confined to one file."
-  elif [ "$rows" -eq 0 ]; then
+    echo "  ✗ FAIL (A) — '$symbol' is declared in $authority_files places, so this"
+    echo "           decision has no single authority. Editing one of them changes"
+    echo "           only the surfaces that route through it:"
+    printf '%s\n' "$declarations" | sed 's/^/             /'
+  fi
+
+  if [ -n "$changed_paths" ] && [ "$(printf '%s\n' "$changed_paths" | grep -c .)" -ne 1 ]; then
     outcome="fail"
-    echo "  ✗ FAIL — one file, but $drill_test did not move."
+    echo "  ✗ FAIL — more than the drill's own file changed during the run;"
+    echo "           another writer touched the tree and this measurement is void:"
+    printf '%s\n' "$changed_paths" | sed 's/^/             /'
+  fi
+
+  if [ "$rows" -eq 0 ]; then
+    outcome="fail"
+    echo "  ✗ FAIL (B) — $drill_test did not move."
     echo "           Either the seam is decorative, OR this drill is checking a test"
     echo "           that cannot see its edit. Confirm which before believing it:"
     echo "           apply the edit by hand and run the whole suite."
-  else
-    outcome="pass"
-    echo "  ✓ PASS — one file, $rows rendered rows moved."
+  fi
+
+  case "$totality" in
+    PARTIAL*)
+      outcome="fail"
+      echo "  ✗ FAIL (C) — PARTIAL MOVE. Some surfaces adopted the new value and"
+      echo "           others kept the old one, from a single-file edit. That is the"
+      echo "           'I changed the owner and nothing happened' bug, half-visible:"
+      printf '%s\n' "$totality" | tail -n +2
+      ;;
+    NA*)
+      totality_unobservable=$((totality_unobservable + 1))
+      totality_unobservable_prompts+=("$prompt [$drill_test]")
+      echo "     (C is not observable here: this test's failures are scalar"
+      echo "      assertions, which abort at the first mismatch. Check A still applies.)"
+      ;;
+  esac
+
+  if [ "$outcome" = "pass" ]; then
+    echo "  ✓ PASS — one authority, $rows rendered rows moved, and every pinned"
+    echo "           occurrence of every moved row moved with it."
   fi
 
   # Restore byte-exactly. `git checkout --` would fail silently on an
   # untracked file and leave the drill's edit in place, poisoning every
   # subsequent drill in the run.
   cp "$backup" "$target"
-  rm -f "$backup"
+  rm -f "$backup" "$out_file"
 
   # Evaluate against expectation
   if [ "$expect" = "expect_pass" ]; then
@@ -243,8 +485,8 @@ drill() {
     else
       regressions=$((regressions + 1))
       mismatches=$((mismatches + 1))
-      regression_prompts+=("$prompt ($rows rows moved)")
-      echo "  Expectation: MISMATCH — REGRESSION! Expected single-file effective pass, but drill failed."
+      regression_prompts+=("$prompt ($rows rows moved; $authority_files declaration(s) of '$symbol')")
+      echo "  Expectation: MISMATCH — REGRESSION! Expected single-authority effective pass, but drill failed."
     fi
   else
     if [ "$outcome" = "fail" ]; then
@@ -261,12 +503,13 @@ drill() {
 }
 
 echo "APPEARANCE CHANGE DRILL"
-echo "one owner-phrased prompt at a time; each must be single-file AND visible"
+echo "one owner-phrased prompt at a time; each must have ONE authority, be visible, and move ALL of its surface"
 echo
 
 # ==================== Converged decisions (expect_pass) ====================
 
 drill expect_pass "$MODIFIERS" "inter 換手的 target 也要有強調（原本完全沒有）" \
+"HANDOVER_APPEARANCE_MODIFIERS" \
 "    target: {
       shade: null,
       rationale: 'different satellites already differ in hue; the hue jump IS the inter cue'," \
@@ -275,12 +518,14 @@ drill expect_pass "$MODIFIERS" "inter 換手的 target 也要有強調（原本�
       rationale: 'owner asked for an explicit incoming-beam cue on inter as well as intra',"
 
 drill expect_pass "$MODIFIERS" "intra 換手的 source 不要再變暗了" \
+"HANDOVER_APPEARANCE_MODIFIERS" \
 "    source: {
       shade: 'source'," \
 "    source: {
       shade: null,"
 
 drill expect_pass "$MODIFIERS" "換手兩側的透明度對比再拉開一點" \
+"HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR" \
 "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.62;" \
 "export const HANDOVER_TRANSITION_SOURCE_OPACITY_FACTOR = 0.40;"
 
@@ -288,11 +533,17 @@ drill expect_pass "$MODIFIERS" "換手兩側的透明度對比再拉開一點" \
 # change while emphasizeIntraHandoverColor still lived in constants/servingColour.ts:
 # the table said WHICH shade applied, a different directory said what it MEANT.
 # It is a single-file change only because the implementation moved beside the table.
+#
+# 2026-09-09: and it was still a two-file change after that "move", because the
+# move was a COPY — the constants/ definition was never deleted. Check A is the
+# reason that is now visible here instead of only in audit:appearance-cost.
 drill expect_pass "$SHADE" "把 intra 換手的 target 再亮一點" \
+"emphasizeIntraHandoverColor" \
 "    : Math.min(0.94, Math.max(0.74, hsl.lightness * 0.50 + 0.48));" \
 "    : Math.min(0.98, Math.max(0.86, hsl.lightness * 0.50 + 0.60));"
 
 drill expect_pass "$SERVING" "改同一顆衛星裡不同 beam 的深淺階梯" \
+"SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS" \
 "const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.56, 0.64, 0.72, 0.80, 0.87, 0.92, 0.96, 0.99] as const;" \
 "const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.50, 0.60, 0.70, 0.80, 0.87, 0.92, 0.96, 0.99] as const;"
 
@@ -300,6 +551,7 @@ drill expect_pass "$SERVING" "改同一顆衛星裡不同 beam 的深淺階梯" 
 
 HUE_TEST="src/appearance/satelliteIdentityHueCharacterization.test.ts"
 drill expect_pass "$SERVING" "換掉衛星身分色的調色盤" \
+"SERVING_IDENTITY_PALETTE" \
 "  { hueDegrees: 48, baseLightness: 0.60 },  // gold" \
 "  { hueDegrees: 52, baseLightness: 0.60 },  // gold" \
 "$HUE_TEST"
@@ -311,6 +563,7 @@ drill expect_pass "$SERVING" "換掉衛星身分色的調色盤" \
 # caught.
 SIDE_TEST="src/appearance/handoverSideCharacterization.test.ts"
 drill expect_pass "$MODIFIERS" "改 handover source/target 的判定" \
+"resolveHandoverSide" \
 "  if (renderKey.endsWith('-from')) return 'source';" \
 "  if (renderKey.endsWith('-from')) return 'target';" \
 "$SIDE_TEST"
@@ -318,21 +571,25 @@ drill expect_pass "$MODIFIERS" "改 handover source/target 的判定" \
 # ==================== Newly covered decisions ====================
 
 drill expect_pass "$VISIBILITY" "改哪些波束/錐體要顯示在畫面上，最近一次換手的 target 也要保留" \
+"resolveHomepageBeamVisibility" \
 "  addBeamIdentity(identities, input.recentToBeam);" \
 "  addBeamIdentity(identities, input.recentFromBeam);" \
 "$VISIBILITY_TEST"
 
 drill expect_pass "$GEOMETRY" "把波束錐體的寬度放大一點，讓底面投影更容易讀" \
+"MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER" \
 "export const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1;" \
 "export const MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER = 1.05;" \
 "$GEOMETRY_TEST"
 
 drill expect_pass "$TIMING" "換手動畫的 serving 階段再多留一點時間" \
+"HANDOVER_CONE_PHASE_END" \
 "  serving: 0.1875," \
 "  serving: 0.20," \
 "$TIMING_TEST"
 
 drill expect_pass "$MARKERS" "把衛星標記的 fallback 身分色換成另一個穩定色" \
+"markerColor" \
 "  return resolveSatelliteIdentityColor(satelliteId, {});" \
 "  return resolveSatelliteIdentityColor(satelliteId + '-marker', {});" \
 "$SINK_TEST"
@@ -348,6 +605,7 @@ drill expect_pass "$MARKERS" "把衛星標記的 fallback 身分色換成另一�
 # The paragraph above is kept because it records why this was ever a frontier, and
 # what specifically had to become true for it to stop being one.
 drill expect_pass "$RAIL" "候選軌有換手故事時要保留那一組候選卡片" \
+"shouldRetainCandidateRoster" \
 "  const shouldRetainCandidateRoster = handoverStory !== null;" \
 "  const shouldRetainCandidateRoster = handoverStory === null;" \
 "$RAIL_TEST"
@@ -361,6 +619,7 @@ drill expect_pass "$RAIL" "候選軌有換手故事時要保留那一組候選�
 # That bucket exists for exactly this, and this is the first time it has fired
 # on a real conflict rather than on a drill I broke myself.
 drill expect_pass "$FINAL_COLOUR" "改一支波束最終顏色的 precedence 順序" \
+"resolveBaseIdentityColorWithRung" \
 "  if (homepage !== undefined && homepage.length > 0) {
     return { color: homepage, rung: '1-homepage' };
   }
@@ -383,6 +642,7 @@ drill expect_pass "$FINAL_COLOUR" "改一支波束最終顏色的 precedence 順
 # seam. The test photograph includes literal rung outputs, so a one-file mapping
 # perturbation is visible rather than being mistaken for a decorative edit.
 drill expect_pass "$SHADE_MAPPING" "改 beam id 怎麼對應到深淺階，handover link 也要跟著換" \
+"markerColorForBeam" \
 "  return colorForServingBeam(satId, beamId).markerColor;" \
 "  return colorForServingBeam(satId, beamId + 1).markerColor;" \
 "$SHADE_MAPPING_TEST"
@@ -403,6 +663,7 @@ fi
 if [ "$invalid_count" -gt 0 ]; then
   echo "    - INVALID (measured nothing, fix drill)   : $invalid_count"
 fi
+echo "  Drills with NO observable totality check    : $totality_unobservable"
 echo
 if [ "${#converged_prompts[@]}" -gt 0 ]; then
   echo "Converged decisions ($converged_count):"
@@ -437,6 +698,16 @@ if [ "${#regression_prompts[@]}" -gt 0 ]; then
   echo "Regressions ($regressions):"
   for item in "${regression_prompts[@]}"; do
     echo "  ❌ $item"
+  done
+  echo
+fi
+if [ "${#totality_unobservable_prompts[@]}" -gt 0 ]; then
+  echo "Totality NOT observable on these drills ($totality_unobservable) — their tests fail"
+  echo "through scalar assertions, which abort at the first mismatch, so 'did EVERY"
+  echo "pinned occurrence move' has no answer in the output. Check A still guards them."
+  echo "Giving one of these a row-diff photograph is what converts it to a real check:"
+  for item in "${totality_unobservable_prompts[@]}"; do
+    echo "  ~ $item"
   done
   echo
 fi
