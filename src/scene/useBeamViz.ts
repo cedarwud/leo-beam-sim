@@ -129,10 +129,14 @@ export function useBeamViz(
   const previousDisplayIdsRef = useRef<Set<string>>(new Set());
   const previousEventIdsRef = useRef<Set<string>>(new Set());
   const latchedApproachBySatRef = useRef<Map<string, LatchedApproachState>>(new Map());
+  const runtimeAppMode = runtime.appMode;
+  const runtimePresentationMode = runtime.presentationMode;
+  const runtimeBeamDensity = runtime.beamDensity;
+  const runtimeViewport = runtime.viewport;
 
   return useMemo(() => {
     const beamFootprintMultiplier = visualScaleMultipliers?.beamFootprintMultiplier ?? 1.0;
-    const alpha = geometry.visualAlpha ?? (runtime.appMode === 'sinr-experiment' ? 0.64 : 1.0);
+    const alpha = geometry.visualAlpha ?? (runtimeAppMode === 'sinr-experiment' ? 0.64 : 1.0);
     const kmToWorldScale = geometry.kmPerWorldUnit !== undefined
       && Number.isFinite(geometry.kmPerWorldUnit)
       && geometry.kmPerWorldUnit > 0
@@ -152,7 +156,7 @@ export function useBeamViz(
     const visualSatelliteAltitude = configuredVisualSatelliteAltitude
       ?? (kmToWorldScale !== null
         ? geometry.shellAltitudeKm * kmToWorldScale * DERIVED_VISUAL_ALTITUDE_LIFT
-        : (runtime.appMode === 'sinr-experiment' ? 600 : 900) * DERIVED_VISUAL_ALTITUDE_LIFT);
+        : (runtimeAppMode === 'sinr-experiment' ? 600 : 900) * DERIVED_VISUAL_ALTITUDE_LIFT);
     // Rescales the sky-dome's vertical extent (SKY_DOME_V_RADIUS) up to the
     // configured visual altitude. The former bare `/ 400` magic literal hid
     // that this divisor IS the dome radius (see sceneScale.ts).
@@ -314,9 +318,9 @@ export function useBeamViz(
       maxEventSats: MAX_EVENT_SATS,
       maxBeamSats: MAX_BEAM_SATS,
     } = resolveBeamVizDisplayCaps(displayCaps);
-    const mode = runtime.presentationMode;
-    const beamDensity = runtime.beamDensity;
-    const calloutCap = resolveConeBeamCalloutCap(beamDensity, runtime.viewport);
+    const mode = runtimePresentationMode;
+    const beamDensity = runtimeBeamDensity;
+    const calloutCap = resolveConeBeamCalloutCap(beamDensity, runtimeViewport);
     const centralBias = centralBiasWeight(mode);
     const approachHoldSec = Math.max(
       MIN_APPROACH_HOLD_SEC,
@@ -966,7 +970,10 @@ export function useBeamViz(
     latchedBeamSinrByKey,
     frame,
     geometry,
-    runtime,
+    runtimeAppMode,
+    runtimePresentationMode,
+    runtimeBeamDensity,
+    runtimeViewport,
     displayCaps,
     beamHoppingConfig,
     visualScaleMultipliers,

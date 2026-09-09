@@ -363,6 +363,12 @@ export function useSimulation(
     createRuntimeFrameStepState(initialSimTimeSec),
   );
   const frameRef = useRef<SimFrame>(createEmptyFrame(initialSimTimeSec));
+  // `frameRef` is the mutable producer cursor. It is updated on every render-loop
+  // tick, including paused ticks where only wall-clock display latches are being
+  // re-evaluated. React consumers must receive the last intentionally published
+  // frame, otherwise a parent state update can observe an unpublished fresh object
+  // and retrigger every downstream effect without a simulation-time change.
+  const publishedFrameRef = useRef<SimFrame>(frameRef.current);
   const publishNextFrameRef = useRef(true);
   // G2-WARMSTART: the warm-up run-through is a ~0.5s synchronous main-thread cost,
   // so it runs ONCE — the first sinr-live cold-start (the demo open) — not on every
@@ -624,6 +630,7 @@ export function useSimulation(
         }
       }
       frameRef.current = publishFrame;
+      publishedFrameRef.current = publishFrame;
       publishNextFrameRef.current = true;
       setVersion(v => v + 1);
     },
@@ -837,9 +844,10 @@ export function useSimulation(
 
     if (runtimeStateRef.current.simTimeSec !== previousSimTimeSec || publishNextFrameRef.current) {
       publishNextFrameRef.current = false;
+      publishedFrameRef.current = frame;
       setVersion(v => v + 1);
     }
   });
 
-  return frameRef.current;
+  return publishedFrameRef.current;
 }
