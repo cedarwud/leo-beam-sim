@@ -246,6 +246,11 @@ import {
 import { resolveAdditiveHandoverConeColoring } from './additiveHandoverConeColoring';
 import { resolveAuthoritySpineParticlePlans } from './multiCandidateAuthoritySpineParticlePlans';
 import { resolveMultiCandidateSceneRenderStatus } from './multiCandidateSceneRenderStatus';
+import {
+  formatSceneSurfaceReasons,
+  resolveCoreSceneSurfacePlan,
+  type CoreSceneSurfacePlan,
+} from './sceneSurfacePlan';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -258,17 +263,43 @@ function lookupSatWorldPos(
 
 function ScenePresentationCanvasTelemetry({
   plan,
+  surfacePlan,
 }: {
   readonly plan: ScenePresentationPlan;
+  readonly surfacePlan?: CoreSceneSurfacePlan;
 }) {
   const gl = useThree(state => state.gl);
+  const hasSurfacePlan = surfacePlan !== undefined;
+  const storyOwner = surfacePlan?.storyOwner ?? '';
+  const mountedSurfaceIds = surfacePlan?.mountedSurfaceIds.join(',') ?? '';
+  const visibleSurfaceIds = surfacePlan?.visibleSurfaceIds.join(',') ?? '';
+  const surfaceReasons = surfacePlan ? formatSceneSurfaceReasons(surfacePlan) : '';
   useEffect(() => {
     gl.domElement.dataset.scenePresentationStage = plan.stage;
     gl.domElement.dataset.scenePresentationVisibleLayers = Object.entries(plan.visible)
       .filter(([, visible]) => visible)
       .map(([layer]) => layer)
       .join(',');
-  }, [gl, plan]);
+    if (hasSurfacePlan) {
+      gl.domElement.dataset.sceneStoryOwner = storyOwner;
+      gl.domElement.dataset.sceneCoreMountedSurfaces = mountedSurfaceIds;
+      gl.domElement.dataset.sceneCoreVisibleSurfaces = visibleSurfaceIds;
+      gl.domElement.dataset.sceneCoreSurfaceReasons = surfaceReasons;
+    } else {
+      delete gl.domElement.dataset.sceneStoryOwner;
+      delete gl.domElement.dataset.sceneCoreMountedSurfaces;
+      delete gl.domElement.dataset.sceneCoreVisibleSurfaces;
+      delete gl.domElement.dataset.sceneCoreSurfaceReasons;
+    }
+  }, [
+    gl,
+    mountedSurfaceIds,
+    plan,
+    storyOwner,
+    hasSurfacePlan,
+    surfaceReasons,
+    visibleSurfaceIds,
+  ]);
   return null;
 }
 
@@ -2785,6 +2816,48 @@ function SceneRenderContent({
     && (multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
     && handoverPresentation.active
     && handoverPresentation.event !== null;
+  const teachingSurfaceReady = teachingSceneStory !== null
+    && teachingLectureFrameRef !== undefined;
+  const coreSceneSurfacePlan = resolveCoreSceneSurfacePlan({
+    stage: {
+      ambientBeams: presentationPlan.visible['ambient-beams'],
+      servingBeams: presentationPlan.visible['serving-beams'],
+      candidateBeams: presentationPlan.visible['candidate-beams'],
+      eventEffects: presentationPlan.visible['event-effects'],
+      servingFootprints: presentationPlan.visible['serving-footprints'],
+      candidateFootprints: presentationPlan.visible['candidate-footprints'],
+    },
+    runtime: {
+      showSinrLiveCellBeams,
+      showBeamCallouts,
+      homepageHandoverBeamInfoActive,
+      teachingLectureActive: runtime.teachingLectureKind != null,
+    },
+    story: {
+      homepageVisualIdentity,
+      multiCandidateSceneVisualActive,
+      multiCandidateCentralOverlayActive,
+      multiCandidateIdentityTransitionActive,
+      handoverPresentationActive: handoverPresentation.active,
+      candidateReviewActive: candidateComparisonSceneActive,
+    },
+    isolation: {
+      active: handoverDisplayIsolation.active,
+      hideNormalBeamField: handoverDisplayIsolation.hideNormalBeamField,
+      preserveConfiguredServingFan: handoverDisplayIsolation.preserveConfiguredServingFan,
+    },
+    inventory: {
+      nonServingConeCount: sinrLiveCellNonServingConeItems.length,
+      cinemaInterServingFanConeCount: sinrLiveCinemaInterServingFanConeItems.length,
+      candidateConeCount: sinrLiveCandidateBeamConeItems.length,
+      pulseConeCount: additiveHandoverPulseConeItems.length,
+      triggeredIntraConeCount: additiveTriggeredIntraConeItems.length,
+      cinemaPairConeCount: additiveCinemaHandoverPairConeItems.length,
+      authorityTransitionConeCount: authorityHandoverPairConeItems.length,
+      beamInfoCount: beamInfoItems.length,
+      teachingReady: teachingSurfaceReady,
+    },
+  });
   const multiCandidateEventCueCount = (multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
     ? (
       presentationPlan.visible['event-effects'] && handoverEventCuePolicy.drawable
@@ -3091,7 +3164,10 @@ function SceneRenderContent({
       cinematicSpotlightTargets={presentationPlan.visible['event-effects'] ? cinematicSpotlightTargets : []}
     >
       {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
-      <ScenePresentationCanvasTelemetry plan={presentationPlan} />
+      <ScenePresentationCanvasTelemetry
+        plan={presentationPlan}
+        surfacePlan={coreSceneSurfacePlan}
+      />
       <SceneTelemetry
         visibleSatelliteCount={renderedLiveSatelliteMarkers.length}
         firstSatellitePosition={renderedLiveSatelliteMarkers[0]
@@ -3369,9 +3445,8 @@ function SceneRenderContent({
         cones={[
           {
             key: 'non-serving',
-            mounted: presentationPlan.visible['ambient-beams']
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCellNonServingConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['beam.non-serving-cones'].mounted,
             items: sinrLiveCellNonServingConeItems,
             layer: 'nonServing',
             palette: sinrLiveConePalette,
@@ -3379,9 +3454,8 @@ function SceneRenderContent({
           },
           {
             key: 'serving',
-            mounted: presentationPlan.visible['serving-beams']
-              && showSinrLiveCellBeams
-              && (!multiCandidateSceneVisualActive || homepageVisualIdentity),
+            mounted: coreSceneSurfacePlan
+              .surfaces['beam.serving-cones'].mounted,
             items: sinrLiveCellBeamConeItems,
             layer: 'serving',
             palette: activeServingConePalette,
@@ -3401,10 +3475,8 @@ function SceneRenderContent({
           },
           {
             key: 'cinema-inter-serving-fan',
-            mounted: presentationPlan.visible['serving-beams']
-              && showSinrLiveCellBeams
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCinemaInterServingFanConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['beam.cinema-inter-serving-fan'].mounted,
             items: sinrLiveCinemaInterServingFanConeItems,
             layer: 'serving',
             palette: sinrLiveConePalette,
@@ -3419,10 +3491,8 @@ function SceneRenderContent({
           },
           {
             key: 'candidate',
-            mounted: presentationPlan.visible['candidate-beams']
-              && showSinrLiveCellBeams
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCandidateBeamConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['beam.candidate-cones'].mounted,
             items: sinrLiveCandidateBeamConeItems,
             layer: 'candidate',
             palette: sinrLiveConePalette,
@@ -3437,8 +3507,8 @@ function SceneRenderContent({
           },
           {
             key: 'handover-pulse',
-            mounted: presentationPlan.visible['event-effects']
-              && additiveHandoverPulseConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['handover.pulse-cones'].mounted,
             items: additiveHandoverPulseConeItems,
             layer: 'pulse',
             palette: sinrLiveConePalette,
@@ -3446,8 +3516,8 @@ function SceneRenderContent({
           },
           {
             key: 'triggered-intra',
-            mounted: presentationPlan.visible['event-effects']
-              && additiveTriggeredIntraConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['handover.triggered-intra-cones'].mounted,
             items: additiveTriggeredIntraConeItems,
             layer: 'triggered',
             palette: sinrLiveConePalette,
@@ -3455,8 +3525,8 @@ function SceneRenderContent({
           },
           {
             key: 'cinema-handover-pair',
-            mounted: presentationPlan.visible['event-effects']
-              && additiveCinemaHandoverPairConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['handover.cinema-pair-cones'].mounted,
             items: additiveCinemaHandoverPairConeItems,
             layer: 'triggered',
             palette: sinrLiveConePalette,
@@ -3464,8 +3534,8 @@ function SceneRenderContent({
           },
           {
             key: 'authority-transition',
-            mounted: presentationPlan.visible['event-effects']
-              && authorityHandoverPairConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['handover.authority-transition-cones'].mounted,
             items: authorityHandoverPairConeItems,
             layer: 'triggered',
             palette: sinrLiveConePalette,
@@ -3475,16 +3545,10 @@ function SceneRenderContent({
         footprints={[
           {
             key: 'serving',
-            mounted: presentationPlan.visible['serving-footprints']
-              && showSinrLiveCellBeams
-              && (!multiCandidateSceneVisualActive || homepageVisualIdentity)
-              && (
-                !handoverDisplayIsolation.active
-                || multiCandidateCentralOverlayActive
-                || handoverDisplayIsolation.preserveConfiguredServingFan
-              ),
-            visible: !handoverDisplayIsolation.hideNormalBeamField
-              || handoverDisplayIsolation.preserveConfiguredServingFan,
+            mounted: coreSceneSurfacePlan
+              .surfaces['beam.serving-footprints'].mounted,
+            visible: coreSceneSurfacePlan
+              .surfaces['beam.serving-footprints'].visible,
             items: sinrLiveCellBeamConeItems,
             layer: 'serving',
             palette: activeServingConePalette,
@@ -3497,10 +3561,8 @@ function SceneRenderContent({
           },
           {
             key: 'candidate',
-            mounted: presentationPlan.visible['candidate-footprints']
-              && showSinrLiveCellBeams
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCandidateBeamConeItems.length > 0,
+            mounted: coreSceneSurfacePlan
+              .surfaces['beam.candidate-footprints'].mounted,
             items: sinrLiveCandidateBeamConeItems,
             layer: 'candidate',
             palette: sinrLiveConePalette,
@@ -3508,9 +3570,8 @@ function SceneRenderContent({
           },
         ]}
         callouts={{
-          mounted: (showBeamCallouts || homepageHandoverBeamInfoActive)
-            && runtime.teachingLectureKind == null
-            && beamInfoItems.length > 0,
+          mounted: coreSceneSurfacePlan
+            .surfaces['beam.callouts'].mounted,
           items: beamInfoItems,
           servingSinrByCellId: sinrLiveCellServingSinrByCellId,
           primaryServing: {
@@ -3531,9 +3592,9 @@ function SceneRenderContent({
           telemetryCountDatasetKey: 'sinrLiveCellBeamCalloutRenderedCount',
           sourceProvenance: simSource === 'live' ? 'synthetic-walker' : 'archived-tle',
         }}
-        teaching={teachingSceneStory !== null && teachingLectureFrameRef !== undefined
+        teaching={teachingSurfaceReady && teachingSceneStory !== null && teachingLectureFrameRef !== undefined
           ? {
-            mounted: presentationPlan.visible['event-effects'],
+            mounted: coreSceneSurfacePlan.surfaces['teaching.handover-cones'].mounted,
             story: teachingSceneStory,
             frameRef: teachingLectureFrameRef,
             placementByCellId: sinrLiveCellPlacementById,

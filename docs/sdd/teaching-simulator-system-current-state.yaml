@@ -1,0 +1,84 @@
+schema_version: 1
+updated_at: 2026-09-11T18:18:00+08:00
+active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
+baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
+branch: refactor/teaching-simulator-system-v1
+worktree: /home/u24/demo/leo-beam-sim-refactor
+current_phase: R1
+status: verified_ready_to_commit
+
+parallel_tracks:
+  teaching_design:
+    status: allowed_in_parallel
+    write_scope:
+      - courseware/**
+      - docs/teaching-design/**
+      - presentation artifacts
+    forbidden_scope:
+      - src/scene/**
+      - src/viz/**
+      - src/ui/homepage/**
+  system_refactor:
+    status: active
+    write_scope:
+      - docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
+      - docs/sdd/teaching-simulator-system-current-state.yaml
+      - src/scene/sceneSurfaceRegistry.ts
+      - src/scene/sceneSurfacePlan.ts
+      - focused tests and MainScene integration
+protected_parent_checkout:
+  path: /home/u24/demo/leo-beam-sim
+  dirty_wip_present: true
+  active_sessions_present: true
+  mutation_policy: do_not_touch_reset_stash_or_overwrite
+
+baseline:
+  lint:
+    result: pass
+  appearance_tests:
+    result: pass
+    passed: 85
+    failed: 0
+  check_baseline:
+    result: known_red
+    cause: obsolete_source_text_pin
+    file: src/app/homepageHandoverControlsOwnership.test.ts
+    runtime_regression_evidence: none
+
+r1_goal: >-
+  Replace the twelve core beam/handover JSX mount expressions with one pure,
+  typed scene-surface plan while preserving current behavior.
+
+next_allowed_actions:
+  - add exhaustive scene surface registry
+  - add pure core scene surface plan and table tests
+  - integrate the plan into MainScene without visual changes
+  - expose story owner, mounted surface ids, and reason codes as canvas telemetry
+
+forbidden_actions:
+  - change simulation physics or EE values
+  - change handover ranking, TTT, or commit behavior
+  - tune colors, opacity, geometry, or camera
+  - repair unrelated baseline/browser failures
+  - edit the protected parent checkout
+
+r1_results:
+  production_surfaces_migrated: 12
+  unit_tests:
+    scene_surfaces: 11
+    appearance: 85
+    multi_candidate: 182
+  architecture_boundary_checks: 6
+  browser_surface_reasons: 12
+  browser_gate: pass
+  mutation_proof: red_then_green
+
+known_baseline_reds:
+  - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
+  - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
+  - scripts/audit/render-timeline.test.ts not reached by an npm aggregate
+  - scripts/lib/browser-gate.test.ts not reached by an npm aggregate
+  - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
+
+next_phase_candidate: R2
+next_phase_gate: normalize live and deterministic teaching inputs into one HandoverStoryFrame vocabulary
