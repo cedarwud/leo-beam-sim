@@ -103,11 +103,18 @@ export interface SceneSinrLiveBeamLayersProps {
   readonly footprints: readonly SceneSinrLiveBeamFootprintLayer[];
   readonly callouts: SceneSinrLiveBeamCalloutLayer | null;
   readonly teaching: SceneSinrLiveTeachingLayer | null;
+  /** App-owned cross-surface focus; this is presentation-only. */
+  readonly focusedJoinKey?: string | null;
+  readonly onFocusJoinKeyChange?: (joinKey: string | null) => void;
+  readonly resolveJoinKey?: (item: SinrLiveCellBeamConeRenderItem) => string | null;
 }
 
 function renderConeLayer(
   layer: SceneSinrLiveBeamConeLayer,
   appearance: SceneSinrLiveBeamAppearance,
+  focusedJoinKey: string | null | undefined,
+  onFocusJoinKeyChange: ((joinKey: string | null) => void) | undefined,
+  resolveJoinKey: ((item: SinrLiveCellBeamConeRenderItem) => string | null) | undefined,
 ): JSX.Element | null {
   if (!layer.mounted) return null;
   const dimming = layer.elevationDimming;
@@ -132,6 +139,9 @@ function renderConeLayer(
       primaryServingSatId={primaryServing?.satId}
       primaryServingCellId={primaryServing?.cellId}
       primaryServingBeamId={primaryServing?.beamId}
+      focusedJoinKey={focusedJoinKey}
+      onFocusJoinKeyChange={onFocusJoinKeyChange}
+      resolveJoinKey={resolveJoinKey}
       telemetryCountDatasetKey={layer.telemetryCountDatasetKey}
     />
   );
@@ -170,6 +180,9 @@ export function SceneSinrLiveBeamLayers({
   footprints,
   callouts,
   teaching,
+  focusedJoinKey,
+  onFocusJoinKeyChange,
+  resolveJoinKey,
 }: SceneSinrLiveBeamLayersProps): JSX.Element | null {
   const hasMountedLayer = cones.some(layer => layer.mounted)
     || footprints.some(layer => layer.mounted)
@@ -179,7 +192,13 @@ export function SceneSinrLiveBeamLayers({
 
   return (
     <>
-      {cones.map(layer => renderConeLayer(layer, appearance))}
+      {cones.map(layer => renderConeLayer(
+        layer,
+        appearance,
+        focusedJoinKey,
+        onFocusJoinKeyChange,
+        resolveJoinKey,
+      ))}
       {footprints.map(layer => renderFootprintLayer(layer, appearance))}
       {callouts?.mounted && (
         <SinrLiveCellBeamCallouts

@@ -28,6 +28,8 @@ export interface SceneMultiCandidateLayerContext {
   readonly homepageIdentityPaletteIndexBySatelliteId:
     MultiCandidateBeamSceneResolverInput['homepageIdentityPaletteIndexBySatelliteId'];
   readonly onCandidateSelect?: (key: CandidateLinkKey) => void;
+  readonly focusedJoinKey?: string | null;
+  readonly onFocusJoinKeyChange?: (joinKey: string | null) => void;
 }
 
 export interface SceneMultiCandidateLayerProps {
@@ -72,6 +74,8 @@ export function SceneMultiCandidateLayer({
             renderPairLabels={false}
             renderReceipt={central.renderReceipt}
             onCandidateSelect={context.onCandidateSelect}
+            focusedJoinKey={context.focusedJoinKey}
+            onFocusJoinKeyChange={context.onFocusJoinKeyChange}
           />
         )}
       {review.active
@@ -103,6 +107,8 @@ export function SceneMultiCandidateLayer({
             renderPairLabels={false}
             renderReceipt={review.renderReceipt}
             onCandidateSelect={context.onCandidateSelect}
+            focusedJoinKey={context.focusedJoinKey}
+            onFocusJoinKeyChange={context.onFocusJoinKeyChange}
           />
         )}
     </>

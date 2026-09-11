@@ -269,6 +269,9 @@ export interface MultiCandidateBeamSceneProps extends MultiCandidateBeamSceneRes
   readonly renderPairLabels?: boolean;
   /** Presentation-only inspection; it never feeds the decision engine. */
   readonly onCandidateSelect?: (key: CandidateLinkKey) => void;
+  /** Presentation-only join-key focus shared with the homepage rail. */
+  readonly focusedJoinKey?: string | null;
+  readonly onFocusJoinKeyChange?: (joinKey: string | null) => void;
   /** Actual mapping acknowledgement for the same accepted publication. */
   readonly renderReceipt?: CandidateSceneRenderReceipt | null;
 }
@@ -1131,12 +1134,15 @@ function MultiCandidateFootprint({
   instruction,
   displayScale,
   renderFill,
+  focused,
 }: {
   readonly instruction: MultiCandidateBeamSceneRenderInstruction;
   /** Small presentation-only nesting when several pairs share one Cell. */
   readonly displayScale: number;
   /** Measurement-only candidates keep only their dashed/dotted outline. */
   readonly renderFill: boolean;
+  /** Neutral additive join-key annotation; identity colours remain unchanged. */
+  readonly focused: boolean;
 }): JSX.Element {
   const targetPoints = instruction.homepageTargetHighlight === true
     ? (displayScale === 1
@@ -1145,6 +1151,14 @@ function MultiCandidateFootprint({
     : [];
   const targetHighlightPoints = targetPoints.length > 0
     ? [...targetPoints, targetPoints[0]!] as readonly MultiCandidateScenePoint[]
+    : null;
+  const focusPoints = instruction.footprint.points.length > 0
+    ? (() => {
+      const points = displayScale === 1
+        ? instruction.footprint.points
+        : scaledFootprintPoints(instruction.footprint.points, instruction.baseCenter, displayScale);
+      return [...points, points[0]!] as readonly MultiCandidateScenePoint[];
+    })()
     : null;
   return (
     <group
@@ -1257,6 +1271,35 @@ function MultiCandidateFootprint({
           }}
         />
       ) : null}
+      {focused && focusPoints !== null ? (
+        <Line
+          key={`${instruction.sceneJoinKey}/focus-highlight`}
+          name={`multi-candidate-focus-highlight-${instruction.satelliteId}-b${instruction.beamId}`}
+          points={focusPoints}
+          color="#fff4b8"
+          lineWidth={4.2}
+          transparent
+          opacity={0.92}
+          depthWrite={false}
+          renderOrder={19}
+          userData={{
+            pairKey: instruction.pairKey,
+            joinKey: instruction.joinKey,
+            sceneJoinKey: instruction.sceneJoinKey,
+            railJoinKey: instruction.railJoinKey,
+            satelliteId: instruction.satelliteId,
+            beamId: instruction.beamId,
+            cellId: instruction.cellId,
+            role: instruction.role,
+            isServing: instruction.isServing,
+            isCandidate: instruction.isCandidate,
+            focusHighlight: true,
+            focusJoinKey: instruction.sceneJoinKey,
+            isSolidData: instruction.link.isSolidData,
+            isMeasurementOnly: instruction.link.isMeasurementOnly,
+          }}
+        />
+      ) : null}
     </group>
   );
 }
@@ -1323,6 +1366,8 @@ function MultiCandidatePair({
   satelliteBiasLane,
   showSatelliteInLabel,
   onCandidateSelect,
+  focusedJoinKey,
+  onFocusJoinKeyChange,
 }: {
   readonly instruction: MultiCandidateBeamSceneRenderInstruction;
   readonly renderServingConeAndFootprint: boolean;
@@ -1338,6 +1383,8 @@ function MultiCandidatePair({
   readonly satelliteBiasLane: number;
   readonly showSatelliteInLabel: boolean;
   readonly onCandidateSelect?: (key: CandidateLinkKey) => void;
+  readonly focusedJoinKey?: string | null;
+  readonly onFocusJoinKeyChange?: (joinKey: string | null) => void;
 }): JSX.Element {
   const renderCarrierGeometry = shouldRenderMultiCandidateCarrierGeometry(
     instruction,
@@ -1368,10 +1415,26 @@ function MultiCandidatePair({
     candidateLane,
     satelliteBiasLane,
   );
-  const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    if (!instruction.isCandidate || onCandidateSelect === undefined) return;
+  const focused = focusedJoinKey === instruction.sceneJoinKey;
+  const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
+    if (onFocusJoinKeyChange === undefined) return;
     event.stopPropagation();
-    onCandidateSelect(instruction.key);
+    onFocusJoinKeyChange(instruction.sceneJoinKey);
+  };
+  const handlePointerOut = (event: ThreeEvent<PointerEvent>) => {
+    if (onFocusJoinKeyChange === undefined || focusedJoinKey !== instruction.sceneJoinKey) return;
+    event.stopPropagation();
+    onFocusJoinKeyChange(null);
+  };
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (onFocusJoinKeyChange !== undefined) {
+      event.stopPropagation();
+      onFocusJoinKeyChange(instruction.sceneJoinKey);
+    }
+    if (instruction.isCandidate && onCandidateSelect !== undefined) {
+      event.stopPropagation();
+      onCandidateSelect(instruction.key);
+    }
   };
   return (
     <group
@@ -1405,6 +1468,8 @@ function MultiCandidatePair({
         isMeasurementOnly: instruction.link.isMeasurementOnly,
         reducedMotion: instruction.reducedMotion,
       }}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
       onClick={handleClick}
     >
       {renderCarrierGeometry && instruction.cone.visible && <MultiCandidateConeMesh instruction={instruction} />}
@@ -1413,6 +1478,7 @@ function MultiCandidatePair({
           instruction={instruction}
           displayScale={footprintDisplayScale}
           renderFill={renderFootprintFill}
+          focused={focused}
         />
       )}
       {shouldRenderMultiCandidateDataLink(
@@ -1420,6 +1486,7 @@ function MultiCandidatePair({
         renderServingDataLink,
         limitCandidateLinksToLeader,
         candidateDisplayLinkPairKey,
+        renderCarrierGeometry && instruction.cone.visible,
       ) && (
         <Line
           points={instruction.link.points}
@@ -1648,13 +1715,25 @@ export function resolveCandidateDisplayLinkPairKey(
     ))[0]?.pairKey ?? null;
 }
 
+/**
+ * The data-link line and the beam cone are two independent visual grammars
+ * for the SAME fact ("this satellite/beam is connected to this ground
+ * point") — a cone already carries it (apex-to-base geometry, plus this
+ * session's EE colour/opacity shading), so drawing the line ON TOP of a
+ * visible cone for the same instruction says the same thing twice. The line
+ * earns its keep only as a FALLBACK: when no cone represents this link (a
+ * candidate filtered out by `limitCandidateCarrierToLeader`, say), the line
+ * is the only remaining way to show the connection exists at all.
+ */
 export function shouldRenderMultiCandidateDataLink(
   instruction: MultiCandidateBeamSceneRenderInstruction,
   renderServingDataLink: boolean,
   limitCandidateLinksToLeader: boolean,
   candidateDisplayLinkPairKey: string | null,
+  coneRendered: boolean,
 ): boolean {
   if (!instruction.link.visible) return false;
+  if (coneRendered) return false;
   if (!instruction.isCandidate) return renderServingDataLink;
   return !limitCandidateLinksToLeader || instruction.pairKey === candidateDisplayLinkPairKey;
 }
@@ -1921,6 +2000,8 @@ function MultiCandidateSatelliteIdentityMarker({
   renderLabel,
   satelliteNameById,
   homepageVisualIdentity,
+  focusedJoinKey,
+  onFocusJoinKeyChange,
 }: {
   readonly group: MultiCandidateSatelliteIdentityGroup;
   readonly satelliteLane: number;
@@ -1930,6 +2011,8 @@ function MultiCandidateSatelliteIdentityMarker({
   readonly renderLabel: boolean;
   readonly satelliteNameById?: ReadonlyMap<string, string> | null;
   readonly homepageVisualIdentity?: boolean;
+  readonly focusedJoinKey?: string | null;
+  readonly onFocusJoinKeyChange?: (joinKey: string | null) => void;
 }): JSX.Element {
   const instruction = group.identityInstruction;
   const camera = useThree(state => state.camera);
@@ -1953,6 +2036,31 @@ function MultiCandidateSatelliteIdentityMarker({
     ? SATELLITE_CANDIDATE_HALO_OUTER_RADIUS_WORLD
     : SATELLITE_OBSERVED_HALO_OUTER_RADIUS_WORLD;
   const candidateHaloOpacity = candidateHaloIsStrong ? 0.64 : 0.30;
+  const focused = focusedJoinKey !== null
+    && focusedJoinKey !== undefined
+    && group.sceneJoinKeys.includes(focusedJoinKey);
+  const markerFocusJoinKey = focused
+    ? focusedJoinKey
+    : group.sceneJoinKeys[0] ?? null;
+  const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
+    if (onFocusJoinKeyChange === undefined || markerFocusJoinKey === null) return;
+    event.stopPropagation();
+    onFocusJoinKeyChange(markerFocusJoinKey);
+  };
+  const handlePointerOut = (event: ThreeEvent<PointerEvent>) => {
+    if (
+      onFocusJoinKeyChange === undefined
+      || markerFocusJoinKey === null
+      || focusedJoinKey !== markerFocusJoinKey
+    ) return;
+    event.stopPropagation();
+    onFocusJoinKeyChange(null);
+  };
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (onFocusJoinKeyChange === undefined || markerFocusJoinKey === null) return;
+    event.stopPropagation();
+    onFocusJoinKeyChange(markerFocusJoinKey);
+  };
   const satelliteLabelPosition = resolveSatelliteIdentityLabelPosition(
     satelliteLane,
     satelliteLaneCount,
@@ -2027,6 +2135,9 @@ function MultiCandidateSatelliteIdentityMarker({
       lockZ={false}
       name={`multi-candidate-satellite-identity-${instruction.satelliteId}`}
       userData={joinMetadata}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+      onClick={handleClick}
     >
       {group.isServingSatellite && (
         <mesh
@@ -2068,6 +2179,32 @@ function MultiCandidateSatelliteIdentityMarker({
             color={instruction.satelliteColor}
             transparent
             opacity={candidateHaloOpacity}
+            side={THREE.DoubleSide}
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
+      {focused && (
+        <mesh
+          name={`multi-candidate-focus-satellite-highlight-${instruction.satelliteId}`}
+          renderOrder={29}
+          userData={{
+            ...joinMetadata,
+            focusHighlight: true,
+            focusJoinKey: focusedJoinKey,
+          }}
+        >
+          <ringGeometry args={[
+            candidateHaloOuterRadius * 1.18,
+            candidateHaloOuterRadius * 1.30,
+            SATELLITE_IDENTITY_HALO_SEGMENTS,
+          ]} />
+          <meshBasicMaterial
+            color="#fff4b8"
+            transparent
+            opacity={0.94}
             side={THREE.DoubleSide}
             depthTest={false}
             depthWrite={false}
@@ -2335,6 +2472,8 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
           renderLabel={renderSatelliteIdentityLabels}
           satelliteNameById={props.satelliteNameById}
           homepageVisualIdentity={props.homepageVisualIdentity}
+          focusedJoinKey={props.focusedJoinKey}
+          onFocusJoinKeyChange={props.onFocusJoinKeyChange}
           key={`satellite-identity/${group.satelliteId}`}
         />
       ))}
@@ -2356,6 +2495,8 @@ export function MultiCandidateBeamScene(props: MultiCandidateBeamSceneProps): JS
           showSatelliteInLabel={instruction.isServing
             || firstCandidatePairBySatelliteId.get(instruction.satelliteId) === instruction.pairKey}
           onCandidateSelect={props.onCandidateSelect}
+          focusedJoinKey={props.focusedJoinKey}
+          onFocusJoinKeyChange={props.onFocusJoinKeyChange}
         />
       ))}
     </group>

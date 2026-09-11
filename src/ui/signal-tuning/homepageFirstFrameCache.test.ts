@@ -9,6 +9,7 @@ import {
   loadTleWebArchiveCatalog,
 } from '../../simulator/archive';
 import { DEFAULT_SIMULATOR_PARAMETERS, type SimulationAnalysisFrame } from '../../simulator/types';
+import { LATEST_TLE_REFERENCE_ARTIFACT_DATE, LATEST_TLE_REFERENCE_INSTANT_UTC } from '../../tle/latestTleDefaults';
 import {
   clearHomepageFirstFrameCacheForTests,
   clearHomepageFirstFrameModuleCacheForTests,
@@ -172,10 +173,10 @@ try {
     '/tle-archive/starlink/catalog.json',
     fetchFromPublic,
   );
-  const artifact = JSON.parse(await readFile('public/homepage-first-frame/starlink-20260825.json', 'utf8')) as unknown;
+  const artifact = JSON.parse(await readFile(`public/homepage-first-frame/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`, 'utf8')) as unknown;
   const artifactState = parseHomepageFirstFrameArtifact(artifact, {
-    requestedInstantUtc: '2026-08-25T12:00:00.000Z',
-    appliedInstantUtc: '2026-08-25T12:00:00.000Z',
+    requestedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
+    appliedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
     catalog: starlinkCatalog,
     parameters: DEFAULT_SIMULATOR_PARAMETERS,
   });
@@ -193,8 +194,8 @@ try {
     parseHomepageFirstFrameArtifact(
       { ...(artifact as Record<string, unknown>), schema: 'homepage-first-frame-artifact-v1' },
       {
-        requestedInstantUtc: '2026-08-25T12:00:00.000Z',
-        appliedInstantUtc: '2026-08-25T12:00:00.000Z',
+        requestedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
+        appliedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
         catalog: starlinkCatalog,
         parameters: DEFAULT_SIMULATOR_PARAMETERS,
       },
@@ -204,8 +205,8 @@ try {
   );
   assert.equal(
     parseHomepageFirstFrameArtifact(artifact, {
-      requestedInstantUtc: '2026-08-25T12:00:00.000Z',
-      appliedInstantUtc: '2026-08-25T12:00:00.000Z',
+      requestedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
+      appliedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
       catalog: { ...starlinkCatalog, archiveId: `${starlinkCatalog.archiveId}-stale` },
       parameters: DEFAULT_SIMULATOR_PARAMETERS,
     }),
@@ -214,8 +215,8 @@ try {
   );
   assert.equal(
     parseHomepageFirstFrameArtifact(artifact, {
-      requestedInstantUtc: '2026-08-25T12:00:00.000Z',
-      appliedInstantUtc: '2026-08-25T12:00:00.000Z',
+      requestedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
+      appliedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
       catalog: starlinkCatalog,
       parameters: DEFAULT_SIMULATOR_PARAMETERS,
       frameOptions: { representativeUserIndex: 1 },

@@ -130,6 +130,8 @@ import {
 import {
   persistSceneTopologyOverrides,
   persistSceneVisualScaleOverrides,
+  persistHomepageNarrativeTeachingMode,
+  readHomepageNarrativeTeachingMode,
   readSceneSourceFromUrl,
   readSceneTopologyOverrides,
   readSceneVisualScaleOverrides,
@@ -403,6 +405,16 @@ export function App() {
     ? leftSidebarTab
     : getDefaultLeftSidebarTabForSceneLane(sceneLane, handoverMode);
   const isRootHomepage = typeof window !== 'undefined' && window.location.pathname === '/';
+  const [focusedJoinKey, setFocusedJoinKey] = useState<string | null>(null);
+  const handleFocusJoinKeyChange = useCallback((joinKey: string | null) => {
+    setFocusedJoinKey(joinKey);
+  }, []);
+  const [homepageNarrativeTeachingMode, setHomepageNarrativeTeachingMode] = useState(
+    () => readHomepageNarrativeTeachingMode(),
+  );
+  useEffect(() => {
+    if (isRootHomepage) persistHomepageNarrativeTeachingMode(homepageNarrativeTeachingMode);
+  }, [homepageNarrativeTeachingMode, isRootHomepage]);
   const visibleRightSidebarTabs = useMemo(
     () => isRootHomepage
       ? getHomepageRightSidebarTabsForSceneLane(sceneLane, handoverMode)
@@ -2491,6 +2503,8 @@ export function App() {
         handoverPresentation={isRootHomepage ? null : visibleHandover.presentation}
         eeThresholdKbitPerJoule={homepageEeThresholdKbitPerJoule}
         showAllSurfaces={homepageRailShowAllSurfaces}
+        selectedJoinKey={focusedJoinKey}
+        onFocusJoinKeyChange={handleFocusJoinKeyChange}
       />
     );
   } else {
@@ -2643,6 +2657,10 @@ export function App() {
         requestedSpeed={playback.speed}
         autoSlowActive={playback.autoSlowActive}
         autoSlowApplied={playback.autoSlowApplied}
+        decisionPhase={multiCandidateDecision?.phase ?? null}
+        teachingMode={homepageNarrativeTeachingMode}
+        onTeachingModeChange={setHomepageNarrativeTeachingMode}
+        showTeachingModeToggle={isRootHomepage}
         onToggleBeamCallouts={() => setBeamDisplaySpec(c => ({ ...c, beamCalloutsEnabled: !c.beamCalloutsEnabled }))}
         onToggleNonServingCones={() => setBeamDisplaySpec(c => ({ ...c, showNonServingCones: !c.showNonServingCones }))}
         onToggleOtherHandoverUes={() => setBeamDisplaySpec(c => ({ ...c, showOtherHandoverUes: !c.showOtherHandoverUes }))}
@@ -2831,6 +2849,9 @@ export function App() {
                 : null}
               teachingSceneStory={isRootHomepage ? teachingSceneStory : null}
               teachingLectureFrameRef={teachingLectureFrameRef}
+              focusedJoinKey={focusedJoinKey}
+              onFocusJoinKeyChange={handleFocusJoinKeyChange}
+              teachingNarrativeEnabled={isRootHomepage && homepageNarrativeTeachingMode}
               onHandoverPresentationChange={handleHandoverPresentationChange}
               onHandoverPresentationBusyChange={handleHandoverPresentationBusyChange}
               constellation={activeSceneTopology.constellation}
@@ -2884,6 +2905,9 @@ export function App() {
               paused={teachingLecture.paused}
               onPausedChange={teachingLecture.setPaused}
               onRestart={teachingLecture.restart}
+              onSeek={teachingLecture.seek}
+              speed={teachingLecture.speed}
+              onSpeedChange={teachingLecture.setSpeed}
               onClose={() => setTeachingStageKind(null)}
             />
           ) : null}

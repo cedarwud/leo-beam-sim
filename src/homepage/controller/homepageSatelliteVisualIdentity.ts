@@ -16,6 +16,12 @@ import {
   homepageSatelliteBaseColor,
   homepageSatellitePaletteIndex,
 } from '../../appearance/satelliteIdentityPalette';
+import {
+  EE_INTENSITY_CONTEXT_SHADE_RANGE,
+  EE_INTENSITY_SERVING_SHADE_RANGE,
+  eeIntensityOpacity,
+  eeIntensityShade,
+} from '../../appearance/eeIntensityShade';
 import { clampUnit, hslToHex } from '../../constants/hsl';
 import { servingBeamShadeIndex } from '../../constants/servingColour';
 
@@ -150,12 +156,17 @@ function finiteEeBucket(eeNormalized: number | null | undefined): number | null 
   return normalizedEeBucket(eeNormalized);
 }
 
-/** Lower EE is visibly quieter while the beam remains on the same hue family. */
+/**
+ * Lower EE is visibly quieter while the beam remains on the same hue family.
+ * The ratio→opacity curve itself is `appearance/eeIntensityShade.ts`'s; this
+ * wrapper only owns the homepage-specific "unknown EE reads as fully opaque"
+ * default, which is a caller policy, not a property of the curve.
+ */
 export function homepageEeVisualOpacity(
   eeNormalized: number | null | undefined,
 ): number {
   if (typeof eeNormalized !== 'number' || !Number.isFinite(eeNormalized)) return 1;
-  return 0.30 + 0.70 * Math.max(0, Math.min(1, eeNormalized));
+  return eeIntensityOpacity(eeNormalized);
 }
 
 /**
@@ -186,13 +197,10 @@ export function homepageSatelliteColorForBeam(
   const intensity01 = eeBucket === null
     ? shadeIndex / Math.max(1, HOMEPAGE_SATELLITE_BEAM_LIGHTNESS_LEVELS.length - 1)
     : Math.max(0, Math.min(1, options?.eeNormalized ?? 0));
-  const mix = (low: number, high: number): number => low + (high - low) * intensity01;
-  const saturation = isServing
-    ? mix(0.70, 0.88)
-    : mix(0.40, 0.56);
-  const lightness = isServing
-    ? mix(0.72, 0.48)
-    : mix(0.74, 0.52);
+  const { saturation, lightness } = eeIntensityShade(
+    intensity01,
+    isServing ? EE_INTENSITY_SERVING_SHADE_RANGE : EE_INTENSITY_CONTEXT_SHADE_RANGE,
+  );
   const color = hueFamilyColor(family.hueDegrees, saturation, lightness);
   return Object.freeze({
     satelliteId,

@@ -304,6 +304,7 @@ test('MainScene mounts the bounded multi-candidate presentation from one accepte
     showSinrLiveCellBeams: true,
     sceneLayerEnabled: true,
     previousHold: null,
+    teachingLectureActive: false,
     centralOverlayEnabled: true,
   });
   const scene = policy.scenePresentationForRender;
@@ -755,6 +756,9 @@ test('central comparison is rendered from the accepted pre-selection projection'
     sceneLane: 'sinr-live',
     previousLatch: null,
     centralOverlayEnabled: true,
+    teachingLectureActive: false,
+    nowSec: 0,
+    previousDisplayHoldSinceSec: null,
   });
   assert.equal(comparison.centralOverlayActive, true);
   const enabled = resolveMultiCandidatePresentationPolicy({
@@ -769,6 +773,7 @@ test('central comparison is rendered from the accepted pre-selection projection'
     showSinrLiveCellBeams: true,
     sceneLayerEnabled: true,
     previousHold: null,
+    teachingLectureActive: false,
     centralOverlayEnabled: true,
   });
   assert.ok(enabled.scenePresentationForRender !== null);
@@ -786,6 +791,7 @@ test('central comparison is rendered from the accepted pre-selection projection'
     showSinrLiveCellBeams: true,
     sceneLayerEnabled: true,
     previousHold: null,
+    teachingLectureActive: false,
     centralOverlayEnabled: false,
   });
   assert.equal(disabled.scenePresentationForRender, null);
@@ -797,6 +803,9 @@ test('central comparison is rendered from the accepted pre-selection projection'
     sceneLane: 'sinr-live',
     previousLatch: null,
     centralOverlayEnabled: true,
+    teachingLectureActive: false,
+    nowSec: 0,
+    previousDisplayHoldSinceSec: null,
   });
   assert.equal(staleComparison.snapshotMatchesFrame, false);
   assert.equal(staleComparison.centralOverlayActive, false);

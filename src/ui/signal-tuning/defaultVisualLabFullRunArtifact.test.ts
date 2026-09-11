@@ -6,6 +6,7 @@ import {
   SIMULATOR_CATALOG_URLS,
 } from '../../simulator/types';
 import { loadTleWebArchiveCatalog } from '../../simulator/archive';
+import { LATEST_TLE_REFERENCE_INSTANT_UTC } from '../../tle/latestTleDefaults';
 import {
   VISUAL_LAB_DEFAULT_FULL_RUN_ARTIFACT_URL,
   loadVisualLabDefaultFullRunArtifact,
@@ -24,8 +25,8 @@ globalThis.fetch = publicFetch as typeof fetch;
 try {
   const catalog = await loadTleWebArchiveCatalog(SIMULATOR_CATALOG_URLS.starlink, publicFetch);
   const expectation = {
-    requestedInstantUtc: '2026-08-25T12:00:00.000Z',
-    appliedInstantUtc: '2026-08-25T12:00:00.000Z',
+    requestedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
+    appliedInstantUtc: LATEST_TLE_REFERENCE_INSTANT_UTC,
     catalog,
     parameters: DEFAULT_SIMULATOR_PARAMETERS,
     frameOptions: { userPositionOverridesKm: [] },
@@ -36,12 +37,12 @@ try {
   if (run === null) throw new Error('expected a complete default run');
   assert.equal(run.anchorCount, 241);
   assert.equal(run.stepS, 30);
-  assert.equal(run.geometryRun.satelliteCount, 5080);
+  assert.equal(run.geometryRun.satelliteCount, 5033);
   assert.equal(run.anchorSelections.length, 241);
   assert.equal(run.handoverTrace.anchors.length, 241);
   assert.equal(run.getFrame(0)?.provenance.sourceKind, 'ARCHIVED_TLE');
   assert.equal(run.getFrame(240)?.runAnchor?.anchorIndex, 240);
-  assert.equal(run.getFrame(0)?.tleState.propagationFrame.satellites.length, 5080);
+  assert.equal(run.getFrame(0)?.tleState.propagationFrame.satellites.length, 5033);
 
   assert.equal(
     await loadVisualLabDefaultFullRunArtifact({

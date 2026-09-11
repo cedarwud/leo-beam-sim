@@ -35,9 +35,24 @@ export type TeachingPhaseId =
 /** The EE floor both lectures are written around, in Kbit/J. */
 export const TEACHING_EE_THRESHOLD_KBIT_PER_JOULE = 135;
 
-/** Fixed rail scale, so a bar length means the same thing in both lectures. */
-export const TEACHING_EE_SCALE_MIN_KBIT_PER_JOULE = 80;
-export const TEACHING_EE_SCALE_MAX_KBIT_PER_JOULE = 200;
+/**
+ * Fixed rail scale, so a bar length means the same thing in both lectures.
+ * Also the scale the scene's teaching cones fade against (`teachingEeRatio01`
+ * below), so a link's rail bar and its cone opacity always agree.
+ *
+ * Bracketed tightly around the authored data rather than a round, generous
+ * span: every eeKeyframes value across both lectures (`linksFor` below) falls
+ * in [94, 178] Kbit/J. The previous [80, 200] span left 14-22 Kbit/J of
+ * headroom on each side that no authored value ever reaches, which diluted
+ * every link's visible swing for no benefit — the inter winner's own
+ * authored range (150-177 Kbit/J once it is introduced) mapped to only a
+ * ~20%-of-scale swing, reading as barely brightening at all. [90, 180]
+ * keeps a small margin inside the true [94, 178] extremes (so no authored
+ * value ever hits a hard floor/ceiling) while meaningfully widening every
+ * link's visible range.
+ */
+export const TEACHING_EE_SCALE_MIN_KBIT_PER_JOULE = 90;
+export const TEACHING_EE_SCALE_MAX_KBIT_PER_JOULE = 180;
 
 /**
  * Time-to-trigger per kind, in seconds — the real profile values.

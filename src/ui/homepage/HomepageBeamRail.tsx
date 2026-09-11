@@ -415,6 +415,15 @@ function BeamRow({
         ? `inset 0 0 0 1px ${accent}, 0 0 0 1px rgba(255,255,255,0.08)`
         : `inset 0 0 0 2px ${accent}, 0 0 0 2px rgba(118, 234, 215, 0.42), 0 0 16px ${accent}66`,
     };
+  // Join focus is a neutral annotation layer: it must never replace the
+  // serving/candidate identity accent already established by this row.
+  const focusRowStyle: CSSProperties = selected
+    ? {
+      outline: handoverRowStyle.outline ?? '2px solid #fff4b8',
+      outlineOffset: handoverRowStyle.outlineOffset ?? '2px',
+      boxShadow: `${handoverRowStyle.boxShadow ?? rowStyle.boxShadow ?? 'none'}, 0 0 0 4px rgba(255, 244, 184, 0.22)`,
+    }
+    : {};
 
   return (
     <div
@@ -459,7 +468,7 @@ function BeamRow({
         onFocusJoinKeyChange?.(joinKey);
         if (hasMetricDetails) setDetailsExpanded(previous => !previous);
       }}
-      style={{ ...rowStyle, ...handoverRowStyle }}
+      style={{ ...rowStyle, ...handoverRowStyle, ...focusRowStyle }}
     >
       <div style={styles.beamRowHeader}>
         <div style={styles.beamIdentity}>
@@ -986,6 +995,7 @@ export function HomepageBeamRail({
 }: HomepageBeamRailProps) {
   const { locale, t } = useLocale();
   const isEnglish = locale === 'en';
+  const railRef = useRef<HTMLElement | null>(null);
   const say = (key: string, zh: string, en: string): string => txBi(t, isEnglish, key, zh, en);
   const homepageEeThresholdKbitPerJoule = typeof eeThresholdKbitPerJoule === 'number'
     && Number.isFinite(eeThresholdKbitPerJoule)
@@ -1038,7 +1048,15 @@ export function HomepageBeamRail({
   // seven-beam roster. During intra handover it remains the same satellite's
   // other beams. This is a visibility filter only; candidate selection stays
   // in the accepted decision snapshot.
+  //
+  // Once the story's target has itself become the serving satellite (the
+  // guard window right after a commit), narrowing to that one id is
+  // self-defeating: `buildSatelliteGroups` below always excludes the serving
+  // satellite's own links, so this narrowing would guarantee zero rows even
+  // when a real (retained) candidate roster exists for other satellites.
+  // Fall back to the full accepted candidate set in that window instead.
   const railCandidateSatelliteIds = interTargetSatelliteId === null
+    || interTargetSatelliteId === servingSatelliteId
     ? candidateSatelliteIds
     : new Set([interTargetSatelliteId]);
   const railCandidateLinks = candidateLinks.filter(link => railCandidateSatelliteIds.has(link.satelliteId));
@@ -1129,6 +1147,43 @@ export function HomepageBeamRail({
     if (detailsExpansionModeRef.current === 'all-collapsed') return;
     setExpandedGroupIds(new Set(groupIds));
   }, [groupIdentity, handoverStoryKey, railStory?.kind]);
+  useEffect(() => {
+    if (selectedJoinKey === null || selectedJoinKey === undefined || selectedJoinKey.length === 0) return;
+    const matches = ({ metric, link }: ProjectedBeamRow): boolean => (
+      (link?.joinKey ?? metric?.joinKey ?? '') === selectedJoinKey
+    );
+    const shouldOpenServing = collapsibleServingRows.some(matches);
+    const groupToOpen = groups.find(group => projectedRowsForGroup(group).some(matches));
+    if (!shouldOpenServing && groupToOpen === undefined) return;
+
+    // A direct scene focus is an explicit request to inspect that row, so it
+    // may reopen only its own disclosure even after a manual collapse-all.
+    if (detailsExpansionModeRef.current === 'all-collapsed') {
+      detailsExpansionModeRef.current = 'individual';
+      setDetailsExpansionMode('individual');
+    }
+    if (shouldOpenServing && !servingExpanded) setServingExpanded(true);
+    if (groupToOpen !== undefined && !expandedGroupIds.has(groupToOpen.satelliteId)) {
+      setExpandedGroupIds(previous => {
+        if (previous.has(groupToOpen.satelliteId)) return previous;
+        return new Set([...previous, groupToOpen.satelliteId]);
+      });
+    }
+  }, [collapsibleServingRows, expandedGroupIds, groupIdentity, groups, selectedJoinKey, servingExpanded]);
+  useEffect(() => {
+    if (selectedJoinKey === null || selectedJoinKey === undefined || selectedJoinKey.length === 0) return;
+    const rail = railRef.current;
+    if (rail === null) return;
+    const row = [...rail.querySelectorAll<HTMLElement>(
+      '[data-testid="homepage-beam-row"][data-focus-join-key]',
+    )].find(candidate => candidate.dataset.focusJoinKey === selectedJoinKey);
+    if (row === undefined) return;
+    const railBounds = rail.getBoundingClientRect();
+    const rowBounds = row.getBoundingClientRect();
+    if (rowBounds.top < railBounds.top || rowBounds.bottom > railBounds.bottom) {
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [detailsExpansionMode, expandedGroupIds, groupIdentity, selectedJoinKey, servingExpanded]);
   const allDetailsExpanded = detailsExpansionMode === 'all-expanded'
     || (detailsExpansionMode !== 'all-collapsed'
       && servingExpanded
@@ -1146,9 +1201,21 @@ export function HomepageBeamRail({
   const servingUnavailableReason = isEnglish
     ? 'No accepted serving beam was supplied by the rail projection.'
     : '目前影格未提供可接受的服務波束數值。';
-
+  const handoverStoryActive = !(surfaceStory === null && handoverPresentation === null);
+  // The accepted snapshot can briefly publish an empty candidate roster right
+  // after a commit -- the winner has just become serving and a fresh roster
+  // for the next decision cycle has not landed yet. Naming that moment here
+  // is a presentation clarification only; it never invents a roster.
+  const candidateGroupsUnavailableReason = handoverStoryActive
+    ? (isEnglish
+      ? 'No candidate values yet for this moment -- the roster can briefly clear right after a handover, before the next evaluation.'
+      : '此刻沒有候選衛星數值可顯示——換手剛完成後，候選名單會短暫清空，等待下一輪評估。')
+    : (isEnglish
+      ? 'No accepted candidate beam was supplied by the rail projection.'
+      : '目前影格未提供可接受的候選波束數值。');
   return (
     <aside
+      ref={railRef}
       aria-label={say('homepage.rail.ariaLabel', '首頁波束數值', 'Homepage beam values')}
       data-testid="homepage-beam-rail"
       data-provenance-source={sourceProvenance}
@@ -1323,7 +1390,7 @@ export function HomepageBeamRail({
         ) : null}
         {groups.length === 0 ? (
           <div role="status" data-testid="homepage-projected-groups-empty" style={styles.emptyState}>
-            <strong>—</strong>
+            <UnavailableValue reason={candidateGroupsUnavailableReason} />
           </div>
         ) : (
           <div style={styles.groupList}>
@@ -1514,6 +1581,14 @@ const styles: Readonly<Record<string, CSSProperties>> = {
     minWidth: 0,
     overflowWrap: 'anywhere',
     lineHeight: 1.2,
+    // Same identity role as `servingIdentity` below (satellite + beam label),
+    // so it must read at the same size. Left unset it fell back to this
+    // card's 12px ambient `handoverReadoutEndpoint` font-size -- the actual
+    // cause of "the first block's text is all too small": every unsized
+    // child in this endpoint card (this label included) inherited that 12px,
+    // while its counterpart two sections down renders at 18px/800.
+    fontSize: '18px',
+    fontWeight: 800,
   },
   handoverReadoutEe: {
     color: COLORS.cyan,

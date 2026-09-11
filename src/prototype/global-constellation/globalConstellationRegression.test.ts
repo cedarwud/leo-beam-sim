@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import * as director from './globalConstellationDirector';
+import { LATEST_TLE_REFERENCE_ARTIFACT_DATE } from '../../tle/latestTleDefaults';
 import {
   ntpuElevationGeometry,
   ntpuTeachingCameraPose,
@@ -19,7 +20,7 @@ const sceneSource = readFileSync(
   'utf8',
 );
 const onewebArtifact = JSON.parse(readFileSync(
-  new URL('../../../public/global-first-frame/oneweb-20260825.json', import.meta.url),
+  new URL(`../../../public/global-first-frame/oneweb-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`, import.meta.url),
   'utf8',
 )) as {
   readonly satelliteCount: number;
@@ -28,7 +29,7 @@ const onewebArtifact = JSON.parse(readFileSync(
   readonly visibility: readonly number[];
 };
 const starlinkArtifact = JSON.parse(readFileSync(
-  new URL('../../../public/global-first-frame/starlink-20260825.json', import.meta.url),
+  new URL(`../../../public/global-first-frame/starlink-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`, import.meta.url),
   'utf8',
 )) as typeof onewebArtifact;
 
@@ -104,16 +105,16 @@ test('subtitles form a continuous observation sequence instead of leaving long b
     '畫面上的每個亮點，代表一筆封存 TLE 經 SGP4 推算的衛星位置。',
   ]);
   assert.deepEqual(starlink?.caption, [
-    'Starlink：封存快照中有 10,738 顆完成 SGP4 定位。',
+    'Starlink：封存快照中有 10,714 顆完成 SGP4 定位。',
     '極區空白受軌道傾角限制；密度帶是點位重疊，不是實體環。',
   ]);
   assert.deepEqual(oneweb?.caption, [
     'OneWeb：封存快照記錄 651 顆成功定位。',
     '切換完成後，在相同尺度下分別讀取數量與高度。',
   ]);
-  assert.match(starlinkVisible?.caption.join('') ?? '', /單一封存時刻.*175 \/ 10,738/);
-  assert.match(onewebVisible?.caption.join('') ?? '', /單一封存時刻.*17 \/ 651/);
-  assert.match(ntpuReveal?.caption.join('') ?? '', /2026-08-25 12:00 UTC.*這一個封存時刻.*atan2.*≥ 10°.*觀測範圍/);
+  assert.match(starlinkVisible?.caption.join('') ?? '', /單一封存時刻.*157 \/ 10,714/);
+  assert.match(onewebVisible?.caption.join('') ?? '', /單一封存時刻.*18 \/ 651/);
+  assert.match(ntpuReveal?.caption.join('') ?? '', /2026-09-09 12:00 UTC.*這一個封存時刻.*atan2.*≥ 10°.*觀測範圍/);
   assert.match(ntpuReveal?.caption.join('') ?? '', /不代表服務/);
   assert.match(starlinkVisible?.caption.join('') ?? '', /幾何觀測門檻.*不代表服務覆蓋/);
   assert.match(onewebVisible?.caption.join('') ?? '', /幾何觀測門檻.*不代表服務覆蓋/);
@@ -220,8 +221,8 @@ test('NTPU teaching visibility uses the 10 degree mask derived from the archived
     director.GLOBAL_CONSTELLATION_NTPU_MINIMUM_ELEVATION_DEG,
   );
 
-  assert.equal(starlink.visibleCount, 175);
-  assert.equal(oneweb.visibleCount, 17);
+  assert.equal(starlink.visibleCount, 157);
+  assert.equal(oneweb.visibleCount, 18);
   assert.equal(starlink.mask.length, starlinkArtifact.satelliteCount);
   assert.equal(oneweb.mask.length, onewebArtifact.satelliteCount);
   assert.ok(starlink.visibleCount < starlinkArtifact.visibility.reduce((sum, value) => sum + value, 0));

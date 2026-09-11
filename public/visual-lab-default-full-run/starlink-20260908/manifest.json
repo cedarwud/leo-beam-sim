@@ -1,0 +1,77 @@
+{
+  "schema": "visual-lab-default-full-run-artifact-v1",
+  "protocol": "selectable-tle-run-payload-v1",
+  "identity": {
+    "runKey": "selectable-tle-run:03d1f48a5b6102c4f7882734928de617c0f3dc5553ee49b1028f74644cbda4d6",
+    "passIndexKey": "tle-pass-index:cae0eb8adf6da86bcf074111b1850237d98645ce3893d3eaf27b71acfd21f5b5",
+    "geometryRunId": "tle-run:starlink-20250727-20260908-461214264206:5882d160c127e8669b25cc621a7940b2b1bda4e133999f141980ecee28a2d92d:2026-09-09T12%3A00%3A00.000Z:7200:30:3c179006",
+    "analysisRunId": "analysis-run-b23b1403",
+    "sourceSnapshotDigest": "5882d160c127e8669b25cc621a7940b2b1bda4e133999f141980ecee28a2d92d"
+  },
+  "source": {
+    "constellation": "starlink",
+    "archiveId": "starlink-20250727-20260908-461214264206",
+    "archiveContentSha256": "4612142642069bdff8cf3eb83f86fd9ecfdd5a579d0e2496888261366b8d1a94",
+    "snapshotPath": "/tle-archive/starlink/starlink_20260908.tle",
+    "snapshotSha256": "5882d160c127e8669b25cc621a7940b2b1bda4e133999f141980ecee28a2d92d",
+    "requestedInstantUtc": "2026-09-09T12:00:00.000Z",
+    "appliedInstantUtc": "2026-09-09T12:00:00.000Z"
+  },
+  "model": {
+    "contractVersion": "family-b-thesis-3.13-3.17-v1",
+    "formulaVersion": "angle-aware-ee-v3",
+    "linkShapeVersion": "canonical-link-result:before-satellite-cap-power-v1",
+    "parameters": {
+      "beamPowerCapW": 1.65,
+      "satellitePowerCapW": 19.952623149688797,
+      "etaMax": 0.35,
+      "backoffDb": 5,
+      "rfcPowerW": 0.338,
+      "basebandPerSatelliteW": 0.2,
+      "frequencyReuse": 3,
+      "antennaNoiseTemperatureK": 150,
+      "noiseFigureDb": 1.2,
+      "noiseReferenceTemperatureK": 290,
+      "g0Linear": 2000,
+      "theta3dbRad": 0.05794493116621174,
+      "channelGainScale": 1,
+      "carrierFrequencyGHz": 20,
+      "atmosphericZenithLossDb": 0.05,
+      "scintillationScaleDb": 0,
+      "shadowFadingMarginDb": 0,
+      "receiveGainDbi": 35,
+      "minimumRateBps": 1000000,
+      "systemBandwidthHz": 500000000
+    },
+    "frameOptions": {
+      "userPositionOverridesKm": []
+    }
+  },
+  "snapshot": {
+    "schema": "tle-analysis-run-snapshot-v1",
+    "runId": "analysis-run-b23b1403",
+    "analysisRunId": "analysis-run-b23b1403",
+    "geometryRunId": "tle-run:starlink-20250727-20260908-461214264206:5882d160c127e8669b25cc621a7940b2b1bda4e133999f141980ecee28a2d92d:2026-09-09T12%3A00%3A00.000Z:7200:30:3c179006",
+    "anchorCount": 241
+  },
+  "geometry": {
+    "encoding": "float64-anchor-major-v1",
+    "anchorCount": 241,
+    "stepS": 30,
+    "satelliteCount": 5033,
+    "scalarCountPerVector": 3638859,
+    "byteOrder": "little-endian-ieee754"
+  },
+  "files": {
+    "analysis": {
+      "url": "/visual-lab-default-full-run/starlink-20260908/analysis.json.gz",
+      "contentSha256": "6d2b84a89864873cebf251e0d58d59ebcd4175ccb2e787cdfd25a75bbfc5fe43",
+      "byteLength": 3449308
+    },
+    "geometry": {
+      "url": "/visual-lab-default-full-run/starlink-20260908/geometry.bin",
+      "contentSha256": "0c5513994d68d1b130bb4c60e1172f02acb6553c4cdef65e41cc20ac48a456a7",
+      "byteLength": 58221744
+    }
+  }
+}

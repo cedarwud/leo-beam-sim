@@ -2,6 +2,7 @@ import { type ReactElement } from 'react';
 import { UI_CLASSES } from '../constants/uiTokens';
 import { useLocale } from '../i18n';
 import type { CinematicMode } from '../scene/types';
+import type { HandoverPhase } from '../engine/handover/candidateDecisionContract';
 import { txBi } from './signal-tuning/labels';
 
 // The compact SINR-live quick-control row at the top of the viewport: cheap
@@ -34,6 +35,12 @@ interface SinrLiveQuickControlsProps {
   readonly requestedSpeed?: number;
   readonly autoSlowActive: boolean;
   readonly autoSlowApplied: boolean;
+  /** Accepted decision phase; display-only HO Slow explanation. */
+  readonly decisionPhase?: HandoverPhase | null;
+  /** Homepage-only narrative caption switch. */
+  readonly teachingMode?: boolean;
+  readonly onTeachingModeChange?: (enabled: boolean) => void;
+  readonly showTeachingModeToggle?: boolean;
   readonly onToggleBeamCallouts: () => void;
   readonly onToggleNonServingCones: () => void;
   readonly onToggleOtherHandoverUes: () => void;
@@ -64,6 +71,10 @@ export function SinrLiveQuickControls({
   requestedSpeed = effectiveSpeed,
   autoSlowActive,
   autoSlowApplied,
+  decisionPhase = null,
+  teachingMode = true,
+  onTeachingModeChange,
+  showTeachingModeToggle = false,
   onToggleBeamCallouts,
   onToggleNonServingCones,
   onToggleOtherHandoverUes,
@@ -90,6 +101,13 @@ export function SinrLiveQuickControls({
     '顯示其他換手中的 UE',
     'Show other UEs in handover',
   );
+  const hoSlowPhaseLabel = decisionPhase === 'switching'
+    ? txBi(t, locale === 'en', 'quickControls.hoSlow.committing', '換手提交中', 'handover committing')
+    : decisionPhase === 'qualifying' || decisionPhase === 'selection-hold'
+      ? txBi(t, locale === 'en', 'quickControls.hoSlow.confirming', '候選確認中', 'confirming candidate persistence')
+      : decisionPhase === 'evaluating'
+        ? txBi(t, locale === 'en', 'quickControls.hoSlow.evaluating', '候選評估中', 'evaluating candidates')
+        : txBi(t, locale === 'en', 'quickControls.hoSlow.monitoring', '持續監測中', 'monitoring; no switch pending');
 
   return (
     <div
@@ -164,6 +182,23 @@ export function SinrLiveQuickControls({
         HO Slow
       </label>
 
+      {showTeachingModeToggle && onTeachingModeChange !== undefined && (
+        <label
+          className="leo-control-bar__toggle"
+          title="Show short event explanations next to the corresponding scene object"
+        >
+          <input
+            className={UI_CLASSES.checkbox}
+            type="checkbox"
+            aria-label="Teaching cues"
+            data-testid="teaching-mode-toggle"
+            checked={teachingMode}
+            onChange={event => onTeachingModeChange(event.target.checked)}
+          />
+          Teaching cues
+        </label>
+      )}
+
       {showHandoverJumpButtons && (
         <span className="leo-sinr-quick-controls__handover-jumps" aria-label="Handover quick navigation">
           <button
@@ -221,13 +256,14 @@ export function SinrLiveQuickControls({
         data-testid="ho-slow-status"
         data-auto-slow-applied={autoSlowApplied ? '1' : '0'}
         data-auto-slow-active={autoSlowActive ? '1' : '0'}
+        data-ho-slow-phase={decisionPhase ?? ''}
         title={autoSlowApplied
-          ? 'The complete candidate-to-handover story is slow by design. Resume skips the cap for this episode.'
-          : 'Live scene playback rate (auto-slows during a handover while HO Slow is on).'}
+          ? `HO Slow: ${hoSlowPhaseLabel}. Resume skips the cap for this episode.`
+          : `Live scene playback rate; current decision phase: ${hoSlowPhaseLabel}.`}
       >
         Scene {effectiveSpeed.toFixed(1)}×{autoSlowApplied
-          ? ` · HO Slow${requestedSpeed !== effectiveSpeed ? ` · ${requestedSpeed.toFixed(1)}× selected` : ''}`
-          : ''}
+          ? ` · HO Slow · ${hoSlowPhaseLabel}${requestedSpeed !== effectiveSpeed ? ` · ${requestedSpeed.toFixed(1)}× selected` : ''}`
+          : ` · ${hoSlowPhaseLabel}`}
       </span>
       {manualHandoverKind !== null && (
         <span

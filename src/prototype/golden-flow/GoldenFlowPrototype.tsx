@@ -472,6 +472,16 @@ function AngleTeachingRail({
     y: elevationOrigin.y - Math.sin(elevationRad) * elevationArcRadius,
   };
 
+  // The elevation and off-axis figures used to stack in one right-anchored
+  // rail, which doubled its height and could run into the top of the
+  // current-event dock at beat 'interaction'/'consequence' (the dock grows
+  // taller there to fit the angle/power/EE readout). Splitting them into two
+  // independently-anchored panels — elevation top-left, off-axis top-right —
+  // halves each panel's height, clearing the dock without touching the
+  // dock's own sizing. The outer <aside> stays a single full-bleed, visually
+  // invisible wrapper so it keeps carrying all the existing test hooks
+  // (data-testid, data-active-angle, aria-label) as one element; only the
+  // two inner panels are visually boxed and positioned.
   return (
     <aside
       className="golden-flow-angle-teaching-rail"
@@ -482,37 +492,42 @@ function AngleTeachingRail({
       data-angle-visual-scale={OFF_AXIS_INSET_VISUAL_SCALE}
       aria-label={`角度定義。仰角 ${elevationDeg.toFixed(1)} 度，以地面 UE 為頂點；離軸角 ${safeThetaDeg.toFixed(2)} 度，以衛星為頂點。兩者均由左往右呈現。`}
     >
-      <header><span>角度定義</span><small>兩者皆由左往右量測</small></header>
-      <figure className={activeMode === 'elevation' ? 'is-active' : ''}>
-        <figcaption><span>地面端頂點</span><strong>仰角 α = {elevationDeg.toFixed(1)}°</strong></figcaption>
-        <svg viewBox="0 0 270 132" aria-hidden="true">
-          <circle className="is-elevation-vertex" cx={elevationOrigin.x} cy={elevationOrigin.y} r="6" />
-          <line className="is-horizontal-reference" x1={elevationOrigin.x} y1={elevationOrigin.y} x2="244" y2={elevationOrigin.y} />
-          <line className="is-elevation-los" x1={elevationOrigin.x} y1={elevationOrigin.y} x2={elevationEnd.x} y2={elevationEnd.y} />
-          <path className="is-elevation-arc" d={`M ${elevationOrigin.x + elevationArcRadius} ${elevationOrigin.y} A ${elevationArcRadius} ${elevationArcRadius} 0 0 0 ${elevationArcEnd.x} ${elevationArcEnd.y}`} />
-          <text x="8" y="108">UE</text>
-          <text x="174" y="108">水平基準</text>
-          <text x={elevationEnd.x + 8} y={Math.max(18, elevationEnd.y)}>往衛星</text>
-          <text className="is-angle-symbol" x="76" y="83">α</text>
-        </svg>
-      </figure>
-      <figure className={activeMode === 'off-axis' ? 'is-active' : ''}>
-        <figcaption><span>衛星端頂點</span><strong>離軸角 θ = {safeThetaDeg.toFixed(2)}°</strong></figcaption>
-        <svg viewBox="0 0 270 158" aria-hidden="true">
-          <circle className="is-theta-vertex" cx={thetaOrigin.x} cy={thetaOrigin.y} r="6" />
-          <line className="is-beam-axis" x1={thetaOrigin.x} y1={thetaOrigin.y} x2={axisEnd.x} y2={axisEnd.y} />
-          <line className="is-ue-ray" x1={thetaOrigin.x} y1={thetaOrigin.y} x2={ueEnd.x} y2={ueEnd.y} />
-          {displayThetaDeg >= 0.1 && <path className="is-theta-arc" d={`M ${arcStart.x} ${arcStart.y} A ${thetaArcRadius} ${thetaArcRadius} 0 0 1 ${arcEnd.x} ${arcEnd.y}`} />}
-          <text x="5" y="33">衛星</text>
-          <text x={axisEnd.x - 70} y={axisEnd.y - 9}>波束中軸</text>
-          <text x={ueEnd.x - 42} y={ueLabelY}>往 UE</text>
-          {displayThetaDeg >= 0.1 && <text className="is-angle-symbol" x={labelPoint.x} y={labelPoint.y}>θ</text>}
-        </svg>
-        <small>
-          θ<sub>3dB</sub>＝{fullHpbwDeg.toFixed(2)}°（全寬），半功率邊界 ±{halfPowerDeg.toFixed(2)}°；
-          圖形角距 ×{OFF_AXIS_INSET_VISUAL_SCALE}，計算仍用實際 θ。
-        </small>
-      </figure>
+      <div className="golden-flow-angle-teaching-rail__panel golden-flow-angle-teaching-rail__panel--elevation">
+        <header><span>角度定義</span><small>地面端頂點，左往右量測</small></header>
+        <figure className={activeMode === 'elevation' ? 'is-active' : ''}>
+          <figcaption><span>地面端頂點</span><strong>仰角 α = {elevationDeg.toFixed(1)}°</strong></figcaption>
+          <svg viewBox="0 0 270 132" aria-hidden="true">
+            <circle className="is-elevation-vertex" cx={elevationOrigin.x} cy={elevationOrigin.y} r="6" />
+            <line className="is-horizontal-reference" x1={elevationOrigin.x} y1={elevationOrigin.y} x2="244" y2={elevationOrigin.y} />
+            <line className="is-elevation-los" x1={elevationOrigin.x} y1={elevationOrigin.y} x2={elevationEnd.x} y2={elevationEnd.y} />
+            <path className="is-elevation-arc" d={`M ${elevationOrigin.x + elevationArcRadius} ${elevationOrigin.y} A ${elevationArcRadius} ${elevationArcRadius} 0 0 0 ${elevationArcEnd.x} ${elevationArcEnd.y}`} />
+            <text x="8" y="108">UE</text>
+            <text x="174" y="108">水平基準</text>
+            <text x={elevationEnd.x + 8} y={Math.max(18, elevationEnd.y)}>往衛星</text>
+            <text className="is-angle-symbol" x="76" y="83">α</text>
+          </svg>
+        </figure>
+      </div>
+      <div className="golden-flow-angle-teaching-rail__panel golden-flow-angle-teaching-rail__panel--off-axis">
+        <header><span>角度定義</span><small>衛星端頂點，左往右量測</small></header>
+        <figure className={activeMode === 'off-axis' ? 'is-active' : ''}>
+          <figcaption><span>衛星端頂點</span><strong>離軸角 θ = {safeThetaDeg.toFixed(2)}°</strong></figcaption>
+          <svg viewBox="0 0 270 158" aria-hidden="true">
+            <circle className="is-theta-vertex" cx={thetaOrigin.x} cy={thetaOrigin.y} r="6" />
+            <line className="is-beam-axis" x1={thetaOrigin.x} y1={thetaOrigin.y} x2={axisEnd.x} y2={axisEnd.y} />
+            <line className="is-ue-ray" x1={thetaOrigin.x} y1={thetaOrigin.y} x2={ueEnd.x} y2={ueEnd.y} />
+            {displayThetaDeg >= 0.1 && <path className="is-theta-arc" d={`M ${arcStart.x} ${arcStart.y} A ${thetaArcRadius} ${thetaArcRadius} 0 0 1 ${arcEnd.x} ${arcEnd.y}`} />}
+            <text x="5" y="33">衛星</text>
+            <text x={axisEnd.x - 70} y={axisEnd.y - 9}>波束中軸</text>
+            <text x={ueEnd.x - 42} y={ueLabelY}>往 UE</text>
+            {displayThetaDeg >= 0.1 && <text className="is-angle-symbol" x={labelPoint.x} y={labelPoint.y}>θ</text>}
+          </svg>
+          <small>
+            θ<sub>3dB</sub>＝{fullHpbwDeg.toFixed(2)}°（全寬），半功率邊界 ±{halfPowerDeg.toFixed(2)}°；
+            圖形角距 ×{OFF_AXIS_INSET_VISUAL_SCALE}，計算仍用實際 θ。
+          </small>
+        </figure>
+      </div>
     </aside>
   );
 }
@@ -1118,6 +1133,13 @@ export function GoldenFlowPrototype() {
   const angleBeat = beat.id === 'angles' || beat.id === 'interaction'
     || beat.id === 'consequence' || beat.id === 'restore';
   const showAnglePowerEe = beat.id === 'interaction' || beat.id === 'consequence';
+  // 'interaction' is the only beat where the drag-instruction primary cue and
+  // the angle/power/EE readout must render side by side. Moving the primary
+  // cue into the copy column (which has vertical slack under the question
+  // text) gives the angle/power/EE readout the dock's full width instead of
+  // splitting it, so the metric cards and disclaimer stop clipping against
+  // the dock's right edge at common desktop widths.
+  const primaryCueInCopyColumn = beat.id === 'interaction';
   const isHandoverPresentation = segment.id === 'act4' || (segment.id === 'full' && beatIndex >= 5);
   const handoverFrame = buildGoldenFlowHandoverDecisionFrame(beat.id, progress, truth);
   const linkVisualState = !isHandoverPresentation
@@ -1326,11 +1348,24 @@ export function GoldenFlowPrototype() {
               <span>{activeEyebrow}</span>
               <h2>{narrative.question}</h2>
               <p>{narrative.body}</p>
+              {primaryCueInCopyColumn && (
+                <PrimaryCue
+                  beat={beat}
+                  progress={progress}
+                  truth={truth}
+                  sceneConstellation={sceneConstellation}
+                  beamOffsetDeg={effectiveBeamOffset}
+                  interactionComplete={interactionComplete}
+                  onReplay={replay}
+                  segment={segment}
+                  availableControls={visibleControlIds}
+                />
+              )}
             </div>
             <div className={`golden-flow-event-dock__readout${showAnglePowerEe ? ' has-angle-power-ee' : ''}`}>
               {isHandoverPresentation && ['candidate', 'qualification', 'ttt', 'trace', 'commit', 'receipt'].includes(beat.id) ? (
                 <HandoverDecisionReadout beat={beat} progress={progress} truth={truth} />
-              ) : beat.id !== 'consequence' ? (
+              ) : beat.id !== 'consequence' && !primaryCueInCopyColumn ? (
                 <PrimaryCue
                   beat={beat}
                   progress={progress}
