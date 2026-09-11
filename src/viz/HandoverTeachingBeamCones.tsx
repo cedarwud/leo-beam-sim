@@ -22,6 +22,7 @@ import {
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
 import { SinrLiveCellFootprintRings } from './SinrLiveCellFootprintRings';
+import type { HandoverTeachingSceneStory } from '../scene/handoverStoryFrame';
 
 /**
  * The two cones a handover lecture draws.
@@ -38,21 +39,6 @@ import { SinrLiveCellFootprintRings } from './SinrLiveCellFootprintRings';
  * that feeds the rail and the caption arrives through `frameRef`, so the three
  * surfaces cannot drift apart.
  */
-export interface HandoverTeachingSceneStory {
-  readonly kind: TeachingHandoverKind;
-  readonly sourceSatelliteId: string;
-  readonly sourceCellId: number;
-  /** Inter only; intra re-points inside the source spacecraft. */
-  readonly targetSatelliteId: string | null;
-  /** Intra only; inter keeps the earth-fixed serving cell. */
-  readonly targetCellId: number | null;
-  /**
-   * Live identity for the lecture's beam labels. Carried so the layer can be
-   * remounted when the scene picks a different protagonist.
-   */
-  readonly storyKey: string;
-}
-
 export interface HandoverTeachingBeamConesProps {
   readonly story: HandoverTeachingSceneStory | null;
   /** The live lecture frame, by reference, so the scene tree never re-renders for it. */

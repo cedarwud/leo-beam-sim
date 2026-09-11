@@ -1,10 +1,8 @@
 import type { ComponentProps, JSX } from 'react';
 
 import type { SinrLiveConePalette } from '../constants/sinrLiveConeStyle';
-import {
-  HandoverTeachingBeamCones,
-  type HandoverTeachingSceneStory,
-} from '../viz/HandoverTeachingBeamCones';
+import { HandoverTeachingBeamCones } from '../viz/HandoverTeachingBeamCones';
+import type { HandoverTeachingSceneStory } from './handoverStoryFrame';
 import {
   SinrLiveCellBeamCallouts,
   type SinrLiveCellBeamCalloutsProps,

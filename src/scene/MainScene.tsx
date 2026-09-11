@@ -22,7 +22,7 @@ import type {
 import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import type { HomepageBeamMetricsProjection } from '../homepage/controller/contracts';
 import type { TeachingFrame } from '../homepage/teaching/handoverTeachingScript';
-import type { HandoverTeachingSceneStory } from '../viz/HandoverTeachingBeamCones';
+import type { HandoverTeachingSceneStory } from './handoverStoryFrame';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
@@ -157,6 +157,7 @@ import { Starfield } from '../components/ui/Starfield';
 import { BaseSceneLayout } from './BaseSceneLayout';
 import { TeachingFloor } from './TeachingFloor';
 import { SceneTelemetry } from './SceneTelemetry';
+import { SceneHandoverStoryCanvasTelemetry } from './SceneHandoverStoryCanvasTelemetry';
 import {
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
@@ -865,6 +866,7 @@ function ArtifactSceneContent({
     >
       {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
       <ScenePresentationCanvasTelemetry plan={presentationPlan} />
+      <SceneHandoverStoryCanvasTelemetry replayFrame={sceneFrame} />
       <SceneTelemetry
         visibleSatelliteCount={visibleSatellites.length}
         firstSatellitePosition={formatScenePosition(visibleSatellites[0]?.worldPos)}
@@ -3277,6 +3279,14 @@ function SceneRenderContent({
       <ScenePresentationCanvasTelemetry
         plan={presentationPlan}
         surfacePlan={coreSceneSurfacePlan}
+      />
+      <SceneHandoverStoryCanvasTelemetry
+        acceptedSnapshot={acceptedHandoverPresentation}
+        acceptedProducer={simSource === 'archived-tle' ? 'tle' : 'walker'}
+        resolveAcceptedCellId={cellIdFromLinkBudgetBeamId}
+        presentationView={handoverPresentation}
+        teachingStory={teachingSceneStory}
+        teachingFrameRef={teachingLectureFrameRef}
       />
       <SceneTelemetry
         visibleSatelliteCount={renderedLiveSatelliteMarkers.length}

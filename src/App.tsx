@@ -61,7 +61,7 @@ import type {
   TeachingFrame,
   TeachingHandoverKind,
 } from './homepage/teaching/handoverTeachingScript';
-import type { HandoverTeachingSceneStory } from './viz/HandoverTeachingBeamCones';
+import type { HandoverTeachingSceneStory } from './scene/handoverStoryFrame';
 import { InfoPanel } from './ui/InfoPanel';
 import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
 import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';

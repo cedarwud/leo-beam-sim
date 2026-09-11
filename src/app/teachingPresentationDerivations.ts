@@ -7,7 +7,7 @@ import {
 } from '../homepage/controller/homepageSatelliteDisplayName';
 import { formatHomepageBeamCellLabel } from '../homepage/controller/homepageBeamIdentity';
 import type { HomepageRailProjection } from '../homepage/controller/contracts';
-import type { HandoverTeachingSceneStory } from '../viz/HandoverTeachingBeamCones';
+import type { HandoverTeachingSceneStory } from '../scene/handoverStoryFrame';
 import type {
   IntraHandoverPresentation,
   SimState,

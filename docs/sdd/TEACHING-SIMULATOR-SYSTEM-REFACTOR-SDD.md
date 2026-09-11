@@ -217,3 +217,51 @@ Post-integration evidence: TypeScript PASS; scene-surface 11/11; appearance
 96/96; multi-candidate 182/182; browser plan 12/12 reasons; TLE, first-frame,
 full-run artifact, global-constellation and homepage-projection checks PASS.
 The known source-text pin failures remain recorded, not re-pinned.
+## 14. R2 execution record — 2026-09-12
+
+R2 establishes one immutable, renderer-neutral `HandoverStoryFrame` vocabulary
+for four existing source classes without changing their scientific or visual
+ownership:
+
+- accepted Walker or archived-TLE decision evidence;
+- natural, manual, or cinema presentation events;
+- authored teaching fixtures;
+- recorded artifact-replay frames.
+
+The public seam remains `src/scene/handoverStoryFrame.ts`. Its implementation is
+split under `src/scene/handover-story/` into contracts, validation/freezing,
+source adapters, and source-set arbitration; the largest production module is
+182 lines. The authored teaching scene descriptor moved out of the cone renderer
+and into this contract layer, so a visual sink no longer declares story truth.
+
+Every normalized frame carries exact source/target identity, phase, source clock,
+claim class, and provenance. Accepted EE keeps snapshot, episode, and source-frame
+identity; authored EE remains explicitly authored; replay preserves source-native
+beam tokens and fails closed on missing transition truth. Every frame fixes
+`decisionInputAllowed` to `false`.
+Production now publishes this boundary read-only on both the live/TLE scene and
+the artifact-replay scene. Canvas telemetry exposes the active source, available
+sources, story/pair identity, claim class, producer, accepted identity fields,
+and clock basis. It does not change a decision, advance a clock, select a winner,
+or alter any renderer input.
+
+R2 changes no simulation physics, EE values, candidate ranking, TTT, commit
+behavior, palette, geometry, camera, or lesson copy.
+
+Evidence:
+
+- `npm run lint`: PASS;
+- `npm run test:all`: PASS;
+- `npm run test:handover-story`: 14/14 PASS;
+- `npm run test:scene-surfaces`: 11/11 PASS;
+- `npm run test:appearance`: 96/96 PASS;
+- `npm run test:multi-candidate`: 182/182 PASS;
+- `npm run validate:architecture:boundaries`: 6/6 PASS, no new ratchet violations;
+- both scene-surface and handover-story production browser gates: PASS;
+- mutation proof: corrupting authored provenance makes focused tests RED, and
+  corrupting the canvas active-source publication makes the browser gate RED;
+  byte-exact restoration returns both gates to GREEN.
+
+`npm run check:baseline` remains RED only at the pre-existing obsolete
+`homepageHandoverControlsOwnership.test.ts` source-text pin encountered at the
+same location as before R2. It was not re-pinned or weakened in this phase.

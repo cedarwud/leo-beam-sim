@@ -1,103 +1,106 @@
 schema_version: 1
-updated_at: 2026-09-11T19:47:57+08:00
+updated_at: 2026-09-12T02:11:03+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
+integrated_source_commit: d66b816
 branch: refactor/teaching-simulator-system-v1
 worktree: /home/u24/demo/leo-beam-sim-refactor
-current_phase: R1-integrated
-status: ready_for_R2
+current_phase: R2-complete
+status: ready_for_R3
 
 parallel_tracks:
   teaching_design:
     status: deferred_by_owner
-    write_scope:
-      - courseware/**
-      - docs/teaching-design/**
-      - presentation artifacts
-    forbidden_scope:
-      - src/scene/**
-      - src/viz/**
-      - src/ui/homepage/**
   system_refactor:
     status: active
-    write_scope:
-      - docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
-      - docs/sdd/teaching-simulator-system-current-state.yaml
-      - src/scene/sceneSurfaceRegistry.ts
-      - src/scene/sceneSurfacePlan.ts
-      - focused tests and MainScene integration
+    next_phase: R3
+
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
   dirty_wip_present: false
-  active_sessions_present: true
   mutation_policy: do_not_touch_reset_stash_or_overwrite
 
-baseline:
-  lint:
-    result: pass
-  appearance_tests:
-    result: pass
-    passed: 85
-    failed: 0
-  check_baseline:
-    result: known_red
-    cause: obsolete_source_text_pin
-    file: src/app/homepageHandoverControlsOwnership.test.ts
-    runtime_regression_evidence: none
-
-r1_goal: >-
-  Replace the twelve core beam/handover JSX mount expressions with one pure,
-  typed scene-surface plan while preserving current behavior.
-
-next_allowed_actions:
-  - define one immutable HandoverStoryFrame vocabulary
-  - adapt accepted live/manual/cinema events into that vocabulary
-  - adapt deterministic teaching frames without making them decision truth
-  - add parity and provenance tests before changing any renderer
-
-forbidden_actions:
-  - change simulation physics or EE values
-  - change handover ranking, TTT, or commit behavior
-  - tune colors, opacity, geometry, or camera
-  - repair unrelated baseline/browser failures
-  - edit the protected parent checkout
+fixed_constraints:
+  - do_not_change_simulation_physics_or_EE_values
+  - do_not_change_handover_ranking_TTT_or_commit_behavior
+  - do_not_tune_palette_geometry_camera_or_lesson_copy
+  - do_not_repair_unrelated_baseline_failures
 
 r1_results:
   production_surfaces_migrated: 12
-  unit_tests:
-    scene_surfaces: 11
-    appearance: 96
-    multi_candidate: 182
-  architecture_boundary_checks: 6
-  browser_surface_reasons: 12
+  scene_surface_tests: 11/11
+  browser_surface_reasons: 12/12
   browser_gate: pass
   mutation_proof: red_then_green
+
+r2_goal: >-
+  Normalize accepted decisions, visible presentation events, authored teaching
+  fixtures, and artifact replay frames into one immutable, provenance-bearing
+  HandoverStoryFrame vocabulary without changing renderer behavior.
+
+r2_results:
+  public_boundary: src/scene/handoverStoryFrame.ts
+  production_modules:
+    - src/scene/handover-story/contracts.ts
+    - src/scene/handover-story/frame.ts
+    - src/scene/handover-story/acceptedAdapter.ts
+    - src/scene/handover-story/presentationAdapter.ts
+    - src/scene/handover-story/teachingAdapter.ts
+    - src/scene/handover-story/replayAdapter.ts
+    - src/scene/handover-story/frameSet.ts
+  largest_production_module_lines: 182
+  normalized_sources:
+    - accepted_walker_or_archived_tle_decision
+    - natural_manual_or_cinema_presentation
+    - authored_teaching_fixture
+    - artifact_replay_frame
+  invariants:
+    - normalized_story_is_read_only_and_never_a_decision_input
+    - accepted_metrics_keep_snapshot_episode_and_source_frame_identity
+    - authored_teaching_metrics_remain_explicitly_authored
+    - replay_preserves_source_native_beam_tokens_and_missing_truth
+    - no_adapter_imports_React_Three_or_viz_renderers
+    - adapters_create_no_Date_or_performance_clock
+  production_projection:
+    component: src/scene/SceneHandoverStoryCanvasTelemetry.tsx
+    live_lane_connected: true
+    artifact_replay_lane_connected: true
+    mutates_decision_or_renderer_input: false
+    canvas_fields:
+      - active_source
+      - available_sources
+      - story_id_kind_phase_pair
+      - producer_and_claim_class
+      - snapshot_episode_source_frame_identity
+      - clock_basis
+      - decision_input_allowed
+
+r2_validation:
+  lint: pass
+  test_all: pass
+  handover_story_tests: 14/14
+  scene_surface_tests: 11/11
+  appearance_tests: 96/96
+  multi_candidate_tests: 182/182
+  architecture_boundary_checks: 6/6
+  scene_surface_browser_gate: pass
+  handover_story_browser_gate: pass
+  mutation_proof:
+    authored_provenance_corruption: red_then_green
+    production_canvas_source_corruption: red_then_green
+  baseline_difference:
+    check_baseline: known_red
+    new_failure_signatures: 0
 
 known_baseline_reds:
   - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
   - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
-  - scripts/audit/render-timeline.test.ts not reached by an npm aggregate
-  - scripts/lib/browser-gate.test.ts not reached by an npm aggregate
+  - scripts/audit/render-timeline.test.ts historically outside an aggregate
+  - scripts/lib/browser-gate.test.ts historically outside an aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
 
-integrated_checkpoint:
-  source_branch: wip/ee-handover-authority-2026-09-05
-  source_commit: d66b816
-  parent_worktree_clean: true
-  remote_pushed: true
-  merge_semantics:
-    - teaching suppresses all four live event-cone surfaces through the typed plan
-    - beam-info off remains off during handover
-  validation:
-    lint: pass
-    scene_surfaces: 11/11
-    appearance: 96/96
-    multi_candidate: 182/182
-    browser_surface_reasons: 12/12
-    tle_archive: pass
-    generated_artifacts: pass
-    mutation_live_effect_suppression: red_then_green
-    mutation_callout_control: red_then_green
-
-next_phase_candidate: R2
-next_phase_gate: normalize live and deterministic teaching inputs into one HandoverStoryFrame vocabulary
+next_phase_candidate: R3
+next_phase_gate: >-
+  Produce one full SceneRenderPlan in which every registered user-visible
+  surface has a story owner, source class, mount and visibility reason, and
+  stable render identity; production and audit must consume the same composer.
