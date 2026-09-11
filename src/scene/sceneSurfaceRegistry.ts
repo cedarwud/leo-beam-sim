@@ -1,6 +1,9 @@
 export const SCENE_SURFACE_IDS = [
   'scene.layout',
+  'scene.cinematic-spotlight',
+  'ground.campus',
   'ground.teaching-floor',
+  'ground.horizon-boundary',
   'ground.uav',
   'ground.ues',
   'motion.handover-links',
@@ -23,6 +26,7 @@ export const SCENE_SURFACE_IDS = [
   'beam.candidate-footprints',
   'beam.callouts',
   'teaching.handover-cones',
+  'annotation.narrative-caption',
   'handover.intra-shockwave',
   'handover.toast',
   'diagnostics.fps',
@@ -38,6 +42,7 @@ export type SceneSurfaceDomain =
   | 'beam'
   | 'handover'
   | 'teaching'
+  | 'annotation'
   | 'diagnostics';
 
 export type SceneSurfaceSourceClass =
@@ -46,6 +51,7 @@ export type SceneSurfaceSourceClass =
   | 'accepted-snapshot'
   | 'presentation'
   | 'teaching-fixture'
+  | 'artifact-replay'
   | 'mixed';
 
 export interface SceneSurfaceDefinition {
@@ -64,7 +70,10 @@ function surface(
 }
 export const SCENE_SURFACE_REGISTRY = Object.freeze({
   'scene.layout': surface({ id: 'scene.layout', domain: 'layout', rendererModule: './BaseSceneLayout', rendererSymbol: 'BaseSceneLayout', sourceClass: 'mixed', firstManagedPhase: 'R3' }),
+  'scene.cinematic-spotlight': surface({ id: 'scene.cinematic-spotlight', domain: 'layout', rendererModule: './BaseSceneLayout', rendererSymbol: 'BaseSceneLayout', sourceClass: 'presentation', firstManagedPhase: 'R3' }),
+  'ground.campus': surface({ id: 'ground.campus', domain: 'ground', rendererModule: './BaseSceneLayout', rendererSymbol: 'BaseSceneLayout', sourceClass: 'static', firstManagedPhase: 'R3' }),
   'ground.teaching-floor': surface({ id: 'ground.teaching-floor', domain: 'ground', rendererModule: './TeachingFloor', rendererSymbol: 'TeachingFloor', sourceClass: 'static', firstManagedPhase: 'R3' }),
+  'ground.horizon-boundary': surface({ id: 'ground.horizon-boundary', domain: 'ground', rendererModule: './SceneHorizonBoundary', rendererSymbol: 'SceneHorizonBoundary', sourceClass: 'live-frame', firstManagedPhase: 'R3' }),
   'ground.uav': surface({ id: 'ground.uav', domain: 'ground', rendererModule: '../components/scene/UAV', rendererSymbol: 'UAV', sourceClass: 'live-frame', firstManagedPhase: 'R3' }),
   'ground.ues': surface({ id: 'ground.ues', domain: 'ground', rendererModule: './SceneGroundUeLayer', rendererSymbol: 'SceneGroundUeLayer', sourceClass: 'mixed', firstManagedPhase: 'R3' }),
   'motion.handover-links': surface({ id: 'motion.handover-links', domain: 'motion', rendererModule: './SceneHandoverMotionLayers', rendererSymbol: 'SceneHandoverMotionLayers', sourceClass: 'presentation', firstManagedPhase: 'R3' }),
@@ -87,6 +96,7 @@ export const SCENE_SURFACE_REGISTRY = Object.freeze({
   'beam.candidate-footprints': surface({ id: 'beam.candidate-footprints', domain: 'beam', rendererModule: './SceneSinrLiveBeamLayers', rendererSymbol: 'SceneSinrLiveBeamLayers', sourceClass: 'presentation', firstManagedPhase: 'R1' }),
   'beam.callouts': surface({ id: 'beam.callouts', domain: 'beam', rendererModule: './SceneSinrLiveBeamLayers', rendererSymbol: 'SceneSinrLiveBeamLayers', sourceClass: 'mixed', firstManagedPhase: 'R1' }),
   'teaching.handover-cones': surface({ id: 'teaching.handover-cones', domain: 'teaching', rendererModule: './SceneSinrLiveBeamLayers', rendererSymbol: 'SceneSinrLiveBeamLayers', sourceClass: 'teaching-fixture', firstManagedPhase: 'R1' }),
+  'annotation.narrative-caption': surface({ id: 'annotation.narrative-caption', domain: 'annotation', rendererModule: './SceneNarrativeCaption', rendererSymbol: 'SceneNarrativeCaption', sourceClass: 'accepted-snapshot', firstManagedPhase: 'R3' }),
   'handover.intra-shockwave': surface({ id: 'handover.intra-shockwave', domain: 'handover', rendererModule: './SceneIntraGroundShockwave', rendererSymbol: 'SceneIntraGroundShockwave', sourceClass: 'mixed', firstManagedPhase: 'R3' }),
   'handover.toast': surface({ id: 'handover.toast', domain: 'handover', rendererModule: './SceneHandoverToastLayer', rendererSymbol: 'SceneHandoverToastLayer', sourceClass: 'presentation', firstManagedPhase: 'R3' }),
   'diagnostics.fps': surface({ id: 'diagnostics.fps', domain: 'diagnostics', rendererModule: './FPSCounter', rendererSymbol: 'FPSCounter', sourceClass: 'static', firstManagedPhase: 'R3' }),

@@ -158,6 +158,9 @@ import { BaseSceneLayout } from './BaseSceneLayout';
 import { TeachingFloor } from './TeachingFloor';
 import { SceneTelemetry } from './SceneTelemetry';
 import { SceneHandoverStoryCanvasTelemetry } from './SceneHandoverStoryCanvasTelemetry';
+import { SceneRenderPlanCanvasTelemetry } from './SceneRenderPlanCanvasTelemetry';
+import { resolveSceneHandoverStoryFrameSet } from './sceneHandoverStoryFrameSet';
+import { resolveSceneRenderPlan } from './sceneRenderPlan';
 import {
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
@@ -858,14 +861,60 @@ function ArtifactSceneContent({
     () => sceneFrame.satellites.filter(satellite => satellite.visible),
     [sceneFrame.satellites],
   );
+  const storyFrames = resolveSceneHandoverStoryFrameSet({ replayFrame: sceneFrame });
+  const sceneRenderPlan = resolveSceneRenderPlan({
+    lane: 'artifact-replay',
+    presentation: presentationPlan,
+    storyFrames,
+    corePlan: null,
+    controls: {
+      campusVisible,
+      showHorizonBoundary: false,
+      showUav: false,
+      afterFirstPaint: true,
+      showOrbitTrail: false,
+      showSpineParticles: false,
+      showGroundRipple: false,
+      showLiveSatelliteMarkers: false,
+      showSinrLiveCellBeams: false,
+      showLiveSceneEffects: false,
+      showSceneOverlays: false,
+      showHandoverToastOverlay: false,
+      homepageVisualIdentity: false,
+      showFpsCounter: true,
+      cinematicSpotlightActive: false,
+      narrativeCaptionEnabled: false,
+    },
+    story: {
+      suppressNaturalHandoverLayers: false,
+      hideTimelineEffects: false,
+      concurrentIntraVisualSuppressed: false,
+      multiCandidateSceneLayerVisible: false,
+      candidateComparisonSceneActive: false,
+      multiCandidateCentralOverlayActive: false,
+      multiCandidateIdentityTransitionActive: false,
+      acceptedCueHasTransition: false,
+      handoverEventCueDrawable: false,
+      handoverPresentationActive: false,
+      handoverPresentationHasEvent: false,
+      manualHandoverPresentationActive: false,
+      manualHandoverHasEvent: false,
+    },
+    inventory: {
+      visibleSatelliteCount: visibleSatellites.length,
+      visibleUeCount: sceneFrame.ues.filter(ue => ue.worldPos !== undefined).length,
+      narrativeCaptionPresent: false,
+    },
+  });
   return (
     <BaseSceneLayout
       sceneConfig={sceneConfig}
       controlsRef={controlsRef}
-      campusVisible={campusVisible && presentationPlan.visible.campus}
+      campusVisible={sceneRenderPlan.surfaces['ground.campus'].visible}
     >
-      {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
+      {sceneRenderPlan.surfaces['ground.teaching-floor'].mounted && <TeachingFloor />}
       <ScenePresentationCanvasTelemetry plan={presentationPlan} />
+      <SceneRenderPlanCanvasTelemetry plan={sceneRenderPlan} />
       <SceneHandoverStoryCanvasTelemetry replayFrame={sceneFrame} />
       <SceneTelemetry
         visibleSatelliteCount={visibleSatellites.length}
@@ -940,7 +989,7 @@ function ArtifactSceneContent({
         controlsRef={controlsRef}
         shouldClearReplayAttributes={true}
       />
-      {presentationPlan.visible.ues && (
+      {sceneRenderPlan.surfaces['ground.ues'].mounted && (
         <GroundScene
           ues={sceneFrame.ues
             .filter((u) => u.worldPos !== undefined)
@@ -954,9 +1003,7 @@ function ArtifactSceneContent({
           markerShape={ueMarkerShape}
         />
       )}
-      {(presentationPlan.visible['selected-satellite']
-        || presentationPlan.visible['candidate-satellite']
-        || presentationPlan.visible['context-satellites']) && visibleSatellites.map((satellite) => {
+      {sceneRenderPlan.surfaces['satellite.markers'].mounted && visibleSatellites.map((satellite) => {
         const eventRole = sceneFrame.eventRoles.bySatId.get(satellite.id);
         return (
           <SatelliteMarker
@@ -974,7 +1021,7 @@ function ArtifactSceneContent({
           />
         );
       })}
-      {presentationPlan.visible.diagnostics && <FPSCounter />}
+      {sceneRenderPlan.surfaces['diagnostics.fps'].mounted && <FPSCounter />}
     </BaseSceneLayout>
   );
 }
@@ -3265,21 +3312,76 @@ function SceneRenderContent({
       ? canonicalHandoverEvent.reason
       : undefined,
   });
+  const sceneHandoverStoryFrames = resolveSceneHandoverStoryFrameSet({
+    acceptedSnapshot: acceptedHandoverPresentation,
+    acceptedProducer: simSource === 'archived-tle' ? 'tle' : 'walker',
+    resolveAcceptedCellId: cellIdFromLinkBudgetBeamId,
+    presentationView: handoverPresentation,
+    teachingStory: teachingSceneStory,
+    teachingFrame: teachingLectureFrameRef?.current ?? null,
+  });
+  const sceneRenderPlan = resolveSceneRenderPlan({
+    lane: simSource === 'archived-tle' ? 'archived-tle' : 'live',
+    presentation: presentationPlan,
+    storyFrames: sceneHandoverStoryFrames,
+    corePlan: coreSceneSurfacePlan,
+    controls: {
+      campusVisible,
+      showHorizonBoundary: sceneLane === 'sinr-live',
+      showUav,
+      afterFirstPaint,
+      showOrbitTrail,
+      showSpineParticles,
+      showGroundRipple,
+      showLiveSatelliteMarkers,
+      showSinrLiveCellBeams,
+      showLiveSceneEffects,
+      showSceneOverlays,
+      showHandoverToastOverlay,
+      homepageVisualIdentity,
+      showFpsCounter: showArtifactFpsCounter,
+      cinematicSpotlightActive,
+      narrativeCaptionEnabled: narrativeCaptionActive,
+    },
+    story: {
+      suppressNaturalHandoverLayers: handoverDisplayIsolation.suppressNaturalHandoverLayers,
+      hideTimelineEffects: handoverDisplayIsolation.hideTimelineEffects,
+      concurrentIntraVisualSuppressed,
+      multiCandidateSceneLayerVisible,
+      candidateComparisonSceneActive,
+      multiCandidateCentralOverlayActive,
+      multiCandidateIdentityTransitionActive,
+      acceptedCueHasTransition: latchedAuthorityTransition !== null,
+      handoverEventCueDrawable: handoverEventCuePolicy.drawable,
+      handoverPresentationActive: handoverPresentation.active,
+      handoverPresentationHasEvent: handoverPresentation.event !== null,
+      manualHandoverPresentationActive,
+      manualHandoverHasEvent: manualHandoverEvent !== null,
+    },
+    inventory: {
+      visibleSatelliteCount: renderedLiveSatelliteMarkers.length,
+      visibleUeCount: displayedUes.filter(ue => ue.worldPos !== undefined).length,
+      narrativeCaptionPresent: narrativeCaption !== null,
+    },
+  });
 
   return (
     <BaseSceneLayout
       sceneConfig={sceneConfig}
       controlsRef={controlsRef}
-      campusVisible={campusVisible && presentationPlan.visible.campus}
-      cinematicSpotlightActive={cinematicSpotlightActive && presentationPlan.visible['event-effects']}
+      campusVisible={sceneRenderPlan.surfaces['ground.campus'].visible}
+      cinematicSpotlightActive={sceneRenderPlan.surfaces['scene.cinematic-spotlight'].visible}
       effectiveCinematicMode={effectiveCinematicMode}
-      cinematicSpotlightTargets={presentationPlan.visible['event-effects'] ? cinematicSpotlightTargets : []}
+      cinematicSpotlightTargets={sceneRenderPlan.surfaces['scene.cinematic-spotlight'].visible
+        ? cinematicSpotlightTargets
+        : []}
     >
-      {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
+      {sceneRenderPlan.surfaces['ground.teaching-floor'].mounted && <TeachingFloor />}
       <ScenePresentationCanvasTelemetry
         plan={presentationPlan}
         surfacePlan={coreSceneSurfacePlan}
       />
+      <SceneRenderPlanCanvasTelemetry plan={sceneRenderPlan} />
       <SceneHandoverStoryCanvasTelemetry
         acceptedSnapshot={acceptedHandoverPresentation}
         acceptedProducer={simSource === 'archived-tle' ? 'tle' : 'walker'}
@@ -3400,21 +3502,21 @@ function SceneRenderContent({
         controlsRef={controlsRef}
       />
       <SceneHorizonBoundary
-        visible={sceneLane === 'sinr-live' && presentationPlan.visible['context-satellites']}
+        visible={sceneRenderPlan.surfaces['ground.horizon-boundary'].visible}
         satellites={viz.displaySats}
       />
       <SceneNarrativeCaption
         caption={narrativeCaption}
-        enabled={narrativeCaptionActive}
+        enabled={sceneRenderPlan.surfaces['annotation.narrative-caption'].visible}
       />
-      {presentationPlan.visible.uav && showUav && afterFirstPaint && (
+      {sceneRenderPlan.surfaces['ground.uav'].mounted && (
         <Suspense fallback={null}>
           <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
         </Suspense>
       )}
 
       <SceneGroundUeLayer
-        visible={presentationPlan.visible.ues}
+        visible={sceneRenderPlan.surfaces['ground.ues'].visible}
         ues={displayedUes}
         marker={{
           markerMultiplier: visualScaleMultipliers.ueMarkerMultiplier,
@@ -3447,13 +3549,11 @@ function SceneRenderContent({
       <SceneHandoverMotionLayers
         reducedMotion={runtime.reducedMotion}
         orbitTrail={{
-          mounted: presentationPlan.visible['motion-guides'] && showOrbitTrail,
+          mounted: sceneRenderPlan.surfaces['motion.orbit-trail'].mounted,
           satellites: orbitTrailSatellites,
         }}
         spineParticles={{
-          mounted: presentationPlan.visible['motion-guides']
-            && showSpineParticles
-            && !handoverDisplayIsolation.suppressNaturalHandoverLayers,
+          mounted: sceneRenderPlan.surfaces['motion.spine-particles'].mounted,
           satellites: viz.displaySats,
           satBeams: viz.satBeams,
           plans: multiCandidateCentralOverlayActive
@@ -3461,9 +3561,7 @@ function SceneRenderContent({
             : sinrLiveCellTruthSpineParticlePlans,
         }}
         groundRipple={{
-          mounted: presentationPlan.visible['event-effects']
-            && showGroundRipple
-            && !handoverDisplayIsolation.suppressNaturalHandoverLayers,
+          mounted: sceneRenderPlan.surfaces['motion.ground-ripple'].mounted,
           satBeams: viz.satBeams,
           footprintRadius: viz.footprintRadiusWorld,
           servingEnabled: runtime.effectsEnabled.servingRipple,
@@ -3479,7 +3577,7 @@ function SceneRenderContent({
       <SceneSatelliteMarkerLayer
         satellites={renderedLiveSatelliteMarkers}
         visibility={{
-          mounted: showLiveSatelliteMarkers,
+          mounted: sceneRenderPlan.surfaces['satellite.markers'].mounted,
           selectedSatellite: presentationPlan.visible['selected-satellite'],
           candidateSatellite: presentationPlan.visible['candidate-satellite'],
           contextSatellites: presentationPlan.visible['context-satellites'],
@@ -3527,25 +3625,20 @@ function SceneRenderContent({
           onFocusJoinKeyChange,
         }}
         central={{
-          active: multiCandidateSceneLayerVisible,
+          active: sceneRenderPlan.surfaces['candidate.central'].mounted,
           presentation: multiCandidateScenePresentationForRender,
           widthScale: beamDisplaySpec.coneWidthScale * MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER,
           renderReceipt: multiCandidateSceneRenderReceipt,
         }}
         review={{
-          active: candidateComparisonSceneActive
-            && showSinrLiveCellBeams
-            && !multiCandidateSceneLayerVisible,
+          active: sceneRenderPlan.surfaces['candidate.review'].mounted,
           presentation: multiCandidateCandidateReviewPresentation,
           widthScale: beamDisplaySpec.coneWidthScale,
           renderReceipt: multiCandidateCandidateReviewSceneRenderReceipt,
         }}
       />
       <SceneAcceptedHandoverCue
-        mounted={(multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
-          && presentationPlan.visible['event-effects']
-          && latchedAuthorityTransition !== null
-          && handoverEventCuePolicy.drawable}
+        mounted={sceneRenderPlan.surfaces['handover.accepted-cue'].mounted}
         transition={latchedAuthorityTransition}
         placementByCellId={sinrLiveCellPlacementById}
         progress01={handoverPresentation.progress01}
@@ -3566,7 +3659,7 @@ function SceneRenderContent({
         cones={[
           {
             key: 'non-serving',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['beam.non-serving-cones'].mounted,
             items: sinrLiveCellNonServingConeItems,
             layer: 'nonServing',
@@ -3575,7 +3668,7 @@ function SceneRenderContent({
           },
           {
             key: 'serving',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['beam.serving-cones'].mounted,
             items: sinrLiveCellBeamConeItems,
             layer: 'serving',
@@ -3596,7 +3689,7 @@ function SceneRenderContent({
           },
           {
             key: 'cinema-inter-serving-fan',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['beam.cinema-inter-serving-fan'].mounted,
             items: sinrLiveCinemaInterServingFanConeItems,
             layer: 'serving',
@@ -3612,7 +3705,7 @@ function SceneRenderContent({
           },
           {
             key: 'candidate',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['beam.candidate-cones'].mounted,
             items: sinrLiveCandidateBeamConeItems,
             layer: 'candidate',
@@ -3628,7 +3721,7 @@ function SceneRenderContent({
           },
           {
             key: 'handover-pulse',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['handover.pulse-cones'].mounted,
             items: additiveHandoverPulseConeItems,
             layer: 'pulse',
@@ -3637,7 +3730,7 @@ function SceneRenderContent({
           },
           {
             key: 'triggered-intra',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['handover.triggered-intra-cones'].mounted,
             items: additiveTriggeredIntraConeItems,
             layer: 'triggered',
@@ -3646,7 +3739,7 @@ function SceneRenderContent({
           },
           {
             key: 'cinema-handover-pair',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['handover.cinema-pair-cones'].mounted,
             items: additiveCinemaHandoverPairConeItems,
             layer: 'triggered',
@@ -3655,7 +3748,7 @@ function SceneRenderContent({
           },
           {
             key: 'authority-transition',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['handover.authority-transition-cones'].mounted,
             items: authorityHandoverPairConeItems,
             layer: 'triggered',
@@ -3666,9 +3759,9 @@ function SceneRenderContent({
         footprints={[
           {
             key: 'serving',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['beam.serving-footprints'].mounted,
-            visible: coreSceneSurfacePlan
+            visible: sceneRenderPlan
               .surfaces['beam.serving-footprints'].visible,
             items: sinrLiveCellBeamConeItems,
             layer: 'serving',
@@ -3682,7 +3775,7 @@ function SceneRenderContent({
           },
           {
             key: 'candidate',
-            mounted: coreSceneSurfacePlan
+            mounted: sceneRenderPlan
               .surfaces['beam.candidate-footprints'].mounted,
             items: sinrLiveCandidateBeamConeItems,
             layer: 'candidate',
@@ -3691,7 +3784,7 @@ function SceneRenderContent({
           },
         ]}
         callouts={{
-          mounted: coreSceneSurfacePlan
+          mounted: sceneRenderPlan
             .surfaces['beam.callouts'].mounted,
           items: beamInfoItems,
           servingSinrByCellId: sinrLiveCellServingSinrByCellId,
@@ -3715,7 +3808,7 @@ function SceneRenderContent({
         }}
         teaching={teachingSurfaceReady && teachingSceneStory !== null && teachingLectureFrameRef !== undefined
           ? {
-            mounted: coreSceneSurfacePlan.surfaces['teaching.handover-cones'].mounted,
+            mounted: sceneRenderPlan.surfaces['teaching.handover-cones'].mounted,
             story: teachingSceneStory,
             frameRef: teachingLectureFrameRef,
             placementByCellId: sinrLiveCellPlacementById,
@@ -3733,27 +3826,14 @@ function SceneRenderContent({
           gated by showSinrLiveCellBeams). The SatelliteBeams component survives only
           as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
       <SceneIntraGroundShockwave
-        mounted={presentationPlan.visible['event-effects']
-          && showLiveSceneEffects
-          && !handoverDisplayIsolation.hideTimelineEffects
-          && !handoverDisplayIsolation.suppressNaturalHandoverLayers
-          && !concurrentIntraVisualSuppressed}
+        mounted={sceneRenderPlan.surfaces['handover.intra-shockwave'].mounted}
         vizFrame={viz}
         runtime={runtime}
         identityColorBySatelliteId={multiCandidateSatelliteColorById}
         identityColorBySatelliteBeamId={liveBeamIdentityColorBySatelliteBeam}
       />
       <SceneHandoverToastLayer
-        mounted={showSceneOverlays
-          && presentationPlan.visible['event-effects']
-          && showHandoverToastOverlay
-          && !homepageVisualIdentity
-          && (
-            (manualHandoverPresentationActive && manualHandoverEvent !== null)
-            || (handoverPresentation.active && handoverPresentation.event !== null)
-            || (!handoverDisplayIsolation.hideTimelineEffects
-              && !handoverDisplayIsolation.suppressNaturalHandoverLayers)
-          )}
+        mounted={sceneRenderPlan.surfaces['handover.toast'].mounted}
         toast={{
           frame: sceneFrame,
           interTriggerSec: handoverTriggerTimeSec,
@@ -3795,7 +3875,7 @@ function SceneRenderContent({
             : null,
         }}
       />
-      {presentationPlan.visible.diagnostics && showArtifactFpsCounter && <FPSCounter />}
+      {sceneRenderPlan.surfaces['diagnostics.fps'].mounted && <FPSCounter />}
     </BaseSceneLayout>
   );
 }

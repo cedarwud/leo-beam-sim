@@ -265,3 +265,70 @@ Evidence:
 `npm run check:baseline` remains RED only at the pre-existing obsolete
 `homepageHandoverControlsOwnership.test.ts` source-text pin encountered at the
 same location as before R2. It was not re-pinned or weakened in this phase.
+
+## 15. R3 execution record — 2026-09-12
+
+R3 replaces the remaining top-level scene mount decisions with one exhaustive
+`SceneRenderPlan`. The plan is produced for the live, archived-TLE, and
+artifact-replay lanes and contains one decision for every registered
+user-visible surface.
+
+The registry now contains 31 surfaces. In addition to the twelve R1 core
+beam/handover surfaces, R3 explicitly registers the cinematic spotlight,
+campus, horizon boundary, and narrative caption that were previously outside
+the composition inventory. Each decision carries:
+
+```text
+mounted · visible · owner · source · reasonCode
+renderIdentity · storyId · storyPairKey
+```
+
+The public seam is `src/scene/sceneRenderPlan.ts`; implementation is split under
+`src/scene/scene-render-plan/` into contracts, decisions, composition, and
+formatting. `src/scene/sceneHandoverStoryFrameSet.ts` is the one raw-input adapter
+shared by production and later audit callers.
+
+Both production scene paths now consume the plan mechanically. The live/TLE
+path reads it for the campus/floor, spotlight, horizon cue, UAV/UEs, motion
+layers, satellite markers, candidate views, accepted cue, all core beam layers,
+caption, shockwave, toast, and diagnostics. The artifact-replay path uses the
+same vocabulary for its campus/floor, UE, satellite, and diagnostics surfaces.
+No scientific producer, candidate ranking, TTT, commit, palette, geometry,
+camera, or lesson value was changed.
+
+The initial migration exposed one real parity defect before acceptance: the
+first draft of the horizon-boundary decision omitted the existing
+`sceneLane === 'sinr-live'` restriction. R3 now carries that restriction as an
+explicit `showHorizonBoundary` control. The 4,096-case parity test was also
+corrected to sample a non-correlated pseudo-random bit; the earlier low-bit LCG
+sequence could make a mutation vacuously green.
+
+`SceneRenderPlanCanvasTelemetry` publishes the complete plan on the production
+canvas: lane and story identity; mounted and visible sets; and one owner,
+source, reason, and render identity for each of the 31 surfaces. The browser
+gate cross-checks the twelve R1 core decisions against the R3 plan and enters a
+real authored Intra lecture, where it requires actual teaching cone geometry
+before accepting the teaching surface as mounted.
+
+Evidence:
+
+- `npm run lint`: PASS;
+- `npm run test:all`: PASS, including the new R3 aggregate;
+- `npm run test:scene-render-plan`: 6/6 PASS, including 4,096 mount-parity samples;
+- R2 handover-story tests: 14/14 PASS;
+- R1 scene-surface tests: 11/11 PASS;
+- appearance tests: 96/96 PASS;
+- multi-candidate tests: 182/182 PASS;
+- architecture boundary checks: 6/6 PASS, no new ratchet violations;
+- core surface browser gate: 12/12 PASS;
+- handover-story browser gate: PASS;
+- full scene-render browser gate: 31/31 PASS, including R1/R3 parity and real
+  teaching geometry;
+- mutation proof: removing the horizon lane gate makes the parity test RED;
+  removing the owner publication makes the browser gate RED; byte-exact
+  restoration returns both to GREEN.
+
+`npm run check:baseline` still has exactly the known obsolete
+`homepageHandoverControlsOwnership.test.ts` source-text pin failure: 126 tests
+pass and that one test fails. R3 did not re-pin, weaken, or hide it. R4 may now
+begin at the scene/rail/caption identity boundary.
