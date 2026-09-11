@@ -212,13 +212,6 @@ test('layer wrappers preserve mount gates without invoking WebGL child renderers
 test('motion and multi-candidate wrappers expose only their presentation children', () => {
   const motionProps: SceneHandoverMotionLayersProps = {
     reducedMotion: true,
-    links: {
-      mounted: false,
-      satellites: [],
-      eventRoles: new Map(),
-      satBeams: new Map(),
-      primaryUeAnchor: undefined,
-    },
     orbitTrail: { mounted: false, satellites: [] },
     spineParticles: {
       mounted: false,

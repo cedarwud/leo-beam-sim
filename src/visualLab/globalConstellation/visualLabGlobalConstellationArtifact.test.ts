@@ -9,10 +9,11 @@ import {
   VISUAL_LAB_GLOBAL_CONSTELLATION_INSTANT_UTC,
   type VisualLabGlobalConstellationArtifact,
 } from './visualLabGlobalConstellationArtifact';
+import { LATEST_TLE_REFERENCE_ARTIFACT_DATE } from '../../tle/latestTleDefaults';
 
 async function readArtifact(constellation: 'oneweb' | 'starlink'): Promise<VisualLabGlobalConstellationArtifact> {
   const raw = JSON.parse(
-    await readFile(`public/global-first-frame/${constellation}-20260825.json`, 'utf8'),
+    await readFile(`public/global-first-frame/${constellation}-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`, 'utf8'),
   ) as unknown;
   return parseVisualLabGlobalConstellationArtifact(raw, { expectedConstellation: constellation });
 }

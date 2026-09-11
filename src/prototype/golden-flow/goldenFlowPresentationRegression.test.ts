@@ -154,7 +154,12 @@ assert.doesNotMatch(prototypeSource, /data-testid="golden-flow-angle-magnifier"/
 assert.doesNotMatch(prototypeSource, /data-testid="golden-flow-offaxis-focus"/);
 assert.match(prototypeSource, /data-testid="golden-flow-angle-teaching-rail"/);
 assert.match(prototypeSource, /data-angle-visual-scale=\{OFF_AXIS_INSET_VISUAL_SCALE\}/);
-assert.match(prototypeSource, /兩者皆由左往右量測/);
+// The rail split into two independently-anchored panels (elevation
+// top-left, off-axis top-right; see GoldenFlowPrototype.tsx
+// AngleTeachingRail) so each panel carries its own short convention note
+// instead of one shared "兩者皆由左往右量測" line above both figures.
+assert.match(prototypeSource, /地面端頂點，左往右量測/);
+assert.match(prototypeSource, /衛星端頂點，左往右量測/);
 assert.match(prototypeSource, /圖形角距 ×\{OFF_AXIS_INSET_VISUAL_SCALE\}，計算仍用實際 θ/);
 assert.match(prototypeSource, /半功率邊界 ±\{halfPowerDeg\.toFixed\(2\)\}°/);
 assert.match(sceneSource, /readonly mode: 'elevation' \| 'off-axis'/);

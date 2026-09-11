@@ -28,7 +28,6 @@ function baseInput(): CoreSceneSurfacePlanInput {
     runtime: {
       showSinrLiveCellBeams: true,
       showBeamCallouts: true,
-      homepageHandoverBeamInfoActive: false,
       teachingLectureActive: false,
     },
     story: {
@@ -169,6 +168,18 @@ test('teaching owns the story, suppresses live callouts, and uses its own input 
     plan.surfaces['teaching.handover-cones'].source,
     'teaching-fixture',
   );
+  for (const id of [
+    'handover.pulse-cones',
+    'handover.triggered-intra-cones',
+    'handover.cinema-pair-cones',
+    'handover.authority-transition-cones',
+  ] as const) {
+    assert.equal(plan.surfaces[id].mounted, false);
+    assert.equal(
+      plan.surfaces[id].mountReason,
+      'teaching-story-suppresses-live-effects',
+    );
+  }
 });
 
 test('empty item inventories fail closed with an explicit reason', () => {
@@ -305,16 +316,24 @@ function legacySurfaceState(
         && input.inventory.candidateConeCount > 0,
     ),
     'handover.pulse-cones': state(
-      input.stage.eventEffects && input.inventory.pulseConeCount > 0,
+      input.stage.eventEffects
+        && !input.runtime.teachingLectureActive
+        && input.inventory.pulseConeCount > 0,
     ),
     'handover.triggered-intra-cones': state(
-      input.stage.eventEffects && input.inventory.triggeredIntraConeCount > 0,
+      input.stage.eventEffects
+        && !input.runtime.teachingLectureActive
+        && input.inventory.triggeredIntraConeCount > 0,
     ),
     'handover.cinema-pair-cones': state(
-      input.stage.eventEffects && input.inventory.cinemaPairConeCount > 0,
+      input.stage.eventEffects
+        && !input.runtime.teachingLectureActive
+        && input.inventory.cinemaPairConeCount > 0,
     ),
     'handover.authority-transition-cones': state(
-      input.stage.eventEffects && input.inventory.authorityTransitionConeCount > 0,
+      input.stage.eventEffects
+        && !input.runtime.teachingLectureActive
+        && input.inventory.authorityTransitionConeCount > 0,
     ),
     'beam.serving-footprints': state(
       servingFootprintMounted,
@@ -328,8 +347,7 @@ function legacySurfaceState(
         && input.inventory.candidateConeCount > 0,
     ),
     'beam.callouts': state(
-      (input.runtime.showBeamCallouts
-        || input.runtime.homepageHandoverBeamInfoActive)
+      input.runtime.showBeamCallouts
         && !input.runtime.teachingLectureActive
         && input.inventory.beamInfoCount > 0,
     ),
@@ -355,32 +373,31 @@ function matrixInput(index: number): CoreSceneSurfacePlanInput {
     runtime: {
       showSinrLiveCellBeams: bit(6),
       showBeamCallouts: bit(7),
-      homepageHandoverBeamInfoActive: bit(8),
-      teachingLectureActive: bit(9),
+      teachingLectureActive: bit(8),
     },
     story: {
-      homepageVisualIdentity: bit(10),
-      multiCandidateSceneVisualActive: bit(11),
-      multiCandidateCentralOverlayActive: bit(12),
-      multiCandidateIdentityTransitionActive: bit(13),
-      handoverPresentationActive: bit(14),
-      candidateReviewActive: bit(15),
+      homepageVisualIdentity: bit(9),
+      multiCandidateSceneVisualActive: bit(10),
+      multiCandidateCentralOverlayActive: bit(11),
+      multiCandidateIdentityTransitionActive: bit(12),
+      handoverPresentationActive: bit(13),
+      candidateReviewActive: bit(14),
     },
     isolation: {
-      active: bit(16),
-      hideNormalBeamField: bit(17),
-      preserveConfiguredServingFan: bit(18),
+      active: bit(15),
+      hideNormalBeamField: bit(16),
+      preserveConfiguredServingFan: bit(17),
     },
     inventory: {
-      nonServingConeCount: count(19),
-      cinemaInterServingFanConeCount: count(20),
-      candidateConeCount: count(21),
-      pulseConeCount: count(22),
-      triggeredIntraConeCount: count(23),
-      cinemaPairConeCount: count(24),
-      authorityTransitionConeCount: count(25),
-      beamInfoCount: count(26),
-      teachingReady: bit(27),
+      nonServingConeCount: count(18),
+      cinemaInterServingFanConeCount: count(19),
+      candidateConeCount: count(20),
+      pulseConeCount: count(21),
+      triggeredIntraConeCount: count(22),
+      cinemaPairConeCount: count(23),
+      authorityTransitionConeCount: count(24),
+      beamInfoCount: count(25),
+      teachingReady: bit(26),
     },
   });
 }

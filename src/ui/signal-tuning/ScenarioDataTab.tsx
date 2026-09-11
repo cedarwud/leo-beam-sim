@@ -182,8 +182,8 @@ export function ScenarioDataTab({
             )
             : say(
               'scenarioData.description',
-              '設定 Walker 星座與模擬基準日期時間；時間採 24 小時制，最小單位為分鐘。變更後會以新的時刻重新計算軌道與鏈路。',
-              'Set the Walker constellation and simulation epoch. Time uses 24-hour, minute precision; changing it recomputes the orbit and links.',
+              '設定 TLE 星座與模擬基準日期時間；時間採 24 小時制，最小單位為分鐘。變更後會以新的時刻重新計算軌道與鏈路。',
+              'Set the TLE constellation and simulation epoch. Time uses 24-hour, minute precision; changing it recomputes the orbit and links.',
             )}
         </div>
       </div>
@@ -253,7 +253,7 @@ export function ScenarioDataTab({
         }}
       >
         <div style={groupTitleStyle}>
-          {say('scenarioData.time.title', 'Walker 模擬基準時刻', 'Walker simulation epoch')}
+          {say('scenarioData.time.title', 'TLE 模擬基準時刻', 'TLE simulation epoch')}
         </div>
         <label htmlFor="scenario-data-date" style={captionTextStyle}>
           {say('scenarioData.date', '日期', 'Date')}

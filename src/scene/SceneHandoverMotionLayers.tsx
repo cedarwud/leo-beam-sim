@@ -1,23 +1,13 @@
 import type { ComponentProps, JSX } from 'react';
 
 import { BeamPulseClock } from '../viz/SatelliteBeams';
-import { HandoverLinks } from '../viz/HandoverLinks';
 import { OrbitTrail } from '../viz/OrbitTrail';
 import { ServingGroundRipple } from '../viz/ServingGroundRipple';
 import { SpineParticles } from '../viz/SpineParticles';
 
-type HandoverLinksProps = ComponentProps<typeof HandoverLinks>;
 type OrbitTrailProps = ComponentProps<typeof OrbitTrail>;
 type SpineParticlesProps = ComponentProps<typeof SpineParticles>;
 type ServingGroundRippleProps = ComponentProps<typeof ServingGroundRipple>;
-
-export interface SceneHandoverLinkLayer {
-  readonly mounted: boolean;
-  readonly satellites: HandoverLinksProps['satellites'];
-  readonly eventRoles: HandoverLinksProps['eventRoles'];
-  readonly satBeams: HandoverLinksProps['satBeams'];
-  readonly primaryUeAnchor: HandoverLinksProps['primaryUeAnchor'];
-}
 
 export interface SceneOrbitTrailLayer {
   readonly mounted: boolean;
@@ -46,30 +36,34 @@ export interface SceneGroundRippleLayer {
 
 export interface SceneHandoverMotionLayersProps {
   readonly reducedMotion: boolean;
-  readonly links: SceneHandoverLinkLayer;
   readonly orbitTrail: SceneOrbitTrailLayer;
   readonly spineParticles: SceneSpineParticleLayer;
   readonly groundRipple: SceneGroundRippleLayer;
 }
 
-/** Renders the natural handover links and animated context around the beam field. */
+/**
+ * Renders the natural animated context around the beam field.
+ *
+ * `HandoverLinks` (a straight satellite→UE line) used to render here too.
+ * Retired: `showLiveSceneEffects` and `showSinrLiveCellBeams` are the exact
+ * same underlying flag (`showSinrBeamRender` in `sceneLaneRenderPlan.ts`),
+ * so the line was structurally NEVER visible without the serving/candidate
+ * beam cone for that same link also being visible — the cone's apex-to-base
+ * geometry, plus this session's EE colour/opacity shading, already says
+ * "this satellite serves this ground point." The line was a second visual
+ * grammar for the identical fact, which read as clutter rather than added
+ * information. The component (`viz/HandoverLinks.tsx`) is kept — its
+ * `identityColorForLink`/`markerColorForBeam` colour helpers are still used
+ * elsewhere — only the JSX mount here is gone.
+ */
 export function SceneHandoverMotionLayers({
   reducedMotion,
-  links,
   orbitTrail,
   spineParticles,
   groundRipple,
 }: SceneHandoverMotionLayersProps): JSX.Element {
   return (
     <>
-      {links.mounted && (
-        <HandoverLinks
-          satellites={links.satellites}
-          eventRoles={links.eventRoles}
-          satBeams={links.satBeams}
-          primaryUeAnchor={links.primaryUeAnchor}
-        />
-      )}
       <BeamPulseClock reducedMotion={reducedMotion} />
       {orbitTrail.mounted && <OrbitTrail satellites={orbitTrail.satellites} />}
       {spineParticles.mounted && (

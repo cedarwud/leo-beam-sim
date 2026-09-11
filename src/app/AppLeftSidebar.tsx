@@ -95,9 +95,6 @@ export function AppLeftSidebar({
         <span className="leo-left-sidebar-toggle__icon" aria-hidden="true">
           {collapsed ? '›' : '‹'}
         </span>
-        <span className="leo-offscreen">
-          {collapsed ? 'Expand left sidebar' : 'Collapse left sidebar'}
-        </span>
       </button>
       <div id="left-sidebar-content" className="leo-left-sidebar-content">
         {sceneLane === 'artifact-replay' && (

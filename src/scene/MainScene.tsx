@@ -144,6 +144,8 @@ import { SceneHandoverMotionLayers } from './SceneHandoverMotionLayers';
 import { SceneAcceptedHandoverCue } from './SceneAcceptedHandoverCue';
 import { SceneIntraGroundShockwave } from './SceneIntraGroundShockwave';
 import { SceneHandoverToastLayer } from './SceneHandoverToastLayer';
+import { SceneHorizonBoundary } from './SceneHorizonBoundary';
+import { SceneNarrativeCaption, type NarrativeCaptionDisplay } from './SceneNarrativeCaption';
 import { formatSatelliteLabel } from '../utils/formatSatelliteLabel';
 import {
   NTPU_CONFIG,
@@ -243,6 +245,13 @@ import {
   resolveRecentInterHandoverEvent,
   resolveRecentPrimaryHandoverEvent,
 } from './recentHandoverPresentationEvent';
+import {
+  advanceNarrativeCaptionHold,
+  isNarrativeCaptionBaselineChapter,
+  resolveNarrativeCaptionChapter,
+  resolveNarrativeCaptionText,
+  type NarrativeCaptionHoldState,
+} from './narrativeCaptionPolicy';
 import { resolveAdditiveHandoverConeColoring } from './additiveHandoverConeColoring';
 import { resolveAuthoritySpineParticlePlans } from './multiCandidateAuthoritySpineParticlePlans';
 import { resolveMultiCandidateSceneRenderStatus } from './multiCandidateSceneRenderStatus';
@@ -348,6 +357,11 @@ interface SceneContentProps {
   teachingSceneStory?: HandoverTeachingSceneStory | null;
   /** The lecture frame the rail and caption already render, handed over by reference. */
   teachingLectureFrameRef?: MutableRefObject<TeachingFrame | null>;
+  /** One App-owned join key shared by the homepage rail and scene. */
+  focusedJoinKey?: string | null;
+  onFocusJoinKeyChange?: (joinKey: string | null) => void;
+  /** Gates only the short-lived event captions; highlights remain available. */
+  teachingNarrativeEnabled?: boolean;
 }
 
 interface SceneRenderContentProps extends SceneContentProps {
@@ -1162,6 +1176,9 @@ function SceneRenderContent({
   campusVisible,
   teachingSceneStory = null,
   teachingLectureFrameRef,
+  focusedJoinKey = null,
+  onFocusJoinKeyChange,
+  teachingNarrativeEnabled = false,
 }: SceneRenderContentProps) {
   const homepageBeamEeByKey = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
@@ -1515,14 +1532,22 @@ function SceneRenderContent({
   // Candidate authority and display hysteresis are pure policy; the ref is
   // only the adapter-owned memory for the publication-gap latch.
   const multiCandidateComparisonLatchRef = useRef<MultiCandidateComparisonLatch | null>(null);
+  // Adapter-owned memory for the comparison overlay's own minimum-display
+  // hold (see MULTI_CANDIDATE_COMPARISON_MIN_DISPLAY_HOLD_SEC) — keyed to the
+  // live sim clock so it freezes while paused instead of racing ahead.
+  const multiCandidateDisplayHoldSinceSecRef = useRef<number | null>(null);
   const multiCandidateComparisonPolicy = resolveMultiCandidateComparisonPolicy({
     acceptedPresentation: acceptedHandoverPresentation,
     simSource,
     sceneLane,
     previousLatch: multiCandidateComparisonLatchRef.current,
     centralOverlayEnabled: MULTI_CANDIDATE_CENTRAL_OVERLAY_ENABLED,
+    teachingLectureActive: runtime.teachingLectureKind != null,
+    nowSec: sim.simTimeSec,
+    previousDisplayHoldSinceSec: multiCandidateDisplayHoldSinceSecRef.current,
   });
   multiCandidateComparisonLatchRef.current = multiCandidateComparisonPolicy.nextLatch;
+  multiCandidateDisplayHoldSinceSecRef.current = multiCandidateComparisonPolicy.nextDisplayHoldSinceSec;
   const {
     acceptedDecision: acceptedHandoverDecisionFrame,
     snapshotMatchesFrame: multiCandidateSnapshotMatchesFrame,
@@ -1534,6 +1559,94 @@ function SceneRenderContent({
     comparisonPhase: multiCandidateComparisonPhase,
     centralOverlayActive: multiCandidateCentralOverlayActive,
   } = multiCandidateComparisonPolicy;
+  const sceneJoinKeyByPair = useMemo<ReadonlyMap<string, string>>(() => {
+    const byPair = new Map<string, string>();
+    for (const link of acceptedHandoverPresentation?.plan.displayedLinks ?? []) {
+      byPair.set(`${link.key.satelliteId}|${link.key.beamId}`, link.sceneJoinKey);
+    }
+    // Older/partial snapshots can omit a link while the metric projection still
+    // has the pair. Keep the metric join as a fail-soft fallback for that row.
+    for (const metric of homepageBeamMetrics?.metrics ?? []) {
+      if (!byPair.has(`${metric.satelliteId}|${metric.beamId}`)) {
+        byPair.set(`${metric.satelliteId}|${metric.beamId}`, metric.joinKey);
+      }
+    }
+    return byPair;
+  }, [acceptedHandoverPresentation, homepageBeamMetrics]);
+  const resolveSceneJoinKey = useCallback((cone: SinrLiveCellBeamConeRenderItem): string | null => {
+    const beamId = cone.beamId ?? cellLinkBudgetBeamId(cone.cellId);
+    return sceneJoinKeyByPair.get(`${cone.satId}|${beamId}`) ?? null;
+  }, [sceneJoinKeyByPair]);
+  const narrativeCaptionHoldRef = useRef<NarrativeCaptionHoldState | null>(null);
+  const narrativeStreamKey = [
+    simSource,
+    runtime.replay.seekRequestKey ?? '',
+    runtime.signalResetKey ?? '',
+    runtime.handoverResetKey ?? '',
+    runtime.measurementResetEpoch ?? 0,
+  ].join('|');
+  const narrativeStreamKeyRef = useRef('');
+  const [narrativeCaption, setNarrativeCaption] = useState<NarrativeCaptionDisplay | null>(null);
+  // A homepage teaching lecture (the Inter/Intra Handover buttons) owns its
+  // OWN top-of-scene caption (`HandoverTeachingCaption`, driven by the
+  // authored script's phases) whenever it is open. This caption narrates the
+  // REAL background decision engine instead, which keeps running the whole
+  // time a lecture is open — the lecture never reads from or writes to it
+  // (see `HandoverTeachingBeamCones.tsx`'s own header) — so without this
+  // exclusion both captions would try to occupy the same top-of-scene spot
+  // at once.
+  const narrativeCaptionActive = homepageVisualIdentity
+    && teachingNarrativeEnabled
+    && runtime.teachingLectureKind == null;
+  // Split from the active-path effect below on purpose — see the historical
+  // note in git blame: an earlier version folded this into the same effect
+  // as a dependency-array bailout, but that effect's OLD dependency list
+  // included `viz.displaySats` (a fresh array reference on effectively every
+  // render), so the bailout still dispatched `setNarrativeCaption` every
+  // single frame even while the feature was off, which a real crash log
+  // (`Maximum update depth exceeded`) blamed as contributing render
+  // pressure. The active-path effect below no longer depends on
+  // `viz.displaySats` at all (this redesign dropped the old horizon-crossing
+  // cue, which was its only consumer), but keeping the off-path bailout on
+  // its own effect with only the boolean as a dependency is still the
+  // simplest way to guarantee it can never re-fire from frame churn.
+  useEffect(() => {
+    if (narrativeCaptionActive) return;
+    setNarrativeCaption(null);
+    narrativeCaptionHoldRef.current = null;
+  }, [narrativeCaptionActive]);
+
+  useEffect(() => {
+    if (!narrativeCaptionActive) return;
+    if (narrativeStreamKeyRef.current !== narrativeStreamKey) {
+      narrativeStreamKeyRef.current = narrativeStreamKey;
+      narrativeCaptionHoldRef.current = null;
+      setNarrativeCaption(null);
+    }
+    if (acceptedHandoverDecisionFrame === null) {
+      if (narrativeCaptionHoldRef.current !== null) {
+        narrativeCaptionHoldRef.current = null;
+        setNarrativeCaption(null);
+      }
+      return;
+    }
+    const previousHold = narrativeCaptionHoldRef.current;
+    const rawChapter = resolveNarrativeCaptionChapter(acceptedHandoverDecisionFrame.phase);
+    const nowSec = acceptedHandoverDecisionFrame.simTimeMs / 1000;
+    const nextHold = advanceNarrativeCaptionHold(rawChapter, nowSec, previousHold);
+    narrativeCaptionHoldRef.current = nextHold;
+    if (previousHold !== null && previousHold.displayedChapter === nextHold.displayedChapter) return;
+    // A baseline chapter ("still calm") reads as redundant next to a scene
+    // that already looks calm — show the caption only for chapters worth
+    // actually narrating, and let it disappear the rest of the time.
+    setNarrativeCaption(isNarrativeCaptionBaselineChapter(nextHold.displayedChapter)
+      ? null
+      : { chapter: nextHold.displayedChapter, text: resolveNarrativeCaptionText(nextHold.displayedChapter) });
+  }, [
+    acceptedHandoverDecisionFrame,
+    narrativeCaptionActive,
+    narrativeStreamKey,
+  ]);
   const handoverAuthorityJoin = useMemo(
     () => resolveHandoverAuthorityJoin(
       acceptedHandoverPresentation?.decision ?? null,
@@ -1593,6 +1706,7 @@ function SceneRenderContent({
       ),
     previousHold: multiCandidateScenePresentationHoldRef.current,
     centralOverlayEnabled: MULTI_CANDIDATE_CENTRAL_OVERLAY_ENABLED,
+    teachingLectureActive: runtime.teachingLectureKind != null,
   });
   multiCandidateScenePresentationHoldRef.current = multiCandidatePresentationPolicy.nextHold;
   const {
@@ -2347,7 +2461,8 @@ function SceneRenderContent({
   // from the latched authority transition rather than from the current
   // candidate list, so an intra or inter switch cannot fall back to the old
   // semantic warm/cool colours while the accepted link is changing.
-  const multiCandidateIdentityTransitionActive = multiCandidateAuthorityActive
+  const multiCandidateIdentityTransitionActive = runtime.teachingLectureKind == null
+    && multiCandidateAuthorityActive
     && authorityTransition !== null
     && handoverPresentation.event?.eventId === authorityTransition.eventId;
 
@@ -2812,10 +2927,6 @@ function SceneRenderContent({
     ],
   );
   const { beamInfoItems } = useBeamInfoItems({ beamInfoItemsInput });
-  const homepageHandoverBeamInfoActive = homepageVisualIdentity
-    && (multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
-    && handoverPresentation.active
-    && handoverPresentation.event !== null;
   const teachingSurfaceReady = teachingSceneStory !== null
     && teachingLectureFrameRef !== undefined;
   const coreSceneSurfacePlan = resolveCoreSceneSurfacePlan({
@@ -2830,7 +2941,6 @@ function SceneRenderContent({
     runtime: {
       showSinrLiveCellBeams,
       showBeamCallouts,
-      homepageHandoverBeamInfoActive,
       teachingLectureActive: runtime.teachingLectureKind != null,
     },
     story: {
@@ -3279,6 +3389,14 @@ function SceneRenderContent({
         cameraTransitionRef={cameraTransitionRef}
         controlsRef={controlsRef}
       />
+      <SceneHorizonBoundary
+        visible={sceneLane === 'sinr-live' && presentationPlan.visible['context-satellites']}
+        satellites={viz.displaySats}
+      />
+      <SceneNarrativeCaption
+        caption={narrativeCaption}
+        enabled={narrativeCaptionActive}
+      />
       {presentationPlan.visible.uav && showUav && afterFirstPaint && (
         <Suspense fallback={null}>
           <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
@@ -3318,26 +3436,14 @@ function SceneRenderContent({
           the serving cones below (`SinrLiveCellFootprintRings`, gated showSinrLiveCellBeams). */}
       <SceneHandoverMotionLayers
         reducedMotion={runtime.reducedMotion}
-        links={{
-          mounted: presentationPlan.visible['event-effects']
-            && showLiveSceneEffects
-            && !handoverDisplayIsolation.hideTimelineEffects
-            && !handoverDisplayIsolation.suppressNaturalHandoverLayers
-            && !multiCandidateCentralOverlayActive
-            && !candidateComparisonSceneActive,
-          satellites: viz.displaySats,
-          eventRoles: viz.eventRoles,
-          satBeams: viz.satBeams,
-          primaryUeAnchor: sceneFrame.ues[0]?.worldPos as
-            | readonly [number, number, number]
-            | undefined,
-        }}
         orbitTrail={{
           mounted: presentationPlan.visible['motion-guides'] && showOrbitTrail,
           satellites: orbitTrailSatellites,
         }}
         spineParticles={{
-          mounted: presentationPlan.visible['motion-guides'] && showSpineParticles,
+          mounted: presentationPlan.visible['motion-guides']
+            && showSpineParticles
+            && !handoverDisplayIsolation.suppressNaturalHandoverLayers,
           satellites: viz.displaySats,
           satBeams: viz.satBeams,
           plans: multiCandidateCentralOverlayActive
@@ -3407,6 +3513,8 @@ function SceneRenderContent({
           homepageBeamEeByKey: homepageBeamEeByKey ?? undefined,
           homepageIdentityPaletteIndexBySatelliteId: homepageIdentityPaletteIndexBySatelliteId ?? undefined,
           onCandidateSelect: toggleInspectedCandidateKey,
+          focusedJoinKey,
+          onFocusJoinKeyChange,
         }}
         central={{
           active: multiCandidateSceneLayerVisible,
@@ -3435,6 +3543,9 @@ function SceneRenderContent({
         targetColor={acceptedHandoverCueColors.targetColor}
       />
       <SceneSinrLiveBeamLayers
+        focusedJoinKey={focusedJoinKey}
+        onFocusJoinKeyChange={onFocusJoinKeyChange}
+        resolveJoinKey={resolveSceneJoinKey}
         appearance={{
           homepageVisualIdentity,
           homepageBeamEeByKey: homepageBeamEeByKey ?? undefined,
@@ -3733,6 +3844,11 @@ interface MainSceneProps {
   onHandoverPresentationBusyChange?: (busy: boolean) => void;
   /** Display-only switch for HTML/callout information over the stage. */
   showSceneOverlays?: boolean;
+  /** One App-owned join key shared by the homepage rail and scene. */
+  focusedJoinKey?: string | null;
+  onFocusJoinKeyChange?: (joinKey: string | null) => void;
+  /** Gates only the short-lived event captions; highlights remain available. */
+  teachingNarrativeEnabled?: boolean;
   /** Homepage handover lecture endpoints; see SceneContentProps. */
   teachingSceneStory?: HandoverTeachingSceneStory | null;
   teachingLectureFrameRef?: MutableRefObject<TeachingFrame | null>;
@@ -3765,6 +3881,9 @@ export const MainScene = memo(function MainScene({
   handoverCinemaKind = null,
   onHandoverPresentationChange,
   onHandoverPresentationBusyChange,
+  focusedJoinKey = null,
+  onFocusJoinKeyChange,
+  teachingNarrativeEnabled = false,
   teachingSceneStory = null,
   teachingLectureFrameRef,
   constellation = DEFAULT_SATELLITE_CONSTELLATION,
@@ -3942,6 +4061,9 @@ export const MainScene = memo(function MainScene({
                 handoverCinemaKind={handoverCinemaKind}
                 onHandoverPresentationChange={onHandoverPresentationChange}
                 onHandoverPresentationBusyChange={onHandoverPresentationBusyChange}
+                focusedJoinKey={focusedJoinKey}
+                onFocusJoinKeyChange={onFocusJoinKeyChange}
+                teachingNarrativeEnabled={teachingNarrativeEnabled}
                 teachingSceneStory={teachingSceneStory}
                 teachingLectureFrameRef={teachingLectureFrameRef}
                 constellation={constellation}
@@ -3970,6 +4092,9 @@ export const MainScene = memo(function MainScene({
                 handoverCinemaKind={handoverCinemaKind}
                 onHandoverPresentationChange={onHandoverPresentationChange}
                 onHandoverPresentationBusyChange={onHandoverPresentationBusyChange}
+                focusedJoinKey={focusedJoinKey}
+                onFocusJoinKeyChange={onFocusJoinKeyChange}
+                teachingNarrativeEnabled={teachingNarrativeEnabled}
                 teachingSceneStory={teachingSceneStory}
                 teachingLectureFrameRef={teachingLectureFrameRef}
                 constellation={constellation}

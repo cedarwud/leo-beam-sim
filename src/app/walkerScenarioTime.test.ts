@@ -8,10 +8,10 @@ import {
 
 assert.equal(
   taipeiScenarioTimeToUtcMs(DEFAULT_WALKER_SCENARIO_DATE, DEFAULT_WALKER_SCENARIO_TIME),
-  Date.parse('2026-08-25T12:00:00.000Z'),
+  Date.parse('2026-09-09T12:00:00.000Z'),
   '20:00 Asia/Taipei must become 12:00 UTC on the same civil date',
 );
-assert.equal(DEFAULT_WALKER_SCENARIO_EPOCH_UTC_MS, Date.parse('2026-08-25T12:00:00.000Z'));
+assert.equal(DEFAULT_WALKER_SCENARIO_EPOCH_UTC_MS, Date.parse('2026-09-09T12:00:00.000Z'));
 assert.equal(
   taipeiScenarioTimeToUtcMs('2026-08-12', '00:00'),
   Date.parse('2026-08-11T16:00:00.000Z'),

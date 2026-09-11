@@ -6,9 +6,10 @@ import {
   type VisualLabGlobalConstellationArtifact,
 } from './index';
 import { parseVisualLabGlobalConstellationArtifact } from './visualLabGlobalConstellationArtifact';
+import { LATEST_TLE_REFERENCE_ARTIFACT_DATE } from '../../tle/latestTleDefaults';
 
 async function fixture(constellation: 'oneweb' | 'starlink'): Promise<VisualLabGlobalConstellationArtifact> {
-  const raw = JSON.parse(await readFile(`public/global-first-frame/${constellation}-20260825.json`, 'utf8')) as unknown;
+  const raw = JSON.parse(await readFile(`public/global-first-frame/${constellation}-${LATEST_TLE_REFERENCE_ARTIFACT_DATE}.json`, 'utf8')) as unknown;
   return parseVisualLabGlobalConstellationArtifact(raw, { expectedConstellation: constellation });
 }
 

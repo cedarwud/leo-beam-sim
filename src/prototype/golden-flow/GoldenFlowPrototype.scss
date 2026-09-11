@@ -1223,10 +1223,22 @@ body,
 }
 
 .golden-flow-angle-teaching-rail {
+  /*
+   * This outer element is a full-bleed, visually invisible wrapper: it keeps
+   * carrying the carrier's test hooks (data-testid, data-active-angle,
+   * aria-label) as one DOM node, but all box styling and positioning lives
+   * on the two __panel children below so elevation and off-axis can anchor
+   * independently (top-left / top-right) instead of stacking in one box.
+   */
   position: absolute;
   z-index: 12;
+  inset: 0;
+  pointer-events: none;
+}
+
+.golden-flow-angle-teaching-rail__panel {
+  position: absolute;
   top: 16px;
-  right: 16px;
   width: clamp(350px, 28vw, 420px);
   padding: 13px;
   border: 1px solid rgba(112, 191, 174, .4);
@@ -1236,7 +1248,10 @@ body,
   pointer-events: none;
 }
 
-.golden-flow-angle-teaching-rail > header,
+.golden-flow-angle-teaching-rail__panel--elevation { left: 16px; }
+.golden-flow-angle-teaching-rail__panel--off-axis { right: 16px; }
+
+.golden-flow-angle-teaching-rail__panel > header,
 .golden-flow-angle-teaching-rail figcaption {
   display: flex;
   align-items: baseline;
@@ -1244,17 +1259,17 @@ body,
   gap: 10px;
 }
 
-.golden-flow-angle-teaching-rail > header {
+.golden-flow-angle-teaching-rail__panel > header {
   padding: 1px 2px 10px;
   border-bottom: 1px solid rgba(112, 191, 174, .24);
 }
 
-.golden-flow-angle-teaching-rail > header span {
+.golden-flow-angle-teaching-rail__panel > header span {
   color: #f1faf7;
   font: 700 1.25rem/1.2 "Noto Serif TC", Georgia, serif;
 }
 
-.golden-flow-angle-teaching-rail > header small {
+.golden-flow-angle-teaching-rail__panel > header small {
   color: #a9c7bf;
   font-size: 1rem;
 }
@@ -1293,8 +1308,8 @@ body,
   overflow: visible;
 }
 
-.golden-flow-angle-teaching-rail figure:first-of-type svg { height: 118px; }
-.golden-flow-angle-teaching-rail figure:last-of-type svg { height: 132px; }
+.golden-flow-angle-teaching-rail__panel--elevation svg { height: 118px; }
+.golden-flow-angle-teaching-rail__panel--off-axis svg { height: 132px; }
 
 .golden-flow-angle-teaching-rail svg line,
 .golden-flow-angle-teaching-rail svg path {
@@ -2255,6 +2270,20 @@ body,
     max-height: 230px;
   }
 
+  /*
+   * 'interaction' now stacks the drag-instruction primary cue underneath the
+   * question copy (see primaryCueInCopyColumn in GoldenFlowPrototype.tsx), so
+   * the copy column is taller than the dock's default 230px cap. Measured
+   * worst case across 1180-1920px desktop widths and both pre/post-drag
+   * instruction text is ~346px (narrow widths wrap the drag footer copy onto
+   * more lines); 356px keeps a small buffer. Wider viewports need far less —
+   * this is only a ceiling, the dock still sizes to its actual content.
+   */
+  .golden-flow[data-beat="interaction"] .golden-flow-event-dock {
+    min-height: 210px;
+    max-height: 356px;
+  }
+
   .golden-flow-event-dock__copy {
     min-width: 0;
     padding-right: 18px;
@@ -2280,6 +2309,10 @@ body,
     color: #afc9c2;
     font-size: 1.18rem;
     line-height: 1.48;
+  }
+
+  .golden-flow-event-dock__copy .golden-flow-primary-cue {
+    margin-top: 10px;
   }
 
   .golden-flow-event-dock__readout {
@@ -2445,20 +2478,18 @@ body,
   }
 
   /*
-   * Act 3's interaction readout has two independent teaching surfaces: the
-   * drag instruction and the angle/power/EE chain. Keep them on one readable
-   * row so the current-event dock does not clip either surface at its fixed
-   * 230px desktop height. Consequence has no drag instruction, so its metrics,
-   * disclaimer, and formula can use the full readout width in a compact stack.
+   * Act 3's interaction beat also has a drag-instruction primary cue, but it
+   * renders inside the copy column (see GoldenFlowPrototype.tsx,
+   * primaryCueInCopyColumn), not here. That leaves the readout column
+   * dedicated to the angle/power/EE chain alone at both beats, so its
+   * metrics, disclaimer, and (on consequence) formula can use the dock's
+   * full readout width in a compact stack instead of splitting it and
+   * clipping the rightmost metric card.
    */
   .golden-flow[data-course-segment="act3"] .golden-flow-event-dock__readout.has-angle-power-ee {
-    grid-template-columns: minmax(235px, .34fr) minmax(0, .66fr);
+    grid-template-columns: minmax(0, 1fr);
     column-gap: 10px;
     align-items: center;
-  }
-
-  .golden-flow[data-course-segment="act3"][data-beat="consequence"] .golden-flow-event-dock__readout.has-angle-power-ee {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .golden-flow[data-course-segment="act3"] .golden-flow-angle-power-ee {

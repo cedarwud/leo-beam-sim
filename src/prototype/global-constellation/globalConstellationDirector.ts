@@ -199,7 +199,7 @@ export const GLOBAL_CONSTELLATION_BEATS: readonly GlobalConstellationBeat[] = Ob
   {
     id: 'starlink-density', order: 2, durationSec: 8, camera: 'starlink-close',
     eyebrow: '02 · 讀取 Starlink 全球數量',
-    caption: ['Starlink：封存快照中有 10,738 顆完成 SGP4 定位。', '極區空白受軌道傾角限制；密度帶是點位重疊，不是實體環。'],
+    caption: ['Starlink：封存快照中有 10,714 顆完成 SGP4 定位。', '極區空白受軌道傾角限制；密度帶是點位重疊，不是實體環。'],
     primaryCue: 'starlink-density-cloud',
     focusTarget: 'global-earth',
   },
@@ -226,7 +226,7 @@ export const GLOBAL_CONSTELLATION_BEATS: readonly GlobalConstellationBeat[] = Ob
     // phrasing in ContactWindowLabRoute's own conclusion boundary) beside the
     // formula, per validate-teaching-reset-browser.ts's NTPU reveal assertions.
     caption: [
-      '依封存 TLE 經 SGP4 推算 2026-08-25 12:00 UTC，判定幾何可見。',
+      '依封存 TLE 經 SGP4 推算 2026-09-09 12:00 UTC，判定幾何可見。',
       'NTPU：α = atan2(U, √(E²+N²)) ≥ 10° 為幾何可見性，非服務覆蓋。',
     ],
     primaryCue: 'ntpu-reveal-control',
@@ -235,14 +235,14 @@ export const GLOBAL_CONSTELLATION_BEATS: readonly GlobalConstellationBeat[] = Ob
   {
     id: 'starlink-visible', order: 6, durationSec: 9, camera: 'starlink-visibility',
     eyebrow: '06 · Starlink：NTPU 幾何可見性',
-    caption: ['Starlink：單一封存時刻，仰角 α ≥ 10°：175 / 10,738 顆。', '時間：2026-08-25 12:00 UTC；這是幾何觀測門檻，不代表服務覆蓋。'],
+    caption: ['Starlink：單一封存時刻，仰角 α ≥ 10°：157 / 10,714 顆。', '時間：2026-09-09 12:00 UTC；這是幾何觀測門檻，不代表服務覆蓋。'],
     primaryCue: 'starlink-horizon-mask',
     focusTarget: 'ntpu-local',
   },
   {
     id: 'oneweb-visible', order: 7, durationSec: 9, camera: 'oneweb-visibility',
     eyebrow: '07 · OneWeb：NTPU 幾何可見性',
-    caption: ['OneWeb：單一封存時刻，仰角 α ≥ 10°：17 / 651 顆。', '時間：2026-08-25 12:00 UTC；這是幾何觀測門檻，不代表服務覆蓋。'],
+    caption: ['OneWeb：單一封存時刻，仰角 α ≥ 10°：18 / 651 顆。', '時間：2026-09-09 12:00 UTC；這是幾何觀測門檻，不代表服務覆蓋。'],
     primaryCue: 'oneweb-horizon-mask',
     focusTarget: 'ntpu-local',
   },
@@ -268,22 +268,22 @@ export const GLOBAL_CONSTELLATION_FACTS = Object.freeze({
   starlink: Object.freeze({
     constellation: 'starlink' as const,
     label: 'Starlink',
-    count: 10_738,
-    ntpuHorizonVisible: 445,
-    ntpuVisibleAtMinimumElevation: 175,
-    medianAltitudeKm: 480.67,
-    snapshotPath: '/tle-archive/starlink/starlink_20260824.tle',
-    snapshotSha256: 'e7e916df23f0e58398e94f03aeb9869a6d89900b882349e541cdb3349df21e00',
+    count: 10_714,
+    ntpuHorizonVisible: 450,
+    ntpuVisibleAtMinimumElevation: 157,
+    medianAltitudeKm: 479.368,
+    snapshotPath: '/tle-archive/starlink/starlink_20260908.tle',
+    snapshotSha256: '5882d160c127e8669b25cc621a7940b2b1bda4e133999f141980ecee28a2d92d',
   }),
   oneweb: Object.freeze({
     constellation: 'oneweb' as const,
     label: 'OneWeb',
     count: 651,
     ntpuHorizonVisible: 37,
-    ntpuVisibleAtMinimumElevation: 17,
-    medianAltitudeKm: 1212.455,
-    snapshotPath: '/tle-archive/oneweb/oneweb_20260825.tle',
-    snapshotSha256: '013201949ecd5d74a636e0d1780e0885ca29ec62175cbbec64035a24744a0610',
+    ntpuVisibleAtMinimumElevation: 18,
+    medianAltitudeKm: 1212.105,
+    snapshotPath: '/tle-archive/oneweb/oneweb_20260908.tle',
+    snapshotSha256: '04c542d83db02cc0d9cbfd50b261404f3788b581f92888b1216f86a7a8f7f464',
   }),
 });
 

@@ -19,6 +19,7 @@ export type SceneSurfaceMountReason =
   | 'inventory-empty'
   | 'callouts-disabled'
   | 'teaching-story-suppresses-callouts'
+  | 'teaching-story-suppresses-live-effects'
   | 'teaching-story-not-ready'
   | 'handover-isolation-hidden';
 
@@ -47,7 +48,6 @@ export interface CoreSceneSurfacePlanInput {
   readonly runtime: {
     readonly showSinrLiveCellBeams: boolean;
     readonly showBeamCallouts: boolean;
-    readonly homepageHandoverBeamInfoActive: boolean;
     readonly teachingLectureActive: boolean;
   };
   readonly story: {
@@ -141,6 +141,13 @@ function inventoryGate(
 ): Gate {
   return { passes: count > 0, reason: 'inventory-empty' };
 }
+
+function liveEventGate(teachingLectureActive: boolean): Gate {
+  return {
+    passes: !teachingLectureActive,
+    reason: 'teaching-story-suppresses-live-effects',
+  };
+}
 export function resolveCoreSceneSurfacePlan(
   input: CoreSceneSurfacePlanInput,
 ): CoreSceneSurfacePlan {
@@ -192,6 +199,7 @@ export function resolveCoreSceneSurfacePlan(
       owner,
       [
         stageGate(input.stage.eventEffects),
+        liveEventGate(input.runtime.teachingLectureActive),
         inventoryGate(input.inventory.pulseConeCount),
       ],
     ),
@@ -200,6 +208,7 @@ export function resolveCoreSceneSurfacePlan(
       owner,
       [
         stageGate(input.stage.eventEffects),
+        liveEventGate(input.runtime.teachingLectureActive),
         inventoryGate(input.inventory.triggeredIntraConeCount),
       ],
     ),
@@ -208,6 +217,7 @@ export function resolveCoreSceneSurfacePlan(
       owner,
       [
         stageGate(input.stage.eventEffects),
+        liveEventGate(input.runtime.teachingLectureActive),
         inventoryGate(input.inventory.cinemaPairConeCount),
       ],
     ),
@@ -216,6 +226,7 @@ export function resolveCoreSceneSurfacePlan(
       owner,
       [
         stageGate(input.stage.eventEffects),
+        liveEventGate(input.runtime.teachingLectureActive),
         inventoryGate(input.inventory.authorityTransitionConeCount),
       ],
     ),
@@ -253,8 +264,7 @@ export function resolveCoreSceneSurfacePlan(
       owner,
       [
         {
-          passes: input.runtime.showBeamCallouts
-            || input.runtime.homepageHandoverBeamInfoActive,
+          passes: input.runtime.showBeamCallouts,
           reason: 'callouts-disabled',
         },
         {

@@ -774,7 +774,7 @@ drill expect_pass "$MODIFIERS" "inter 換手的 target 也要有強調（原本�
 "    target: {
       shade: 'target',
       rationale: 'owner asked for an explicit incoming-beam cue on inter as well as intra'," \
-"$TEST" "contract" "homepage:74;scene:74" \
+"$TEST" "contract" "homepage:85;scene:85" \
 "layer=triggered&renderKeySuffix=-to" "$FIXED_HANDOVER_TARGET" ""
 
 drill expect_pass "$MODIFIERS" "intra 換手的 source 不要再變暗了" \
@@ -812,7 +812,7 @@ drill expect_pass "$SERVING" "改同一顆衛星裡不同 beam 的深淺階梯" 
 "SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS" \
 "const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.56, 0.64, 0.72, 0.80, 0.87, 0.92, 0.96, 0.99] as const;" \
 "const SERVING_IDENTITY_BEAM_LIGHTNESS_LEVELS = [0.50, 0.60, 0.70, 0.80, 0.87, 0.92, 0.96, 0.99] as const;" \
-"$TEST" "contract" "scene:10,74,88" \
+"$TEST" "contract" "scene:10,85,88,540" \
 "layer=serving,layer=candidate,layer=triggered" "$FIXED_BEAM_IDENTITY" ""
 
 # ==================== Visible but not fully instrumented ====================
@@ -822,7 +822,7 @@ drill expect_pass "$SERVING" "換掉衛星身分色的調色盤" \
 "SERVING_IDENTITY_PALETTE" \
 "  { hueDegrees: 48, baseLightness: 0.60 },  // gold" \
 "  { hueDegrees: 52, baseLightness: 0.60 },  // gold" \
-"$HUE_TEST" "contract" "homepage:74,88;scene:74,88" \
+"$HUE_TEST" "contract" "homepage:145,150;scene:145,150" \
 "kind=marker,kind=orbitTrail" "$FIXED_PALETTE" ""
 
 # Checked against the side characterization, not the default cone photograph:
@@ -858,7 +858,7 @@ drill expect_pass "$TIMING" "換手動畫的 serving 階段再多留一點時間
 "HANDOVER_CONE_PHASE_END" \
 "  serving: 0.1875," \
 "  serving: 0.20," \
-"$TIMING_TEST" "contract" "homepage:10" \
+"$TIMING_TEST" "contract" "homepage:8" \
 "presentation" "$FIXED_TIMING" ""
 
 drill expect_pass "$MARKERS" "把衛星標記的 fallback 身分色換成另一個穩定色" \

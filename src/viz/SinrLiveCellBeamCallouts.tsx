@@ -204,74 +204,103 @@ export function SinrLiveCellBeamCallouts(props: SinrLiveCellBeamCalloutsProps): 
               data-sinr-db={Number.isFinite(sinrDb ?? NaN) ? sinrDb?.toFixed(6) : ''}
               data-ee-bits-per-joule={Number.isFinite(eeBitsPerJoule ?? NaN) ? eeBitsPerJoule?.toFixed(6) : ''}
               data-display-metric={displayEe ? 'ee' : 'sinr'}
-              style={{
+              style={isPrimary ? {
                 minWidth: 64,
-                padding: isPrimary ? '4px 7px' : '3px 5px',
+                padding: '4px 7px',
                 borderRadius: 5,
                 border: `1px solid ${renderColor}`,
                 borderLeft: `4px solid ${renderColor}`,
                 background: 'rgba(2, 9, 18, 0.82)',
-                boxShadow: isPrimary ? `0 0 10px ${renderColor}66` : 'none',
+                boxShadow: `0 0 10px ${renderColor}66`,
                 color: '#ffffff',
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-                fontSize: isPrimary ? 12 : 10,
+                fontSize: 12,
                 fontWeight: 700,
+                lineHeight: 1.2,
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
+              } : {
+                // Minimal, borderless label: with a full boxed chip per cell,
+                // the tight hex spacing between adjacent cells made this chip
+                // visually collide with its neighbours (reported as "two
+                // overlapping kinds of beam info"). One short line with no
+                // box keeps the collision footprint small even at the same
+                // on-screen density.
+                padding: '1px 4px',
+                borderRadius: 4,
+                borderLeft: `2px solid ${renderColor}`,
+                background: 'rgba(2, 9, 18, 0.55)',
+                color: '#ffffff',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                fontSize: 9,
+                fontWeight: 600,
                 lineHeight: 1.2,
                 textAlign: 'center',
                 whiteSpace: 'nowrap',
                 textShadow: '0 1px 2px rgba(0, 0, 0, 0.9)',
               }}
             >
-              <div
-                data-testid="beam-callout-satellite-chip"
-                style={{ color: renderColor, fontWeight: 800 }}
-              >
-                <span>{satLabel}</span>
-              </div>
-              <div style={{ opacity: 0.92, fontWeight: isPrimary ? 800 : 700 }}>B{beamId} · C{displayCellId} · F{item.frequencyIndex}</div>
-              <div style={{ fontWeight: isPrimary ? 700 : 600 }}>{valueLabel}</div>
-              {homepageVisualIdentity && displayEe && eeProgress !== null && (
-                <div
-                  data-testid="beam-ee-progress"
-                  role="progressbar"
-                  aria-label={`${satLabel} B${beamId} EE level`}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(eeProgress * 100)}
-                  aria-valuetext={formatHomepageCalloutEe(eeBitsPerJoule)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    marginTop: 4,
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      flex: '1 1 auto',
-                      minWidth: 42,
-                      height: 5,
-                      overflow: 'hidden',
-                      borderRadius: 3,
-                      background: 'rgba(255, 255, 255, 0.16)',
-                    }}
+              {isPrimary ? (
+                <>
+                  <div
+                    data-testid="beam-callout-satellite-chip"
+                    style={{ color: renderColor, fontWeight: 800 }}
                   >
-                    <span
-                      aria-hidden="true"
+                    <span>{satLabel}</span>
+                  </div>
+                  <div style={{ opacity: 0.92, fontWeight: 800 }}>B{beamId} · C{displayCellId} · F{item.frequencyIndex}</div>
+                  <div style={{ fontWeight: 700 }}>{valueLabel}</div>
+                  {homepageVisualIdentity && displayEe && eeProgress !== null && (
+                    <div
+                      data-testid="beam-ee-progress"
+                      role="progressbar"
+                      aria-label={`${satLabel} B${beamId} EE level`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(eeProgress * 100)}
+                      aria-valuetext={formatHomepageCalloutEe(eeBitsPerJoule)}
                       style={{
-                        display: 'block',
-                        width: `${eeProgress * 100}%`,
-                        height: '100%',
-                        borderRadius: 3,
-                        background: renderColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        marginTop: 4,
                       }}
-                    />
-                  </span>
-                  <span aria-hidden="true" style={{ color: renderColor, fontSize: 9 }}>
-                    {Math.round(eeProgress * 100)}%
-                  </span>
-                </div>
+                    >
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          flex: '1 1 auto',
+                          minWidth: 42,
+                          height: 5,
+                          overflow: 'hidden',
+                          borderRadius: 3,
+                          background: 'rgba(255, 255, 255, 0.16)',
+                        }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            display: 'block',
+                            width: `${eeProgress * 100}%`,
+                            height: '100%',
+                            borderRadius: 3,
+                            background: renderColor,
+                          }}
+                        />
+                      </span>
+                      <span aria-hidden="true" style={{ color: renderColor, fontSize: 9 }}>
+                        {Math.round(eeProgress * 100)}%
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span>
+                  <span style={{ color: renderColor, fontWeight: 800 }}>B{beamId}</span>
+                  {' '}
+                  {valueLabel}
+                </span>
               )}
             </div>
           </Html>

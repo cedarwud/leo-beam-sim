@@ -96,6 +96,9 @@ test('comparison policy opens, latches, and clears the accepted episode', () => 
     sceneLane: 'sinr-live',
     previousLatch: null,
     centralOverlayEnabled: true,
+    teachingLectureActive: false,
+    nowSec: 0,
+    previousDisplayHoldSinceSec: null,
   });
 
   assert.equal(opened.snapshotMatchesFrame, true);
@@ -114,6 +117,11 @@ test('comparison policy opens, latches, and clears the accepted episode', () => 
     sceneLane: 'sinr-live',
     previousLatch: opened.nextLatch,
     centralOverlayEnabled: true,
+    teachingLectureActive: false,
+    // Well past MULTI_CANDIDATE_COMPARISON_MIN_DISPLAY_HOLD_SEC so this
+    // assertion is exercising "the phase truly ended," not "still holding".
+    nowSec: 10,
+    previousDisplayHoldSinceSec: opened.nextDisplayHoldSinceSec,
   });
   assert.equal(postSelection.preSelectionComparisonPhase, false);
   assert.equal(postSelection.comparisonPhase, false);
@@ -134,6 +142,7 @@ test('presentation policy keeps a missing publication fail-closed', () => {
     sceneLayerEnabled: true,
     previousHold: null,
     centralOverlayEnabled: true,
+    teachingLectureActive: false,
   });
 
   assert.equal(result.homepageSceneProjection, null);

@@ -177,8 +177,18 @@ function resolveCinemaCandidate(
 export function resolveHandoverPresentationCandidate(
   input: HandoverPresentationCandidateInput,
 ): HandoverPresentationEvent | null {
-  if (input.teachingLectureActive) return null;
+  // A real authority decision (the live EE handover engine's own committed
+  // event) is never gated by teachingLectureActive anywhere else in the
+  // scene — the multi-candidate authority policy, the homepage rail, and the
+  // evaluation panel all keep tracking it while a lecture is open. Masking
+  // it ONLY here left the shared presentation owner's clock frozen at idle
+  // while every sibling view had already moved on to a real committed
+  // handover, an invariant mismatch that eventually drove an unbounded
+  // render loop. Check authority first so this owner's clock stays in sync
+  // with reality; the teaching mask below still applies to the synthetic
+  // manual/natural/cinema candidates a lecture must not leak into other UI.
   if (input.authority.candidate !== null) return input.authority.candidate;
+  if (input.teachingLectureActive) return null;
 
   const naturalCandidate = resolveNaturalCandidate(input);
   if (input.manual.event?.kind === 'intra' && naturalCandidate?.kind === 'inter') {

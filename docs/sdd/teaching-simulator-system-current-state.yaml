@@ -1,15 +1,15 @@
 schema_version: 1
-updated_at: 2026-09-11T18:18:00+08:00
+updated_at: 2026-09-11T19:47:57+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
 branch: refactor/teaching-simulator-system-v1
 worktree: /home/u24/demo/leo-beam-sim-refactor
-current_phase: R1
-status: verified_ready_to_commit
+current_phase: R1-integrated
+status: ready_for_R2
 
 parallel_tracks:
   teaching_design:
-    status: allowed_in_parallel
+    status: deferred_by_owner
     write_scope:
       - courseware/**
       - docs/teaching-design/**
@@ -28,7 +28,7 @@ parallel_tracks:
       - focused tests and MainScene integration
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
-  dirty_wip_present: true
+  dirty_wip_present: false
   active_sessions_present: true
   mutation_policy: do_not_touch_reset_stash_or_overwrite
 
@@ -50,10 +50,10 @@ r1_goal: >-
   typed scene-surface plan while preserving current behavior.
 
 next_allowed_actions:
-  - add exhaustive scene surface registry
-  - add pure core scene surface plan and table tests
-  - integrate the plan into MainScene without visual changes
-  - expose story owner, mounted surface ids, and reason codes as canvas telemetry
+  - define one immutable HandoverStoryFrame vocabulary
+  - adapt accepted live/manual/cinema events into that vocabulary
+  - adapt deterministic teaching frames without making them decision truth
+  - add parity and provenance tests before changing any renderer
 
 forbidden_actions:
   - change simulation physics or EE values
@@ -66,7 +66,7 @@ r1_results:
   production_surfaces_migrated: 12
   unit_tests:
     scene_surfaces: 11
-    appearance: 85
+    appearance: 96
     multi_candidate: 182
   architecture_boundary_checks: 6
   browser_surface_reasons: 12
@@ -79,6 +79,25 @@ known_baseline_reds:
   - scripts/audit/render-timeline.test.ts not reached by an npm aggregate
   - scripts/lib/browser-gate.test.ts not reached by an npm aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
+
+integrated_checkpoint:
+  source_branch: wip/ee-handover-authority-2026-09-05
+  source_commit: d66b816
+  parent_worktree_clean: true
+  remote_pushed: true
+  merge_semantics:
+    - teaching suppresses all four live event-cone surfaces through the typed plan
+    - beam-info off remains off during handover
+  validation:
+    lint: pass
+    scene_surfaces: 11/11
+    appearance: 96/96
+    multi_candidate: 182/182
+    browser_surface_reasons: 12/12
+    tle_archive: pass
+    generated_artifacts: pass
+    mutation_live_effect_suppression: red_then_green
+    mutation_callout_control: red_then_green
 
 next_phase_candidate: R2
 next_phase_gate: normalize live and deterministic teaching inputs into one HandoverStoryFrame vocabulary

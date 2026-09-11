@@ -197,3 +197,23 @@ Known baseline reds remain unchanged: the App ownership source-text pin, the
 scene-presentation motion-guide source-text pin, two pre-existing orphan tests,
 and the pre-existing `validate-frame-plan.ts` scripts type error. None belongs
 to R1 and none was repaired or re-pinned in this checkpoint.
+
+## 13. Stage 0 checkpoint integration — 2026-09-11
+
+The complete pre-refactor WIP was first committed and pushed as `d66b816` on
+`wip/ee-handover-authority-2026-09-05`; the parent worktree is now clean.
+This branch then merged that checkpoint before starting R2.
+
+The only content conflict was the twelve R1 mount gates in `MainScene.tsx`.
+Resolution kept the typed surface plan and moved the newer WIP semantics into
+that plan instead of restoring JSX exceptions:
+
+- a teaching lecture suppresses the four independent live event-cone surfaces;
+- turning Beam Info off keeps callouts off during handover instead of a hidden
+  handover state forcing them back on;
+- all twelve surfaces still publish owner, source, mount and visibility reasons.
+
+Post-integration evidence: TypeScript PASS; scene-surface 11/11; appearance
+96/96; multi-candidate 182/182; browser plan 12/12 reasons; TLE, first-frame,
+full-run artifact, global-constellation and homepage-projection checks PASS.
+The known source-text pin failures remain recorded, not re-pinned.

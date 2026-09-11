@@ -35,7 +35,7 @@
  * This is leo's own live SINR-offset surface at 550 km (§7).
  */
 import { useEffect, useLayoutEffect, useRef, type JSX } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   SINR_LIVE_CANDIDATE_FAN_MAX_CONES,
@@ -1233,6 +1233,10 @@ export interface SinrLiveCellBeamConesRenderProps {
   readonly primaryServingSatId?: string | null;
   readonly primaryServingCellId?: number | null;
   readonly primaryServingBeamId?: number | null;
+  /** Cross-surface join focus; the existing cone appearance remains unchanged. */
+  readonly focusedJoinKey?: string | null;
+  readonly onFocusJoinKeyChange?: (joinKey: string | null) => void;
+  readonly resolveJoinKey?: (item: SinrLiveCellBeamConeRenderItem) => string | null;
   readonly telemetryCountDatasetKey?: string;
 }
 
@@ -1244,7 +1248,21 @@ export interface SinrLiveCellBeamConesRenderProps {
  * a new `args` array — that guarantees a persistent cone's apex TRACKS the moving
  * satellite instead of freezing at a stale position.
  */
-function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity: number; fog: boolean; dimShallow?: boolean; dimFloorDeg?: number; dimCeilDeg?: number; dimMinFactor?: number; color?: string; widthScale?: number; ellipseTiltExaggeration?: number }): JSX.Element {
+function ObliqueConeMesh(props: {
+  cone: SinrLiveCellBeamConeRenderItem;
+  opacity: number;
+  fog: boolean;
+  dimShallow?: boolean;
+  dimFloorDeg?: number;
+  dimCeilDeg?: number;
+  dimMinFactor?: number;
+  color?: string;
+  widthScale?: number;
+  ellipseTiltExaggeration?: number;
+  joinKey: string | null;
+  focusedJoinKey?: string | null;
+  onFocusJoinKeyChange?: (joinKey: string | null) => void;
+}): JSX.Element {
   const { cone, opacity } = props;
   const color = props.color ?? cone.color;
   const geometryRef = useRef<THREE.BufferGeometry>(null);
@@ -1268,6 +1286,27 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
   const effectiveOpacity = props.dimShallow
     ? opacity * resolveSinrLiveConeElevationDimFactor(apparentElevationDeg, props.dimFloorDeg, props.dimCeilDeg, props.dimMinFactor)
     : opacity;
+  const focused = props.joinKey !== null && props.joinKey === props.focusedJoinKey;
+  const focusEnabled = props.joinKey !== null && props.onFocusJoinKeyChange !== undefined;
+  const handlePointerOver = focusEnabled
+    ? (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation();
+      props.onFocusJoinKeyChange?.(props.joinKey);
+    }
+    : undefined;
+  const handlePointerOut = focusEnabled
+    ? (event: ThreeEvent<PointerEvent>) => {
+      if (props.focusedJoinKey !== props.joinKey) return;
+      event.stopPropagation();
+      props.onFocusJoinKeyChange?.(null);
+    }
+    : undefined;
+  const handleClick = focusEnabled
+    ? (event: ThreeEvent<MouseEvent>) => {
+      event.stopPropagation();
+      props.onFocusJoinKeyChange?.(props.joinKey);
+    }
+    : undefined;
 
   useLayoutEffect(() => {
     const geometry = geometryRef.current;
@@ -1294,6 +1333,9 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
       name={`sinr-live-cell-beam-cone-${cone.satId}-${cone.cellId}-${renderItemBeamId(cone)}`}
       renderOrder={10}
       frustumCulled={false}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+      onClick={handleClick}
       userData={{
         cellId: cone.cellId,
         satId: cone.satId,
@@ -1318,6 +1360,34 @@ function ObliqueConeMesh(props: { cone: SinrLiveCellBeamConeRenderItem; opacity:
         side={THREE.DoubleSide}
         toneMapped={false}
       />
+      {focused && (
+        <mesh
+          name={`sinr-live-cell-beam-focus-highlight-${cone.satId}-${cone.cellId}-${renderItemBeamId(cone)}`}
+          position={[cone.baseCenter.x, cone.baseCenter.y + 1.1, cone.baseCenter.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          renderOrder={19}
+          userData={{
+            focusHighlight: true,
+            joinKey: props.joinKey,
+            satelliteId: cone.satId,
+            beamId: renderItemBeamId(cone),
+          }}
+        >
+          <ringGeometry args={[
+            cone.baseRadiusWorld * (props.widthScale ?? 1) * 1.06,
+            cone.baseRadiusWorld * (props.widthScale ?? 1) * 1.13,
+            6,
+          ]} />
+          <meshBasicMaterial
+            color="#fff4b8"
+            transparent
+            opacity={0.9}
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
     </mesh>
   );
 }
@@ -1418,6 +1488,7 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
           ? style.opacity * HOMEPAGE_SATELLITE_CONTEXT_RENDER_OPACITY_FACTOR * homepageEeOpacity
           : style.opacity * homepageEeOpacity;
         const fog = resolveSinrLiveConeFog(role);
+        const joinKey = props.resolveJoinKey?.(cone) ?? null;
         return (
           <ObliqueConeMesh
             key={cone.renderKey ?? renderItemStableKey(cone)}
@@ -1433,6 +1504,9 @@ export function SinrLiveCellBeamCones(props: SinrLiveCellBeamConesRenderProps): 
             dimMinFactor={props.elevationDimMinFactor}
             widthScale={props.widthScale}
             ellipseTiltExaggeration={props.ellipseTiltExaggeration}
+            joinKey={joinKey}
+            focusedJoinKey={props.focusedJoinKey}
+            onFocusJoinKeyChange={props.onFocusJoinKeyChange}
           />
         );
       })}

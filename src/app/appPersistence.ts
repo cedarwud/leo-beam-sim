@@ -137,3 +137,29 @@ export function persistSceneVisualScaleOverrides(sceneVisualScale: SceneVisualSc
     // Storage can be unavailable in private or embedded browser contexts.
   }
 }
+
+/**
+ * Homepage-only narrative switch. The default is deliberately enabled so the
+ * default route teaches the decision story; an explicit saved choice wins.
+ */
+export const HOMEPAGE_NARRATIVE_TEACHING_MODE_KEY = 'leo-beam-sim.homepage-narrative-teaching-mode.v1';
+
+export function readHomepageNarrativeTeachingMode(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const stored = window.localStorage.getItem(HOMEPAGE_NARRATIVE_TEACHING_MODE_KEY);
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
+  } catch {
+    // Storage can be unavailable in private or embedded browser contexts.
+  }
+  return true;
+}
+
+export function persistHomepageNarrativeTeachingMode(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(HOMEPAGE_NARRATIVE_TEACHING_MODE_KEY, String(enabled));
+  } catch {
+    // Storage can be unavailable in private or embedded browser contexts.
+  }
+}

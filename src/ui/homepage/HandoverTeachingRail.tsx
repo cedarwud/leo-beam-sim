@@ -57,6 +57,10 @@ function stepLabels(kind: TeachingHandoverKind, isEnglish: boolean): readonly st
 // One shared mapping with the scene's teaching cones; see teachingEeRatio01.
 const eeRatio01 = teachingEeRatio01;
 
+/** The same preset set the live 2-hour simulation timeline uses (`TimelineBar`). */
+export const TEACHING_SPEED_PRESETS = [1, 2, 5, 10, 20] as const;
+export type TeachingSpeedPreset = (typeof TEACHING_SPEED_PRESETS)[number];
+
 /** One wall-clock lecture clock, shared by the rail and the caption. */
 export function useHandoverTeachingLecture(
   kind: TeachingHandoverKind | null,
@@ -67,11 +71,16 @@ export function useHandoverTeachingLecture(
   readonly paused: boolean;
   readonly setPaused: (next: boolean) => void;
   readonly restart: () => void;
+  /** Jump the lecture clock to an arbitrary point; clamped to [0, totalSec]. */
+  readonly seek: (sec: number) => void;
+  readonly speed: TeachingSpeedPreset;
+  readonly setSpeed: (next: TeachingSpeedPreset) => void;
   /** Changes on every arm and every restart, so one-shot side effects re-arm. */
   readonly runId: number;
 } {
   const [elapsedSec, setElapsedSec] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [speed, setSpeed] = useState<TeachingSpeedPreset>(1);
   const [runId, setRunId] = useState(0);
   const lastTickRef = useRef<number | null>(null);
   const script = kind === null ? null : buildHandoverTeachingScript(kind);
@@ -80,6 +89,7 @@ export function useHandoverTeachingLecture(
   useEffect(() => {
     setElapsedSec(0);
     setPaused(false);
+    setSpeed(1);
     setRunId(current => current + 1);
     lastTickRef.current = null;
   }, [kind]);
@@ -91,14 +101,14 @@ export function useHandoverTeachingLecture(
       const last = lastTickRef.current;
       lastTickRef.current = nowMs;
       if (last !== null) {
-        const deltaSec = Math.min(0.25, (nowMs - last) / 1000);
+        const deltaSec = Math.min(0.25, (nowMs - last) / 1000) * speed;
         setElapsedSec(current => Math.min(totalSec, current + deltaSec));
       }
       frameId = requestAnimationFrame(tick);
     };
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [kind, paused, totalSec]);
+  }, [kind, paused, speed, totalSec]);
 
   const restart = useCallback(() => {
     setElapsedSec(0);
@@ -107,12 +117,26 @@ export function useHandoverTeachingLecture(
     setRunId(current => current + 1);
   }, []);
 
+  // `resolveTeachingFrame` is pure over `elapsedSec` (see its own doc comment:
+  // "the stage can be scrubbed, paused, and unit-tested without a clock"), so
+  // jumping the clock is just clamping and writing the new value. Clearing
+  // `lastTickRef` stops the running tick loop from computing its next delta
+  // against a now-stale timestamp, which would otherwise replay a jump
+  // forward (or snap straight back) on the very next animation frame.
+  const seek = useCallback((sec: number) => {
+    lastTickRef.current = null;
+    setElapsedSec(Math.max(0, Math.min(totalSec, sec)));
+  }, [totalSec]);
+
   return {
     frame: script === null ? null : resolveTeachingFrame(script, elapsedSec, binding),
     totalSec,
     paused,
     setPaused,
     restart,
+    speed,
+    setSpeed,
+    seek,
     runId,
   };
 }
@@ -213,11 +237,14 @@ export interface HandoverTeachingRailProps {
   readonly paused: boolean;
   readonly onPausedChange: (next: boolean) => void;
   readonly onRestart: () => void;
+  readonly onSeek: (sec: number) => void;
+  readonly speed: TeachingSpeedPreset;
+  readonly onSpeedChange: (next: TeachingSpeedPreset) => void;
   readonly onClose: () => void;
 }
 
 export function HandoverTeachingRail({
-  frame, kind, totalSec, paused, onPausedChange, onRestart, onClose,
+  frame, kind, totalSec, paused, onPausedChange, onRestart, onSeek, speed, onSpeedChange, onClose,
 }: HandoverTeachingRailProps) {
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
@@ -227,6 +254,13 @@ export function HandoverTeachingRail({
     background: 'rgba(255,255,255,.06)', color: COLORS.text, font: 'inherit',
     fontSize: 14.5, fontWeight: 700, cursor: 'pointer', minHeight: 40,
   };
+  // Tick marks at every phase TRANSITION (skip the phase-0 start at 0s, which
+  // sits under the slider's own left edge and would just double it up).
+  let phaseCursorSec = 0;
+  const phaseTransitionsSec = script.phases.map(phase => {
+    phaseCursorSec += phase.durationSec;
+    return phaseCursorSec;
+  }).slice(0, -1);
 
   return (
     <section
@@ -254,10 +288,53 @@ export function HandoverTeachingRail({
             {frame.elapsedSec.toFixed(0)} / {totalSec.toFixed(0)} s
           </span>
         </div>
+        <div
+          data-testid="teaching-timeline"
+          style={{ position: 'relative', display: 'grid', alignItems: 'center', height: 22 }}
+        >
+          <input
+            type="range"
+            data-testid="teaching-seek"
+            min={0}
+            max={totalSec}
+            step={0.1}
+            value={frame.elapsedSec}
+            // While playing, the tick loop keeps writing a fresh `elapsedSec`
+            // onto this same controlled `value` many times a second, which
+            // fights an in-progress native drag (the browser's own slider
+            // position keeps getting overridden mid-gesture, so the drag can
+            // land somewhere far from where the pointer actually was
+            // released). Pausing on the first pointer-down removes the
+            // competing writer for the duration of the gesture; the seek
+            // itself does not touch `paused`, so the timeline still ends the
+            // drag exactly where it was dropped.
+            onPointerDown={() => { if (!paused) onPausedChange(true); }}
+            onChange={event => onSeek(Number(event.currentTarget.value))}
+            aria-label={isEnglish ? 'Seek the lecture timeline' : '拖曳跳至教學時間軸的任一時間點'}
+            style={{
+              gridArea: '1 / 1', width: '100%', margin: 0,
+              accentColor: COLORS.accent, cursor: 'pointer',
+            }}
+          />
+          {/* Phase-transition tick marks. Purely visual, so they must never
+              intercept the drag — the slider above already covers the same
+              track and is what the pointer actually hits. */}
+          <div aria-hidden="true" style={{ gridArea: '1 / 1', position: 'relative', pointerEvents: 'none' }}>
+            {phaseTransitionsSec.map(sec => (
+              <span
+                key={sec}
+                style={{
+                  position: 'absolute', top: '50%', left: `${(sec / totalSec) * 100}%`,
+                  width: 2, height: 8, marginTop: -4, background: COLORS.line,
+                }}
+              />
+            ))}
+          </div>
+        </div>
         <span style={{ color: COLORS.quiet, fontSize: 12, lineHeight: 1.3 }}>
           {isEnglish
-            ? 'If the Walker binding is absent, identity/elevation use authored teaching fallbacks.'
-            : '若 Walker 綁定缺少，身分／仰角使用教學用 fallback。'}
+            ? 'If the TLE binding is absent, identity/elevation use authored teaching fallbacks.'
+            : '若 TLE 綁定缺少，身分／仰角使用教學用 fallback。'}
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" style={button} data-testid="teaching-pause"
@@ -271,6 +348,33 @@ export function HandoverTeachingRail({
             style={{ ...button, borderColor: COLORS.accent, color: COLORS.accent }}>
             {isEnglish ? '✕ Exit' : '✕ 結束'}
           </button>
+        </div>
+        <div
+          style={{ display: 'flex', gap: 5 }}
+          role="group"
+          aria-label={isEnglish ? 'Playback speed' : '播放速度'}
+        >
+          {TEACHING_SPEED_PRESETS.map(preset => {
+            const active = speed === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                data-testid={`teaching-speed-${preset}x`}
+                aria-pressed={active}
+                onClick={() => onSpeedChange(preset)}
+                style={{
+                  flex: '1 1 auto', padding: '5px 0', borderRadius: 7,
+                  border: `1px solid ${active ? COLORS.accent : COLORS.line}`,
+                  background: active ? 'rgba(118,234,215,.16)' : 'rgba(255,255,255,.04)',
+                  color: active ? COLORS.accent : COLORS.quiet,
+                  font: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                }}
+              >
+                {preset}x
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -367,7 +471,20 @@ export function HandoverTeachingRail({
   );
 }
 
-/** The one-to-two narration lines that sit above the timeline. */
+/**
+ * The one-to-two narration lines explaining the current handover phase.
+ *
+ * Pinned to the TOP of the scene canvas, not the bottom: it used to sit at
+ * `bottom: 146`, which put it directly under the seek timeline/speed
+ * controls added later in the same area — `document.elementFromPoint` at its
+ * own centre resolved to `[data-testid="timeline-source-label"]`, not this
+ * element, meaning the timeline UI had been silently drawing over it ever
+ * since those controls were added. It was never actually visible on screen.
+ * `top` is relative to `leo-shell-canvas` (this component's positioning
+ * ancestor), so this sits just under the canvas's own top edge — clear of
+ * both the timeline controls near the bottom and the left/right side panels,
+ * which live outside this container.
+ */
 export function HandoverTeachingCaption({ frame }: { readonly frame: TeachingFrame }) {
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
@@ -376,7 +493,7 @@ export function HandoverTeachingCaption({ frame }: { readonly frame: TeachingFra
       data-testid="handover-teaching-caption"
       data-teaching-phase={frame.phase.id}
       style={{
-        position: 'absolute', insetInlineStart: 18, insetInlineEnd: 18, bottom: 146, zIndex: 19,
+        position: 'absolute', insetInlineStart: 18, insetInlineEnd: 18, top: 16, zIndex: 19,
         display: 'grid', gap: 2, padding: '9px 12px', borderRadius: 9, maxWidth: 1040,
         marginInline: 'auto', pointerEvents: 'none',
         borderInlineStart: `4px solid ${COLORS.accent}`, background: 'rgba(4,18,25,.94)',

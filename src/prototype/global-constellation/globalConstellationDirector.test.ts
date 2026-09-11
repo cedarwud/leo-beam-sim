@@ -57,23 +57,23 @@ assert.equal(globalConstellationBeatIndex('unknown'), null);
 assert.equal(globalConstellationBeatAt(0).id, 'earth-question');
 assert.throws(() => globalConstellationBeatAt(99), RangeError);
 
-assert.equal(GLOBAL_CONSTELLATION_FACTS.instantUtc, '2026-08-25T12:00:00.000Z');
+assert.equal(GLOBAL_CONSTELLATION_FACTS.instantUtc, '2026-09-09T12:00:00.000Z');
 assert.equal(GLOBAL_CONSTELLATION_FACTS.worldFrame, 'earth-fixed-radius-2.48-v1');
-assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.count, 10_738);
-assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.ntpuHorizonVisible, 445);
-assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.ntpuVisibleAtMinimumElevation, 175);
-assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.medianAltitudeKm, 480.67);
+assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.count, 10_714);
+assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.ntpuHorizonVisible, 450);
+assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.ntpuVisibleAtMinimumElevation, 157);
+assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.medianAltitudeKm, 479.368);
 assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.count, 651);
 assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.ntpuHorizonVisible, 37);
-assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.ntpuVisibleAtMinimumElevation, 17);
-assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.medianAltitudeKm, 1212.455);
-assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.snapshotPath, '/tle-archive/starlink/starlink_20260824.tle');
-assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.snapshotPath, '/tle-archive/oneweb/oneweb_20260825.tle');
+assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.ntpuVisibleAtMinimumElevation, 18);
+assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.medianAltitudeKm, 1212.105);
+assert.equal(GLOBAL_CONSTELLATION_FACTS.starlink.snapshotPath, '/tle-archive/starlink/starlink_20260908.tle');
+assert.equal(GLOBAL_CONSTELLATION_FACTS.oneweb.snapshotPath, '/tle-archive/oneweb/oneweb_20260908.tle');
 assert.ok(GLOBAL_CONSTELLATION_FACTS.starlink.snapshotSha256.length === 64);
 assert.ok(GLOBAL_CONSTELLATION_FACTS.oneweb.snapshotSha256.length === 64);
 
-assert.ok(medianAltitudeGuideRadiusWorld(480.67) > GLOBAL_CONSTELLATION_FACTS.earthRadiusWorld);
-assert.ok(medianAltitudeGuideRadiusWorld(1212.455) > medianAltitudeGuideRadiusWorld(480.67));
+assert.ok(medianAltitudeGuideRadiusWorld(479.368) > GLOBAL_CONSTELLATION_FACTS.earthRadiusWorld);
+assert.ok(medianAltitudeGuideRadiusWorld(1212.105) > medianAltitudeGuideRadiusWorld(479.368));
 assert.ok(GLOBAL_CONSTELLATION_FACTS.starlink.count / GLOBAL_CONSTELLATION_FACTS.oneweb.count > 16);
 
 const marker = ntpuMarkerGeometry(true);

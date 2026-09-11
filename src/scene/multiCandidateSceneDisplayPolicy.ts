@@ -33,12 +33,50 @@ export interface MultiCandidateComparisonLatch {
   readonly epochToken: string;
 }
 
+/**
+ * Floor on how long the comparison overlay stays visible once it turns on,
+ * regardless of how quickly the real decision engine itself moves past its
+ * pre-selection phase. Without this, the overlay's on-screen duration is
+ * whatever the engine's own evaluation window happens to be — observed as
+ * short as ~1-2s in live testing (several solid links flashing on, then gone
+ * before a viewer can register there were candidates being compared at all).
+ * That reads as "random lines appearing and vanishing for no reason," which
+ * is a real usability problem on its own, independent of the homepage
+ * teaching-lecture leaks this module's `teachingLectureActive` gate fixes.
+ * 3s matches the low end of typical toast/flash-message minimum legibility
+ * conventions — long enough to consciously register, short enough not to
+ * linger past its relevance once the engine has already moved on.
+ */
+export const MULTI_CANDIDATE_COMPARISON_MIN_DISPLAY_HOLD_SEC = 3;
+
 export interface MultiCandidateComparisonPolicyInput {
   readonly acceptedPresentation: AcceptedHandoverPresentationSnapshot | null;
   readonly simSource: MultiCandidateSceneSimulationSource;
   readonly sceneLane: SceneLane;
   readonly previousLatch: MultiCandidateComparisonLatch | null;
   readonly centralOverlayEnabled: boolean;
+  /** Sim clock (seconds). Freezes the display hold while paused, same as the clock it measures against. */
+  readonly nowSec: number;
+  /** When the overlay's own minimum-display hold started this episode, or null if it is not currently holding. */
+  readonly previousDisplayHoldSinceSec: number | null;
+  /**
+   * A homepage teaching lecture is open. `centralOverlayActive` is the ROOT
+   * flag roughly thirty call sites in `MainScene.tsx` key off (cone items,
+   * spine-particle plans, ground ripple, `SceneAcceptedHandoverCue`, ...) —
+   * this authority evaluation runs continuously in the background regardless
+   * of the lecture (see `HandoverTeachingBeamCones.tsx`'s own header), so
+   * without this gate every one of those thirty sites independently risks
+   * painting a real, un-teaching-related comparison overlay — several solid
+   * links from the real serving satellite to the beams it is actually
+   * evaluating — on top of the lecture's own two cones. Gating it once HERE,
+   * at the source, is deliberate: `resolveMultiCandidatePresentationPolicy`'s
+   * OWN `teachingLectureActive` gate (added first) only covers its own
+   * `sceneVisualActive`/`candidateComparisonSceneActive` outputs, not this
+   * sibling policy's `centralOverlayActive` — the two are computed
+   * independently despite the similar names, and both feed downstream
+   * renderers, so both need their own gate.
+   */
+  readonly teachingLectureActive: boolean;
 }
 
 export interface MultiCandidateComparisonPolicy {
@@ -49,9 +87,17 @@ export interface MultiCandidateComparisonPolicy {
   readonly rawComparisonPhase: boolean;
   readonly preSelectionComparisonPhase: boolean;
   readonly latchedComparisonPhase: boolean;
+  /**
+   * The raw signal (`rawComparisonPhase || latchedComparisonPhase`)
+   * extended by the minimum-display hold — this is what `centralOverlayActive`
+   * and every external consumer of `comparisonPhase` actually see, so the
+   * hold applies everywhere this flag is read, not only inside this module.
+   */
   readonly comparisonPhase: boolean;
   readonly centralOverlayActive: boolean;
   readonly nextLatch: MultiCandidateComparisonLatch | null;
+  /** Pass back into `previousDisplayHoldSinceSec` on the next call. */
+  readonly nextDisplayHoldSinceSec: number | null;
 }
 
 /**
@@ -101,8 +147,21 @@ export function resolveMultiCandidateComparisonPolicy(
     && nextLatch !== null
     && input.acceptedPresentation.episodeId === nextLatch.episodeId
     && input.acceptedPresentation.epochToken === nextLatch.epochToken;
-  const comparisonPhase = rawComparisonPhase || latchedComparisonPhase;
-  const centralOverlayActive = authorityActive
+  const comparisonPhaseSignal = rawComparisonPhase || latchedComparisonPhase;
+
+  let nextDisplayHoldSinceSec = input.previousDisplayHoldSinceSec;
+  if (comparisonPhaseSignal && nextDisplayHoldSinceSec === null) {
+    nextDisplayHoldSinceSec = input.nowSec;
+  }
+  const withinMinDisplayHold = nextDisplayHoldSinceSec !== null
+    && input.nowSec - nextDisplayHoldSinceSec < MULTI_CANDIDATE_COMPARISON_MIN_DISPLAY_HOLD_SEC;
+  const comparisonPhase = comparisonPhaseSignal || withinMinDisplayHold;
+  if (!comparisonPhase) {
+    nextDisplayHoldSinceSec = null;
+  }
+
+  const centralOverlayActive = !input.teachingLectureActive
+    && authorityActive
     && input.centralOverlayEnabled
     && comparisonPhase;
 
@@ -117,6 +176,7 @@ export function resolveMultiCandidateComparisonPolicy(
     comparisonPhase,
     centralOverlayActive,
     nextLatch,
+    nextDisplayHoldSinceSec,
   };
 }
 
@@ -138,6 +198,21 @@ export interface MultiCandidatePresentationPolicyInput {
   readonly sceneLayerEnabled: boolean;
   readonly previousHold: MultiCandidatePresentationHold | null;
   readonly centralOverlayEnabled: boolean;
+  /**
+   * A homepage teaching lecture is open. This authority evaluation keeps
+   * running in the background the whole time (the lecture is a display-only
+   * overlay that never reads from or writes to it — see
+   * `HandoverTeachingBeamCones.tsx`'s own header), so `authorityActive` and
+   * `comparisonPhase` can flip through a real, independent candidate
+   * comparison — several solid data-link lines from the real serving
+   * satellite to the beams it is actually evaluating — while the lecture's
+   * own two cones are on screen. Neither `sceneVisualActive` nor
+   * `candidateComparisonSceneActive` may go true while this holds, the same
+   * "clears the field for the whole run" rule every other natural layer
+   * (`HandoverLinks`, `SpineParticles`, the `event-effects` cones) already
+   * follows.
+   */
+  readonly teachingLectureActive: boolean;
 }
 
 export interface MultiCandidatePresentationPolicy {
@@ -172,7 +247,8 @@ export function resolveMultiCandidatePresentationPolicy(
     ? null
     : homepageSceneProjection?.presentation
       ?? buildMultiCandidateScenePresentation(input.candidatePresentationPlan);
-  const candidateComparisonSceneActive = input.authorityActive
+  const candidateComparisonSceneActive = !input.teachingLectureActive
+    && input.authorityActive
     && input.comparisonPhase
     && input.showSinrLiveCellBeams
     && candidateReviewPresentation !== null;
@@ -217,7 +293,8 @@ export function resolveMultiCandidatePresentationPolicy(
     && scenePresentationForRender !== null
     && input.preSelectionComparisonPhase
     && input.comparisonPhase;
-  const sceneVisualActive = input.centralOverlayEnabled
+  const sceneVisualActive = !input.teachingLectureActive
+    && input.centralOverlayEnabled
     && (input.authorityActive && input.comparisonPhase || scenePresentationHoldActive);
   const sceneLayerVisible = input.sceneLayerEnabled && sceneVisualActive;
 

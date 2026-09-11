@@ -78,9 +78,12 @@ assert.match(
 );
 
 for (const originalRenderer of [
+  // 'HandoverLinks' was retired from SceneHandoverMotionLayers.tsx: its line
+  // was structurally never visible without the same-link beam cone also
+  // being visible (see that file's own header), so it duplicated the cone's
+  // apex-to-base connection cue rather than adding information.
   'BaseSceneLayout',
   'GroundScene',
-  'HandoverLinks',
   'SatelliteMarker',
   'SinrLiveCellBeamCones',
   'SinrLiveCellFootprintRings',

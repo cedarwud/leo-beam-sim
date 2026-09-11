@@ -247,7 +247,7 @@ function SourceBadge({ source }: { readonly source: IntraHandoverTeachingSource 
       data-event-source-time-sec={event.sourceTimeSec.toFixed(3)}
       data-epoch-utc={INTRA_HANDOVER_TEACHING_EPOCH_UTC}
     >
-      <strong>SOURCE · Live Walker event index</strong>
+      <strong>SOURCE · Live TLE event index</strong>
       <span>{event.id} · source time {event.sourceTimeSec.toFixed(0)} s</span>
       <span>stepRuntimeFrame · coarse offline forecast</span>
     </aside>
@@ -346,7 +346,7 @@ export function IntraHandoverTeachingPrototype(): ReactElement {
         <div className="intra-teaching__loading-mark">
           <span className="intra-teaching__eyebrow">INTRA-SATELLITE TEACHING</span>
           <h1>正在讀取來源事件…</h1>
-          <p>只接受可驗證的 Walker 同衛星換束身份。</p>
+          <p>只接受可驗證的 TLE 同衛星換束身份。</p>
         </div>
       </main>
     );
