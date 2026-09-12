@@ -526,3 +526,43 @@ integration rehearsal rooted at the current target branch; it must not modify
 the protected parent checkout. R6 product work begins only after that rehearsal
 proves the checkpoint can be integrated with the same aggregate, architecture,
 browser, mutation, and baseline-difference evidence.
+
+## 18. R5 integration rehearsal — 2026-09-12
+
+The first integration rehearsal was performed in a new worktree and branch,
+without checking out, resetting, stashing, or modifying the protected parent
+checkout:
+
+```text
+worktree: /home/u24/demo/leo-beam-sim-integration-rehearsal
+branch: integration/teaching-simulator-r5-rehearsal
+target: wip/ee-handover-authority-2026-09-05 @ d66b816
+R5 checkpoint: 7c6259625d91f61dd889a30c34e70727b621526d
+rehearsal merge: 7a8a6e9690a3376a24a8a695d48af51430ecea2e
+```
+
+The target commit is an ancestor of the R5 checkpoint. The rehearsal used an
+explicit two-parent merge commit rather than advancing the protected checkout.
+It completed with zero conflicts, and the merge commit's tree was byte-identical
+to the R5 checkpoint before this rehearsal record was added.
+
+The rehearsal independently repeated the release evidence from the integration
+worktree:
+
+- `npm run lint`: PASS;
+- `npm run test:all`: PASS;
+- `npm run validate:architecture:boundaries`: 6/6 PASS with no new ratchet
+  violations;
+- R1 core scene-surface browser gate: 12/12 PASS;
+- R2 handover-story browser gate: PASS;
+- R3 full scene-render browser gate: 31/31 PASS;
+- R4 shared identity and production mutation gate: PASS;
+- R5 instructor Intra-to-Inter and production mutation gate: PASS;
+- `npm run check:baseline`: exactly 126 PASS and the one pre-existing obsolete
+  `homepageHandoverControlsOwnership.test.ts` source-text pin failure.
+
+The browser suite was served from the integration worktree on its own port, so
+it did not consume a server rooted in the refactor worktree. The integration
+branch is therefore a verified R5 merge candidate and the recommended base for
+R6. This rehearsal is not the final merge into the protected target branch;
+that branch remains unchanged at `d66b816`.
