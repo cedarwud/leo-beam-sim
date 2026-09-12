@@ -1,0 +1,526 @@
+schema_version: 1
+updated_at: 2026-09-13T02:18:21+08:00
+active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
+baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
+integrated_source_commit: d66b816
+branch: refactor/teaching-simulator-r6-guided-flow
+worktree: /home/u24/demo/leo-beam-sim-r6
+current_phase: R6-complete
+status: product_merge_candidate
+
+parallel_tracks:
+  teaching_design:
+    status: deferred_by_owner
+  system_refactor:
+    status: active
+    next_phase: formal_R6_integration_owner_gate
+
+protected_parent_checkout:
+  path: /home/u24/demo/leo-beam-sim
+  dirty_wip_present: false
+  mutation_policy: do_not_touch_reset_stash_or_overwrite
+
+fixed_constraints:
+  - do_not_change_simulation_physics_or_EE_values
+  - do_not_change_handover_ranking_TTT_or_commit_behavior
+  - do_not_tune_palette_geometry_camera_or_lesson_copy
+  - do_not_repair_unrelated_baseline_failures
+
+r1_results:
+  production_surfaces_migrated: 12
+  scene_surface_tests: 11/11
+  browser_surface_reasons: 12/12
+  browser_gate: pass
+  mutation_proof: red_then_green
+
+r2_results:
+  public_boundary: src/scene/handoverStoryFrame.ts
+  normalized_sources:
+    - accepted_walker_or_archived_tle_decision
+    - natural_manual_or_cinema_presentation
+    - authored_teaching_fixture
+    - artifact_replay_frame
+  handover_story_tests: 14/14
+  handover_story_browser_gate: pass
+  mutation_proof: red_then_green
+  invariants:
+    - normalized_story_is_read_only_and_never_a_decision_input
+    - accepted_metrics_keep_snapshot_episode_and_source_frame_identity
+    - authored_teaching_metrics_remain_explicitly_authored
+    - replay_preserves_source_native_beam_tokens_and_missing_truth
+
+r3_goal: >-
+  Produce one exhaustive SceneRenderPlan for live, archived-TLE, and artifact
+  replay lanes, and make production mount every registered user-visible surface
+  from that plan rather than from independent JSX conditions.
+
+r3_results:
+  public_boundary: src/scene/sceneRenderPlan.ts
+  production_modules:
+    - src/scene/scene-render-plan/contracts.ts
+    - src/scene/scene-render-plan/decision.ts
+    - src/scene/scene-render-plan/resolveSceneRenderPlan.ts
+    - src/scene/scene-render-plan/format.ts
+    - src/scene/sceneHandoverStoryFrameSet.ts
+    - src/scene/SceneRenderPlanCanvasTelemetry.tsx
+  registered_surface_count: 31
+  prior_core_surface_count: 12
+  newly_registered_surfaces:
+    - scene.cinematic-spotlight
+    - ground.campus
+    - ground.horizon-boundary
+    - annotation.narrative-caption
+  supported_lanes:
+    - live
+    - archived-tle
+    - artifact-replay
+  surface_contract:
+    - mounted
+    - visible
+    - owner
+    - source
+    - reason_code
+    - render_identity
+    - story_id
+    - story_pair_key
+
+  production_consumers:
+    artifact_replay_scene: true
+    live_scene: true
+    archived_tle_scene: true
+  canvas_telemetry:
+    - schema_version_lane_and_story_owner
+    - story_source_id_and_pair_key
+    - complete_mounted_and_visible_surface_sets
+    - one_owner_source_reason_and_render_identity_per_surface
+  behavior_preserved:
+    - campus_and_teaching_floor_fallback
+    - sinr_live_only_horizon_boundary
+    - delayed_UAV_mount_after_first_paint
+    - natural_motion_layer_suppression
+    - candidate_central_and_review_exclusivity
+    - accepted_handover_cue_admission
+    - all_R1_core_beam_handover_decisions
+    - narrative_caption_shockwave_toast_and_FPS_gates
+  defect_caught_during_migration: >-
+    The initial full-plan draft omitted the existing sinr-live-only horizon
+    boundary gate. The parity review restored it as an explicit plan control
+    before the checkpoint was accepted.
+
+r3_validation:
+  lint: pass
+  test_all: pass
+  scene_render_plan_tests: 6/6
+  parity_samples: 4096
+  handover_story_tests: 14/14
+  scene_surface_tests: 11/11
+  appearance_tests: 96/96
+  multi_candidate_tests: 182/182
+  architecture_boundary_checks: 6/6
+  browser_gates:
+    core_scene_surface_plan: pass_12_of_12
+    handover_story_frame: pass
+    full_scene_render_plan: pass_31_of_31
+    core_to_full_plan_parity: pass_12_of_12
+    teaching_geometry_drawn: pass
+  mutation_proof:
+    horizon_gate_corruption: red_then_green
+    surface_owner_publication_corruption: red_then_green
+  check_baseline:
+    result: known_red
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
+    new_failure_signatures: 0
+
+r4_goal: >-
+  Make scene, rail, and caption consume one shell-owned accepted or teaching
+  HandoverStoryFrame identity, with comparable provenance telemetry and no
+  renderer-local winner, source-target, phase, clock, or snapshot inference.
+
+r4_source_inventory:
+  accepted_source: simState.acceptedHandoverPresentation
+  teaching_sources:
+    - teachingSceneStory
+    - teachingLecture.frame
+  replay_source: activeSceneFrame
+  scene_local_source:
+    - presentation_animation_only
+  prior_duplicate_interpretation_points:
+    - MainScene accepted_and_teaching_reconstruction_with_local_fallback
+    - HomepageBeamRail phase_pair_and_provenance_reconstruction
+    - teaching_rail_caption_and_cone_overlapping_script_story_inputs
+    - narrative_caption_identity_held_with_chapter_text
+
+r4_results:
+  public_boundary: src/scene/handoverSurfaceBinding.ts
+  implementation_modules:
+    - src/scene/handover-surface-binding/contracts.ts
+    - src/scene/handover-surface-binding/resolve.ts
+    - src/scene/handover-surface-binding/attributes.ts
+    - src/scene/handover-surface-binding/status.ts
+    - src/scene/handoverAcceptedSurfaceProjection.ts
+    - src/scene/handoverTeachingSurfaceProjection.ts
+  shell_composer: resolveHandoverSurfaceBindings
+  frame_set_composer: resolveSceneHandoverStoryFrameSet
+  bound_scene_composer: resolveBoundSceneHandoverStoryFrameSet
+  production_and_audit_attribute_composer: handoverSurfaceIdentityAttributes
+
+  comparable_identity_fields:
+    - active_source
+    - story_id
+    - handover_kind
+    - source_target_pair_key
+    - phase
+    - committed_state
+    - snapshot_id
+    - episode_id
+    - source_frame_id
+    - clock_basis_current_and_duration
+    - producer
+    - claim_class
+    - decision_evidence_class
+    - disclosure
+    - decision_input_permission
+    - accepted_decision_or_teaching_fixture_provenance
+    - canonical_identity_key
+  production_consumers:
+    - production_scene
+    - homepage_accepted_rail
+    - accepted_narrative_caption
+    - authored_teaching_rail
+    - authored_teaching_caption
+    - authored_teaching_cones
+  invariants:
+    - accepted_teaching_and_replay_absence_is_authoritative
+    - only_presentation_animation_may_remain_scene_local
+    - rail_and_renderers_do_not_infer_winner_pair_phase_or_provenance
+    - no_second_clock_winner_selection_or_accepted_snapshot
+    - accepted_binding_preserves_exact_normalized_frame_reference
+  defect_caught_during_browser_acceptance: >-
+    The narrative caption intentionally held its visible chapter, but its DOM
+    identity telemetry also stayed on an older accepted snapshot for one to
+    three seconds. It now follows the live App-owned binding on the canvas
+    render loop while retaining the existing chapter hold policy and copy.
+
+r4_validation:
+  lint: pass
+  test_all: pass
+  handover_surface_binding_tests: 20/20
+  handover_story_tests: 14/14
+  scene_surface_tests: 11/11
+  scene_render_plan_tests: 6/6
+  appearance_tests: 97/97
+  multi_candidate_tests: 182/182
+  architecture_boundary_checks: 6/6
+  browser_gates:
+    core_scene_surface_plan: pass_12_of_12
+    handover_story_frame: pass
+    full_scene_render_plan: pass_31_of_31
+    handover_surface_binding:
+      accepted: pass
+      authored_intra: pass
+      authored_inter: pass
+  independent_acceptance_contract: >-
+    scripts/lib/handover-surface-acceptance.ts does not import the production
+    projection composer and compares every required field across surfaces.
+  mutation_proof:
+    focused_every_surface_identity_field: red_then_green
+    accepted_root_identity_fields: red_then_green
+    production_scene_story_id: red_then_green
+    production_rail_story_id: red_then_green
+    production_caption_story_id: red_then_green
+  check_baseline:
+    result: known_red
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
+    new_failure_signatures: 0
+
+
+r5_goal: >-
+  Build one deterministic seven-beam instructor scenario on the R4 projection
+  boundary: Intra then Inter on one source-time axis, with direct Inter entry,
+  reset, pause, replay, seek, speed invariance, and cross-surface telemetry.
+
+r5_results:
+  scenario_id: homepage-seven-beam-intra-inter-v1
+  scenario_version: 1
+  public_modules:
+    - src/homepage/teaching/instructorHandoverScenario.ts
+    - src/homepage/teaching/instructorHandoverTransport.ts
+    - src/homepage/teaching/useInstructorHandoverTransport.ts
+    - src/homepage/teaching/instructorHandoverTelemetry.ts
+  source_time_axis_sec: 144
+  segments:
+    - kind: intra
+      start_sec: 0
+      end_sec: 72
+    - kind: inter
+      start_sec: 72
+      end_sec: 144
+  direct_inter_window_sec: 72_to_144
+  required_beam_topology:
+    serving_beam_count: 7
+    candidate_beam_count: 7
+    admission: fail_closed
+  speed_presets:
+    - 1
+    - 2
+    - 5
+    - 10
+    - 20
+  controls:
+    - play_pause
+    - restart
+    - reversible_seek
+    - speed
+    - close
+  production_surfaces:
+    - root
+    - scene
+    - rail
+    - caption
+    - teaching_cones
+  invariants:
+    - one_pure_source_time_transport
+    - same_source_time_same_story_across_speed_and_replay
+    - live_scientific_producer_frozen_during_authored_run
+    - live_pause_and_speed_restored_on_close
+    - fixture_latched_per_run_and_segment
+    - no_teaching_manual_wall_clock_interlude
+    - no_renderer_local_endpoint_phase_or_winner_inference
+  defect_caught_during_execution: >-
+    The first draft still armed the older manual handover presentation at the
+    authored switching beat. That would have introduced a second transition
+    clock and endpoint authority. The teaching-only trigger was removed; the
+    existing non-teaching manual Intra fallback remains unchanged.
+
+r5_validation:
+  lint: pass
+  test_all: pass
+  instructor_handover_tests: 33/33
+  handover_surface_binding_tests: 22/22
+  handover_story_tests: 14/14
+  scene_surface_tests: 11/11
+  scene_render_plan_tests: 6/6
+  appearance_tests: 97/97
+  multi_candidate_tests: 182/182
+  architecture_boundary_checks: 6/6
+  browser_gates:
+    core_scene_surface_plan: pass_12_of_12
+    handover_story_frame: pass
+    full_scene_render_plan: pass_31_of_31
+    handover_surface_binding: pass
+    instructor_handover:
+      pause_freeze: pass
+      speed_invariance_1_2_5_10_20x: pass
+      phase_and_commit_seek_matrix: pass
+      restart_replay_equivalence: pass
+      intra_to_inter_crossing: pass
+      direct_inter_entry: pass
+      live_timeline_lock_and_restore: pass
+  independent_acceptance_contract: >-
+    scripts/lib/instructor-handover-acceptance.ts imports no production scenario,
+    transport, projection, or telemetry composer.
+  mutation_proof:
+    focused_every_surface_field: red_then_green
+    focused_root_source_time: red_then_green
+    production_scene_story_id: red_then_green
+    production_rail_story_id: red_then_green
+    production_caption_story_id: red_then_green
+  check_baseline:
+    result: known_red
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
+    new_failure_signatures: 0
+
+integration_rehearsal:
+  branch: integration/teaching-simulator-r5-rehearsal
+  worktree: /home/u24/demo/leo-beam-sim-integration-rehearsal
+  target_branch: wip/ee-handover-authority-2026-09-05
+  target_commit: d66b816b998d591005eccaf4bdcd159f20489314
+  r5_checkpoint_commit: 7c6259625d91f61dd889a30c34e70727b621526d
+  merge_commit: 7a8a6e9690a3376a24a8a695d48af51430ecea2e
+  merge_conflicts: 0
+  merge_tree_equal_to_r5_checkpoint_before_receipt: true
+  protected_parent_unchanged: true
+  validation:
+    lint: pass
+    test_all: pass
+    architecture_boundary_checks: 6/6
+    browser_gates:
+      core_scene_surface_plan: pass_12_of_12
+      handover_story_frame: pass
+      full_scene_render_plan: pass_31_of_31
+      handover_surface_binding: pass
+      instructor_handover: pass
+    check_baseline:
+      result: known_red
+      passed: 126
+      failed: 1
+      failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
+      new_failure_signatures: 0
+r6_goal: >-
+  Build one versioned, pure student guided-flow pilot on the verified R5
+  transport and R4 identity boundary: Predict, Operate, Observe, Explain,
+  Complete, Reset. Keep student commands bounded, preserve the R5 source-time
+  owner, and support teacher-led projection use without multi-user state.
+
+r6_results:
+  base_integration_commit: 1d1564e7b4c5238c76bef0b818ea0ef0ffe8a2ec
+  activity_contract:
+    schema_version: 1
+    activity_id: r6-intra-guided-flow-v1
+    activity_version: 1
+    scenario_id: homepage-seven-beam-intra-inter-v1
+    scenario_version: 1
+    segment: intra
+    entry_point_sec: 0
+    steps:
+      - predict
+      - operate
+      - observe
+      - explain
+      - complete
+    bounded_checkpoints_sec:
+      - 20
+      - 40
+      - 52
+    minimum_comparable_evidence_claims: 1
+    reset_identity: r6-intra-guided-flow-v1:predict:clean
+  public_modules:
+    - src/homepage/teaching/studentHandoverActivityContract.ts
+    - src/homepage/teaching/studentHandoverActivityState.ts
+    - src/homepage/teaching/studentHandoverActivityEvidence.ts
+    - src/homepage/teaching/studentHandoverActivityTelemetry.ts
+    - src/homepage/teaching/useStudentHandoverActivity.ts
+    - src/ui/homepage/StudentHandoverActivityLauncher.tsx
+    - src/ui/homepage/StudentHandoverActivityPanel.tsx
+  acceptance_modules:
+    - scripts/lib/student-handover-acceptance.ts
+    - scripts/lib/student-handover-acceptance.test.ts
+    - scripts/validate-student-handover-browser.ts
+  source_time_owner: instructor_R5_transport
+  production_surfaces:
+    - root
+    - scene
+    - rail
+    - caption
+    - activity_panel
+  safe_controls:
+    - prediction_select_and_lock
+    - start_bounded_observation
+    - advance_declared_checkpoint
+    - explanation_select
+    - observed_evidence_select
+    - complete
+    - reset_after_complete
+    - exit_clean_predict
+  unsafe_control_boundary:
+    unmounted:
+      - shell_visibility_controller
+      - simulation_source_switch
+      - six_acts_entry
+      - direct_instructor_intra_inter_controls
+      - general_control_bar
+      - R5_instructor_rail
+    hidden:
+      - scientific_left_sidebar
+    disabled:
+      - arbitrary_timeline_seek_step_play_speed_and_scrubber
+    preserved:
+      - shared_scene
+      - shared_caption
+      - locale_switch
+      - bounded_student_panel
+      - teacher_led_group_vote_prompt
+  reset_contract:
+    source_time_sec: 0
+    segment: intra
+    step: predict
+    clears:
+      - prediction
+      - explanation
+      - receipt
+      - caption_hold
+      - observations
+      - temporary_selection
+      - activity_telemetry
+    deterministic_equivalence: pass
+    previous_inter_identity_survives: false
+  invariants:
+    - no_second_clock_or_source_time_copy
+    - no_student_winner_phase_pair_or_commit_inference
+    - no_raw_simulation_state_read_by_student_panel
+    - no_power_TTT_offset_ranking_topology_or_physics_mutation
+    - same_R5_source_time_same_story_and_evidence
+    - prediction_locked_before_operate
+    - reset_restarts_R5_run_and_reconstructs_clean_predict
+    - inter_remains_available_only_to_instructor_mode
+    - no_account_leaderboard_persistent_score_or_network_sync
+  independent_acceptance_contract: >-
+    scripts/lib/student-handover-acceptance.ts imports no production activity
+    reducer, evidence projector, R4 projection composer, telemetry composer, or
+    React component. It owns the focused and browser mutation truth.
+
+r6_validation:
+  lint: pass
+  focused_student_handover_tests: 17/17
+  test_all: pass
+  architecture_boundary_checks: 6/6
+  production_build: pass
+  browser_gates:
+    R1_core_scene_surface_plan: pass_12_of_12
+    R2_handover_story_frame: pass
+    R3_full_scene_render_plan: pass_31_of_31
+    R4_handover_surface_binding: pass_with_mutation_red_then_green
+    R5_instructor_handover: pass_intra_to_inter
+    R6_student_guided_flow:
+      full_flow: pass
+      bilingual_projection: pass
+      teacher_led_prompt_readability: pass
+      unsafe_control_boundary: pass
+      deterministic_reset: pass
+  mutation_proof:
+    activity_step: red_then_green
+    activity_run_id: red_then_green
+    prediction_lock: red_then_green
+    story_id: red_then_green
+    pair_key: red_then_green
+    source_time: red_then_green
+    checkpoint: red_then_green
+    explanation_evidence_claim: red_then_green
+    reset_identity: red_then_green
+    checkpoint_scientific_evidence: red_then_green
+  check_baseline:
+    result: known_red
+    tests: 127
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_regex_pin
+    new_failure_signatures: 0
+
+r6_merge_candidate:
+  ready: true
+  branch: refactor/teaching-simulator-r6-guided-flow
+  protected_target: /home/u24/demo/leo-beam-sim
+  protected_target_commit: d66b816b998d591005eccaf4bdcd159f20489314
+  protected_target_unchanged: true
+  eight_act_workstream_merged: false
+  eight_act_external_wip_observed_and_untouched: true
+  R7_started: false
+
+known_baseline_reds:
+  - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
+  - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
+  - scripts/audit/render-timeline.test.ts historically outside an aggregate
+  - scripts/lib/browser-gate.test.ts historically outside an aggregate
+  - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
+
+next_phase_candidate: formal_R6_integration
+next_phase_gate: >-
+  Stop after publishing this R6 product merge candidate. A separate,
+  owner-authorized phase may rehearse or perform formal integration into the
+  protected target. Do not begin R7 legacy retirement from this checkpoint.

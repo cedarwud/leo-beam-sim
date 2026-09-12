@@ -1,4 +1,5 @@
 import type { HandoverPhase } from '../engine/handover/candidateDecisionContract';
+import type { HandoverStoryPhase } from './handoverStoryFrame';
 
 export interface NarrativeCaptionText {
   readonly eventLabelZhHant: string;
@@ -30,6 +31,19 @@ export type NarrativeCaptionChapter =
 export function resolveNarrativeCaptionChapter(phase: HandoverPhase): NarrativeCaptionChapter {
   if (phase === 'evaluating' || phase === 'qualifying') return 'watching-candidates';
   return phase;
+}
+
+/** Caption projection from the already-normalized accepted story phase. */
+export function resolveNarrativeCaptionChapterFromStoryPhase(
+  phase: HandoverStoryPhase,
+): NarrativeCaptionChapter {
+  switch (phase) {
+    case 'serving': return 'monitoring';
+    case 'measuring': return 'watching-candidates';
+    case 'holding': return 'selection-hold';
+    case 'switching': return 'switching';
+    case 'settled': return 'guard';
+  }
 }
 
 /**

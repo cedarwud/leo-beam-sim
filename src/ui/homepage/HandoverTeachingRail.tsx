@@ -1,17 +1,37 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 
 import {
   buildHandoverTeachingScript,
-  resolveTeachingFrame,
-  teachingScriptTotalSec,
   teachingEeRatio01,
   TEACHING_EE_THRESHOLD_KBIT_PER_JOULE,
-  type TeachingFrame,
   type TeachingHandoverKind,
-  type TeachingIdentityBinding,
   type TeachingLinkFrame,
 } from '../../homepage/teaching/handoverTeachingScript';
+import {
+  INSTRUCTOR_HANDOVER_PHASE_MARKERS,
+} from '../../homepage/teaching/instructorHandoverScenario';
+import {
+  INSTRUCTOR_HANDOVER_SPEEDS,
+  type InstructorHandoverSpeed,
+  type InstructorHandoverTransportSnapshot,
+} from '../../homepage/teaching/instructorHandoverTransport';
+import {
+  instructorHandoverTelemetryAttributes,
+} from '../../homepage/teaching/instructorHandoverTelemetry';
+import type {
+  StudentHandoverActivityState,
+} from '../../homepage/teaching/studentHandoverActivityState';
+import {
+  studentHandoverActivityTelemetryAttributes,
+} from '../../homepage/teaching/studentHandoverActivityTelemetry';
 import { useLocale } from '../../i18n';
+import {
+  handoverSurfaceIdentityAttributes,
+  resolveTeachingHandoverSurfaceStatus,
+} from '../../scene/handoverSurfaceBinding';
+import type {
+  HandoverTeachingSurfaceProjection,
+} from '../../scene/handoverTeachingSurfaceProjection';
 
 /**
  * The homepage handover lecture, rendered onto the existing shell.
@@ -57,89 +77,9 @@ function stepLabels(kind: TeachingHandoverKind, isEnglish: boolean): readonly st
 // One shared mapping with the scene's teaching cones; see teachingEeRatio01.
 const eeRatio01 = teachingEeRatio01;
 
-/** The same preset set the live 2-hour simulation timeline uses (`TimelineBar`). */
-export const TEACHING_SPEED_PRESETS = [1, 2, 5, 10, 20] as const;
-export type TeachingSpeedPreset = (typeof TEACHING_SPEED_PRESETS)[number];
-
-/** One wall-clock lecture clock, shared by the rail and the caption. */
-export function useHandoverTeachingLecture(
-  kind: TeachingHandoverKind | null,
-  binding: TeachingIdentityBinding | null,
-): {
-  readonly frame: TeachingFrame | null;
-  readonly totalSec: number;
-  readonly paused: boolean;
-  readonly setPaused: (next: boolean) => void;
-  readonly restart: () => void;
-  /** Jump the lecture clock to an arbitrary point; clamped to [0, totalSec]. */
-  readonly seek: (sec: number) => void;
-  readonly speed: TeachingSpeedPreset;
-  readonly setSpeed: (next: TeachingSpeedPreset) => void;
-  /** Changes on every arm and every restart, so one-shot side effects re-arm. */
-  readonly runId: number;
-} {
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [speed, setSpeed] = useState<TeachingSpeedPreset>(1);
-  const [runId, setRunId] = useState(0);
-  const lastTickRef = useRef<number | null>(null);
-  const script = kind === null ? null : buildHandoverTeachingScript(kind);
-  const totalSec = script === null ? 0 : teachingScriptTotalSec(script);
-
-  useEffect(() => {
-    setElapsedSec(0);
-    setPaused(false);
-    setSpeed(1);
-    setRunId(current => current + 1);
-    lastTickRef.current = null;
-  }, [kind]);
-
-  useEffect(() => {
-    if (kind === null || paused) { lastTickRef.current = null; return; }
-    let frameId = 0;
-    const tick = (nowMs: number): void => {
-      const last = lastTickRef.current;
-      lastTickRef.current = nowMs;
-      if (last !== null) {
-        const deltaSec = Math.min(0.25, (nowMs - last) / 1000) * speed;
-        setElapsedSec(current => Math.min(totalSec, current + deltaSec));
-      }
-      frameId = requestAnimationFrame(tick);
-    };
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [kind, paused, speed, totalSec]);
-
-  const restart = useCallback(() => {
-    setElapsedSec(0);
-    lastTickRef.current = null;
-    setPaused(false);
-    setRunId(current => current + 1);
-  }, []);
-
-  // `resolveTeachingFrame` is pure over `elapsedSec` (see its own doc comment:
-  // "the stage can be scrubbed, paused, and unit-tested without a clock"), so
-  // jumping the clock is just clamping and writing the new value. Clearing
-  // `lastTickRef` stops the running tick loop from computing its next delta
-  // against a now-stale timestamp, which would otherwise replay a jump
-  // forward (or snap straight back) on the very next animation frame.
-  const seek = useCallback((sec: number) => {
-    lastTickRef.current = null;
-    setElapsedSec(Math.max(0, Math.min(totalSec, sec)));
-  }, [totalSec]);
-
-  return {
-    frame: script === null ? null : resolveTeachingFrame(script, elapsedSec, binding),
-    totalSec,
-    paused,
-    setPaused,
-    restart,
-    speed,
-    setSpeed,
-    seek,
-    runId,
-  };
-}
+/** R5 uses one scenario transport for Intra and Inter. */
+export const TEACHING_SPEED_PRESETS = INSTRUCTOR_HANDOVER_SPEEDS;
+export type TeachingSpeedPreset = InstructorHandoverSpeed;
 
 function LinkRow({ link, isEnglish, kind }: {
   readonly link: TeachingLinkFrame;
@@ -231,45 +171,63 @@ function Condition({ ok, label }: { readonly ok: boolean; readonly label: string
 }
 
 export interface HandoverTeachingRailProps {
-  readonly frame: TeachingFrame;
-  readonly kind: TeachingHandoverKind;
-  readonly totalSec: number;
-  readonly paused: boolean;
+  /** One shell-owned projection shared by scene, rail and caption. */
+  readonly projection: HandoverTeachingSurfaceProjection;
+  readonly transport: InstructorHandoverTransportSnapshot;
   readonly onPausedChange: (next: boolean) => void;
   readonly onRestart: () => void;
   readonly onSeek: (sec: number) => void;
-  readonly speed: TeachingSpeedPreset;
   readonly onSpeedChange: (next: TeachingSpeedPreset) => void;
   readonly onClose: () => void;
 }
 
 export function HandoverTeachingRail({
-  frame, kind, totalSec, paused, onPausedChange, onRestart, onSeek, speed, onSpeedChange, onClose,
+  projection, transport, onPausedChange, onRestart, onSeek, onSpeedChange, onClose,
 }: HandoverTeachingRailProps) {
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
+  const { binding: storyBinding, frame, kind } = projection;
+  const frameTotalSec = frame.totalSec;
   const script = buildHandoverTeachingScript(kind);
+  const paused = transport.paused;
+  const speed = transport.speed;
+  const scenarioAttributes = instructorHandoverTelemetryAttributes(
+    'rail',
+    transport,
+    storyBinding,
+  );
+  const storyBindingStatus = resolveTeachingHandoverSurfaceStatus(storyBinding, {
+    kind,
+    phase: storyBinding.frame.phase,
+    committed: frame.committed,
+    currentSec: frame.elapsedSec,
+    durationSec: frameTotalSec,
+  });
+  const storyIdentityAttributes = handoverSurfaceIdentityAttributes('rail', storyBinding);
   const button: CSSProperties = {
     flex: '1 1 auto', padding: '7px 10px', borderRadius: 7, border: `1px solid ${COLORS.line}`,
     background: 'rgba(255,255,255,.06)', color: COLORS.text, font: 'inherit',
     fontSize: 14.5, fontWeight: 700, cursor: 'pointer', minHeight: 40,
   };
-  // Tick marks at every phase TRANSITION (skip the phase-0 start at 0s, which
-  // sits under the slider's own left edge and would just double it up).
-  let phaseCursorSec = 0;
-  const phaseTransitionsSec = script.phases.map(phase => {
-    phaseCursorSec += phase.durationSec;
-    return phaseCursorSec;
-  }).slice(0, -1);
+  // One source-time axis covers both deterministic slices. The direct Inter
+  // entry keeps the same scenario identity but clamps the visible window to
+  // its declared segment start.
+  const timelineSpanSec = Math.max(0.001, transport.windowEndSec - transport.windowStartSec);
+  const phaseTransitionsSec = INSTRUCTOR_HANDOVER_PHASE_MARKERS
+    .map(marker => marker.sourceTimeSec)
+    .filter(sec => sec > transport.windowStartSec && sec < transport.windowEndSec);
 
   return (
     <section
       data-testid="handover-teaching-rail"
+      {...storyIdentityAttributes}
+      {...scenarioAttributes}
+      data-handover-surface-contract={storyBindingStatus}
       data-teaching-kind={kind}
       data-teaching-phase={frame.phase.id}
       data-teaching-step-index={String(frame.phase.stepIndex)}
       data-teaching-elapsed-sec={frame.elapsedSec.toFixed(2)}
-      data-teaching-total-sec={totalSec.toFixed(2)}
+      data-teaching-total-sec={frameTotalSec.toFixed(2)}
       data-teaching-serving-below-threshold={frame.servingBelowThreshold ? 'true' : 'false'}
       data-teaching-blocked={frame.blockedByThreshold ? 'true' : 'false'}
       data-teaching-committed={frame.committed ? 'true' : 'false'}
@@ -285,7 +243,7 @@ export function HandoverTeachingRail({
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
           <strong style={{ fontSize: 19 }}>{isEnglish ? script.titleEn : script.titleZhHant}</strong>
           <span style={{ fontSize: 12, color: COLORS.quiet, fontVariantNumeric: 'tabular-nums' }}>
-            {frame.elapsedSec.toFixed(0)} / {totalSec.toFixed(0)} s
+            {transport.sourceTimeSec.toFixed(0)} / {transport.windowEndSec.toFixed(0)} s
           </span>
         </div>
         <div
@@ -295,10 +253,10 @@ export function HandoverTeachingRail({
           <input
             type="range"
             data-testid="teaching-seek"
-            min={0}
-            max={totalSec}
+            min={transport.windowStartSec}
+            max={transport.windowEndSec}
             step={0.1}
-            value={frame.elapsedSec}
+            value={transport.sourceTimeSec}
             // While playing, the tick loop keeps writing a fresh `elapsedSec`
             // onto this same controlled `value` many times a second, which
             // fights an in-progress native drag (the browser's own slider
@@ -324,7 +282,7 @@ export function HandoverTeachingRail({
               <span
                 key={sec}
                 style={{
-                  position: 'absolute', top: '50%', left: `${(sec / totalSec) * 100}%`,
+                  position: 'absolute', top: '50%', left: `${((sec - transport.windowStartSec) / timelineSpanSec) * 100}%`,
                   width: 2, height: 8, marginTop: -4, background: COLORS.line,
                 }}
               />
@@ -485,12 +443,44 @@ export function HandoverTeachingRail({
  * both the timeline controls near the bottom and the left/right side panels,
  * which live outside this container.
  */
-export function HandoverTeachingCaption({ frame }: { readonly frame: TeachingFrame }) {
+export function HandoverTeachingCaption({
+  projection,
+  transport,
+  studentActivityState = null,
+}: {
+  readonly projection: HandoverTeachingSurfaceProjection;
+  readonly transport: InstructorHandoverTransportSnapshot;
+  readonly studentActivityState?: StudentHandoverActivityState | null;
+}) {
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
+  const { binding: storyBinding, frame, kind } = projection;
+  const storyBindingStatus = resolveTeachingHandoverSurfaceStatus(storyBinding, {
+    kind,
+    phase: storyBinding.frame.phase,
+    committed: frame.committed,
+    currentSec: frame.elapsedSec,
+    durationSec: frame.totalSec,
+  });
+  const storyIdentityAttributes = handoverSurfaceIdentityAttributes('caption', storyBinding);
+  const scenarioAttributes = instructorHandoverTelemetryAttributes(
+    'caption',
+    transport,
+    storyBinding,
+  );
+  const studentActivityAttributes = studentHandoverActivityTelemetryAttributes(
+    'caption',
+    studentActivityState,
+    transport,
+    storyBinding,
+  );
   return (
     <div
       data-testid="handover-teaching-caption"
+      {...storyIdentityAttributes}
+      {...scenarioAttributes}
+      {...studentActivityAttributes}
+      data-handover-surface-contract={storyBindingStatus}
       data-teaching-phase={frame.phase.id}
       style={{
         position: 'absolute', insetInlineStart: 18, insetInlineEnd: 18, top: 16, zIndex: 19,

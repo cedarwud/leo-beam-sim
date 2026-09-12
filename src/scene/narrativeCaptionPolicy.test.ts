@@ -6,6 +6,7 @@ import {
   isNarrativeCaptionBaselineChapter,
   NARRATIVE_CAPTION_MIN_HOLD_SEC,
   resolveNarrativeCaptionChapter,
+  resolveNarrativeCaptionChapterFromStoryPhase,
   resolveNarrativeCaptionText,
   type NarrativeCaptionHoldState,
 } from './narrativeCaptionPolicy';
@@ -27,6 +28,14 @@ test('evaluating and qualifying collapse into one watching-candidates chapter; e
   assert.equal(resolveNarrativeCaptionChapter('selection-hold'), 'selection-hold');
   assert.equal(resolveNarrativeCaptionChapter('switching'), 'switching');
   assert.equal(resolveNarrativeCaptionChapter('guard'), 'guard');
+});
+
+test('normalized accepted story phases project to caption chapters without rereading engine phase', () => {
+  assert.equal(resolveNarrativeCaptionChapterFromStoryPhase('serving'), 'monitoring');
+  assert.equal(resolveNarrativeCaptionChapterFromStoryPhase('measuring'), 'watching-candidates');
+  assert.equal(resolveNarrativeCaptionChapterFromStoryPhase('holding'), 'selection-hold');
+  assert.equal(resolveNarrativeCaptionChapterFromStoryPhase('switching'), 'switching');
+  assert.equal(resolveNarrativeCaptionChapterFromStoryPhase('settled'), 'guard');
 });
 
 test('every chapter resolves distinct, non-empty bilingual text', () => {
