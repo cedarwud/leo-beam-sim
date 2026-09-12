@@ -24,6 +24,9 @@ import type { HomepageBeamMetricsProjection } from '../homepage/controller/contr
 import type {
   HandoverTeachingSurfaceProjection,
 } from './handoverTeachingSurfaceProjection';
+import type {
+  InstructorHandoverTransportSnapshot,
+} from '../homepage/teaching/instructorHandoverTransport';
 import {
   resolveHandoverSurfaceBindings,
   type HandoverSurfaceBindingSet,
@@ -344,6 +347,8 @@ interface SceneContentProps {
   acceptedHandoverPresentation: AcceptedHandoverPresentationSnapshot | null;
   /** R4 shell-owned normalized frames shared by scene, rail and captions. */
   handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  /** R5 single source-time transport published on scene/rail/caption. */
+  instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /** Display-only spacecraft model family; archived frames carry this from provenance. */
@@ -402,6 +407,8 @@ interface ArtifactSceneContentProps {
   sceneFrame: NormalizedSceneFrame;
   presentationPlan: ScenePresentationPlan;
   handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  /** R5 single source-time transport published on scene/rail/caption. */
+  instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
 }
 
 const CAMERA_TWEEN_DURATION_MS = 600;
@@ -833,6 +840,7 @@ function ArtifactSceneContent({
   presentationPlan,
   campusVisible,
   handoverSurfaceBindingsRef,
+  instructorHandoverSnapshotRef,
 }: ArtifactSceneContentProps) {
   const handoverSurfaceBindings = handoverSurfaceBindingsRef?.current ?? null;
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
@@ -931,6 +939,7 @@ function ArtifactSceneContent({
         frameSet={storyFrames}
         lane="artifact-replay"
         sharedBindingsRef={handoverSurfaceBindingsRef}
+        instructorTransportRef={instructorHandoverSnapshotRef}
       />
       <SceneTelemetry
         visibleSatelliteCount={visibleSatellites.length}
@@ -1220,6 +1229,7 @@ function SceneRenderContent({
   onSimUpdate,
   acceptedHandoverPresentation,
   handoverSurfaceBindingsRef,
+  instructorHandoverSnapshotRef,
   sceneFrame: propSceneFrame,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
   showSceneOverlays = true,
@@ -3438,6 +3448,7 @@ function SceneRenderContent({
         frameSet={sceneHandoverStoryFrames}
         lane={simSource === 'archived-tle' ? 'archived-tle' : 'live'}
         sharedBindingsRef={handoverSurfaceBindingsRef}
+        instructorTransportRef={instructorHandoverSnapshotRef}
       />
       <SceneTelemetry
         visibleSatelliteCount={renderedLiveSatelliteMarkers.length}
@@ -3952,6 +3963,8 @@ interface MainSceneProps {
   acceptedHandoverPresentation: AcceptedHandoverPresentationSnapshot | null;
   /** R4 shell-owned story bindings shared with right-rail and caption surfaces. */
   handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  /** R5 single source-time transport published on scene/rail/caption. */
+  instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /** Accepted immutable archived-TLE frame for the homepage centre. */
@@ -4010,6 +4023,7 @@ export const MainScene = memo(function MainScene({
   onSimUpdate,
   acceptedHandoverPresentation,
   handoverSurfaceBindingsRef,
+  instructorHandoverSnapshotRef,
   onLiveSeekLanded,
   sceneFrame,
   canonicalAnalysisFrame,
@@ -4182,6 +4196,7 @@ export const MainScene = memo(function MainScene({
               sceneFrame={sceneFrame}
               presentationPlan={presentationPlan}
               handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
+              instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
             />
           ) : homepageTleSceneActive ? (
               <ArchivedTleSceneContent
@@ -4202,6 +4217,7 @@ export const MainScene = memo(function MainScene({
                 onSimUpdate={onSimUpdate}
                 acceptedHandoverPresentation={acceptedHandoverPresentation}
                 handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
+                instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
                 onLiveSeekLanded={onLiveSeekLanded}
                 beamDisplaySpec={beamDisplaySpec}
                 showSceneOverlays={showSceneOverlays}
@@ -4232,6 +4248,7 @@ export const MainScene = memo(function MainScene({
                 onSimUpdate={onSimUpdate}
                 acceptedHandoverPresentation={acceptedHandoverPresentation}
                 handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
+                instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
                 onLiveSeekLanded={onLiveSeekLanded}
                 sceneFrame={sceneFrame}
                 beamDisplaySpec={beamDisplaySpec}

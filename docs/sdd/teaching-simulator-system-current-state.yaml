@@ -1,19 +1,19 @@
 schema_version: 1
-updated_at: 2026-09-12T15:11:28+08:00
+updated_at: 2026-09-12T20:23:16+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
 integrated_source_commit: d66b816
 branch: refactor/teaching-simulator-system-v1
 worktree: /home/u24/demo/leo-beam-sim-refactor
-current_phase: R4-complete
-status: ready_for_R5
+current_phase: R5-complete
+status: ready_for_integration_rehearsal
 
 parallel_tracks:
   teaching_design:
     status: deferred_by_owner
   system_refactor:
     status: active
-    next_phase: R5
+    next_phase: integration-rehearsal
 
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
@@ -237,6 +237,104 @@ r4_validation:
     failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
     new_failure_signatures: 0
 
+
+r5_goal: >-
+  Build one deterministic seven-beam instructor scenario on the R4 projection
+  boundary: Intra then Inter on one source-time axis, with direct Inter entry,
+  reset, pause, replay, seek, speed invariance, and cross-surface telemetry.
+
+r5_results:
+  scenario_id: homepage-seven-beam-intra-inter-v1
+  scenario_version: 1
+  public_modules:
+    - src/homepage/teaching/instructorHandoverScenario.ts
+    - src/homepage/teaching/instructorHandoverTransport.ts
+    - src/homepage/teaching/useInstructorHandoverTransport.ts
+    - src/homepage/teaching/instructorHandoverTelemetry.ts
+  source_time_axis_sec: 144
+  segments:
+    - kind: intra
+      start_sec: 0
+      end_sec: 72
+    - kind: inter
+      start_sec: 72
+      end_sec: 144
+  direct_inter_window_sec: 72_to_144
+  required_beam_topology:
+    serving_beam_count: 7
+    candidate_beam_count: 7
+    admission: fail_closed
+  speed_presets:
+    - 1
+    - 2
+    - 5
+    - 10
+    - 20
+  controls:
+    - play_pause
+    - restart
+    - reversible_seek
+    - speed
+    - close
+  production_surfaces:
+    - root
+    - scene
+    - rail
+    - caption
+    - teaching_cones
+  invariants:
+    - one_pure_source_time_transport
+    - same_source_time_same_story_across_speed_and_replay
+    - live_scientific_producer_frozen_during_authored_run
+    - live_pause_and_speed_restored_on_close
+    - fixture_latched_per_run_and_segment
+    - no_teaching_manual_wall_clock_interlude
+    - no_renderer_local_endpoint_phase_or_winner_inference
+  defect_caught_during_execution: >-
+    The first draft still armed the older manual handover presentation at the
+    authored switching beat. That would have introduced a second transition
+    clock and endpoint authority. The teaching-only trigger was removed; the
+    existing non-teaching manual Intra fallback remains unchanged.
+
+r5_validation:
+  lint: pass
+  test_all: pass
+  instructor_handover_tests: 33/33
+  handover_surface_binding_tests: 22/22
+  handover_story_tests: 14/14
+  scene_surface_tests: 11/11
+  scene_render_plan_tests: 6/6
+  appearance_tests: 97/97
+  multi_candidate_tests: 182/182
+  architecture_boundary_checks: 6/6
+  browser_gates:
+    core_scene_surface_plan: pass_12_of_12
+    handover_story_frame: pass
+    full_scene_render_plan: pass_31_of_31
+    handover_surface_binding: pass
+    instructor_handover:
+      pause_freeze: pass
+      speed_invariance_1_2_5_10_20x: pass
+      phase_and_commit_seek_matrix: pass
+      restart_replay_equivalence: pass
+      intra_to_inter_crossing: pass
+      direct_inter_entry: pass
+      live_timeline_lock_and_restore: pass
+  independent_acceptance_contract: >-
+    scripts/lib/instructor-handover-acceptance.ts imports no production scenario,
+    transport, projection, or telemetry composer.
+  mutation_proof:
+    focused_every_surface_field: red_then_green
+    focused_root_source_time: red_then_green
+    production_scene_story_id: red_then_green
+    production_rail_story_id: red_then_green
+    production_caption_story_id: red_then_green
+  check_baseline:
+    result: known_red
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
+    new_failure_signatures: 0
 known_baseline_reds:
   - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
   - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
@@ -244,9 +342,9 @@ known_baseline_reds:
   - scripts/lib/browser-gate.test.ts historically outside an aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
 
-next_phase_candidate: R5
+next_phase_candidate: integration-rehearsal
 next_phase_gate: >-
-  Build deterministic instructor vertical slices for the seven-beam Intra then
-  Inter stories, using the shared R4 projection boundary. Each slice must reset,
-  pause, replay, and survive speed changes without adding a second clock,
-  renderer-local story inference, or scientific decision changes.
+  Create an independent worktree and rehearsal branch rooted at the current
+  integration target, merge the R5 checkpoint without touching the protected
+  parent checkout, and require the same aggregate, architecture, production
+  browser, mutation, and known-baseline-difference evidence before R6 begins.

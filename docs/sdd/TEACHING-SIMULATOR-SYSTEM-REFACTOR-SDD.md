@@ -430,3 +430,99 @@ Evidence:
 `src/app/homepageHandoverControlsOwnership.test.ts` source-text regex pin: 126
 pass and one fails. R4 did not re-pin, weaken, or hide that failure. R5 may now
 begin from the shared projection boundary.
+
+## 17. R5 execution record — 2026-09-12
+
+R5 turns the R4 identity boundary into one deterministic instructor-controlled
+vertical slice. The versioned scenario is
+`homepage-seven-beam-intra-inter-v1`: a 72-second same-satellite Intra story
+followed on the same source-time axis by a 72-second cross-satellite Inter story.
+A direct Inter entry begins at source time 72 seconds but still consumes the
+same scenario contract, transport, story vocabulary, projection composer, and
+renderers.
+
+The public scenario and transport seams are:
+
+- `src/homepage/teaching/instructorHandoverScenario.ts`;
+- `src/homepage/teaching/instructorHandoverTransport.ts`;
+- `src/homepage/teaching/useInstructorHandoverTransport.ts`;
+- `src/homepage/teaching/instructorHandoverTelemetry.ts`.
+
+The scenario contract fixes the schema/version, exact seven-beam admission,
+Intra-then-Inter segment order, phase markers, allowed instructor controls, and
+required scene/rail/caption surfaces. The pure transport owns source time,
+entry window, play/pause, restart, reversible seek, completion, and the
+`1x/2x/5x/10x/20x` speed set. It contains no browser or wall-clock API. The React
+adapter is the only runtime ticker and advances that pure state with animation
+frame deltas; story resolution remains a pure function of scenario source time.
+
+Opening an authored scenario freezes the live scientific producer and disables
+its timeline/rail controls. The live pause and speed values are restored on
+close. A fixture is latched per scenario run and segment, so live roster
+re-ranking cannot change the same replayed source-time frame. Admission fails
+closed unless both serving and candidate topology counts are exactly seven.
+
+During implementation, the first draft still armed the older manual handover
+presentation when the authored script reached `switching`. That path had its own
+wall-clock lifetime and endpoint reconstruction, which would have introduced a
+second transition clock and a second source/target authority. R5 removes that
+teaching-only trigger. The existing non-teaching manual Intra fallback remains
+unchanged; authored teaching cones now paint only the shell-owned R4 projection.
+
+The production root, scene canvas, teaching rail, and teaching caption publish
+one comparable instructor telemetry envelope: scenario/version, beam count,
+run and entry identity, segment, status, pause and speed, source and local time,
+entry window, completion, story and pair identity, phase, and committed state.
+The independent contract in
+`scripts/lib/instructor-handover-acceptance.ts` does not import production
+scenario or projection composers.
+
+The R5 browser gate exercises the actual production controls. It proves pause
+freezes source time, all five speeds preserve the story at fixed source time,
+seek works at every major phase and both commit boundaries, restart reconstructs
+the same story with a new run ID, Intra crosses into early Inter without phase
+skipping, direct Inter uses the 72–144 second window, switching geometry carries
+the shared story ID, the live timeline remains locked, and closing restores the
+prior live pause/speed state.
+
+Mutation proof is non-vacuous at both levels:
+
+- focused acceptance tests mutate every comparable scene/rail/caption field and
+  root source time, and require RED;
+- the production browser gate corrupts scene, rail, and caption story identity
+  independently, restores each DOM attribute, and requires GREEN again.
+
+R5 changes no simulation physics, EE values, candidate ranking, TTT, commit
+behavior, palette, geometry, camera, or lesson copy. It adds no second winner,
+accepted snapshot, source clock, or renderer-local story inference.
+
+Evidence:
+
+- `npm run lint`: PASS;
+- `npm run test:all`: PASS, including the R5 aggregate;
+- `npm run test:instructor-handover`: 33/33 PASS;
+- handover-surface-binding tests: 22/22 PASS;
+- handover-story tests: 14/14 PASS;
+- scene-surface tests: 11/11 PASS;
+- scene-render-plan tests: 6/6 PASS;
+- appearance tests: 97/97 PASS;
+- multi-candidate tests: 182/182 PASS;
+- `npm run validate:architecture:boundaries`: 6/6 PASS, no new ratchet
+  violations;
+- R1 core scene-surface browser gate: 12/12 PASS;
+- R2 handover-story browser gate: PASS;
+- R3 full scene-render browser gate: 31/31 PASS;
+- R4 shared identity browser gate: PASS;
+- R5 deterministic instructor browser gate: PASS, including production mutation
+  red→green and live transport restoration.
+
+`npm run check:baseline` remains RED only at the pre-existing obsolete
+`src/app/homepageHandoverControlsOwnership.test.ts` source-text regex pin: 126
+pass and one fails. The queueability assertions in that same file remain green;
+R5 introduces zero new failure signatures.
+
+R5 is now a merge-candidate checkpoint. The next action is an isolated
+integration rehearsal rooted at the current target branch; it must not modify
+the protected parent checkout. R6 product work begins only after that rehearsal
+proves the checkpoint can be integrated with the same aggregate, architecture,
+browser, mutation, and baseline-difference evidence.

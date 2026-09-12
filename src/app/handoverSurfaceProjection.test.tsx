@@ -13,6 +13,14 @@ import {
 } from '../homepage/teaching/handoverTeachingScript';
 import { LocaleProvider } from '../i18n';
 import {
+  createInstructorHandoverTransportState,
+  openInstructorHandoverTransport,
+  resolveInstructorHandoverTransportSnapshot,
+  seekInstructorHandoverTransport,
+  setInstructorHandoverPaused,
+  type InstructorHandoverTransportSnapshot,
+} from '../homepage/teaching/instructorHandoverTransport';
+import {
   HANDOVER_STORY_FRAME_SCHEMA_VERSION,
   freezeHandoverStoryFrame,
   resolveTeachingHandoverStoryFrame,
@@ -159,6 +167,7 @@ function attribute(markup: string, name: string): string {
 
 function teachingFixture(): {
   readonly projection: HandoverTeachingSurfaceProjection;
+  readonly transport: InstructorHandoverTransportSnapshot;
 } {
   const script = buildHandoverTeachingScript('intra');
   const frame = resolveTeachingFrame(script, 18, null);
@@ -178,7 +187,15 @@ function teachingFixture(): {
   assert.ok(binding);
   const projection = resolveHandoverTeachingSurfaceProjection(binding, frame, 'intra');
   assert.ok(projection);
-  return { projection };
+  let transportState = openInstructorHandoverTransport(
+    createInstructorHandoverTransportState(),
+    'intra',
+  );
+  transportState = seekInstructorHandoverTransport(transportState, 18);
+  transportState = setInstructorHandoverPaused(transportState, true);
+  const transport = resolveInstructorHandoverTransportSnapshot(transportState);
+  assert.ok(transport);
+  return { projection, transport };
 }
 test('accepted rail publishes the same story identity as the shared binding', () => {
   const binding = acceptedBinding();
@@ -247,21 +264,20 @@ test('accepted narrative caption follows the live App-owned binding telemetry', 
 });
 
 test('teaching rail and caption publish one exact authored story identity', () => {
-  const { projection } = teachingFixture();
+  const { projection, transport } = teachingFixture();
   const railMarkup = renderToStaticMarkup(
     <HandoverTeachingRail
       projection={projection}
-      paused={false}
+      transport={transport}
       onPausedChange={() => undefined}
       onRestart={() => undefined}
       onSeek={() => undefined}
-      speed={1}
       onSpeedChange={() => undefined}
       onClose={() => undefined}
     />,
   );
   const captionMarkup = renderToStaticMarkup(
-    <HandoverTeachingCaption projection={projection} />,
+    <HandoverTeachingCaption projection={projection} transport={transport} />,
   );
 
   assert.equal(attribute(railMarkup, 'data-handover-surface-contract'), 'matched');
@@ -315,4 +331,22 @@ test('teaching projection fails closed on kind or accepted-clock drift', () => {
     ),
     null,
   );
+});
+test('R5 production owns no second teaching transition clock', async () => {
+  const source = await readFile(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /requestManualHandover\(teachingStageKind\)/);
+  assert.doesNotMatch(source, /teachingSwitchFiredForRef/);
+  assert.match(source, /timelineInteractionDisabled = timelineDisabled[\s\S]*instructorHandoverSnapshot !== null/);
+  assert.match(source, /instructorSevenBeamAdmitted/);
+});
+
+test('R5 teaching renderer receives one projection and no local transport clock', async () => {
+  const source = await readFile(
+    new URL('../viz/HandoverTeachingBeamCones.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /projectionRef: MutableRefObject<HandoverTeachingSurfaceProjection \| null>/);
+  assert.doesNotMatch(source, /Date\.now|performance\.now|setTimeout|setInterval/);
+  assert.match(source, /const currentProjection = projectionRef\.current/);
+  assert.match(source, /const next = resolveSample\(currentProjection\)/);
 });
