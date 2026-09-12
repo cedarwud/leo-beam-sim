@@ -1,24 +1,24 @@
 schema_version: 1
-updated_at: 2026-09-13T02:18:21+08:00
+updated_at: 2026-09-13T06:17:51+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
 integrated_source_commit: d66b816
-branch: refactor/teaching-simulator-r6-guided-flow
-worktree: /home/u24/demo/leo-beam-sim-r6
-current_phase: R6-complete
-status: product_merge_candidate
+branch: wip/ee-handover-authority-2026-09-05
+worktree: /home/u24/demo/leo-beam-sim
+current_phase: R6-formal-integration-complete
+status: ready_for_R7_owner_gate
 
 parallel_tracks:
   teaching_design:
     status: deferred_by_owner
   system_refactor:
     status: active
-    next_phase: formal_R6_integration_owner_gate
+    next_phase: R7_owner_gate
 
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
   dirty_wip_present: false
-  mutation_policy: do_not_touch_reset_stash_or_overwrite
+  mutation_policy: integrated_target_no_reset_stash_force_or_overwrite
 
 fixed_constraints:
   - do_not_change_simulation_physics_or_EE_values
@@ -512,6 +512,59 @@ r6_merge_candidate:
   eight_act_external_wip_observed_and_untouched: true
   R7_started: false
 
+formal_r6_integration:
+  authorization: owner_authorized_2026-09-13
+  integration_branch: integration/teaching-simulator-r6-formal
+  integration_worktree: /home/u24/demo/leo-beam-sim-r6-formal-integration
+  target_branch: wip/ee-handover-authority-2026-09-05
+  target_before: d66b816b998d591005eccaf4bdcd159f20489314
+  r6_candidate_branch: refactor/teaching-simulator-r6-guided-flow
+  r6_candidate_commit: ffd87e454dd4c0d74029462267d26dc8a7cfd1df
+  merge_commit: a48f307c961d2c62ed619ef8704fc23d19da6985
+  merge_parents:
+    - d66b816b998d591005eccaf4bdcd159f20489314
+    - ffd87e454dd4c0d74029462267d26dc8a7cfd1df
+  merge_conflicts: 0
+  pre_receipt_index_tree: 8ac21d80dbf963e69877e19e5924141d0ea2e705
+  r6_candidate_tree: 8ac21d80dbf963e69877e19e5924141d0ea2e705
+  pre_receipt_tree_equal_to_r6_candidate: true
+  inherited_diff_check:
+    result: known_warning
+    file: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
+    lines: 3_to_5
+    reason: existing_markdown_hard_break_spaces_from_R6_candidate
+    new_integration_whitespace_signatures: 0
+  validation:
+    lint: pass
+    focused_student_handover_tests: 17/17
+    test_all: pass
+    architecture_boundary_checks: 6/6
+    production_build:
+      result: pass
+      modules_transformed: 1254
+      inherited_large_chunk_advisory_only: true
+    browser_gates:
+      R1_core_scene_surface_plan: pass_12_of_12
+      R2_handover_story_frame: pass
+      R3_full_scene_render_plan: pass_31_of_31
+      R4_handover_surface_binding: pass_with_mutation_red_then_green
+      R5_instructor_handover: pass_intra_to_inter_and_direct_inter
+      R6_student_guided_flow: pass_full_flow_and_10_mutations
+    check_baseline:
+      result: known_red
+      tests: 127
+      passed: 126
+      failed: 1
+      failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_regex_pin
+      new_failure_signatures: 0
+  promotion:
+    method: fast_forward_only_after_receipt
+    protected_target_integrated: true
+    remote_push: completed
+    reset_stash_force_or_history_rewrite: false
+  eight_act_workstream_merged: false
+  R7_started: false
+
 known_baseline_reds:
   - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
   - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
@@ -519,8 +572,8 @@ known_baseline_reds:
   - scripts/lib/browser-gate.test.ts historically outside an aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
 
-next_phase_candidate: formal_R6_integration
+next_phase_candidate: R7
 next_phase_gate: >-
-  Stop after publishing this R6 product merge candidate. A separate,
-  owner-authorized phase may rehearse or perform formal integration into the
-  protected target. Do not begin R7 legacy retirement from this checkpoint.
+  R7 legacy retirement may begin only after a new owner authorization from the
+  integrated target. Do not merge the independent eight-act workstream or begin
+  general shell cleanup as part of this formal-integration receipt.

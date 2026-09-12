@@ -751,3 +751,70 @@ R6 is complete and is a formal product merge candidate. The protected target
 `/home/u24/demo/leo-beam-sim` remains unchanged. R7 legacy retirement has not
 started; any formal integration or later R7 decision requires a separate
 owner-directed phase.
+
+## 20. R6 formal integration — 2026-09-13
+
+The owner authorized the separate formal-integration phase after accepting the
+R6 product merge candidate. Integration was performed in the isolated worktree
+`/home/u24/demo/leo-beam-sim-r6-formal-integration` on
+`integration/teaching-simulator-r6-formal`; the protected target was not changed
+until the merged product tree completed every release gate.
+
+The lineage is explicit:
+
+```text
+target before integration:
+  wip/ee-handover-authority-2026-09-05
+  d66b816b998d591005eccaf4bdcd159f20489314
+
+R6 product candidate:
+  refactor/teaching-simulator-r6-guided-flow
+  ffd87e454dd4c0d74029462267d26dc8a7cfd1df
+
+formal merge:
+  a48f307c961d2c62ed619ef8704fc23d19da6985
+  parents: d66b816b998d591005eccaf4bdcd159f20489314
+           ffd87e454dd4c0d74029462267d26dc8a7cfd1df
+```
+
+The merge used `--no-ff --no-commit`, completed with zero conflicts, and was
+validated before commit. Its pre-receipt index tree was
+`8ac21d80dbf963e69877e19e5924141d0ea2e705`, byte-identical to the R6 candidate
+tree. Therefore the integration introduced no production, test, package, or
+control-document drift before this receipt was added.
+
+`git diff --cached --check` reported only the three existing Markdown hard-break
+spaces on SDD lines 3–5. The exact same output and exit code occur for the source
+candidate diff `d66b816..ffd87e4`; no integration-only whitespace signature was
+introduced, and the validated candidate tree was not rewritten to remove it.
+
+The exact merged product tree independently repeated the complete release
+matrix from the formal-integration worktree:
+
+- `npm run lint`: PASS;
+- `npm run test:student-handover`: 17/17 PASS;
+- `npm run test:all`: PASS;
+- `npm run validate:architecture:boundaries`: 6/6 PASS, no new ratchet
+  violations;
+- `npm run build`: PASS, 1,254 modules transformed; only the inherited large
+  chunk advisory remains;
+- R1 scene-surface browser gate: 12/12 PASS;
+- R2 normalized handover-story browser gate: PASS;
+- R3 full scene-render-plan browser gate: 31/31 PASS;
+- R4 shared-identity browser gate: PASS with production mutation red→green;
+- R5 deterministic instructor Intra-to-Inter and direct-Inter browser gate:
+  PASS;
+- R6 student Predict → Operate → Observe → Explain → Complete → Reset browser
+  gate: PASS, including bilingual projection, teacher-led prompt readability,
+  safe-control enforcement, deterministic reset, and ten mutation cases.
+
+`npm run check:baseline` remains the sealed baseline difference: 127 tests,
+126 pass, and one failure at the obsolete
+`src/app/homepageHandoverControlsOwnership.test.ts` source-text regex pin. There
+are zero new failure signatures.
+
+After this docs-only receipt, the protected target is advanced only by
+fast-forward to the receipt commit and pushed without reset, stash, force,
+cherry-pick, or history rewriting. The R6 candidate branch and formal-integration
+branch remain as audit lineages. The eight-act worktree is not merged or
+modified. R7 legacy retirement has not started and requires a new owner gate.
