@@ -21,8 +21,16 @@ import type {
 } from './types';
 import type { SceneVisualScaleMultipliers } from '../sceneVisualScale';
 import type { HomepageBeamMetricsProjection } from '../homepage/controller/contracts';
-import type { TeachingFrame } from '../homepage/teaching/handoverTeachingScript';
-import type { HandoverTeachingSceneStory } from '../viz/HandoverTeachingBeamCones';
+import type {
+  HandoverTeachingSurfaceProjection,
+} from './handoverTeachingSurfaceProjection';
+import type {
+  InstructorHandoverTransportSnapshot,
+} from '../homepage/teaching/instructorHandoverTransport';
+import {
+  resolveHandoverSurfaceBindings,
+  type HandoverSurfaceBindingSet,
+} from './handoverSurfaceBinding';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
@@ -157,6 +165,13 @@ import { Starfield } from '../components/ui/Starfield';
 import { BaseSceneLayout } from './BaseSceneLayout';
 import { TeachingFloor } from './TeachingFloor';
 import { SceneTelemetry } from './SceneTelemetry';
+import { SceneHandoverStoryCanvasTelemetry } from './SceneHandoverStoryCanvasTelemetry';
+import { SceneRenderPlanCanvasTelemetry } from './SceneRenderPlanCanvasTelemetry';
+import {
+  resolveBoundSceneHandoverStoryFrameSet,
+  resolveSceneHandoverStoryFrameSet,
+} from './sceneHandoverStoryFrameSet';
+import { resolveSceneRenderPlan } from './sceneRenderPlan';
 import {
   resolveCinematicSpotlightTargets,
 } from './cinematicEffects';
@@ -248,13 +263,18 @@ import {
 import {
   advanceNarrativeCaptionHold,
   isNarrativeCaptionBaselineChapter,
-  resolveNarrativeCaptionChapter,
+  resolveNarrativeCaptionChapterFromStoryPhase,
   resolveNarrativeCaptionText,
   type NarrativeCaptionHoldState,
 } from './narrativeCaptionPolicy';
 import { resolveAdditiveHandoverConeColoring } from './additiveHandoverConeColoring';
 import { resolveAuthoritySpineParticlePlans } from './multiCandidateAuthoritySpineParticlePlans';
 import { resolveMultiCandidateSceneRenderStatus } from './multiCandidateSceneRenderStatus';
+import {
+  formatSceneSurfaceReasons,
+  resolveCoreSceneSurfacePlan,
+  type CoreSceneSurfacePlan,
+} from './sceneSurfacePlan';
 
 function lookupSatWorldPos(
   satellites: NormalizedSceneFrame['satellites'],
@@ -267,17 +287,43 @@ function lookupSatWorldPos(
 
 function ScenePresentationCanvasTelemetry({
   plan,
+  surfacePlan,
 }: {
   readonly plan: ScenePresentationPlan;
+  readonly surfacePlan?: CoreSceneSurfacePlan;
 }) {
   const gl = useThree(state => state.gl);
+  const hasSurfacePlan = surfacePlan !== undefined;
+  const storyOwner = surfacePlan?.storyOwner ?? '';
+  const mountedSurfaceIds = surfacePlan?.mountedSurfaceIds.join(',') ?? '';
+  const visibleSurfaceIds = surfacePlan?.visibleSurfaceIds.join(',') ?? '';
+  const surfaceReasons = surfacePlan ? formatSceneSurfaceReasons(surfacePlan) : '';
   useEffect(() => {
     gl.domElement.dataset.scenePresentationStage = plan.stage;
     gl.domElement.dataset.scenePresentationVisibleLayers = Object.entries(plan.visible)
       .filter(([, visible]) => visible)
       .map(([layer]) => layer)
       .join(',');
-  }, [gl, plan]);
+    if (hasSurfacePlan) {
+      gl.domElement.dataset.sceneStoryOwner = storyOwner;
+      gl.domElement.dataset.sceneCoreMountedSurfaces = mountedSurfaceIds;
+      gl.domElement.dataset.sceneCoreVisibleSurfaces = visibleSurfaceIds;
+      gl.domElement.dataset.sceneCoreSurfaceReasons = surfaceReasons;
+    } else {
+      delete gl.domElement.dataset.sceneStoryOwner;
+      delete gl.domElement.dataset.sceneCoreMountedSurfaces;
+      delete gl.domElement.dataset.sceneCoreVisibleSurfaces;
+      delete gl.domElement.dataset.sceneCoreSurfaceReasons;
+    }
+  }, [
+    gl,
+    mountedSurfaceIds,
+    plan,
+    storyOwner,
+    hasSurfacePlan,
+    surfaceReasons,
+    visibleSurfaceIds,
+  ]);
   return null;
 }
 
@@ -299,6 +345,10 @@ interface SceneContentProps {
   onSimUpdate: (state: SimState) => void;
   /** App-accepted atomic candidate snapshot shared with the right rail. */
   acceptedHandoverPresentation: AcceptedHandoverPresentationSnapshot | null;
+  /** R4 shell-owned normalized frames shared by scene, rail and captions. */
+  handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  /** R5 single source-time transport published on scene/rail/caption. */
+  instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /** Display-only spacecraft model family; archived frames carry this from provenance. */
@@ -318,14 +368,8 @@ interface SceneContentProps {
   onHandoverPresentationBusyChange?: (busy: boolean) => void;
   /** Display-only switch for HTML/callout information over the stage. */
   showSceneOverlays?: boolean;
-  /**
-   * The homepage handover lecture's two live endpoints, or null when no lecture
-   * is open. Display-only: it never enters a decision, a snapshot, or the event
-   * index.
-   */
-  teachingSceneStory?: HandoverTeachingSceneStory | null;
-  /** The lecture frame the rail and caption already render, handed over by reference. */
-  teachingLectureFrameRef?: MutableRefObject<TeachingFrame | null>;
+  /** Exact shell-owned authored projection shared with the rail and caption. */
+  teachingSurfaceProjectionRef?: MutableRefObject<HandoverTeachingSurfaceProjection | null>;
   /** One App-owned join key shared by the homepage rail and scene. */
   focusedJoinKey?: string | null;
   onFocusJoinKeyChange?: (joinKey: string | null) => void;
@@ -362,6 +406,9 @@ interface ArtifactSceneContentProps {
   campusVisible: boolean;
   sceneFrame: NormalizedSceneFrame;
   presentationPlan: ScenePresentationPlan;
+  handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  /** R5 single source-time transport published on scene/rail/caption. */
+  instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
 }
 
 const CAMERA_TWEEN_DURATION_MS = 600;
@@ -792,7 +839,10 @@ function ArtifactSceneContent({
   sceneFrame,
   presentationPlan,
   campusVisible,
+  handoverSurfaceBindingsRef,
+  instructorHandoverSnapshotRef,
 }: ArtifactSceneContentProps) {
+  const handoverSurfaceBindings = handoverSurfaceBindingsRef?.current ?? null;
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const sceneConfig = useMemo(() => (
     runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
@@ -826,14 +876,71 @@ function ArtifactSceneContent({
     () => sceneFrame.satellites.filter(satellite => satellite.visible),
     [sceneFrame.satellites],
   );
+  const localStoryFrames = resolveSceneHandoverStoryFrameSet({ replayFrame: sceneFrame });
+  const storyFrames = resolveBoundSceneHandoverStoryFrameSet({
+    lane: 'artifact-replay',
+    local: localStoryFrames,
+    sharedBindings: handoverSurfaceBindings,
+  });
+  const sceneRenderPlan = resolveSceneRenderPlan({
+    lane: 'artifact-replay',
+    presentation: presentationPlan,
+    storyFrames,
+    corePlan: null,
+    controls: {
+      campusVisible,
+      showHorizonBoundary: false,
+      showUav: false,
+      afterFirstPaint: true,
+      showOrbitTrail: false,
+      showSpineParticles: false,
+      showGroundRipple: false,
+      showLiveSatelliteMarkers: false,
+      showSinrLiveCellBeams: false,
+      showLiveSceneEffects: false,
+      showSceneOverlays: false,
+      showHandoverToastOverlay: false,
+      homepageVisualIdentity: false,
+      showFpsCounter: true,
+      cinematicSpotlightActive: false,
+      narrativeCaptionEnabled: false,
+    },
+    story: {
+      suppressNaturalHandoverLayers: false,
+      hideTimelineEffects: false,
+      concurrentIntraVisualSuppressed: false,
+      multiCandidateSceneLayerVisible: false,
+      candidateComparisonSceneActive: false,
+      multiCandidateCentralOverlayActive: false,
+      multiCandidateIdentityTransitionActive: false,
+      acceptedCueHasTransition: false,
+      handoverEventCueDrawable: false,
+      handoverPresentationActive: false,
+      handoverPresentationHasEvent: false,
+      manualHandoverPresentationActive: false,
+      manualHandoverHasEvent: false,
+    },
+    inventory: {
+      visibleSatelliteCount: visibleSatellites.length,
+      visibleUeCount: sceneFrame.ues.filter(ue => ue.worldPos !== undefined).length,
+      narrativeCaptionPresent: false,
+    },
+  });
   return (
     <BaseSceneLayout
       sceneConfig={sceneConfig}
       controlsRef={controlsRef}
-      campusVisible={campusVisible && presentationPlan.visible.campus}
+      campusVisible={sceneRenderPlan.surfaces['ground.campus'].visible}
     >
-      {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
+      {sceneRenderPlan.surfaces['ground.teaching-floor'].mounted && <TeachingFloor />}
       <ScenePresentationCanvasTelemetry plan={presentationPlan} />
+      <SceneRenderPlanCanvasTelemetry plan={sceneRenderPlan} />
+      <SceneHandoverStoryCanvasTelemetry
+        frameSet={storyFrames}
+        lane="artifact-replay"
+        sharedBindingsRef={handoverSurfaceBindingsRef}
+        instructorTransportRef={instructorHandoverSnapshotRef}
+      />
       <SceneTelemetry
         visibleSatelliteCount={visibleSatellites.length}
         firstSatellitePosition={formatScenePosition(visibleSatellites[0]?.worldPos)}
@@ -907,7 +1014,7 @@ function ArtifactSceneContent({
         controlsRef={controlsRef}
         shouldClearReplayAttributes={true}
       />
-      {presentationPlan.visible.ues && (
+      {sceneRenderPlan.surfaces['ground.ues'].mounted && (
         <GroundScene
           ues={sceneFrame.ues
             .filter((u) => u.worldPos !== undefined)
@@ -921,9 +1028,7 @@ function ArtifactSceneContent({
           markerShape={ueMarkerShape}
         />
       )}
-      {(presentationPlan.visible['selected-satellite']
-        || presentationPlan.visible['candidate-satellite']
-        || presentationPlan.visible['context-satellites']) && visibleSatellites.map((satellite) => {
+      {sceneRenderPlan.surfaces['satellite.markers'].mounted && visibleSatellites.map((satellite) => {
         const eventRole = sceneFrame.eventRoles.bySatId.get(satellite.id);
         return (
           <SatelliteMarker
@@ -941,7 +1046,7 @@ function ArtifactSceneContent({
           />
         );
       })}
-      {presentationPlan.visible.diagnostics && <FPSCounter />}
+      {sceneRenderPlan.surfaces['diagnostics.fps'].mounted && <FPSCounter />}
     </BaseSceneLayout>
   );
 }
@@ -1123,6 +1228,8 @@ function SceneRenderContent({
   homepageBeamMetrics = null,
   onSimUpdate,
   acceptedHandoverPresentation,
+  handoverSurfaceBindingsRef,
+  instructorHandoverSnapshotRef,
   sceneFrame: propSceneFrame,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
   showSceneOverlays = true,
@@ -1143,12 +1250,13 @@ function SceneRenderContent({
   constellation = DEFAULT_SATELLITE_CONSTELLATION,
   presentationPlan,
   campusVisible,
-  teachingSceneStory = null,
-  teachingLectureFrameRef,
+  teachingSurfaceProjectionRef,
   focusedJoinKey = null,
   onFocusJoinKeyChange,
   teachingNarrativeEnabled = false,
 }: SceneRenderContentProps) {
+  const handoverSurfaceBindings = handoverSurfaceBindingsRef?.current ?? null;
+  const teachingSurfaceProjection = teachingSurfaceProjectionRef?.current ?? null;
   const homepageBeamEeByKey = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
     return homepageBeamEeNormalizedByKey(homepageBeamMetrics.metrics);
@@ -1547,6 +1655,9 @@ function SceneRenderContent({
     return sceneJoinKeyByPair.get(`${cone.satId}|${beamId}`) ?? null;
   }, [sceneJoinKeyByPair]);
   const narrativeCaptionHoldRef = useRef<NarrativeCaptionHoldState | null>(null);
+  const narrativeCaptionStoryIdRef = useRef<string | null>(null);
+  const acceptedCaptionBinding = handoverSurfaceBindings?.accepted ?? null;
+  const acceptedCaptionStoryId = acceptedCaptionBinding?.identity.storyId ?? null;
   const narrativeStreamKey = [
     simSource,
     runtime.replay.seekRequestKey ?? '',
@@ -1583,6 +1694,7 @@ function SceneRenderContent({
     if (narrativeCaptionActive) return;
     setNarrativeCaption(null);
     narrativeCaptionHoldRef.current = null;
+    narrativeCaptionStoryIdRef.current = null;
   }, [narrativeCaptionActive]);
 
   useEffect(() => {
@@ -1590,29 +1702,48 @@ function SceneRenderContent({
     if (narrativeStreamKeyRef.current !== narrativeStreamKey) {
       narrativeStreamKeyRef.current = narrativeStreamKey;
       narrativeCaptionHoldRef.current = null;
+      narrativeCaptionStoryIdRef.current = null;
       setNarrativeCaption(null);
     }
-    if (acceptedHandoverDecisionFrame === null) {
-      if (narrativeCaptionHoldRef.current !== null) {
+    if (acceptedCaptionBinding === null) {
+      if (narrativeCaptionHoldRef.current !== null
+        || narrativeCaptionStoryIdRef.current !== null) {
         narrativeCaptionHoldRef.current = null;
+        narrativeCaptionStoryIdRef.current = null;
         setNarrativeCaption(null);
       }
       return;
     }
+    const incomingStoryId = acceptedCaptionBinding.identity.storyId;
+    const storyChanged = narrativeCaptionStoryIdRef.current !== incomingStoryId;
+    if (storyChanged) {
+      narrativeCaptionHoldRef.current = null;
+      setNarrativeCaption(null);
+    }
     const previousHold = narrativeCaptionHoldRef.current;
-    const rawChapter = resolveNarrativeCaptionChapter(acceptedHandoverDecisionFrame.phase);
-    const nowSec = acceptedHandoverDecisionFrame.simTimeMs / 1000;
+    const rawChapter = resolveNarrativeCaptionChapterFromStoryPhase(
+      acceptedCaptionBinding.identity.phase,
+    );
+    const nowSec = acceptedCaptionBinding.frame.clock.currentSec;
     const nextHold = advanceNarrativeCaptionHold(rawChapter, nowSec, previousHold);
     narrativeCaptionHoldRef.current = nextHold;
-    if (previousHold !== null && previousHold.displayedChapter === nextHold.displayedChapter) return;
+    const chapterUnchanged = previousHold !== null
+      && previousHold.displayedChapter === nextHold.displayedChapter;
+    if (chapterUnchanged && !storyChanged) return;
+    narrativeCaptionStoryIdRef.current = incomingStoryId;
     // A baseline chapter ("still calm") reads as redundant next to a scene
     // that already looks calm — show the caption only for chapters worth
     // actually narrating, and let it disappear the rest of the time.
     setNarrativeCaption(isNarrativeCaptionBaselineChapter(nextHold.displayedChapter)
       ? null
-      : { chapter: nextHold.displayedChapter, text: resolveNarrativeCaptionText(nextHold.displayedChapter) });
+      : {
+        chapter: nextHold.displayedChapter,
+        text: resolveNarrativeCaptionText(nextHold.displayedChapter),
+        storyId: acceptedCaptionStoryId,
+      });
   }, [
-    acceptedHandoverDecisionFrame,
+    acceptedCaptionBinding,
+    acceptedCaptionStoryId,
     narrativeCaptionActive,
     narrativeStreamKey,
   ]);
@@ -2321,10 +2452,12 @@ function SceneRenderContent({
     presentedHandoverPairCandidate,
   } = handoverPresentationDisplayPolicy;
   // Null off a lecture, so every other route keeps its existing label policy.
+  // Identity comes only from the shell-owned normalized projection.
+  const teachingStoryFrame = teachingSurfaceProjection?.binding.frame ?? null;
   const teachingLabelSatelliteIds = useMemo<ReadonlySet<string> | null>(() => resolveTeachingLabelSatelliteIds(
-    teachingSceneStory?.sourceSatelliteId ?? null,
-    teachingSceneStory?.targetSatelliteId ?? null,
-  ), [teachingSceneStory]);
+    teachingStoryFrame?.from.satelliteId ?? null,
+    teachingStoryFrame?.to.satelliteId ?? null,
+  ), [teachingStoryFrame]);
 
   // The current serving spacecraft is allowed to expose its configured
   // multibeam fan (1/7/19).  This is intentionally satellite-scoped only for
@@ -2896,6 +3029,47 @@ function SceneRenderContent({
     ],
   );
   const { beamInfoItems } = useBeamInfoItems({ beamInfoItemsInput });
+  const teachingSurfaceReady = teachingSurfaceProjection !== null
+    && teachingSurfaceProjectionRef !== undefined;
+  const coreSceneSurfacePlan = resolveCoreSceneSurfacePlan({
+    stage: {
+      ambientBeams: presentationPlan.visible['ambient-beams'],
+      servingBeams: presentationPlan.visible['serving-beams'],
+      candidateBeams: presentationPlan.visible['candidate-beams'],
+      eventEffects: presentationPlan.visible['event-effects'],
+      servingFootprints: presentationPlan.visible['serving-footprints'],
+      candidateFootprints: presentationPlan.visible['candidate-footprints'],
+    },
+    runtime: {
+      showSinrLiveCellBeams,
+      showBeamCallouts,
+      teachingLectureActive: runtime.teachingLectureKind != null,
+    },
+    story: {
+      homepageVisualIdentity,
+      multiCandidateSceneVisualActive,
+      multiCandidateCentralOverlayActive,
+      multiCandidateIdentityTransitionActive,
+      handoverPresentationActive: handoverPresentation.active,
+      candidateReviewActive: candidateComparisonSceneActive,
+    },
+    isolation: {
+      active: handoverDisplayIsolation.active,
+      hideNormalBeamField: handoverDisplayIsolation.hideNormalBeamField,
+      preserveConfiguredServingFan: handoverDisplayIsolation.preserveConfiguredServingFan,
+    },
+    inventory: {
+      nonServingConeCount: sinrLiveCellNonServingConeItems.length,
+      cinemaInterServingFanConeCount: sinrLiveCinemaInterServingFanConeItems.length,
+      candidateConeCount: sinrLiveCandidateBeamConeItems.length,
+      pulseConeCount: additiveHandoverPulseConeItems.length,
+      triggeredIntraConeCount: additiveTriggeredIntraConeItems.length,
+      cinemaPairConeCount: additiveCinemaHandoverPairConeItems.length,
+      authorityTransitionConeCount: authorityHandoverPairConeItems.length,
+      beamInfoCount: beamInfoItems.length,
+      teachingReady: teachingSurfaceReady,
+    },
+  });
   const multiCandidateEventCueCount = (multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
     ? (
       presentationPlan.visible['event-effects'] && handoverEventCuePolicy.drawable
@@ -3191,18 +3365,91 @@ function SceneRenderContent({
       ? canonicalHandoverEvent.reason
       : undefined,
   });
+  const localStoryFrames = resolveSceneHandoverStoryFrameSet({
+    acceptedSnapshot: handoverSurfaceBindings === null
+      ? acceptedHandoverPresentation
+      : null,
+    acceptedProducer: simSource === 'archived-tle' ? 'tle' : 'walker',
+    resolveAcceptedCellId: cellIdFromLinkBudgetBeamId,
+    presentationView: handoverPresentation,
+  });
+  const sceneHandoverStoryFrames = resolveBoundSceneHandoverStoryFrameSet({
+    lane: simSource === 'archived-tle' ? 'archived-tle' : 'live',
+    local: localStoryFrames,
+    sharedBindings: handoverSurfaceBindings,
+  });
+  // Production receives the App-owned binding set. The fallback exists only
+  // for isolated renders that intentionally omit the shell ref.
+  const sceneHandoverSurfaceBindings = handoverSurfaceBindings
+    ?? resolveHandoverSurfaceBindings(sceneHandoverStoryFrames);
+  const sceneRenderPlan = resolveSceneRenderPlan({
+    lane: simSource === 'archived-tle' ? 'archived-tle' : 'live',
+    presentation: presentationPlan,
+    storyFrames: sceneHandoverStoryFrames,
+    corePlan: coreSceneSurfacePlan,
+    controls: {
+      campusVisible,
+      showHorizonBoundary: sceneLane === 'sinr-live',
+      showUav,
+      afterFirstPaint,
+      showOrbitTrail,
+      showSpineParticles,
+      showGroundRipple,
+      showLiveSatelliteMarkers,
+      showSinrLiveCellBeams,
+      showLiveSceneEffects,
+      showSceneOverlays,
+      showHandoverToastOverlay,
+      homepageVisualIdentity,
+      showFpsCounter: showArtifactFpsCounter,
+      cinematicSpotlightActive,
+      narrativeCaptionEnabled: narrativeCaptionActive,
+    },
+    story: {
+      suppressNaturalHandoverLayers: handoverDisplayIsolation.suppressNaturalHandoverLayers,
+      hideTimelineEffects: handoverDisplayIsolation.hideTimelineEffects,
+      concurrentIntraVisualSuppressed,
+      multiCandidateSceneLayerVisible,
+      candidateComparisonSceneActive,
+      multiCandidateCentralOverlayActive,
+      multiCandidateIdentityTransitionActive,
+      acceptedCueHasTransition: latchedAuthorityTransition !== null,
+      handoverEventCueDrawable: handoverEventCuePolicy.drawable,
+      handoverPresentationActive: handoverPresentation.active,
+      handoverPresentationHasEvent: handoverPresentation.event !== null,
+      manualHandoverPresentationActive,
+      manualHandoverHasEvent: manualHandoverEvent !== null,
+    },
+    inventory: {
+      visibleSatelliteCount: renderedLiveSatelliteMarkers.length,
+      visibleUeCount: displayedUes.filter(ue => ue.worldPos !== undefined).length,
+      narrativeCaptionPresent: narrativeCaption !== null,
+    },
+  });
 
   return (
     <BaseSceneLayout
       sceneConfig={sceneConfig}
       controlsRef={controlsRef}
-      campusVisible={campusVisible && presentationPlan.visible.campus}
-      cinematicSpotlightActive={cinematicSpotlightActive && presentationPlan.visible['event-effects']}
+      campusVisible={sceneRenderPlan.surfaces['ground.campus'].visible}
+      cinematicSpotlightActive={sceneRenderPlan.surfaces['scene.cinematic-spotlight'].visible}
       effectiveCinematicMode={effectiveCinematicMode}
-      cinematicSpotlightTargets={presentationPlan.visible['event-effects'] ? cinematicSpotlightTargets : []}
+      cinematicSpotlightTargets={sceneRenderPlan.surfaces['scene.cinematic-spotlight'].visible
+        ? cinematicSpotlightTargets
+        : []}
     >
-      {!(campusVisible && presentationPlan.visible.campus) && <TeachingFloor />}
-      <ScenePresentationCanvasTelemetry plan={presentationPlan} />
+      {sceneRenderPlan.surfaces['ground.teaching-floor'].mounted && <TeachingFloor />}
+      <ScenePresentationCanvasTelemetry
+        plan={presentationPlan}
+        surfacePlan={coreSceneSurfacePlan}
+      />
+      <SceneRenderPlanCanvasTelemetry plan={sceneRenderPlan} />
+      <SceneHandoverStoryCanvasTelemetry
+        frameSet={sceneHandoverStoryFrames}
+        lane={simSource === 'archived-tle' ? 'archived-tle' : 'live'}
+        sharedBindingsRef={handoverSurfaceBindingsRef}
+        instructorTransportRef={instructorHandoverSnapshotRef}
+      />
       <SceneTelemetry
         visibleSatelliteCount={renderedLiveSatelliteMarkers.length}
         firstSatellitePosition={renderedLiveSatelliteMarkers[0]
@@ -3315,21 +3562,23 @@ function SceneRenderContent({
         controlsRef={controlsRef}
       />
       <SceneHorizonBoundary
-        visible={sceneLane === 'sinr-live' && presentationPlan.visible['context-satellites']}
+        visible={sceneRenderPlan.surfaces['ground.horizon-boundary'].visible}
         satellites={viz.displaySats}
       />
       <SceneNarrativeCaption
         caption={narrativeCaption}
-        enabled={narrativeCaptionActive}
+        enabled={sceneRenderPlan.surfaces['annotation.narrative-caption'].visible}
+        storyBinding={sceneHandoverSurfaceBindings.accepted}
+        storyBindingsRef={handoverSurfaceBindingsRef}
       />
-      {presentationPlan.visible.uav && showUav && afterFirstPaint && (
+      {sceneRenderPlan.surfaces['ground.uav'].mounted && (
         <Suspense fallback={null}>
           <UAV position={[sim.ueGroundX, 10, sim.ueGroundZ]} scale={10} />
         </Suspense>
       )}
 
       <SceneGroundUeLayer
-        visible={presentationPlan.visible.ues}
+        visible={sceneRenderPlan.surfaces['ground.ues'].visible}
         ues={displayedUes}
         marker={{
           markerMultiplier: visualScaleMultipliers.ueMarkerMultiplier,
@@ -3362,13 +3611,11 @@ function SceneRenderContent({
       <SceneHandoverMotionLayers
         reducedMotion={runtime.reducedMotion}
         orbitTrail={{
-          mounted: presentationPlan.visible['motion-guides'] && showOrbitTrail,
+          mounted: sceneRenderPlan.surfaces['motion.orbit-trail'].mounted,
           satellites: orbitTrailSatellites,
         }}
         spineParticles={{
-          mounted: presentationPlan.visible['motion-guides']
-            && showSpineParticles
-            && !handoverDisplayIsolation.suppressNaturalHandoverLayers,
+          mounted: sceneRenderPlan.surfaces['motion.spine-particles'].mounted,
           satellites: viz.displaySats,
           satBeams: viz.satBeams,
           plans: multiCandidateCentralOverlayActive
@@ -3376,9 +3623,7 @@ function SceneRenderContent({
             : sinrLiveCellTruthSpineParticlePlans,
         }}
         groundRipple={{
-          mounted: presentationPlan.visible['event-effects']
-            && showGroundRipple
-            && !handoverDisplayIsolation.suppressNaturalHandoverLayers,
+          mounted: sceneRenderPlan.surfaces['motion.ground-ripple'].mounted,
           satBeams: viz.satBeams,
           footprintRadius: viz.footprintRadiusWorld,
           servingEnabled: runtime.effectsEnabled.servingRipple,
@@ -3394,7 +3639,7 @@ function SceneRenderContent({
       <SceneSatelliteMarkerLayer
         satellites={renderedLiveSatelliteMarkers}
         visibility={{
-          mounted: showLiveSatelliteMarkers,
+          mounted: sceneRenderPlan.surfaces['satellite.markers'].mounted,
           selectedSatellite: presentationPlan.visible['selected-satellite'],
           candidateSatellite: presentationPlan.visible['candidate-satellite'],
           contextSatellites: presentationPlan.visible['context-satellites'],
@@ -3442,25 +3687,20 @@ function SceneRenderContent({
           onFocusJoinKeyChange,
         }}
         central={{
-          active: multiCandidateSceneLayerVisible,
+          active: sceneRenderPlan.surfaces['candidate.central'].mounted,
           presentation: multiCandidateScenePresentationForRender,
           widthScale: beamDisplaySpec.coneWidthScale * MULTI_CANDIDATE_BEAM_WIDTH_MULTIPLIER,
           renderReceipt: multiCandidateSceneRenderReceipt,
         }}
         review={{
-          active: candidateComparisonSceneActive
-            && showSinrLiveCellBeams
-            && !multiCandidateSceneLayerVisible,
+          active: sceneRenderPlan.surfaces['candidate.review'].mounted,
           presentation: multiCandidateCandidateReviewPresentation,
           widthScale: beamDisplaySpec.coneWidthScale,
           renderReceipt: multiCandidateCandidateReviewSceneRenderReceipt,
         }}
       />
       <SceneAcceptedHandoverCue
-        mounted={(multiCandidateCentralOverlayActive || multiCandidateIdentityTransitionActive)
-          && presentationPlan.visible['event-effects']
-          && latchedAuthorityTransition !== null
-          && handoverEventCuePolicy.drawable}
+        mounted={sceneRenderPlan.surfaces['handover.accepted-cue'].mounted}
         transition={latchedAuthorityTransition}
         placementByCellId={sinrLiveCellPlacementById}
         progress01={handoverPresentation.progress01}
@@ -3481,9 +3721,8 @@ function SceneRenderContent({
         cones={[
           {
             key: 'non-serving',
-            mounted: presentationPlan.visible['ambient-beams']
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCellNonServingConeItems.length > 0,
+            mounted: sceneRenderPlan
+              .surfaces['beam.non-serving-cones'].mounted,
             items: sinrLiveCellNonServingConeItems,
             layer: 'nonServing',
             palette: sinrLiveConePalette,
@@ -3491,9 +3730,8 @@ function SceneRenderContent({
           },
           {
             key: 'serving',
-            mounted: presentationPlan.visible['serving-beams']
-              && showSinrLiveCellBeams
-              && (!multiCandidateSceneVisualActive || homepageVisualIdentity),
+            mounted: sceneRenderPlan
+              .surfaces['beam.serving-cones'].mounted,
             items: sinrLiveCellBeamConeItems,
             layer: 'serving',
             palette: activeServingConePalette,
@@ -3513,10 +3751,8 @@ function SceneRenderContent({
           },
           {
             key: 'cinema-inter-serving-fan',
-            mounted: presentationPlan.visible['serving-beams']
-              && showSinrLiveCellBeams
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCinemaInterServingFanConeItems.length > 0,
+            mounted: sceneRenderPlan
+              .surfaces['beam.cinema-inter-serving-fan'].mounted,
             items: sinrLiveCinemaInterServingFanConeItems,
             layer: 'serving',
             palette: sinrLiveConePalette,
@@ -3531,10 +3767,8 @@ function SceneRenderContent({
           },
           {
             key: 'candidate',
-            mounted: presentationPlan.visible['candidate-beams']
-              && showSinrLiveCellBeams
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCandidateBeamConeItems.length > 0,
+            mounted: sceneRenderPlan
+              .surfaces['beam.candidate-cones'].mounted,
             items: sinrLiveCandidateBeamConeItems,
             layer: 'candidate',
             palette: sinrLiveConePalette,
@@ -3549,19 +3783,8 @@ function SceneRenderContent({
           },
           {
             key: 'handover-pulse',
-            // These four "event-effects" entries render whatever the REAL,
-            // independent walker/cinema pipeline just did — unrelated to the
-            // homepage teaching lecture, which never touches that pipeline
-            // (see `HandoverTeachingBeamCones.tsx`'s own header). A real
-            // background handover firing WHILE a lecture is open used to
-            // bleed its own cone through on top of the lecture's two cones
-            // (found via `multiCandidateAuthorityTransitionConeRenderedCount`
-            // going non-zero mid-lecture). `callouts.mounted` below already
-            // uses this exact `runtime.teachingLectureKind == null` guard for
-            // the same reason; these four never had it.
-            mounted: presentationPlan.visible['event-effects']
-              && additiveHandoverPulseConeItems.length > 0
-              && runtime.teachingLectureKind == null,
+            mounted: sceneRenderPlan
+              .surfaces['handover.pulse-cones'].mounted,
             items: additiveHandoverPulseConeItems,
             layer: 'pulse',
             palette: sinrLiveConePalette,
@@ -3569,9 +3792,8 @@ function SceneRenderContent({
           },
           {
             key: 'triggered-intra',
-            mounted: presentationPlan.visible['event-effects']
-              && additiveTriggeredIntraConeItems.length > 0
-              && runtime.teachingLectureKind == null,
+            mounted: sceneRenderPlan
+              .surfaces['handover.triggered-intra-cones'].mounted,
             items: additiveTriggeredIntraConeItems,
             layer: 'triggered',
             palette: sinrLiveConePalette,
@@ -3579,9 +3801,8 @@ function SceneRenderContent({
           },
           {
             key: 'cinema-handover-pair',
-            mounted: presentationPlan.visible['event-effects']
-              && additiveCinemaHandoverPairConeItems.length > 0
-              && runtime.teachingLectureKind == null,
+            mounted: sceneRenderPlan
+              .surfaces['handover.cinema-pair-cones'].mounted,
             items: additiveCinemaHandoverPairConeItems,
             layer: 'triggered',
             palette: sinrLiveConePalette,
@@ -3589,9 +3810,8 @@ function SceneRenderContent({
           },
           {
             key: 'authority-transition',
-            mounted: presentationPlan.visible['event-effects']
-              && authorityHandoverPairConeItems.length > 0
-              && runtime.teachingLectureKind == null,
+            mounted: sceneRenderPlan
+              .surfaces['handover.authority-transition-cones'].mounted,
             items: authorityHandoverPairConeItems,
             layer: 'triggered',
             palette: sinrLiveConePalette,
@@ -3601,16 +3821,10 @@ function SceneRenderContent({
         footprints={[
           {
             key: 'serving',
-            mounted: presentationPlan.visible['serving-footprints']
-              && showSinrLiveCellBeams
-              && (!multiCandidateSceneVisualActive || homepageVisualIdentity)
-              && (
-                !handoverDisplayIsolation.active
-                || multiCandidateCentralOverlayActive
-                || handoverDisplayIsolation.preserveConfiguredServingFan
-              ),
-            visible: !handoverDisplayIsolation.hideNormalBeamField
-              || handoverDisplayIsolation.preserveConfiguredServingFan,
+            mounted: sceneRenderPlan
+              .surfaces['beam.serving-footprints'].mounted,
+            visible: sceneRenderPlan
+              .surfaces['beam.serving-footprints'].visible,
             items: sinrLiveCellBeamConeItems,
             layer: 'serving',
             palette: activeServingConePalette,
@@ -3623,10 +3837,8 @@ function SceneRenderContent({
           },
           {
             key: 'candidate',
-            mounted: presentationPlan.visible['candidate-footprints']
-              && showSinrLiveCellBeams
-              && !multiCandidateSceneVisualActive
-              && sinrLiveCandidateBeamConeItems.length > 0,
+            mounted: sceneRenderPlan
+              .surfaces['beam.candidate-footprints'].mounted,
             items: sinrLiveCandidateBeamConeItems,
             layer: 'candidate',
             palette: sinrLiveConePalette,
@@ -3634,9 +3846,8 @@ function SceneRenderContent({
           },
         ]}
         callouts={{
-          mounted: showBeamCallouts
-            && runtime.teachingLectureKind == null
-            && beamInfoItems.length > 0,
+          mounted: sceneRenderPlan
+            .surfaces['beam.callouts'].mounted,
           items: beamInfoItems,
           servingSinrByCellId: sinrLiveCellServingSinrByCellId,
           primaryServing: {
@@ -3657,11 +3868,10 @@ function SceneRenderContent({
           telemetryCountDatasetKey: 'sinrLiveCellBeamCalloutRenderedCount',
           sourceProvenance: simSource === 'live' ? 'synthetic-walker' : 'archived-tle',
         }}
-        teaching={teachingSceneStory !== null && teachingLectureFrameRef !== undefined
+        teaching={teachingSurfaceReady && teachingSurfaceProjectionRef !== undefined
           ? {
-            mounted: presentationPlan.visible['event-effects'],
-            story: teachingSceneStory,
-            frameRef: teachingLectureFrameRef,
+            mounted: sceneRenderPlan.surfaces['teaching.handover-cones'].mounted,
+            projectionRef: teachingSurfaceProjectionRef,
             placementByCellId: sinrLiveCellPlacementById,
             satelliteWorldById: viz.coneApexWorldById,
           }
@@ -3677,27 +3887,14 @@ function SceneRenderContent({
           gated by showSinrLiveCellBeams). The SatelliteBeams component survives only
           as the vc1c/vc2 validation-fixture subject — it is no longer mounted in-app. */}
       <SceneIntraGroundShockwave
-        mounted={presentationPlan.visible['event-effects']
-          && showLiveSceneEffects
-          && !handoverDisplayIsolation.hideTimelineEffects
-          && !handoverDisplayIsolation.suppressNaturalHandoverLayers
-          && !concurrentIntraVisualSuppressed}
+        mounted={sceneRenderPlan.surfaces['handover.intra-shockwave'].mounted}
         vizFrame={viz}
         runtime={runtime}
         identityColorBySatelliteId={multiCandidateSatelliteColorById}
         identityColorBySatelliteBeamId={liveBeamIdentityColorBySatelliteBeam}
       />
       <SceneHandoverToastLayer
-        mounted={showSceneOverlays
-          && presentationPlan.visible['event-effects']
-          && showHandoverToastOverlay
-          && !homepageVisualIdentity
-          && (
-            (manualHandoverPresentationActive && manualHandoverEvent !== null)
-            || (handoverPresentation.active && handoverPresentation.event !== null)
-            || (!handoverDisplayIsolation.hideTimelineEffects
-              && !handoverDisplayIsolation.suppressNaturalHandoverLayers)
-          )}
+        mounted={sceneRenderPlan.surfaces['handover.toast'].mounted}
         toast={{
           frame: sceneFrame,
           interTriggerSec: handoverTriggerTimeSec,
@@ -3739,7 +3936,7 @@ function SceneRenderContent({
             : null,
         }}
       />
-      {presentationPlan.visible.diagnostics && showArtifactFpsCounter && <FPSCounter />}
+      {sceneRenderPlan.surfaces['diagnostics.fps'].mounted && <FPSCounter />}
     </BaseSceneLayout>
   );
 }
@@ -3764,6 +3961,10 @@ interface MainSceneProps {
   onSimUpdate: (state: SimState) => void;
   /** One App-accepted snapshot instance consumed by both canvas and right rail. */
   acceptedHandoverPresentation: AcceptedHandoverPresentationSnapshot | null;
+  /** R4 shell-owned story bindings shared with right-rail and caption surfaces. */
+  handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  /** R5 single source-time transport published on scene/rail/caption. */
+  instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /** Accepted immutable archived-TLE frame for the homepage centre. */
@@ -3803,9 +4004,8 @@ interface MainSceneProps {
   onFocusJoinKeyChange?: (joinKey: string | null) => void;
   /** Gates only the short-lived event captions; highlights remain available. */
   teachingNarrativeEnabled?: boolean;
-  /** Homepage handover lecture endpoints; see SceneContentProps. */
-  teachingSceneStory?: HandoverTeachingSceneStory | null;
-  teachingLectureFrameRef?: MutableRefObject<TeachingFrame | null>;
+  /** Exact shell-owned teaching projection shared with scene, rail and caption. */
+  teachingSurfaceProjectionRef?: MutableRefObject<HandoverTeachingSurfaceProjection | null>;
 }
 
 export const MainScene = memo(function MainScene({
@@ -3822,6 +4022,8 @@ export const MainScene = memo(function MainScene({
   campusVisible,
   onSimUpdate,
   acceptedHandoverPresentation,
+  handoverSurfaceBindingsRef,
+  instructorHandoverSnapshotRef,
   onLiveSeekLanded,
   sceneFrame,
   canonicalAnalysisFrame,
@@ -3838,8 +4040,7 @@ export const MainScene = memo(function MainScene({
   focusedJoinKey = null,
   onFocusJoinKeyChange,
   teachingNarrativeEnabled = false,
-  teachingSceneStory = null,
-  teachingLectureFrameRef,
+  teachingSurfaceProjectionRef,
   constellation = DEFAULT_SATELLITE_CONSTELLATION,
 }: MainSceneProps) {
   const ueMarkerShape = resolveSceneLaneUeMarkerShape(sceneLane);
@@ -3866,14 +4067,19 @@ export const MainScene = memo(function MainScene({
     url.searchParams.set('sceneStage', stage);
     window.history.replaceState(window.history.state, '', url);
   };
+  const teachingSceneBinding = teachingSurfaceProjectionRef?.current?.binding ?? null;
 
   return (
     <div
       className="leo-main-scene"
       data-testid="leo-main-scene"
       data-accepted-handover-snapshot-id={acceptedHandoverPresentation?.snapshotId ?? ''}
+      data-accepted-handover-episode-id={acceptedHandoverPresentation?.episodeId ?? ''}
       data-accepted-handover-source-frame-id={acceptedHandoverPresentation?.sourceFrameId ?? ''}
       data-accepted-handover-phase={acceptedHandoverPresentation?.phase ?? ''}
+      data-accepted-handover-sim-time-sec={acceptedHandoverPresentation === null
+        ? ''
+        : String(acceptedHandoverPresentation.simTimeMs / 1000)}
       data-accepted-handover-active-data-link-count={acceptedHandoverPresentation?.activeDataLinkCount.toString() ?? ''}
       data-homepage-visual-identity={homepageVisualIdentity ? 'compact-six-family' : 'default'}
       data-homepage-satellite-color-count={homepageVisualIdentity
@@ -3899,11 +4105,12 @@ export const MainScene = memo(function MainScene({
         data-manual-handover-request-id={runtime.manualHandoverRequestId?.toString() ?? ''}
         data-manual-handover-kind={runtime.manualHandoverKind ?? ''}
         data-teaching-lecture-kind={runtime.teachingLectureKind ?? ''}
-        data-teaching-scene-story={teachingSceneStory === null
+        data-teaching-scene-story={teachingSceneBinding === null
           ? ''
-          : `${teachingSceneStory.kind}:${teachingSceneStory.sourceSatelliteId}#${teachingSceneStory.sourceCellId}`
-            + `>${teachingSceneStory.targetSatelliteId ?? teachingSceneStory.sourceSatelliteId}`
-            + `#${teachingSceneStory.targetCellId ?? teachingSceneStory.sourceCellId}`}
+          : `${teachingSceneBinding.frame.kind}:${teachingSceneBinding.frame.from.satelliteId}`
+            + `#${teachingSceneBinding.frame.from.cellId ?? '-'}`
+            + `>${teachingSceneBinding.frame.to.satelliteId}`
+            + `#${teachingSceneBinding.frame.to.cellId ?? '-'}`}
         data-scene-source={homepageTleSceneActive
           ? 'archived-tle'
           : (sceneFrame?.sceneSource ?? 'live-simulation')}
@@ -3988,6 +4195,8 @@ export const MainScene = memo(function MainScene({
               campusVisible={campusVisible}
               sceneFrame={sceneFrame}
               presentationPlan={presentationPlan}
+              handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
+              instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
             />
           ) : homepageTleSceneActive ? (
               <ArchivedTleSceneContent
@@ -4007,6 +4216,8 @@ export const MainScene = memo(function MainScene({
                 campusVisible={campusVisible}
                 onSimUpdate={onSimUpdate}
                 acceptedHandoverPresentation={acceptedHandoverPresentation}
+                handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
+                instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
                 onLiveSeekLanded={onLiveSeekLanded}
                 beamDisplaySpec={beamDisplaySpec}
                 showSceneOverlays={showSceneOverlays}
@@ -4018,8 +4229,7 @@ export const MainScene = memo(function MainScene({
                 focusedJoinKey={focusedJoinKey}
                 onFocusJoinKeyChange={onFocusJoinKeyChange}
                 teachingNarrativeEnabled={teachingNarrativeEnabled}
-                teachingSceneStory={teachingSceneStory}
-                teachingLectureFrameRef={teachingLectureFrameRef}
+                teachingSurfaceProjectionRef={teachingSurfaceProjectionRef}
                 constellation={constellation}
                 presentationPlan={presentationPlan}
               />
@@ -4037,6 +4247,8 @@ export const MainScene = memo(function MainScene({
                 campusVisible={campusVisible}
                 onSimUpdate={onSimUpdate}
                 acceptedHandoverPresentation={acceptedHandoverPresentation}
+                handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
+                instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
                 onLiveSeekLanded={onLiveSeekLanded}
                 sceneFrame={sceneFrame}
                 beamDisplaySpec={beamDisplaySpec}
@@ -4049,8 +4261,7 @@ export const MainScene = memo(function MainScene({
                 focusedJoinKey={focusedJoinKey}
                 onFocusJoinKeyChange={onFocusJoinKeyChange}
                 teachingNarrativeEnabled={teachingNarrativeEnabled}
-                teachingSceneStory={teachingSceneStory}
-                teachingLectureFrameRef={teachingLectureFrameRef}
+                teachingSurfaceProjectionRef={teachingSurfaceProjectionRef}
                 constellation={constellation}
                 presentationPlan={presentationPlan}
               />

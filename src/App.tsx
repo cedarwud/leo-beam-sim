@@ -56,12 +56,38 @@ import {
   HOMEPAGE_INTRA_HANDOVER_DISPLAY_MS,
   MANUAL_HANDOVER_DISPLAY_MS,
 } from './appearance/handoverTimingEnvelope';
-import { HandoverTeachingRail, useHandoverTeachingLecture } from './ui/homepage/HandoverTeachingRail';
+import { HandoverTeachingRail } from './ui/homepage/HandoverTeachingRail';
 import type {
-  TeachingFrame,
   TeachingHandoverKind,
+  TeachingIdentityBinding,
 } from './homepage/teaching/handoverTeachingScript';
-import type { HandoverTeachingSceneStory } from './viz/HandoverTeachingBeamCones';
+import {
+  isInstructorHandoverBeamTopologyAdmitted,
+  resolveInstructorHandoverScenarioFrame,
+} from './homepage/teaching/instructorHandoverScenario';
+import type {
+  InstructorHandoverTransportSnapshot,
+} from './homepage/teaching/instructorHandoverTransport';
+import {
+  instructorHandoverTelemetryAttributes,
+} from './homepage/teaching/instructorHandoverTelemetry';
+import {
+  useInstructorHandoverTransport,
+} from './homepage/teaching/useInstructorHandoverTransport';
+import type { HandoverTeachingSceneStory } from './scene/handoverStoryFrame';
+import {
+  resolveHandoverAcceptedSurfaceProjection,
+} from './scene/handoverAcceptedSurfaceProjection';
+import {
+  resolveHandoverTeachingSurfaceProjection,
+  type HandoverTeachingSurfaceProjection,
+} from './scene/handoverTeachingSurfaceProjection';
+import { resolveSceneHandoverStoryFrameSet } from './scene/sceneHandoverStoryFrameSet';
+import {
+  resolveHandoverSurfaceBindings,
+  type HandoverSurfaceBindingSet,
+} from './scene/handoverSurfaceBinding';
+import { cellIdFromLinkBudgetBeamId } from './scene/sinrLiveCellModel';
 import { InfoPanel } from './ui/InfoPanel';
 import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
 import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';
@@ -229,25 +255,6 @@ import { useLeftSidebar } from './app/useLeftSidebar';
 import { useDirectorModes } from './app/useDirectorModesQ1';
 import { AppLeftSidebar } from './app/AppLeftSidebar';
 
-/**
- * One lecture's own scene endpoints.
- *
- * The scripted run never asks the live model for a handover, so the scene's
- * demo resolver has no measured alternate link to fall back on. These carry
- * the lecture's protagonists instead: live identities the viewer can find in
- * the render, chosen by the lecture rather than by live evidence.
- */
-interface TeachingHandoverEndpoints {
-  readonly sourceSatId: string;
-  readonly sourceCellId: number;
-  /** Inter only: the spacecraft the lecture's winner row names. */
-  readonly targetSatId?: string;
-  /** Intra only: a second earth-fixed cell on the same spacecraft. */
-  readonly targetCellId?: number;
-  readonly servingSinrDb: number;
-  readonly candidateSinrDb: number;
-}
-
 interface HandoverPolicyRuntimeState {
   profileId: string;
   draft: HandoverPolicyTuningState;
@@ -261,10 +268,6 @@ const SHOWCASE_ARTIFACT_URL = '/showcase-artifacts/visual-showcase-v1.json';
 // Restore the engineering homepage while keeping the dedicated six-act entry.
 // The teaching routes and reusable dock remain available for a later reopen.
 const HOMEPAGE_TEACHING_AUXILIARY_UI_VISIBLE = false;
-// The scene's demo resolver needs finite SINR on both sides of a manual cue.
-// A lecture argues in EE, so this is only the margin its candidate row claims.
-const TEACHING_MANUAL_CANDIDATE_LEAD_DB = 1.5;
-
 export function App() {
   // `/` and `/legacy` mount this shell; `/walker` is routed to the isolated
   // AppWalkerSandbox by main.tsx. Route identity still owns the historical
@@ -296,10 +299,12 @@ export function App() {
   // The homepage teaching timeline is presentation-only. The live simulator
   // remains the sole clock; every action uses this one bounded source window.
   const [homepageTeachingActive, setHomepageTeachingActive] = useState(false);
-  // The handover lecture the two teaching buttons open, or null for the normal
-  // homepage. The stage owns its own authored data and clock; nothing about the
-  // live lane changes while it is open.
-  const [teachingStageKind, setTeachingStageKind] = useState<TeachingHandoverKind | null>(null);
+  // R5 owns one source-time transport for the versioned seven-beam Intra ->
+  // Inter instructor scenario. `teachingStageKind` is a projection of that
+  // transport; no second component state may select or advance a segment.
+  const instructorHandoverTransport = useInstructorHandoverTransport();
+  const instructorHandoverSnapshot = instructorHandoverTransport.snapshot;
+  const teachingStageKind = instructorHandoverSnapshot?.segment.kind ?? null;
   const [homepageTeachingDetailsVisible, setHomepageTeachingDetailsVisible] = useState(false);
   const [liveTimelineSeekRequest, setLiveTimelineSeekRequest] =
     useState<LiveTimelineSeekRequest | null>(null);
@@ -310,12 +315,6 @@ export function App() {
     readonly startedAtMs: number;
     readonly origin: 'button' | 'scheduled';
     readonly intraPresentation: SimState['intraHandoverPresentation'];
-    /**
-     * The endpoints a lecture asks the scene to paint. The live model has not
-     * measured an alternate link during a scripted run, so the scene resolver
-     * would fail closed on live evidence alone; the lecture supplies its own.
-     */
-    readonly teachingEndpoints: TeachingHandoverEndpoints | null;
   } | null>(null);
   // The presentation owner is advanced inside MainScene's render, while the
   // cinema/control state is owned by App. Keep their locks separate and derive
@@ -325,6 +324,10 @@ export function App() {
   const handoverControlBusyRef = useRef(false);
   const handoverBusyRef = useRef(false);
   const manualHandoverWasPausedRef = useRef(false);
+  const instructorPlaybackRestoreRef = useRef<{
+    readonly paused: boolean;
+    readonly speed: number;
+  } | null>(null);
 
   const currentTimeSecRef = useRef(0);
   // ITEM #C live Director focus: the absolute live sim cursor (set in
@@ -673,20 +676,11 @@ export function App() {
     manualHandoverKind: manualHandoverRequest?.kind,
     manualHandoverOrigin: manualHandoverRequest?.origin,
     manualHandoverStartedAtMs: manualHandoverRequest?.startedAtMs,
-    // A lecture's own endpoints outrank the live intra sample: during a
-    // scripted run there is no live sample, and when there is one it describes
-    // a different story than the one being narrated.
-    manualHandoverSourceSatId: manualHandoverRequest?.teachingEndpoints?.sourceSatId
-      ?? manualHandoverRequest?.intraPresentation?.sourceSatId,
-    manualHandoverSourceCellId: manualHandoverRequest?.teachingEndpoints?.sourceCellId
-      ?? manualHandoverRequest?.intraPresentation?.sourceCellId,
-    manualHandoverTargetSatId: manualHandoverRequest?.teachingEndpoints?.targetSatId,
-    manualHandoverTargetCellId: manualHandoverRequest?.teachingEndpoints?.targetCellId
-      ?? manualHandoverRequest?.intraPresentation?.targetCellId,
-    manualHandoverServingSinrDb: manualHandoverRequest?.teachingEndpoints?.servingSinrDb
-      ?? manualHandoverRequest?.intraPresentation?.servingSinrDb,
-    manualHandoverCandidateSinrDb: manualHandoverRequest?.teachingEndpoints?.candidateSinrDb
-      ?? manualHandoverRequest?.intraPresentation?.candidateSinrDb,
+    manualHandoverSourceSatId: manualHandoverRequest?.intraPresentation?.sourceSatId,
+    manualHandoverSourceCellId: manualHandoverRequest?.intraPresentation?.sourceCellId,
+    manualHandoverTargetCellId: manualHandoverRequest?.intraPresentation?.targetCellId,
+    manualHandoverServingSinrDb: manualHandoverRequest?.intraPresentation?.servingSinrDb,
+    manualHandoverCandidateSinrDb: manualHandoverRequest?.intraPresentation?.candidateSinrDb,
   }), [
     appMode,
     primaryUeJogKm,
@@ -708,6 +702,10 @@ export function App() {
     teachingStageKind,
     viewport,
   ]);
+  const instructorSevenBeamAdmitted = isInstructorHandoverBeamTopologyAdmitted(
+    runtime.servingBeamCount,
+    runtime.candidateBeamCount,
+  );
   const visualScaleMultipliers = useMemo(
     (): SceneVisualScaleMultipliers => resolveSceneVisualScaleMultipliers(sceneVisualScale),
     [sceneVisualScale],
@@ -965,7 +963,6 @@ export function App() {
       startedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
       origin,
       intraPresentation: presentation,
-      teachingEndpoints: null,
     });
     return true;
   }, [manualHandoverRequest, playback, simState.intraHandoverPresentation, visibleHandover.active]);
@@ -1522,6 +1519,10 @@ export function App() {
     showcaseError,
     timelineDurationSec,
   });
+  // While the authored scenario owns source time, the production timeline must
+  // not unfreeze or seek the scientific producer underneath its latched fixture.
+  const timelineInteractionDisabled = timelineDisabled
+    || instructorHandoverSnapshot !== null;
   const archivedTleTimelineCurrentTimeRef = useRef(timelineCurrentTimeSec);
   archivedTleTimelineCurrentTimeRef.current = timelineCurrentTimeSec;
   const archivedTleSelectTimelineTimeRef = useRef<((targetSec: number) => void) | undefined>(
@@ -1792,7 +1793,7 @@ export function App() {
     && sceneLane === 'sinr-live'
     && homepageDemoWindow !== null
     && !liveWalkerHandoverEventIndexBuilding
-    && !timelineDisabled;
+    && !timelineInteractionDisabled;
   const handoverCinema = useHandoverCinema({
     sceneLane,
     handoverEventIndex: liveWalkerHandoverEventIndex,
@@ -1936,7 +1937,7 @@ export function App() {
     }),
     [homepageRailProjection, simState.servingSatId, teachingInterRosterSatelliteIds],
   );
-  const teachingIdentityBinding = useMemo(
+  const teachingIdentityBindingCandidate = useMemo(
     () => deriveTeachingIdentityBinding({
       projection: homepageRailProjection,
       homepageSatelliteNameById,
@@ -1955,13 +1956,6 @@ export function App() {
       teachingStageKind,
     ],
   );
-  const teachingLecture = useHandoverTeachingLecture(teachingStageKind, teachingIdentityBinding);
-  const restartTeachingLecture = teachingLecture.restart;
-  // The rail, the caption and the scene's teaching cones all read THIS frame.
-  // It is handed to the scene by reference so a 60 Hz lecture clock cannot drag
-  // the whole scene tree through a React render on every tick.
-  const teachingLectureFrameRef = useRef<TeachingFrame | null>(null);
-  teachingLectureFrameRef.current = teachingLecture.frame;
   /**
    * The two live identities the lecture's cones attach to.
    *
@@ -1990,113 +1984,67 @@ export function App() {
       teachingStageKind,
     ],
   );
-  // The live roster keeps re-ranking underneath the lecture, so recomputing the
-  // endpoints every frame let the transfer change which spacecraft it was aimed
-  // at halfway through the narration. Latch the pair for the run, exactly as the
-  // inter cinema latches its own pair anchor.
-  const teachingSceneStoryLatchRef = useRef<{
-    readonly runKey: string;
+  // One deterministic fixture is latched per scenario run and segment. The
+  // source simulation is frozen while the instructor scenario is open, and
+  // this latch also prevents a live rail re-rank from changing labels or
+  // elevations when the same scenario source time is replayed at another speed.
+  const teachingFixtureLatchRef = useRef<{
+    readonly key: string;
+    readonly binding: TeachingIdentityBinding;
     readonly story: HandoverTeachingSceneStory;
   } | null>(null);
-  const teachingRunKey = teachingStageKind === null
+  const teachingFixtureKey = instructorHandoverSnapshot === null
     ? null
-    : `${teachingStageKind}:${teachingLecture.runId}`;
-  const teachingSceneStory = useMemo<HandoverTeachingSceneStory | null>(() => {
-    if (teachingRunKey === null) {
-      teachingSceneStoryLatchRef.current = null;
+    : `${instructorHandoverSnapshot.scenarioId}:${instructorHandoverSnapshot.runId}`
+      + `:${instructorHandoverSnapshot.segment.index}`;
+  const teachingFixture = useMemo(() => {
+    if (teachingFixtureKey === null) {
+      teachingFixtureLatchRef.current = null;
       return null;
     }
-    const latched = teachingSceneStoryLatchRef.current;
-    if (latched !== null && latched.runKey === teachingRunKey) return latched.story;
-    if (teachingSceneStoryCandidate === null) return null;
-    teachingSceneStoryLatchRef.current = {
-      runKey: teachingRunKey,
-      story: teachingSceneStoryCandidate,
-    };
-    return teachingSceneStoryCandidate;
-  }, [teachingRunKey, teachingSceneStoryCandidate]);
-
-  /**
-   * The self-contained visual interlude the two buttons have always used on
-   * other lanes: pause the source timeline, show the two demo cones in the NTPU
-   * scene, then return to the exact pre-click playback state. It adds nothing
-   * to the natural handover event index. Unconditional on purpose — the lecture
-   * decides when the switch happens, so this must not second-guess it with the
-   * live scene's own preconditions.
-   *
-   * The endpoints are the LECTURE's, not live evidence: a scripted run never
-   * asks the model for a handover, so the scene's demo resolver has no measured
-   * alternate link and would fail closed on every frame. They still have to be
-   * identities the render already carries, or the scene drops the pair as
-   * undrawable.
-   */
-  const requestManualHandover = useCallback((kind: 'intra' | 'inter'): void => {
-    manualHandoverWasPausedRef.current = playback.paused;
-    playback.setPaused(true);
-    manualHandoverRequestSeqRef.current += 1;
-    const servingLink = homepageRailProjection?.serving ?? null;
-    const sourceSatId = simState.servingSatId ?? servingLink?.satelliteId ?? null;
-    const sourceCellId = simState.servingCellId
-      ?? (servingLink === null ? null : servingLink.beamId - 1);
-    // The rail publishes one-based beam ids; scene geometry is zero-based cells.
-    const servingBeamId = servingLink?.beamId
-      ?? (sourceCellId === null ? null : sourceCellId + 1);
-    // Intra re-points inside one spacecraft, so the target is the first
-    // alternate beam the rail already lists for it — the same row the lecture's
-    // winner names. With no published beam metric, step to the next cell in the
-    // configured layout so the story still has two drawable endpoints.
-    const intraTargetCellId = sourceSatId === null || sourceCellId === null
-      ? null
-      : (simState.homepageBeamMetrics?.metrics ?? [])
-        .filter(metric => metric.satelliteId === sourceSatId && metric.beamId !== servingBeamId)
-        .map(metric => metric.beamId - 1)
-        .find(cellId => Number.isInteger(cellId) && cellId !== sourceCellId)
-        ?? (sourceCellId + 1) % resolveSinrLiveSceneCellCount(runtime.servingBeamCount);
-    // Inter keeps the earth-fixed cell and changes only the apex spacecraft.
-    const interTargetSatId = teachingInterRosterSatelliteIds
-      .find(satelliteId => satelliteId !== sourceSatId) ?? null;
-    // The rail tells this story in EE; these only have to be finite for the
-    // scene resolver, so they carry the live serving sample and a candidate
-    // that leads it by the same margin the narration claims.
-    const servingSinrDb = Number.isFinite(simState.sinrDb) ? simState.sinrDb : 0;
-    const liveCandidateSinrDb = simState.comparisonSinrDb;
-    const candidateSinrDb = liveCandidateSinrDb !== null
-      && Number.isFinite(liveCandidateSinrDb)
-      && liveCandidateSinrDb > servingSinrDb
-      ? liveCandidateSinrDb
-      : servingSinrDb + TEACHING_MANUAL_CANDIDATE_LEAD_DB;
-    const teachingEndpoints: TeachingHandoverEndpoints | null =
-      teachingStageKind === null || sourceSatId === null || sourceCellId === null
+    const latched = teachingFixtureLatchRef.current;
+    if (latched?.key === teachingFixtureKey) return latched;
+    if (teachingIdentityBindingCandidate === null || teachingSceneStoryCandidate === null) {
+      return null;
+    }
+    const binding: TeachingIdentityBinding = Object.freeze({
+      serving: teachingIdentityBindingCandidate.serving === null
         ? null
-        : kind === 'inter'
-          ? interTargetSatId === null
-            ? null
-            : { sourceSatId, sourceCellId, targetSatId: interTargetSatId, servingSinrDb, candidateSinrDb }
-          : intraTargetCellId === null || intraTargetCellId === sourceCellId
-            ? null
-            : { sourceSatId, sourceCellId, targetCellId: intraTargetCellId, servingSinrDb, candidateSinrDb };
-    setManualHandoverRequest({
-      id: manualHandoverRequestSeqRef.current,
-      kind,
-      startedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
-      origin: 'button',
-      // The lecture owns the story, so the scene does not need the live
-      // intra-presentation sample the fallback path resolves for itself.
-      intraPresentation: null,
-      teachingEndpoints,
+        : Object.freeze({ ...teachingIdentityBindingCandidate.serving }),
+      candidates: Object.freeze(
+        teachingIdentityBindingCandidate.candidates.map(candidate => Object.freeze({ ...candidate })),
+      ),
     });
+    const fixture = Object.freeze({
+      key: teachingFixtureKey,
+      binding,
+      story: teachingSceneStoryCandidate,
+    });
+    teachingFixtureLatchRef.current = fixture;
+    return fixture;
   }, [
-    homepageRailProjection,
-    playback,
-    runtime.servingBeamCount,
-    simState.comparisonSinrDb,
-    simState.homepageBeamMetrics,
-    simState.servingCellId,
-    simState.servingSatId,
-    simState.sinrDb,
-    teachingInterRosterSatelliteIds,
-    teachingStageKind,
+    teachingFixtureKey,
+    teachingIdentityBindingCandidate,
+    teachingSceneStoryCandidate,
   ]);
+  const teachingIdentityBinding = teachingFixture?.binding ?? null;
+  const teachingSceneStory = teachingFixture?.story ?? null;
+  const teachingScenarioFrame = useMemo(
+    () => instructorHandoverSnapshot === null
+      ? null
+      : resolveInstructorHandoverScenarioFrame(
+        instructorHandoverSnapshot.sourceTimeSec,
+        teachingIdentityBinding,
+      ),
+    [instructorHandoverSnapshot, teachingIdentityBinding],
+  );
+  const teachingLecture = {
+    frame: teachingScenarioFrame?.frame ?? null,
+    setPaused: instructorHandoverTransport.setPaused,
+    restart: instructorHandoverTransport.restart,
+    seek: instructorHandoverTransport.seek,
+    setSpeed: instructorHandoverTransport.setSpeed,
+  } as const;
 
   /**
    * Open one handover lecture.
@@ -2106,40 +2054,69 @@ export function App() {
    * handover rule and produces no event to narrate. The lecture therefore runs
    * on its own authored timeline rather than on that scenario. It is a separate
    * surface with a single data owner, so its diagram and its rail cannot
-   * disagree; the live lane keeps running untouched underneath it.
+   * disagree. The scientific producer is frozen while this authored source-time
+   * transport owns the stage; closing the scenario restores its prior state.
    *
-   * A click during a run is a restart, never a no-op: the previous run's scene
-   * interlude is dropped so a still-visible cue from the other kind cannot
-   * outlive the story that asked for it.
+   * A click during a run starts the selected declared entry point and replaces
+   * the prior authored run; it never arms a second presentation clock.
    */
   const openHandoverTeachingStage = useCallback((kind: TeachingHandoverKind): void => {
+    if (!instructorSevenBeamAdmitted) return;
     setManualHandoverRequest(null);
-    // A same-kind click leaves `kind` unchanged, so the lecture's own arm effect
-    // never fires; restarting explicitly is what re-arms the switching beat.
-    if (teachingStageKind === kind) restartTeachingLecture();
-    setTeachingStageKind(kind);
-    // The lecture is paced in real seconds; the scene must not fly past it.
-    playback.setSpeed(HOMEPAGE_TEACHING_PLAYBACK_SPEED);
-    if (playback.paused) playback.setPaused(false);
-  }, [playback, restartTeachingLecture, teachingStageKind]);
-
-  // Fire the scene interlude on the lecture's switching beat rather than on the
-  // click, so the cones change at the moment the narration says they do. One
-  // shot per run: the ref is keyed to the lecture, not to the phase, so a pause
-  // or a re-render inside the beat cannot retrigger it.
-  const teachingSwitchFiredForRef = useRef<string | null>(null);
-  const teachingPhaseId = teachingLecture.frame?.phase.id ?? null;
-  useEffect(() => {
-    if (teachingStageKind === null) {
-      teachingSwitchFiredForRef.current = null;
-      return;
+    if (instructorPlaybackRestoreRef.current === null) {
+      instructorPlaybackRestoreRef.current = {
+        paused: playback.paused,
+        speed: playback.speed,
+      };
     }
-    if (teachingPhaseId !== 'switching') return;
-    const runKey = `${teachingStageKind}:${teachingLecture.runId}`;
-    if (teachingSwitchFiredForRef.current === runKey) return;
-    teachingSwitchFiredForRef.current = runKey;
-    requestManualHandover(teachingStageKind);
-  }, [requestManualHandover, teachingLecture.runId, teachingPhaseId, teachingStageKind]);
+    // Freeze the scientific producer for the entire authored run. The one R5
+    // source clock now controls Intra -> Inter, so changing teaching speed can
+    // never move the spacecraft roster or geometry underneath the fixture.
+    if (!playback.paused) playback.setPaused(true);
+    instructorHandoverTransport.open(kind);
+  }, [
+    instructorHandoverTransport.open,
+    instructorSevenBeamAdmitted,
+    playback.paused,
+    playback.setPaused,
+    playback.speed,
+  ]);
+
+  const closeHandoverTeachingStage = useCallback((): void => {
+    setManualHandoverRequest(null);
+    instructorHandoverTransport.close();
+    const restore = instructorPlaybackRestoreRef.current;
+    instructorPlaybackRestoreRef.current = null;
+    if (restore === null) return;
+    playback.setSpeed(restore.speed);
+    playback.setPaused(restore.paused);
+  }, [
+    instructorHandoverTransport.close,
+    playback.setPaused,
+    playback.setSpeed,
+  ]);
+
+  useEffect(() => {
+    if (instructorHandoverSnapshot === null) return;
+    const instructorLaneAvailable = isRootHomepage
+      && sceneSource === 'live-sim'
+      && isWalkerSceneActive
+      && sceneLane === 'sinr-live'
+      && instructorSevenBeamAdmitted;
+    if (!instructorLaneAvailable) closeHandoverTeachingStage();
+  }, [
+    closeHandoverTeachingStage,
+    instructorHandoverSnapshot,
+    instructorSevenBeamAdmitted,
+    isRootHomepage,
+    isWalkerSceneActive,
+    sceneLane,
+    sceneSource,
+  ]);
+
+  // The R4 teaching cone layer paints the exact shell-owned projection. R5 must
+  // not arm the older manual wall-clock interlude at the switching phase: that
+  // would create a second transition clock and a second source/target path.
 
   const handleQuickIntra = useCallback(() => {
     // The homepage buttons own a scripted teaching story, not an index seek.
@@ -2304,7 +2281,7 @@ export function App() {
     <AppHandoverRail
       events={handoverRailEvents}
       surface={timelineRailDescriptor.rail}
-      disabled={timelineDisabled}
+      disabled={timelineInteractionDisabled}
       axisPlaying={!playback.paused}
       axisPlaybackRate={playback.effectiveSpeed}
       director={{
@@ -2347,7 +2324,7 @@ export function App() {
       onSpeedChange={handleTimelineSpeedChange}
       stepSec={isArchivedTleSceneActive ? (homepageCanonicalAnalysis.timelineStepSec ?? 30) : undefined}
       scrubStepSec={isArchivedTleSceneActive ? 1 : undefined}
-      disabled={timelineDisabled}
+      disabled={timelineInteractionDisabled}
       sourceOwner={activeTimelineDescriptor.sourceOwner}
       horizonKind={activeTimelineDescriptor.horizonKind}
       horizonLabel={activeTimelineDescriptor.horizonLabel}
@@ -2408,6 +2385,62 @@ export function App() {
     };
   }, [sceneSource, replaySceneFrame, processedUes]);
   const shouldRenderMainScene = sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined;
+  // R4: normalize accepted, teaching and replay stories once in the shell, then
+  // pass the exact same frozen frames to scene, rail and caption projections.
+  // The scene may add its local presentation-clock frame, but it must preserve
+  // these shared source-frame object references.
+  const appHandoverStoryFrames = useMemo(() => resolveSceneHandoverStoryFrameSet({
+    acceptedSnapshot: sceneLane === 'sinr-live' && isWalkerSceneActive
+      ? simState.acceptedHandoverPresentation ?? null
+      : null,
+    acceptedProducer: 'walker',
+    resolveAcceptedCellId: cellIdFromLinkBudgetBeamId,
+    teachingStory: isRootHomepage ? teachingSceneStory : null,
+    teachingFrame: isRootHomepage ? teachingLecture.frame : null,
+    replayFrame: activeSceneFrame ?? null,
+  }), [
+    activeSceneFrame,
+    isRootHomepage,
+    isWalkerSceneActive,
+    sceneLane,
+    simState.acceptedHandoverPresentation,
+    teachingLecture.frame,
+    teachingSceneStory,
+  ]);
+  const handoverSurfaceBindings = useMemo(
+    () => resolveHandoverSurfaceBindings(appHandoverStoryFrames),
+    [appHandoverStoryFrames],
+  );
+  const acceptedSurfaceProjection = useMemo(
+    () => resolveHandoverAcceptedSurfaceProjection(
+      handoverSurfaceBindings.accepted,
+      homepageRailProjection,
+      'walker',
+    ),
+    [handoverSurfaceBindings.accepted, homepageRailProjection],
+  );
+  const teachingSurfaceProjection = useMemo(
+    () => resolveHandoverTeachingSurfaceProjection(
+      handoverSurfaceBindings.teaching,
+      teachingLecture.frame,
+      teachingStageKind,
+    ),
+    [handoverSurfaceBindings.teaching, teachingLecture.frame, teachingStageKind],
+  );
+  // Keep scene props stable while the authored clock updates. The scene reads
+  // the exact projection object through this ref; rail and caption receive that
+  // same object directly, so none of the three can reinterpret its identity.
+  const teachingSurfaceProjectionRef = useRef<HandoverTeachingSurfaceProjection | null>(null);
+  teachingSurfaceProjectionRef.current = teachingSurfaceProjection;
+  const handoverSurfaceBindingsRef = useRef<HandoverSurfaceBindingSet | null>(null);
+  handoverSurfaceBindingsRef.current = handoverSurfaceBindings;
+  const instructorHandoverSnapshotRef = useRef<InstructorHandoverTransportSnapshot | null>(null);
+  instructorHandoverSnapshotRef.current = instructorHandoverSnapshot;
+  const instructorRootAttributes = instructorHandoverTelemetryAttributes(
+    'root',
+    instructorHandoverSnapshot,
+    teachingSurfaceProjection?.binding ?? null,
+  );
 
 
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
@@ -2485,7 +2518,7 @@ export function App() {
       <HomepageBeamRail
         projection={homepageRailProjection}
         sourceProvenance="synthetic-walker"
-        acceptedSnapshotMetadata={simState.acceptedHandoverPresentation}
+        handoverSurfaceProjection={acceptedSurfaceProjection}
         satelliteNameById={homepageSatelliteNameById}
         playback={{
           paused: playback.paused,
@@ -2534,6 +2567,12 @@ export function App() {
     // those components remains renderable in isolation under test.
     <LocaleProvider>
     <div
+      {...instructorRootAttributes}
+      data-instructor-runtime-beam-count={String(runtime.servingBeamCount)}
+      data-instructor-runtime-candidate-beam-count={String(
+        runtime.candidateBeamCount ?? runtime.servingBeamCount
+      )}
+      data-instructor-seven-beam-admitted={instructorSevenBeamAdmitted ? 'true' : 'false'}
       data-app-mode={appMode}
       data-scene-lane={sceneLane}
       data-simulation-source={simulationSource}
@@ -2560,14 +2599,14 @@ export function App() {
       data-live-director-focus-event-sec={liveDirectorFocusEventSec !== null ? liveDirectorFocusEventSec.toFixed(3) : undefined}
       data-live-handover-index-building={liveWalkerHandoverEventIndexBuilding ? '1' : '0'}
       data-handover-control-busy={handoverCommandBusy ? '1' : '0'}
-      data-visible-handover-kind={teachingSceneStory?.kind ?? visibleHandover.kind ?? ''}
-      data-visible-handover-source={teachingSceneStory === null
+      data-visible-handover-kind={teachingSurfaceProjection?.binding.frame.kind ?? visibleHandover.kind ?? ''}
+      data-visible-handover-source={teachingSurfaceProjection === null
         ? visibleHandover.source ?? ''
         : 'teaching'}
       data-selected-speed={playback.speed.toFixed(3)}
       data-timeline-current-time-sec={timelineCurrentTimeSec.toFixed(3)}
       data-timeline-duration-sec={timelineDurationSec.toFixed(3)}
-      data-timeline-disabled={timelineDisabled ? 'true' : 'false'}
+      data-timeline-disabled={timelineInteractionDisabled ? 'true' : 'false'}
       data-timeline-source-owner={activeTimelineDescriptor.sourceOwner}
       data-timeline-horizon-kind={activeTimelineDescriptor.horizonKind}
       data-timeline-claim-kind={activeTimelineDescriptor.claimKind}
@@ -2671,11 +2710,9 @@ export function App() {
           && isWalkerSceneActive
           && sceneLane === 'sinr-live'}
         handoverIndexBuilding={liveWalkerHandoverEventIndexBuilding}
-        // The homepage buttons open a self-contained lecture with its own clock
-        // and data, so no live-lane state may gate them. The lecture itself arms
-        // a manual cue at its switching beat, so the shared `manualHandoverRequest
-        // === null` guard would have made the buttons disable themselves halfway
-        // through their own run. Every other lane keeps all four guards.
+        // Homepage buttons remain queueable under the existing control contract.
+        // The one instructor entry handler performs the exact 7/7 admission and
+        // fails closed before opening a scenario on any other topology.
         nextIntraEnabled={isRootHomepage || (manualHandoverRequest === null
           && directorNextIntraEnabled
           && camera.directorPhase === 'idle'
@@ -2820,6 +2857,8 @@ export function App() {
               acceptedHandoverPresentation={isWalkerSceneActive
                 ? simState.acceptedHandoverPresentation ?? null
                 : null}
+              handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
+              instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
               onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}
               canonicalAnalysisFrame={isArchivedTleSceneActive
@@ -2847,8 +2886,7 @@ export function App() {
               handoverCinemaKind={sceneLane === 'sinr-live' && isWalkerSceneActive && handoverCinema.armFilter !== 'off'
                 ? handoverCinema.armFilter
                 : null}
-              teachingSceneStory={isRootHomepage ? teachingSceneStory : null}
-              teachingLectureFrameRef={teachingLectureFrameRef}
+              teachingSurfaceProjectionRef={teachingSurfaceProjectionRef}
               focusedJoinKey={focusedJoinKey}
               onFocusJoinKeyChange={handleFocusJoinKeyChange}
               teachingNarrativeEnabled={isRootHomepage && homepageNarrativeTeachingMode}
@@ -2885,8 +2923,8 @@ export function App() {
             sixActsReceipt={sixActsTeachingReceipt}
             sixActsOffsetDb={appliedHandoverPolicy.offsetDb}
             sixActsTttSec={appliedHandoverPolicy.triggerTimeSec}
-            teachingCaptionFrame={teachingLecture.frame}
-            teachingStageKind={teachingStageKind}
+            teachingProjection={teachingSurfaceProjection}
+            instructorTransport={instructorHandoverSnapshot}
           />
           {shellChromeVisibility.timeline
             && (isRootHomepage || homepageTeachingTimeline === null)
@@ -2897,18 +2935,15 @@ export function App() {
           shellVisible={shellChromeVisibility.rightSidebar}
           isArchivedTleSceneActive={isArchivedTleSceneActive}
           homepageCanonicalRightRailProps={{ homepageCanonicalAnalysis }}
-          teachingRail={teachingStageKind !== null && teachingLecture.frame !== null ? (
+          teachingRail={teachingSurfaceProjection !== null ? (
             <HandoverTeachingRail
-              frame={teachingLecture.frame}
-              kind={teachingStageKind}
-              totalSec={teachingLecture.totalSec}
-              paused={teachingLecture.paused}
+              projection={teachingSurfaceProjection}
+              transport={instructorHandoverSnapshot!}
               onPausedChange={teachingLecture.setPaused}
               onRestart={teachingLecture.restart}
               onSeek={teachingLecture.seek}
-              speed={teachingLecture.speed}
               onSpeedChange={teachingLecture.setSpeed}
-              onClose={() => setTeachingStageKind(null)}
+              onClose={closeHandoverTeachingStage}
             />
           ) : null}
           homepageRailPanel={homepageRailPanel}

@@ -1,8 +1,15 @@
-import type { JSX } from 'react';
+import { useRef, type JSX, type MutableRefObject } from 'react';
 import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 
 import { useLocale } from '../i18n';
 import type { NarrativeCaptionChapter, NarrativeCaptionText } from './narrativeCaptionPolicy';
+import {
+  handoverSurfaceIdentityAttributes,
+  resolveHandoverStoryIdentityStatus,
+  type HandoverSurfaceBinding,
+  type HandoverSurfaceBindingSet,
+} from './handoverSurfaceBinding';
 
 const CAPTION_TOP_MARGIN_PX = 16;
 const CAPTION_SIDE_MARGIN_PX = 16;
@@ -10,11 +17,16 @@ const CAPTION_SIDE_MARGIN_PX = 16;
 export interface NarrativeCaptionDisplay {
   readonly chapter: NarrativeCaptionChapter;
   readonly text: NarrativeCaptionText;
+  readonly storyId: string | null;
 }
 
 export interface SceneNarrativeCaptionProps {
   readonly caption: NarrativeCaptionDisplay | null;
   readonly enabled: boolean;
+  /** App-owned accepted frame used by the scene, rail and caption. */
+  readonly storyBinding?: HandoverSurfaceBinding | null;
+  /** Live App-owned binding set; telemetry follows it without holding an old snapshot. */
+  readonly storyBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
 }
 
 /**
@@ -50,10 +62,49 @@ function screenCenterPosition(
 export function SceneNarrativeCaption({
   caption,
   enabled,
+  storyBinding = null,
+  storyBindingsRef,
 }: SceneNarrativeCaptionProps): JSX.Element | null {
   const { locale } = useLocale();
+  const elementRef = useRef<HTMLDivElement | null>(null);
+  const telemetrySignatureRef = useRef('');
+
+  // The narrative chapter intentionally has a hold policy, but its provenance
+  // must not hold an older accepted snapshot. Publish the current App-owned
+  // binding on the same render loop as the canvas telemetry; no identity or
+  // phase is recomputed here.
+  useFrame(() => {
+    const element = elementRef.current;
+    if (element === null || caption === null) return;
+    const currentBinding = storyBindingsRef?.current?.accepted ?? storyBinding;
+    const attributes = handoverSurfaceIdentityAttributes('caption', currentBinding);
+    const contractStatus = resolveHandoverStoryIdentityStatus(
+      currentBinding,
+      'accepted',
+      caption.storyId,
+    );
+    const signature = JSON.stringify({ attributes, contractStatus });
+    if (
+      signature === telemetrySignatureRef.current
+      && element.getAttribute('data-handover-surface-story-identity')
+        === attributes['data-handover-surface-story-identity']
+      && element.getAttribute('data-handover-surface-contract') === contractStatus
+    ) return;
+    telemetrySignatureRef.current = signature;
+    for (const [name, value] of Object.entries(attributes)) {
+      element.setAttribute(name, value);
+    }
+    element.setAttribute('data-handover-surface-contract', contractStatus);
+  });
+
   if (!enabled || caption === null) return null;
   const isEnglish = locale === 'en';
+  const storyBindingStatus = resolveHandoverStoryIdentityStatus(
+    storyBinding,
+    'accepted',
+    caption.storyId,
+  );
+  const storyIdentityAttributes = handoverSurfaceIdentityAttributes('caption', storyBinding);
   return (
     <Html
       fullscreen
@@ -62,7 +113,10 @@ export function SceneNarrativeCaption({
       style={{ pointerEvents: 'none', userSelect: 'none' }}
     >
       <div
+        ref={elementRef}
         data-testid="scene-narrative-caption"
+        {...storyIdentityAttributes}
+        data-handover-surface-contract={storyBindingStatus}
         data-caption-chapter={caption.chapter}
         style={{
           position: 'absolute',

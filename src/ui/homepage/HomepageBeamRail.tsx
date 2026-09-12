@@ -12,6 +12,10 @@ import type {
   HomepageRailProjection,
 } from '../../homepage/controller/contracts';
 import { useLocale } from '../../i18n';
+import type {
+  HandoverAcceptedSurfaceProjection,
+} from '../../scene/handoverAcceptedSurfaceProjection';
+import { handoverSurfaceIdentityAttributes } from '../../scene/handoverSurfaceBinding';
 import { txBi } from '../signal-tuning/labels';
 import { resolveHomepageSatelliteDisplayName } from '../../homepage/controller/homepageSatelliteDisplayName';
 import { formatHomepageEe } from '../../homepage/controller/homepageMetricFormatters';
@@ -45,7 +49,7 @@ import {
   type RailSatelliteGroup,
 } from '../../appearance/candidateRailPresentation';
 
-/** Metadata copied from the accepted snapshot; it carries no decision logic. */
+/** Compatibility metadata; projection identity remains authoritative. */
 export type HomepageBeamRailSnapshotMetadata = Pick<
   HomepageAcceptedSnapshot,
   'snapshotId' | 'sourceFrameId' | 'phase'
@@ -56,6 +60,8 @@ export interface HomepageBeamRailProps {
   /** Physical values on this rail are computed from the selected source frame. */
   readonly sourceProvenance?: 'synthetic-walker' | 'archived-tle';
   readonly acceptedSnapshotMetadata?: HomepageBeamRailSnapshotMetadata | null;
+  /** Shell-composed accepted identity shared with the scene and caption. */
+  readonly handoverSurfaceProjection?: HandoverAcceptedSurfaceProjection | null;
   readonly playback?: HomepagePlaybackTransportState | null;
   /** The same presentation-owner pair currently rendered in the scene. */
   readonly handoverPresentation?: HomepageHandoverPresentation | null;
@@ -990,6 +996,7 @@ export function HomepageBeamRail({
   onFocusJoinKeyChange,
   satelliteNameById = null,
   handoverPresentation = null,
+  handoverSurfaceProjection = null,
   eeThresholdKbitPerJoule = null,
   showAllSurfaces = false,
 }: HomepageBeamRailProps) {
@@ -1010,6 +1017,11 @@ export function HomepageBeamRail({
   const snapshotId = projection.snapshotId;
   const sourceFrameId = projection.sourceFrameId;
   const phase = projection.phase;
+  const acceptedStoryBindingStatus = handoverSurfaceProjection?.contractStatus ?? 'missing';
+  const handoverStoryIdentityAttributes = handoverSurfaceIdentityAttributes(
+    'rail',
+    handoverSurfaceProjection?.binding ?? null,
+  );
   const beamMetrics: HomepageBeamMetricsProjection | null = projection.beamMetrics ?? null;
   const allMetrics = beamMetrics?.metrics ?? [];
   const servingLink = projection.serving;
@@ -1218,6 +1230,8 @@ export function HomepageBeamRail({
       ref={railRef}
       aria-label={say('homepage.rail.ariaLabel', '首頁波束數值', 'Homepage beam values')}
       data-testid="homepage-beam-rail"
+      {...handoverStoryIdentityAttributes}
+      data-handover-surface-contract={acceptedStoryBindingStatus}
       data-provenance-source={sourceProvenance}
       data-formula-contract="simplified-ee-c1-c9"
       data-formula-contract-version={ANGLE_AWARE_EE_CONTRACT_VERSION}
