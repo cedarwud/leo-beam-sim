@@ -11,6 +11,7 @@ import {
   type HandoverTeachingFrameInput,
   type HandoverTeachingSceneStory,
 } from './handoverStoryFrame';
+import type { HandoverSurfaceBindingSet } from './handoverSurfaceBinding';
 
 export interface SceneHandoverStoryFrameSetInput {
   readonly acceptedSnapshot?: AcceptedHandoverPresentationSnapshot | null;
@@ -49,5 +50,45 @@ export function resolveSceneHandoverStoryFrameSet(
     presentation,
     teaching,
     replay,
+  });
+}
+
+export type SceneHandoverStoryLane = 'live' | 'archived-tle' | 'artifact-replay';
+
+export interface BoundSceneHandoverStoryFrameSetInput {
+  readonly lane: SceneHandoverStoryLane;
+  readonly local: HandoverStoryFrameSet;
+  readonly sharedBindings: HandoverSurfaceBindingSet | null;
+}
+
+/**
+ * Preserve exact shell-owned frames while keeping source lanes exclusive.
+ * The scene-local presentation clock may augment a live/TLE lane, but accepted
+ * or teaching state can never outrank an artifact-replay frame.
+ */
+export function resolveBoundSceneHandoverStoryFrameSet(
+  input: BoundSceneHandoverStoryFrameSetInput,
+): HandoverStoryFrameSet {
+  const shared = input.sharedBindings;
+  const sharedAuthorityPresent = shared !== null;
+  if (input.lane === 'artifact-replay') {
+    return resolveHandoverStoryFrameSet({
+      accepted: null,
+      presentation: null,
+      teaching: null,
+      replay: sharedAuthorityPresent
+        ? shared.replay?.frame ?? null
+        : input.local.replay,
+    });
+  }
+  return resolveHandoverStoryFrameSet({
+    accepted: sharedAuthorityPresent
+      ? shared.accepted?.frame ?? null
+      : input.local.accepted,
+    presentation: input.local.presentation ?? shared?.presentation?.frame ?? null,
+    teaching: sharedAuthorityPresent
+      ? shared.teaching?.frame ?? null
+      : input.local.teaching,
+    replay: null,
   });
 }

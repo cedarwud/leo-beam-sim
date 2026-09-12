@@ -623,7 +623,7 @@ test('validator rejects kind, clock and decision-direction corruption', () => {
   }), /identities must differ/);
 });
 
-test('story contract owns the teaching descriptor and has no UI runtime dependency', async () => {
+test('story contract stays runtime-free and teaching renderer consumes only the shared projection', async () => {
   const moduleDirectory = new URL('./handover-story/', import.meta.url);
   const moduleNames = (await readdir(moduleDirectory)).filter(name => name.endsWith('.ts'));
   const moduleSources = await Promise.all(moduleNames.map(name =>
@@ -641,10 +641,11 @@ test('story contract owns the teaching descriptor and has no UI runtime dependen
   assert.doesNotMatch(contractSource, /\bperformance\.now\s*\(/);
   assert.match(
     rendererSource,
-    /import type \{ HandoverTeachingSceneStory \} from '\.\.\/scene\/handoverStoryFrame';/,
+    /readonly projectionRef: MutableRefObject<HandoverTeachingSurfaceProjection \| null>/,
   );
-  assert.doesNotMatch(
-    rendererSource,
-    /export interface HandoverTeachingSceneStory/,
-  );
+  assert.doesNotMatch(rendererSource, /HandoverTeachingSceneStory/);
+  assert.doesNotMatch(rendererSource, /readonly story:/);
+  assert.doesNotMatch(rendererSource, /readonly frameRef:/);
+  assert.doesNotMatch(rendererSource, /frameRef\.current/);
+  assert.doesNotMatch(rendererSource, /story\.(source|target)(SatelliteId|CellId)/);
 });

@@ -12,6 +12,13 @@ import {
   type TeachingLinkFrame,
 } from '../../homepage/teaching/handoverTeachingScript';
 import { useLocale } from '../../i18n';
+import {
+  handoverSurfaceIdentityAttributes,
+  resolveTeachingHandoverSurfaceStatus,
+} from '../../scene/handoverSurfaceBinding';
+import type {
+  HandoverTeachingSurfaceProjection,
+} from '../../scene/handoverTeachingSurfaceProjection';
 
 /**
  * The homepage handover lecture, rendered onto the existing shell.
@@ -231,9 +238,8 @@ function Condition({ ok, label }: { readonly ok: boolean; readonly label: string
 }
 
 export interface HandoverTeachingRailProps {
-  readonly frame: TeachingFrame;
-  readonly kind: TeachingHandoverKind;
-  readonly totalSec: number;
+  /** One shell-owned projection shared by scene, rail and caption. */
+  readonly projection: HandoverTeachingSurfaceProjection;
   readonly paused: boolean;
   readonly onPausedChange: (next: boolean) => void;
   readonly onRestart: () => void;
@@ -244,11 +250,21 @@ export interface HandoverTeachingRailProps {
 }
 
 export function HandoverTeachingRail({
-  frame, kind, totalSec, paused, onPausedChange, onRestart, onSeek, speed, onSpeedChange, onClose,
+  projection, paused, onPausedChange, onRestart, onSeek, speed, onSpeedChange, onClose,
 }: HandoverTeachingRailProps) {
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
+  const { binding: storyBinding, frame, kind } = projection;
+  const totalSec = frame.totalSec;
   const script = buildHandoverTeachingScript(kind);
+  const storyBindingStatus = resolveTeachingHandoverSurfaceStatus(storyBinding, {
+    kind,
+    phase: storyBinding.frame.phase,
+    committed: frame.committed,
+    currentSec: frame.elapsedSec,
+    durationSec: totalSec,
+  });
+  const storyIdentityAttributes = handoverSurfaceIdentityAttributes('rail', storyBinding);
   const button: CSSProperties = {
     flex: '1 1 auto', padding: '7px 10px', borderRadius: 7, border: `1px solid ${COLORS.line}`,
     background: 'rgba(255,255,255,.06)', color: COLORS.text, font: 'inherit',
@@ -265,6 +281,8 @@ export function HandoverTeachingRail({
   return (
     <section
       data-testid="handover-teaching-rail"
+      {...storyIdentityAttributes}
+      data-handover-surface-contract={storyBindingStatus}
       data-teaching-kind={kind}
       data-teaching-phase={frame.phase.id}
       data-teaching-step-index={String(frame.phase.stepIndex)}
@@ -485,12 +503,27 @@ export function HandoverTeachingRail({
  * both the timeline controls near the bottom and the left/right side panels,
  * which live outside this container.
  */
-export function HandoverTeachingCaption({ frame }: { readonly frame: TeachingFrame }) {
+export function HandoverTeachingCaption({
+  projection,
+}: {
+  readonly projection: HandoverTeachingSurfaceProjection;
+}) {
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
+  const { binding: storyBinding, frame, kind } = projection;
+  const storyBindingStatus = resolveTeachingHandoverSurfaceStatus(storyBinding, {
+    kind,
+    phase: storyBinding.frame.phase,
+    committed: frame.committed,
+    currentSec: frame.elapsedSec,
+    durationSec: frame.totalSec,
+  });
+  const storyIdentityAttributes = handoverSurfaceIdentityAttributes('caption', storyBinding);
   return (
     <div
       data-testid="handover-teaching-caption"
+      {...storyIdentityAttributes}
+      data-handover-surface-contract={storyBindingStatus}
       data-teaching-phase={frame.phase.id}
       style={{
         position: 'absolute', insetInlineStart: 18, insetInlineEnd: 18, top: 16, zIndex: 19,

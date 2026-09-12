@@ -8,12 +8,10 @@ import {
   EE_INTENSITY_TEACHING_SERVING_SHADE_RANGE,
   eeIntensityOpacity,
 } from '../appearance/eeIntensityShade';
-import { resolveHandoverCinemaEnvelope } from '../scene/handoverDisplayIsolation';
 import {
   buildHandoverTeachingScript,
   resolveTeachingFrame,
   teachingScriptTotalSec,
-  type TeachingFrame,
   type TeachingHandoverKind,
 } from '../homepage/teaching/handoverTeachingScript';
 import {
@@ -22,7 +20,9 @@ import {
   type SinrLiveCellPlacement,
 } from './SinrLiveCellBeamCones';
 import { SinrLiveCellFootprintRings } from './SinrLiveCellFootprintRings';
-import type { HandoverTeachingSceneStory } from '../scene/handoverStoryFrame';
+import type {
+  HandoverTeachingSurfaceProjection,
+} from '../scene/handoverTeachingSurfaceProjection';
 
 /**
  * The two cones a handover lecture draws.
@@ -35,14 +35,13 @@ import type { HandoverTeachingSceneStory } from '../scene/handoverStoryFrame';
  * its own display-only layer instead. Nothing here is ever read back by the
  * simulation, the decision engine, or the event index.
  *
- * The clock is not duplicated either: the same `resolveTeachingFrame` output
- * that feeds the rail and the caption arrives through `frameRef`, so the three
- * surfaces cannot drift apart.
+ * The clock and identity are not duplicated either: the exact shell-owned
+ * projection that feeds the rail and caption arrives by reference. This
+ * renderer paints that projection; it never selects endpoints or infers phase.
  */
 export interface HandoverTeachingBeamConesProps {
-  readonly story: HandoverTeachingSceneStory | null;
-  /** The live lecture frame, by reference, so the scene tree never re-renders for it. */
-  readonly frameRef: MutableRefObject<TeachingFrame | null>;
+  /** Exact shell-owned authored projection, updated without re-rendering R3F. */
+  readonly projectionRef: MutableRefObject<HandoverTeachingSurfaceProjection | null>;
   readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly satelliteWorldById: ReadonlyMap<string, { readonly x: number; readonly y: number; readonly z: number }>;
   readonly widthScale?: number;
@@ -174,88 +173,14 @@ const IDLE_SAMPLE: TeachingConeSample = {
 const SAMPLE_EPSILON = 0.004;
 
 /**
- * Once the lecture reaches `frame.committed` — the SAME moment the rail and
- * the EE readout already flip to showing the winner as serving (`committed =
- * phase 'settled', or phase 'switching' at least half elapsed` — see
- * `resolveTeachingFrame` in handoverTeachingScript.ts) — hold that reading
- * for a beat so the viewer can register "done", then retire the losing beam
- * to fully invisible. Gating on `committed` rather than waiting for the
- * lecture's own final second keeps the 3D scene in sync with the rest of the
- * story instead of leaving a beam lit for ~20 more seconds after every other
- * surface has already declared the switch complete.
- *
- * Timed against the SCRIPT's own clock (`frame.elapsedSec`), not wall-clock
- * time. An earlier version used `performance.now()`, which ran at a fixed
- * real-world pace no matter what the lecture clock was doing — at 1x this
- * happened to line up, but at any other speed preset, or while paused mid-
- * fade, or after a seek, the retirement raced ahead of or lagged behind the
- * story it was supposed to be retiring. Script time removes the mismatch by
- * construction.
- *
- * `COMMITTED_HOLD_SEC` + `COMMITTED_RETIRE_FADE_SEC` = 6s is not arbitrary:
- * `committed` first turns true at 50% into the 12s `switching` phase, i.e.
- * with exactly 6s of `switching` left to run. The fade completes exactly as
- * `switching` ends and `settled` begins, so the losing beam is gone exactly
- * when the story starts calling the new link "settled" — never mid-sentence.
- *
- * The instant `committed` first turns true (`resolveTeachingCommittedAtSec`
- * below) is computed directly from the script's own phase durations, not
- * inferred from playback by latching a ref the first time a frame is
- * observed with `committed === true`. An earlier version did the latter,
- * and it broke under a seek: jumping the timeline slider straight into
- * "committed" territory made the ref latch to the ARRIVAL instant instead
- * of the true commit instant, so `heldSec` below started near zero and the
- * losing beam never retired. Since `committed`'s crossing point is a fixed
- * property of the script (phase durations only, no per-run state), reading
- * it directly is both simpler and immune to the seek order — it gives the
- * same answer whether the viewer scrubbed there or played through.
- *
- * This is layered ON TOP of the EE-only fade below, not a replacement for
- * it: that fade must stay untouched BEFORE commit (see the comment on
- * `resolveSample`) because collapsing both cones toward zero around the
- * commit was already tried and made the beams disappear exactly when the
- * story said the switch was happening. This retirement only ever starts
- * counting once `committed` is already true, so it cannot reintroduce that
- * bug — the switch itself still reads purely from EE.
+ * Retirement timing is composed upstream with the accepted teaching clock.
+ * This renderer receives the multiplier and never reconstructs commit time.
  */
-const COMMITTED_HOLD_SEC = 2;
-const COMMITTED_RETIRE_FADE_SEC = 4;
-
-const teachingCommittedAtSecByKind = new Map<TeachingHandoverKind, number>();
-
-function resolveTeachingCommittedAtSec(kind: TeachingHandoverKind): number {
-  const cached = teachingCommittedAtSecByKind.get(kind);
-  if (cached !== undefined) return cached;
-
-  const script = buildHandoverTeachingScript(kind);
-  let phaseStartSec = 0;
-  let committedAtSec = 0;
-  for (const phase of script.phases) {
-    if (phase.id === 'switching') {
-      committedAtSec = phaseStartSec + 0.5 * phase.durationSec;
-      break;
-    }
-    phaseStartSec += phase.durationSec;
-  }
-  teachingCommittedAtSecByKind.set(kind, committedAtSec);
-  return committedAtSec;
-}
-
-function retiredSourceFadeMultiplier(
-  frame: TeachingFrame,
-  kind: TeachingHandoverKind,
-): number {
-  if (!frame.committed) return 1;
-  const heldSec = frame.elapsedSec - resolveTeachingCommittedAtSec(kind) - COMMITTED_HOLD_SEC;
-  if (heldSec <= 0) return 1;
-  return Math.max(0, 1 - heldSec / COMMITTED_RETIRE_FADE_SEC);
-}
-
 function resolveSample(
-  frame: TeachingFrame | null,
-  kind: TeachingHandoverKind,
+  projection: HandoverTeachingSurfaceProjection | null,
 ): TeachingConeSample {
-  if (frame === null) return IDLE_SAMPLE;
+  if (projection === null) return IDLE_SAMPLE;
+  const { frame, kind } = projection;
   // The same crossfade shape the rest of the product's handover stories use, so
   // the release/acquire beat does not read as a different mechanism here.
   // Strength is energy efficiency and nothing else. Multiplying by a
@@ -276,7 +201,6 @@ function resolveSample(
   // reason the real scene does: the source is still the beam actually in
   // service until it is retired, and the target is still a candidate until
   // committed.
-  const targetIntroduced = frame.phaseIndex >= 1;
   const eeRanges = resolveTeachingConeEeRanges(kind);
   const sourceRatio01 = localEeRatio01(frame.serving.eeKbitPerJoule, eeRanges.source);
   const targetRatio01 = localEeRatio01(frame.winner.eeKbitPerJoule, eeRanges.target);
@@ -292,22 +216,36 @@ function resolveSample(
       EE_INTENSITY_TEACHING_CONTEXT_SHADE_RANGE,
     ),
     sourceOpacity: eeConeAlpha(sourceRatio01)
-      * retiredSourceFadeMultiplier(frame, kind),
-    targetOpacity: targetIntroduced ? eeConeAlpha(targetRatio01) : 0,
+      * projection.sourceRetirementMultiplier,
+    targetOpacity: projection.targetIntroduced ? eeConeAlpha(targetRatio01) : 0,
   };
 }
 
 export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps): JSX.Element | null {
-  const { story, frameRef } = props;
-  const [sample, setSample] = useState<TeachingConeSample>(IDLE_SAMPLE);
-  const sampleRef = useRef<TeachingConeSample>(IDLE_SAMPLE);
+  const { projectionRef } = props;
+  const initialProjection = projectionRef.current;
+  const [projection, setProjection] = useState<HandoverTeachingSurfaceProjection | null>(
+    initialProjection,
+  );
+  const projectionStateRef = useRef<HandoverTeachingSurfaceProjection | null>(initialProjection);
+  const [sample, setSample] = useState<TeachingConeSample>(
+    () => resolveSample(initialProjection),
+  );
+  const sampleRef = useRef<TeachingConeSample>(resolveSample(initialProjection));
 
-  // R3F's loop already runs every frame; pulling the lecture frame here keeps
-  // the EE fade continuous without re-rendering the whole scene tree for it.
+  // R3F's loop reads the exact shell-owned projection. React state changes only
+  // when drawable identity or visible paint values change.
   useFrame(() => {
-    if (story === null) return;
-    const frame = frameRef.current;
-    const next = resolveSample(frame, story.kind);
+    const currentProjection = projectionRef.current;
+    const previousProjection = projectionStateRef.current;
+    const currentIdentity = currentProjection?.binding.identityKey ?? '';
+    const previousIdentity = previousProjection?.binding.identityKey ?? '';
+    if (currentIdentity !== previousIdentity) {
+      projectionStateRef.current = currentProjection;
+      setProjection(currentProjection);
+    }
+
+    const next = resolveSample(currentProjection);
     const previous = sampleRef.current;
     if (
       next.sourceColor === previous.sourceColor
@@ -319,14 +257,18 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
     setSample(next);
   });
 
-  if (story === null) return null;
-  const sourcePlacement = props.placementByCellId.get(story.sourceCellId);
-  const targetPlacement = story.kind === 'intra' && story.targetCellId !== null
-    ? props.placementByCellId.get(story.targetCellId)
+  if (projection === null) return null;
+  const story = projection.binding.frame;
+  const sourceCellId = story.from.cellId;
+  if (sourceCellId === null) return null;
+  const targetCellId = story.to.cellId ?? sourceCellId;
+  const sourcePlacement = props.placementByCellId.get(sourceCellId);
+  const targetPlacement = story.kind === 'intra'
+    ? props.placementByCellId.get(targetCellId)
     : sourcePlacement;
-  const sourceApex = props.satelliteWorldById.get(story.sourceSatelliteId);
-  const targetApex = story.kind === 'inter' && story.targetSatelliteId !== null
-    ? props.satelliteWorldById.get(story.targetSatelliteId)
+  const sourceApex = props.satelliteWorldById.get(story.from.satelliteId);
+  const targetApex = story.kind === 'inter'
+    ? props.satelliteWorldById.get(story.to.satelliteId)
     : sourceApex;
   if (
     sourcePlacement === undefined
@@ -344,8 +286,8 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
   if (story.kind === 'intra') {
     const acquiring = sample.targetOpacity >= sample.sourceOpacity;
     items.push({
-      cellId: story.sourceCellId,
-      satId: story.sourceSatelliteId,
+      cellId: sourceCellId,
+      satId: story.from.satelliteId,
       frequencyIndex: 0,
       color: acquiring ? sample.targetColor : sample.sourceColor,
       serving: true,
@@ -354,7 +296,7 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
       baseCenter: new THREE.Vector3(sourcePlacement.worldX, 0, sourcePlacement.worldZ),
       baseRadiusWorld: sourcePlacement.radiusWorld * TEACHING_FOOTPRINT_RADIUS_FACTOR,
       opacity: Math.max(sample.sourceOpacity, sample.targetOpacity),
-      renderKey: `${story.storyKey}-beam`,
+      renderKey: `${story.storyId}-beam`,
     });
     return (
       <>
@@ -369,8 +311,8 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
   }
   if (sample.sourceOpacity > 0) {
     items.push({
-      cellId: story.sourceCellId,
-      satId: story.sourceSatelliteId,
+      cellId: sourceCellId,
+      satId: story.from.satelliteId,
       frequencyIndex: 0,
       color: sample.sourceColor,
       serving: true,
@@ -379,13 +321,13 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
       baseCenter: new THREE.Vector3(sourcePlacement.worldX, 0, sourcePlacement.worldZ),
       baseRadiusWorld: sourcePlacement.radiusWorld * TEACHING_FOOTPRINT_RADIUS_FACTOR,
       opacity: sample.sourceOpacity,
-      renderKey: `${story.storyKey}-from`,
+      renderKey: `${story.storyId}-from`,
     });
   }
   if (sample.targetOpacity > 0) {
     items.push({
-      cellId: story.targetCellId ?? story.sourceCellId,
-      satId: story.targetSatelliteId ?? story.sourceSatelliteId,
+      cellId: targetCellId,
+      satId: story.to.satelliteId,
       frequencyIndex: 0,
       color: sample.targetColor,
       serving: true,
@@ -394,7 +336,7 @@ export function HandoverTeachingBeamCones(props: HandoverTeachingBeamConesProps)
       baseCenter: new THREE.Vector3(targetPlacement.worldX, 0, targetPlacement.worldZ),
       baseRadiusWorld: targetPlacement.radiusWorld * TEACHING_FOOTPRINT_RADIUS_FACTOR,
       opacity: sample.targetOpacity,
-      renderKey: `${story.storyKey}-to`,
+      renderKey: `${story.storyId}-to`,
     });
   }
   if (items.length === 0) return null;

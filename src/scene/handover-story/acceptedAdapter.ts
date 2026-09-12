@@ -37,7 +37,7 @@ function storyKindFromDecisionKind(kind: HandoverKind): HandoverStoryKind | null
   return null;
 }
 
-function decisionPhase(
+export function acceptedHandoverStoryPhase(
   phase: HandoverPhase,
   committed: boolean,
 ): HandoverStoryPhase {
@@ -132,7 +132,7 @@ export function resolveAcceptedHandoverStoryFrame(
     schemaVersion: HANDOVER_STORY_FRAME_SCHEMA_VERSION,
     storyId: `accepted:${snapshot.episodeId}:${sourceToken}->${targetToken}`,
     kind,
-    phase: decisionPhase(snapshot.phase, committed),
+    phase: acceptedHandoverStoryPhase(snapshot.phase, committed),
     progress01: acceptedStoryProgress(snapshot),
     committed,
     ueId: snapshot.primaryUeId,

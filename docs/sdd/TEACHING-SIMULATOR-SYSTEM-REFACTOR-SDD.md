@@ -332,3 +332,101 @@ Evidence:
 `homepageHandoverControlsOwnership.test.ts` source-text pin failure: 126 tests
 pass and that one test fails. R3 did not re-pin, weaken, or hide it. R4 may now
 begin at the scene/rail/caption identity boundary.
+
+## 16. R4 execution record — 2026-09-12
+
+R4 establishes one accepted handover identity projection for the production
+scene, homepage rail, narrative caption, authored teaching rail/caption, and
+teaching cone renderer. The shell now normalizes the accepted, teaching, and
+replay inputs once, composes immutable `HandoverSurfaceBinding` records once,
+and passes those exact records to each surface. The scene may still add its
+existing local presentation animation frame, but it cannot replace or repair
+the accepted, teaching, or replay identity supplied by the shell.
+
+The pre-migration inventory found four independent interpretation points:
+
+- `MainScene` could rebuild accepted and teaching frames from raw props and use a
+  scene-local fallback when a shared publication was absent;
+- `HomepageBeamRail` read `projection.handoverStory`, remapped the engine phase,
+  rebuilt source/target identity, and inferred accepted provenance locally;
+- the authored teaching rail, caption, and cone renderer consumed overlapping
+  script/story inputs and could reconstruct the same lecture independently;
+- the narrative caption intentionally held chapter text, but that hold also left
+  its identity telemetry on an older accepted snapshot for one to three seconds.
+
+These paths created duplicate projection, local phase inference, fallback truth,
+and identity loss at component boundaries even though the underlying decision
+and teaching sources were valid.
+The public seam is `src/scene/handoverSurfaceBinding.ts`, with implementation
+split under `src/scene/handover-surface-binding/` into contracts, resolution,
+DOM attributes, and contract status. The shell-owned projection composers are:
+
+- `resolveHandoverAcceptedSurfaceProjection` for accepted scene/rail/caption
+  identity and rail-root consistency;
+- `resolveHandoverTeachingSurfaceProjection` for one authored lecture frame,
+  phase, clock, and fixture provenance;
+- `resolveBoundSceneHandoverStoryFrameSet` for mechanically combining the shared
+  accepted/teaching/replay frames with the existing scene-local presentation.
+
+Every comparable surface publishes the same complete identity record:
+
+```text
+story source · story ID · handover kind · source/target pair key · phase
+committed state · snapshot ID · episode ID · source-frame ID
+clock basis/current/duration · producer · claim class
+decision-evidence class · disclosure · decision-input permission
+teaching-fixture or accepted-decision provenance · canonical identity key
+```
+
+Production surfaces use `handoverSurfaceIdentityAttributes` for this telemetry.
+The accepted rail receives only the shell-composed projection and owns no local
+phase or identity composer. The teaching rail, teaching caption, and teaching
+cones receive the same `HandoverTeachingSurfaceProjection`. Renderer code no
+longer chooses a winner or guesses source/target, phase, or provenance.
+The caption defect discovered by the production gate was corrected without
+changing caption timing or copy. `SceneNarrativeCaption` still uses the existing
+chapter hold policy for visible text, but its audit attributes follow the live
+App-owned accepted binding on the canvas render loop. This prevents a held
+chapter from publishing a stale snapshot, source frame, or clock identity.
+
+Acceptance is intentionally separated from implementation. The independent
+contract in `scripts/lib/handover-surface-acceptance.ts` does not import the
+production composer. It compares every required field across scene, rail, and
+caption, and separately cross-checks accepted canvas telemetry against the root
+accepted snapshot publication. The production browser gate covers live accepted
+identity plus real authored Intra and Inter fixtures.
+
+Mutation proof is non-vacuous at both levels:
+
+- focused tests independently mutate every comparable scene/rail/caption field,
+  plus accepted root snapshot, episode, source-frame, phase, and clock fields;
+- the browser gate pauses the real timeline, corrupts the story ID on the scene,
+  rail, and caption one at a time, requires RED for each mutation, restores the
+  attribute, and requires GREEN again.
+
+R4 changes no simulation physics, EE value, candidate order, TTT, commit behavior,
+palette, geometry, camera, or course copy. It creates no second clock, winner
+selection, or accepted snapshot.
+
+Evidence:
+
+- `npm run lint`: PASS;
+- `npm run test:all`: PASS;
+- `npm run test:handover-surface-binding`: 20/20 PASS;
+- handover-story tests: 14/14 PASS;
+- scene-surface tests: 11/11 PASS;
+- scene-render-plan tests: 6/6 PASS;
+- appearance tests: 97/97 PASS;
+- multi-candidate tests: 182/182 PASS;
+- `npm run validate:architecture:boundaries`: 6/6 PASS, no new ratchet
+  violations;
+- core scene-surface browser gate: 12/12 PASS;
+- handover-story browser gate: PASS;
+- full scene-render browser gate: 31/31 PASS;
+- R4 production browser gate: accepted, authored Intra, authored Inter, and DOM
+  mutation red→green proof PASS.
+
+`npm run check:baseline` remains RED only at the pre-existing obsolete
+`src/app/homepageHandoverControlsOwnership.test.ts` source-text regex pin: 126
+pass and one fails. R4 did not re-pin, weaken, or hide that failure. R5 may now
+begin from the shared projection boundary.

@@ -2,7 +2,6 @@ import type { ComponentProps, JSX } from 'react';
 
 import type { SinrLiveConePalette } from '../constants/sinrLiveConeStyle';
 import { HandoverTeachingBeamCones } from '../viz/HandoverTeachingBeamCones';
-import type { HandoverTeachingSceneStory } from './handoverStoryFrame';
 import {
   SinrLiveCellBeamCallouts,
   type SinrLiveCellBeamCalloutsProps,
@@ -19,7 +18,7 @@ import {
 } from '../viz/SinrLiveCellFootprintRings';
 
 type BeamCalloutFrameSnapshot = SinrLiveCellBeamCalloutsProps['frameSnapshot'];
-type TeachingFrameRef = ComponentProps<typeof HandoverTeachingBeamCones>['frameRef'];
+type TeachingProjectionRef = ComponentProps<typeof HandoverTeachingBeamCones>['projectionRef'];
 type BeamWorldMap = ComponentProps<typeof HandoverTeachingBeamCones>['satelliteWorldById'];
 
 export interface SceneSinrPrimaryServing {
@@ -89,8 +88,7 @@ export interface SceneSinrLiveBeamCalloutLayer {
 
 export interface SceneSinrLiveTeachingLayer {
   readonly mounted: boolean;
-  readonly story: HandoverTeachingSceneStory;
-  readonly frameRef: TeachingFrameRef;
+  readonly projectionRef: TeachingProjectionRef;
   readonly placementByCellId: ReadonlyMap<number, SinrLiveCellPlacement>;
   readonly satelliteWorldById: BeamWorldMap;
 }
@@ -216,8 +214,7 @@ export function SceneSinrLiveBeamLayers({
       )}
       {teaching?.mounted && (
         <HandoverTeachingBeamCones
-          story={teaching.story}
-          frameRef={teaching.frameRef}
+          projectionRef={teaching.projectionRef}
           placementByCellId={teaching.placementByCellId}
           satelliteWorldById={teaching.satelliteWorldById}
           widthScale={appearance.widthScale}

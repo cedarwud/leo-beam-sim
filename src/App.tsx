@@ -58,10 +58,22 @@ import {
 } from './appearance/handoverTimingEnvelope';
 import { HandoverTeachingRail, useHandoverTeachingLecture } from './ui/homepage/HandoverTeachingRail';
 import type {
-  TeachingFrame,
   TeachingHandoverKind,
 } from './homepage/teaching/handoverTeachingScript';
 import type { HandoverTeachingSceneStory } from './scene/handoverStoryFrame';
+import {
+  resolveHandoverAcceptedSurfaceProjection,
+} from './scene/handoverAcceptedSurfaceProjection';
+import {
+  resolveHandoverTeachingSurfaceProjection,
+  type HandoverTeachingSurfaceProjection,
+} from './scene/handoverTeachingSurfaceProjection';
+import { resolveSceneHandoverStoryFrameSet } from './scene/sceneHandoverStoryFrameSet';
+import {
+  resolveHandoverSurfaceBindings,
+  type HandoverSurfaceBindingSet,
+} from './scene/handoverSurfaceBinding';
+import { cellIdFromLinkBudgetBeamId } from './scene/sinrLiveCellModel';
 import { InfoPanel } from './ui/InfoPanel';
 import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
 import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';
@@ -1957,11 +1969,6 @@ export function App() {
   );
   const teachingLecture = useHandoverTeachingLecture(teachingStageKind, teachingIdentityBinding);
   const restartTeachingLecture = teachingLecture.restart;
-  // The rail, the caption and the scene's teaching cones all read THIS frame.
-  // It is handed to the scene by reference so a 60 Hz lecture clock cannot drag
-  // the whole scene tree through a React render on every tick.
-  const teachingLectureFrameRef = useRef<TeachingFrame | null>(null);
-  teachingLectureFrameRef.current = teachingLecture.frame;
   /**
    * The two live identities the lecture's cones attach to.
    *
@@ -2408,6 +2415,55 @@ export function App() {
     };
   }, [sceneSource, replaySceneFrame, processedUes]);
   const shouldRenderMainScene = sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined;
+  // R4: normalize accepted, teaching and replay stories once in the shell, then
+  // pass the exact same frozen frames to scene, rail and caption projections.
+  // The scene may add its local presentation-clock frame, but it must preserve
+  // these shared source-frame object references.
+  const appHandoverStoryFrames = useMemo(() => resolveSceneHandoverStoryFrameSet({
+    acceptedSnapshot: sceneLane === 'sinr-live' && isWalkerSceneActive
+      ? simState.acceptedHandoverPresentation ?? null
+      : null,
+    acceptedProducer: 'walker',
+    resolveAcceptedCellId: cellIdFromLinkBudgetBeamId,
+    teachingStory: isRootHomepage ? teachingSceneStory : null,
+    teachingFrame: isRootHomepage ? teachingLecture.frame : null,
+    replayFrame: activeSceneFrame ?? null,
+  }), [
+    activeSceneFrame,
+    isRootHomepage,
+    isWalkerSceneActive,
+    sceneLane,
+    simState.acceptedHandoverPresentation,
+    teachingLecture.frame,
+    teachingSceneStory,
+  ]);
+  const handoverSurfaceBindings = useMemo(
+    () => resolveHandoverSurfaceBindings(appHandoverStoryFrames),
+    [appHandoverStoryFrames],
+  );
+  const acceptedSurfaceProjection = useMemo(
+    () => resolveHandoverAcceptedSurfaceProjection(
+      handoverSurfaceBindings.accepted,
+      homepageRailProjection,
+      'walker',
+    ),
+    [handoverSurfaceBindings.accepted, homepageRailProjection],
+  );
+  const teachingSurfaceProjection = useMemo(
+    () => resolveHandoverTeachingSurfaceProjection(
+      handoverSurfaceBindings.teaching,
+      teachingLecture.frame,
+      teachingStageKind,
+    ),
+    [handoverSurfaceBindings.teaching, teachingLecture.frame, teachingStageKind],
+  );
+  // Keep scene props stable while the authored clock updates. The scene reads
+  // the exact projection object through this ref; rail and caption receive that
+  // same object directly, so none of the three can reinterpret its identity.
+  const teachingSurfaceProjectionRef = useRef<HandoverTeachingSurfaceProjection | null>(null);
+  teachingSurfaceProjectionRef.current = teachingSurfaceProjection;
+  const handoverSurfaceBindingsRef = useRef<HandoverSurfaceBindingSet | null>(null);
+  handoverSurfaceBindingsRef.current = handoverSurfaceBindings;
 
 
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
@@ -2485,7 +2541,7 @@ export function App() {
       <HomepageBeamRail
         projection={homepageRailProjection}
         sourceProvenance="synthetic-walker"
-        acceptedSnapshotMetadata={simState.acceptedHandoverPresentation}
+        handoverSurfaceProjection={acceptedSurfaceProjection}
         satelliteNameById={homepageSatelliteNameById}
         playback={{
           paused: playback.paused,
@@ -2560,8 +2616,8 @@ export function App() {
       data-live-director-focus-event-sec={liveDirectorFocusEventSec !== null ? liveDirectorFocusEventSec.toFixed(3) : undefined}
       data-live-handover-index-building={liveWalkerHandoverEventIndexBuilding ? '1' : '0'}
       data-handover-control-busy={handoverCommandBusy ? '1' : '0'}
-      data-visible-handover-kind={teachingSceneStory?.kind ?? visibleHandover.kind ?? ''}
-      data-visible-handover-source={teachingSceneStory === null
+      data-visible-handover-kind={teachingSurfaceProjection?.binding.frame.kind ?? visibleHandover.kind ?? ''}
+      data-visible-handover-source={teachingSurfaceProjection === null
         ? visibleHandover.source ?? ''
         : 'teaching'}
       data-selected-speed={playback.speed.toFixed(3)}
@@ -2820,6 +2876,7 @@ export function App() {
               acceptedHandoverPresentation={isWalkerSceneActive
                 ? simState.acceptedHandoverPresentation ?? null
                 : null}
+              handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
               onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}
               canonicalAnalysisFrame={isArchivedTleSceneActive
@@ -2847,8 +2904,7 @@ export function App() {
               handoverCinemaKind={sceneLane === 'sinr-live' && isWalkerSceneActive && handoverCinema.armFilter !== 'off'
                 ? handoverCinema.armFilter
                 : null}
-              teachingSceneStory={isRootHomepage ? teachingSceneStory : null}
-              teachingLectureFrameRef={teachingLectureFrameRef}
+              teachingSurfaceProjectionRef={teachingSurfaceProjectionRef}
               focusedJoinKey={focusedJoinKey}
               onFocusJoinKeyChange={handleFocusJoinKeyChange}
               teachingNarrativeEnabled={isRootHomepage && homepageNarrativeTeachingMode}
@@ -2885,8 +2941,7 @@ export function App() {
             sixActsReceipt={sixActsTeachingReceipt}
             sixActsOffsetDb={appliedHandoverPolicy.offsetDb}
             sixActsTttSec={appliedHandoverPolicy.triggerTimeSec}
-            teachingCaptionFrame={teachingLecture.frame}
-            teachingStageKind={teachingStageKind}
+            teachingProjection={teachingSurfaceProjection}
           />
           {shellChromeVisibility.timeline
             && (isRootHomepage || homepageTeachingTimeline === null)
@@ -2897,11 +2952,9 @@ export function App() {
           shellVisible={shellChromeVisibility.rightSidebar}
           isArchivedTleSceneActive={isArchivedTleSceneActive}
           homepageCanonicalRightRailProps={{ homepageCanonicalAnalysis }}
-          teachingRail={teachingStageKind !== null && teachingLecture.frame !== null ? (
+          teachingRail={teachingSurfaceProjection !== null ? (
             <HandoverTeachingRail
-              frame={teachingLecture.frame}
-              kind={teachingStageKind}
-              totalSec={teachingLecture.totalSec}
+              projection={teachingSurfaceProjection}
               paused={teachingLecture.paused}
               onPausedChange={teachingLecture.setPaused}
               onRestart={teachingLecture.restart}

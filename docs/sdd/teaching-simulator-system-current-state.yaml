@@ -1,19 +1,19 @@
 schema_version: 1
-updated_at: 2026-09-12T05:08:40+08:00
+updated_at: 2026-09-12T15:11:28+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
 integrated_source_commit: d66b816
 branch: refactor/teaching-simulator-system-v1
 worktree: /home/u24/demo/leo-beam-sim-refactor
-current_phase: R3-complete
-status: ready_for_R4
+current_phase: R4-complete
+status: ready_for_R5
 
 parallel_tracks:
   teaching_design:
     status: deferred_by_owner
   system_refactor:
     status: active
-    next_phase: R4
+    next_phase: R5
 
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
@@ -133,6 +133,110 @@ r3_validation:
     failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
     new_failure_signatures: 0
 
+r4_goal: >-
+  Make scene, rail, and caption consume one shell-owned accepted or teaching
+  HandoverStoryFrame identity, with comparable provenance telemetry and no
+  renderer-local winner, source-target, phase, clock, or snapshot inference.
+
+r4_source_inventory:
+  accepted_source: simState.acceptedHandoverPresentation
+  teaching_sources:
+    - teachingSceneStory
+    - teachingLecture.frame
+  replay_source: activeSceneFrame
+  scene_local_source:
+    - presentation_animation_only
+  prior_duplicate_interpretation_points:
+    - MainScene accepted_and_teaching_reconstruction_with_local_fallback
+    - HomepageBeamRail phase_pair_and_provenance_reconstruction
+    - teaching_rail_caption_and_cone_overlapping_script_story_inputs
+    - narrative_caption_identity_held_with_chapter_text
+
+r4_results:
+  public_boundary: src/scene/handoverSurfaceBinding.ts
+  implementation_modules:
+    - src/scene/handover-surface-binding/contracts.ts
+    - src/scene/handover-surface-binding/resolve.ts
+    - src/scene/handover-surface-binding/attributes.ts
+    - src/scene/handover-surface-binding/status.ts
+    - src/scene/handoverAcceptedSurfaceProjection.ts
+    - src/scene/handoverTeachingSurfaceProjection.ts
+  shell_composer: resolveHandoverSurfaceBindings
+  frame_set_composer: resolveSceneHandoverStoryFrameSet
+  bound_scene_composer: resolveBoundSceneHandoverStoryFrameSet
+  production_and_audit_attribute_composer: handoverSurfaceIdentityAttributes
+
+  comparable_identity_fields:
+    - active_source
+    - story_id
+    - handover_kind
+    - source_target_pair_key
+    - phase
+    - committed_state
+    - snapshot_id
+    - episode_id
+    - source_frame_id
+    - clock_basis_current_and_duration
+    - producer
+    - claim_class
+    - decision_evidence_class
+    - disclosure
+    - decision_input_permission
+    - accepted_decision_or_teaching_fixture_provenance
+    - canonical_identity_key
+  production_consumers:
+    - production_scene
+    - homepage_accepted_rail
+    - accepted_narrative_caption
+    - authored_teaching_rail
+    - authored_teaching_caption
+    - authored_teaching_cones
+  invariants:
+    - accepted_teaching_and_replay_absence_is_authoritative
+    - only_presentation_animation_may_remain_scene_local
+    - rail_and_renderers_do_not_infer_winner_pair_phase_or_provenance
+    - no_second_clock_winner_selection_or_accepted_snapshot
+    - accepted_binding_preserves_exact_normalized_frame_reference
+  defect_caught_during_browser_acceptance: >-
+    The narrative caption intentionally held its visible chapter, but its DOM
+    identity telemetry also stayed on an older accepted snapshot for one to
+    three seconds. It now follows the live App-owned binding on the canvas
+    render loop while retaining the existing chapter hold policy and copy.
+
+r4_validation:
+  lint: pass
+  test_all: pass
+  handover_surface_binding_tests: 20/20
+  handover_story_tests: 14/14
+  scene_surface_tests: 11/11
+  scene_render_plan_tests: 6/6
+  appearance_tests: 97/97
+  multi_candidate_tests: 182/182
+  architecture_boundary_checks: 6/6
+  browser_gates:
+    core_scene_surface_plan: pass_12_of_12
+    handover_story_frame: pass
+    full_scene_render_plan: pass_31_of_31
+    handover_surface_binding:
+      accepted: pass
+      authored_intra: pass
+      authored_inter: pass
+  independent_acceptance_contract: >-
+    scripts/lib/handover-surface-acceptance.ts does not import the production
+    projection composer and compares every required field across surfaces.
+  mutation_proof:
+    focused_every_surface_identity_field: red_then_green
+    accepted_root_identity_fields: red_then_green
+    production_scene_story_id: red_then_green
+    production_rail_story_id: red_then_green
+    production_caption_story_id: red_then_green
+  check_baseline:
+    result: known_red
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
+    new_failure_signatures: 0
+
 known_baseline_reds:
   - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
   - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
@@ -140,9 +244,9 @@ known_baseline_reds:
   - scripts/lib/browser-gate.test.ts historically outside an aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
 
-next_phase_candidate: R4
+next_phase_candidate: R5
 next_phase_gate: >-
-  Make the scene, rail, and caption projections consume one accepted
-  HandoverStoryFrame identity and prove matching story, source, snapshot,
-  episode, and source-frame IDs across all three surfaces without changing
-  scientific decisions or presentation timing.
+  Build deterministic instructor vertical slices for the seven-beam Intra then
+  Inter stories, using the shared R4 projection boundary. Each slice must reset,
+  pause, replay, and survive speed changes without adding a second clock,
+  renderer-local story inference, or scientific decision changes.

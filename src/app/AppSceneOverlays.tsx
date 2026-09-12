@@ -3,7 +3,9 @@ import { CinematicSeekFadeOverlay } from '../ui/CinematicSeekFadeOverlay';
 import { SixActsSubtitleBar } from '../course/nav/SixActsAnnotation';
 import { SixActsTeachingOverlay, type SixActsTeachingReceipt } from '../ui/SixActsTeachingOverlay';
 import { HandoverTeachingCaption } from '../ui/homepage/HandoverTeachingRail';
-import type { TeachingFrame, TeachingHandoverKind } from '../homepage/teaching/handoverTeachingScript';
+import type {
+  HandoverTeachingSurfaceProjection,
+} from '../scene/handoverTeachingSurfaceProjection';
 import type { SixActsSubtitleState } from '../course/sixActs/subtitleStateMachine';
 import type { SixActsFrameFacts } from '../course/sixActs/liveReplayBridge';
 import type { NormalizedSceneFrame } from '../scene/NormalizedSceneFrame';
@@ -29,8 +31,7 @@ export interface AppSceneOverlaysProps {
   readonly sixActsReceipt: SixActsTeachingReceipt | null;
   readonly sixActsOffsetDb: number;
   readonly sixActsTttSec: number;
-  readonly teachingCaptionFrame: TeachingFrame | null;
-  readonly teachingStageKind: TeachingHandoverKind | null;
+  readonly teachingProjection: HandoverTeachingSurfaceProjection | null;
 }
 
 /** Owns the shell-level overlay mounts; the scene remains the rendering authority. */
@@ -53,8 +54,7 @@ export function AppSceneOverlays({
   sixActsReceipt,
   sixActsOffsetDb,
   sixActsTttSec,
-  teachingCaptionFrame,
-  teachingStageKind,
+  teachingProjection,
 }: AppSceneOverlaysProps) {
   return (
     <>
@@ -101,8 +101,8 @@ export function AppSceneOverlays({
           )}
         </>
       )}
-      {teachingStageKind !== null && teachingCaptionFrame !== null && (
-        <HandoverTeachingCaption frame={teachingCaptionFrame} />
+      {teachingProjection !== null && (
+        <HandoverTeachingCaption projection={teachingProjection} />
       )}
     </>
   );
