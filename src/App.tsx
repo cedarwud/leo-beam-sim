@@ -57,6 +57,11 @@ import {
   MANUAL_HANDOVER_DISPLAY_MS,
 } from './appearance/handoverTimingEnvelope';
 import { HandoverTeachingRail } from './ui/homepage/HandoverTeachingRail';
+import {
+  StudentHandoverActivityLauncher,
+  StudentHandoverModeBanner,
+} from './ui/homepage/StudentHandoverActivityLauncher';
+import { StudentHandoverActivityPanel } from './ui/homepage/StudentHandoverActivityPanel';
 import type {
   TeachingHandoverKind,
   TeachingIdentityBinding,
@@ -74,6 +79,22 @@ import {
 import {
   useInstructorHandoverTransport,
 } from './homepage/teaching/useInstructorHandoverTransport';
+import {
+  useStudentHandoverActivity,
+} from './homepage/teaching/useStudentHandoverActivity';
+import {
+  resolveStudentHandoverActivityEvidence,
+} from './homepage/teaching/studentHandoverActivityEvidence';
+import {
+  studentHandoverCheckpoint,
+} from './homepage/teaching/studentHandoverActivityContract';
+import {
+  currentStudentHandoverCheckpointId,
+  type StudentHandoverActivityState,
+} from './homepage/teaching/studentHandoverActivityState';
+import {
+  studentHandoverActivityTelemetryAttributes,
+} from './homepage/teaching/studentHandoverActivityTelemetry';
 import type { HandoverTeachingSceneStory } from './scene/handoverStoryFrame';
 import {
   resolveHandoverAcceptedSurfaceProjection,
@@ -304,6 +325,9 @@ export function App() {
   // transport; no second component state may select or advance a segment.
   const instructorHandoverTransport = useInstructorHandoverTransport();
   const instructorHandoverSnapshot = instructorHandoverTransport.snapshot;
+  const studentHandoverActivity = useStudentHandoverActivity();
+  const studentHandoverActivityState = studentHandoverActivity.state;
+  const studentModeActive = studentHandoverActivityState.active;
   const teachingStageKind = instructorHandoverSnapshot?.segment.kind ?? null;
   const [homepageTeachingDetailsVisible, setHomepageTeachingDetailsVisible] = useState(false);
   const [liveTimelineSeekRequest, setLiveTimelineSeekRequest] =
@@ -2084,6 +2108,7 @@ export function App() {
 
   const closeHandoverTeachingStage = useCallback((): void => {
     setManualHandoverRequest(null);
+    studentHandoverActivity.forceDeactivate();
     instructorHandoverTransport.close();
     const restore = instructorPlaybackRestoreRef.current;
     instructorPlaybackRestoreRef.current = null;
@@ -2094,6 +2119,44 @@ export function App() {
     instructorHandoverTransport.close,
     playback.setPaused,
     playback.setSpeed,
+    studentHandoverActivity.forceDeactivate,
+  ]);
+
+  const studentActivityLaunchEnabled = !studentModeActive
+    && instructorHandoverSnapshot === null
+    && isRootHomepage
+    && sceneSource === 'live-sim'
+    && isWalkerSceneActive
+    && sceneLane === 'sinr-live'
+    && instructorSevenBeamAdmitted;
+
+  const handleStartStudentHandoverActivity = useCallback((): void => {
+    if (!studentActivityLaunchEnabled) return;
+    studentHandoverActivity.activate();
+    openHandoverTeachingStage('intra');
+    // R5 remains the only source-time owner. Student mode starts at the Intra
+    // entry point and holds there until the bounded Observe command seeks it.
+    instructorHandoverTransport.setPaused(true);
+  }, [
+    instructorHandoverTransport.setPaused,
+    openHandoverTeachingStage,
+    studentActivityLaunchEnabled,
+    studentHandoverActivity.activate,
+  ]);
+
+  const handleExitStudentHandoverActivity = useCallback((): void => {
+    studentHandoverActivity.exitCleanPredict();
+    closeHandoverTeachingStage();
+  }, [closeHandoverTeachingStage, studentHandoverActivity.exitCleanPredict]);
+
+  const handleResetStudentHandoverActivity = useCallback((): void => {
+    studentHandoverActivity.reset();
+    instructorHandoverTransport.restart();
+    instructorHandoverTransport.setPaused(true);
+  }, [
+    instructorHandoverTransport.restart,
+    instructorHandoverTransport.setPaused,
+    studentHandoverActivity.reset,
   ]);
 
   useEffect(() => {
@@ -2436,12 +2499,74 @@ export function App() {
   handoverSurfaceBindingsRef.current = handoverSurfaceBindings;
   const instructorHandoverSnapshotRef = useRef<InstructorHandoverTransportSnapshot | null>(null);
   instructorHandoverSnapshotRef.current = instructorHandoverSnapshot;
+  const studentHandoverActivityStateRef = useRef<StudentHandoverActivityState | null>(null);
+  studentHandoverActivityStateRef.current = studentHandoverActivityState;
   const instructorRootAttributes = instructorHandoverTelemetryAttributes(
     'root',
     instructorHandoverSnapshot,
     teachingSurfaceProjection?.binding ?? null,
   );
+  const studentRootAttributes = studentHandoverActivityTelemetryAttributes(
+    'root',
+    studentHandoverActivityState,
+    instructorHandoverSnapshot,
+    teachingSurfaceProjection?.binding ?? null,
+  );
+  const studentCurrentCheckpointId = currentStudentHandoverCheckpointId(
+    studentHandoverActivityState,
+  );
+  const studentHandoverEvidence = useMemo(
+    () => studentCurrentCheckpointId === null
+      ? null
+      : resolveStudentHandoverActivityEvidence(
+        studentCurrentCheckpointId,
+        instructorHandoverSnapshot,
+        teachingSurfaceProjection,
+      ),
+    [
+      instructorHandoverSnapshot,
+      studentCurrentCheckpointId,
+      teachingSurfaceProjection,
+    ],
+  );
 
+  useEffect(() => {
+    const pendingCheckpointId = studentHandoverActivityState.pendingCheckpointId;
+    if (!studentModeActive
+      || studentHandoverActivityState.step !== 'observe'
+      || pendingCheckpointId === null
+      || instructorHandoverSnapshot === null) {
+      return;
+    }
+    const checkpoint = studentHandoverCheckpoint(pendingCheckpointId);
+    if (!instructorHandoverSnapshot.paused) {
+      instructorHandoverTransport.setPaused(true);
+      return;
+    }
+    if (Math.abs(instructorHandoverSnapshot.sourceTimeSec - checkpoint.sourceTimeSec) > 0.001) {
+      instructorHandoverTransport.seek(checkpoint.sourceTimeSec);
+      return;
+    }
+    const evidence = resolveStudentHandoverActivityEvidence(
+      pendingCheckpointId,
+      instructorHandoverSnapshot,
+      teachingSurfaceProjection,
+    );
+    if (evidence === null) return;
+    studentHandoverActivity.recordObservation({
+      checkpointId: pendingCheckpointId,
+      evidenceClaims: evidence.evidenceClaims,
+    });
+  }, [
+    instructorHandoverSnapshot,
+    instructorHandoverTransport.seek,
+    instructorHandoverTransport.setPaused,
+    studentHandoverActivity.recordObservation,
+    studentHandoverActivityState.pendingCheckpointId,
+    studentHandoverActivityState.step,
+    studentModeActive,
+    teachingSurfaceProjection,
+  ]);
 
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
   // the producer-truth playback cursor. We never recompute SINR or handover
@@ -2568,6 +2693,9 @@ export function App() {
     <LocaleProvider>
     <div
       {...instructorRootAttributes}
+      {...studentRootAttributes}
+      data-student-mode={studentModeActive ? 'active' : 'inactive'}
+      data-student-control-boundary={studentModeActive ? 'safe-only' : 'instructor'}
       data-instructor-runtime-beam-count={String(runtime.servingBeamCount)}
       data-instructor-runtime-candidate-beam-count={String(
         runtime.candidateBeamCount ?? runtime.servingBeamCount
@@ -2637,9 +2765,9 @@ export function App() {
       data-visual-scale-overrides-active={hasVisualScaleOverrides ? 'true' : 'false'}
       data-visual-scale-key={sceneVisualScaleResetKey}
       data-teaching-stage-kind={teachingStageKind ?? ''}
-      data-shell-left-sidebar-visible={shellChromeVisibility.leftSidebar ? 'true' : 'false'}
-      data-shell-right-sidebar-visible={shellChromeVisibility.rightSidebar ? 'true' : 'false'}
-      data-shell-top-controls-visible={shellChromeVisibility.topControls ? 'true' : 'false'}
+      data-shell-left-sidebar-visible={shellChromeVisibility.leftSidebar && !studentModeActive ? 'true' : 'false'}
+      data-shell-right-sidebar-visible={shellChromeVisibility.rightSidebar || studentModeActive ? 'true' : 'false'}
+      data-shell-top-controls-visible={shellChromeVisibility.topControls || studentModeActive ? 'true' : 'false'}
       data-shell-timeline-visible={shellChromeVisibility.timeline ? 'true' : 'false'}
       data-shell-scene-overlay-visible={shellChromeVisibility.sceneOverlay ? 'true' : 'false'}
       className="leo-app-shell"
@@ -2647,12 +2775,14 @@ export function App() {
       {sceneSource === 'artifact-replay' && (
         <ArtifactSourceBadge source={showcaseArtifactSource} />
       )}
-      <ShellChromeControls
-        visibility={shellChromeVisibility}
-        onToggle={toggleShellChrome}
-        onShowAll={showAllShellChrome}
-        onHideAll={hideAllShellChrome}
-      />
+      {!studentModeActive && (
+        <ShellChromeControls
+          visibility={shellChromeVisibility}
+          onToggle={toggleShellChrome}
+          onShowAll={showAllShellChrome}
+          onHideAll={hideAllShellChrome}
+        />
+      )}
       {/* Top row: the global display controls on the left, the global zh/EN
           language switch pinned to the right.
 
@@ -2665,12 +2795,20 @@ export function App() {
           toast layer or the Advanced modal. `align-items: flex-start` keeps the
           switch parked at the top even when the control row wraps to two lines
           on a narrow viewport. */}
-      {shellChromeVisibility.topControls && (
+      {(shellChromeVisibility.topControls || studentModeActive) && (
       <div className="leo-shell-top-chrome" data-testid="leo-shell-top-chrome">
       <div
         className="leo-global-top-row"
         data-testid="leo-global-top-row"
       >
+      {!studentModeActive && isRootHomepage && (
+        <StudentHandoverActivityLauncher
+          enabled={studentActivityLaunchEnabled}
+          onStart={handleStartStudentHandoverActivity}
+        />
+      )}
+      {studentModeActive && <StudentHandoverModeBanner />}
+      {!studentModeActive && (<>
       {/* Way into the six-acts teaching line, in the top band where the eye
           lands. The corner launcher alone was too easy to miss on a full
           engineering dashboard — which is exactly what happened. */}
@@ -2740,8 +2878,10 @@ export function App() {
         onNextInter={handleQuickInter}
       />
       </div>
+      </>)}
       <GlobalLocaleToggleSlot />
       </div>
+      {!studentModeActive && (
       <ControlBar
         sceneSource={sceneSource}
         sceneLane={sceneLane}
@@ -2752,17 +2892,18 @@ export function App() {
         ueIds={showcaseArtifact?.timeline[0]?.ues.map(u => u.id) ?? []}
         onElevatedUeIdChange={setElevatedUeId}
       />
+      )}
       </div>
       )}
       <div
         className="leo-shell-row"
         data-left-sidebar-collapsed={leftSidebarCollapsed ? 'true' : 'false'}
-        data-left-sidebar-hidden={shellChromeVisibility.leftSidebar ? 'false' : 'true'}
-        data-right-sidebar-hidden={shellChromeVisibility.rightSidebar ? 'false' : 'true'}
+        data-left-sidebar-hidden={shellChromeVisibility.leftSidebar && !studentModeActive ? 'false' : 'true'}
+        data-right-sidebar-hidden={shellChromeVisibility.rightSidebar || studentModeActive ? 'false' : 'true'}
       >
         <AppLeftSidebar
           collapsed={leftSidebarCollapsed}
-          shellVisible={shellChromeVisibility.leftSidebar}
+          shellVisible={shellChromeVisibility.leftSidebar && !studentModeActive}
           sceneLane={sceneLane}
           visibleTabs={visibleLeftSidebarTabs}
           activeTab={activeLeftSidebarTab}
@@ -2859,6 +3000,7 @@ export function App() {
                 : null}
               handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
               instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
+              studentHandoverActivityStateRef={studentHandoverActivityStateRef}
               onLiveSeekLanded={handleLiveSeekLandedWithAnalysisReset}
               sceneFrame={activeSceneFrame}
               canonicalAnalysisFrame={isArchivedTleSceneActive
@@ -2925,6 +3067,7 @@ export function App() {
             sixActsTttSec={appliedHandoverPolicy.triggerTimeSec}
             teachingProjection={teachingSurfaceProjection}
             instructorTransport={instructorHandoverSnapshot}
+            studentActivityState={studentHandoverActivityState}
           />
           {shellChromeVisibility.timeline
             && (isRootHomepage || homepageTeachingTimeline === null)
@@ -2932,10 +3075,27 @@ export function App() {
             : null}
         </main>
         <AppRightSidebar
-          shellVisible={shellChromeVisibility.rightSidebar}
+          shellVisible={shellChromeVisibility.rightSidebar || studentModeActive}
           isArchivedTleSceneActive={isArchivedTleSceneActive}
           homepageCanonicalRightRailProps={{ homepageCanonicalAnalysis }}
-          teachingRail={teachingSurfaceProjection !== null ? (
+          teachingRail={studentModeActive ? (
+            <StudentHandoverActivityPanel
+              state={studentHandoverActivityState}
+              evidence={studentHandoverEvidence}
+              projection={teachingSurfaceProjection}
+              transport={instructorHandoverSnapshot}
+              onSelectPrediction={studentHandoverActivity.selectPrediction}
+              onLockPrediction={studentHandoverActivity.lockPrediction}
+              onBeginObserve={studentHandoverActivity.beginObserve}
+              onRequestCheckpoint={studentHandoverActivity.requestCheckpoint}
+              onFinishObserve={studentHandoverActivity.finishObserve}
+              onSelectExplanation={studentHandoverActivity.selectExplanation}
+              onToggleEvidenceClaim={studentHandoverActivity.toggleEvidenceClaim}
+              onSubmitExplanation={studentHandoverActivity.submitExplanation}
+              onReset={handleResetStudentHandoverActivity}
+              onExit={handleExitStudentHandoverActivity}
+            />
+          ) : teachingSurfaceProjection !== null ? (
             <HandoverTeachingRail
               projection={teachingSurfaceProjection}
               transport={instructorHandoverSnapshot!}

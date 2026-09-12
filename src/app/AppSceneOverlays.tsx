@@ -9,6 +9,9 @@ import type {
 import type {
   InstructorHandoverTransportSnapshot,
 } from '../homepage/teaching/instructorHandoverTransport';
+import type {
+  StudentHandoverActivityState,
+} from '../homepage/teaching/studentHandoverActivityState';
 import type { SixActsSubtitleState } from '../course/sixActs/subtitleStateMachine';
 import type { SixActsFrameFacts } from '../course/sixActs/liveReplayBridge';
 import type { NormalizedSceneFrame } from '../scene/NormalizedSceneFrame';
@@ -36,6 +39,7 @@ export interface AppSceneOverlaysProps {
   readonly sixActsTttSec: number;
   readonly teachingProjection: HandoverTeachingSurfaceProjection | null;
   readonly instructorTransport: InstructorHandoverTransportSnapshot | null;
+  readonly studentActivityState: StudentHandoverActivityState | null;
 }
 
 /** Owns the shell-level overlay mounts; the scene remains the rendering authority. */
@@ -60,6 +64,7 @@ export function AppSceneOverlays({
   sixActsTttSec,
   teachingProjection,
   instructorTransport,
+  studentActivityState,
 }: AppSceneOverlaysProps) {
   return (
     <>
@@ -110,6 +115,7 @@ export function AppSceneOverlays({
         <HandoverTeachingCaption
           projection={teachingProjection}
           transport={instructorTransport}
+          studentActivityState={studentActivityState}
         />
       )}
     </>

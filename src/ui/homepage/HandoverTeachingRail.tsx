@@ -18,6 +18,12 @@ import {
 import {
   instructorHandoverTelemetryAttributes,
 } from '../../homepage/teaching/instructorHandoverTelemetry';
+import type {
+  StudentHandoverActivityState,
+} from '../../homepage/teaching/studentHandoverActivityState';
+import {
+  studentHandoverActivityTelemetryAttributes,
+} from '../../homepage/teaching/studentHandoverActivityTelemetry';
 import { useLocale } from '../../i18n';
 import {
   handoverSurfaceIdentityAttributes,
@@ -440,9 +446,11 @@ export function HandoverTeachingRail({
 export function HandoverTeachingCaption({
   projection,
   transport,
+  studentActivityState = null,
 }: {
   readonly projection: HandoverTeachingSurfaceProjection;
   readonly transport: InstructorHandoverTransportSnapshot;
+  readonly studentActivityState?: StudentHandoverActivityState | null;
 }) {
   const { locale } = useLocale();
   const isEnglish = locale === 'en';
@@ -460,11 +468,18 @@ export function HandoverTeachingCaption({
     transport,
     storyBinding,
   );
+  const studentActivityAttributes = studentHandoverActivityTelemetryAttributes(
+    'caption',
+    studentActivityState,
+    transport,
+    storyBinding,
+  );
   return (
     <div
       data-testid="handover-teaching-caption"
       {...storyIdentityAttributes}
       {...scenarioAttributes}
+      {...studentActivityAttributes}
       data-handover-surface-contract={storyBindingStatus}
       data-teaching-phase={frame.phase.id}
       style={{

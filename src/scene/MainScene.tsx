@@ -27,6 +27,9 @@ import type {
 import type {
   InstructorHandoverTransportSnapshot,
 } from '../homepage/teaching/instructorHandoverTransport';
+import type {
+  StudentHandoverActivityState,
+} from '../homepage/teaching/studentHandoverActivityState';
 import {
   resolveHandoverSurfaceBindings,
   type HandoverSurfaceBindingSet,
@@ -349,6 +352,8 @@ interface SceneContentProps {
   handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
   /** R5 single source-time transport published on scene/rail/caption. */
   instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
+  /** R6 activity identity published beside the same R5 source-time owner. */
+  studentHandoverActivityStateRef?: MutableRefObject<StudentHandoverActivityState | null>;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /** Display-only spacecraft model family; archived frames carry this from provenance. */
@@ -409,6 +414,8 @@ interface ArtifactSceneContentProps {
   handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
   /** R5 single source-time transport published on scene/rail/caption. */
   instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
+  /** R6 activity identity published beside the same R5 source-time owner. */
+  studentHandoverActivityStateRef?: MutableRefObject<StudentHandoverActivityState | null>;
 }
 
 const CAMERA_TWEEN_DURATION_MS = 600;
@@ -841,6 +848,7 @@ function ArtifactSceneContent({
   campusVisible,
   handoverSurfaceBindingsRef,
   instructorHandoverSnapshotRef,
+  studentHandoverActivityStateRef,
 }: ArtifactSceneContentProps) {
   const handoverSurfaceBindings = handoverSurfaceBindingsRef?.current ?? null;
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
@@ -940,6 +948,7 @@ function ArtifactSceneContent({
         lane="artifact-replay"
         sharedBindingsRef={handoverSurfaceBindingsRef}
         instructorTransportRef={instructorHandoverSnapshotRef}
+        studentActivityStateRef={studentHandoverActivityStateRef}
       />
       <SceneTelemetry
         visibleSatelliteCount={visibleSatellites.length}
@@ -1230,6 +1239,7 @@ function SceneRenderContent({
   acceptedHandoverPresentation,
   handoverSurfaceBindingsRef,
   instructorHandoverSnapshotRef,
+  studentHandoverActivityStateRef,
   sceneFrame: propSceneFrame,
   beamDisplaySpec = DEFAULT_BEAM_DISPLAY_SPEC,
   showSceneOverlays = true,
@@ -3449,6 +3459,7 @@ function SceneRenderContent({
         lane={simSource === 'archived-tle' ? 'archived-tle' : 'live'}
         sharedBindingsRef={handoverSurfaceBindingsRef}
         instructorTransportRef={instructorHandoverSnapshotRef}
+        studentActivityStateRef={studentHandoverActivityStateRef}
       />
       <SceneTelemetry
         visibleSatelliteCount={renderedLiveSatelliteMarkers.length}
@@ -3965,6 +3976,8 @@ interface MainSceneProps {
   handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
   /** R5 single source-time transport published on scene/rail/caption. */
   instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
+  /** R6 activity identity published beside the same R5 source-time owner. */
+  studentHandoverActivityStateRef?: MutableRefObject<StudentHandoverActivityState | null>;
   onLiveSeekLanded?: (seekRequestKey: string) => void;
   sceneFrame?: NormalizedSceneFrame;
   /** Accepted immutable archived-TLE frame for the homepage centre. */
@@ -4024,6 +4037,7 @@ export const MainScene = memo(function MainScene({
   acceptedHandoverPresentation,
   handoverSurfaceBindingsRef,
   instructorHandoverSnapshotRef,
+  studentHandoverActivityStateRef,
   onLiveSeekLanded,
   sceneFrame,
   canonicalAnalysisFrame,
@@ -4197,6 +4211,7 @@ export const MainScene = memo(function MainScene({
               presentationPlan={presentationPlan}
               handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
               instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
+              studentHandoverActivityStateRef={studentHandoverActivityStateRef}
             />
           ) : homepageTleSceneActive ? (
               <ArchivedTleSceneContent
@@ -4218,6 +4233,7 @@ export const MainScene = memo(function MainScene({
                 acceptedHandoverPresentation={acceptedHandoverPresentation}
                 handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
                 instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
+                studentHandoverActivityStateRef={studentHandoverActivityStateRef}
                 onLiveSeekLanded={onLiveSeekLanded}
                 beamDisplaySpec={beamDisplaySpec}
                 showSceneOverlays={showSceneOverlays}
@@ -4249,6 +4265,7 @@ export const MainScene = memo(function MainScene({
                 acceptedHandoverPresentation={acceptedHandoverPresentation}
                 handoverSurfaceBindingsRef={handoverSurfaceBindingsRef}
                 instructorHandoverSnapshotRef={instructorHandoverSnapshotRef}
+                studentHandoverActivityStateRef={studentHandoverActivityStateRef}
                 onLiveSeekLanded={onLiveSeekLanded}
                 sceneFrame={sceneFrame}
                 beamDisplaySpec={beamDisplaySpec}

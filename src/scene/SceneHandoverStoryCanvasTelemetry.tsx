@@ -7,6 +7,12 @@ import {
 import type {
   InstructorHandoverTransportSnapshot,
 } from '../homepage/teaching/instructorHandoverTransport';
+import type {
+  StudentHandoverActivityState,
+} from '../homepage/teaching/studentHandoverActivityState';
+import {
+  studentHandoverActivityTelemetryAttributes,
+} from '../homepage/teaching/studentHandoverActivityTelemetry';
 
 import {
   handoverStoryPairKey,
@@ -30,6 +36,7 @@ export interface SceneHandoverStoryCanvasTelemetryProps {
   /** Stable ref lets the canvas read the current teaching frame without a React rerender. */
   readonly sharedBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
   readonly instructorTransportRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
+  readonly studentActivityStateRef?: MutableRefObject<StudentHandoverActivityState | null>;
 }
 
 const DATASET_KEYS = Object.freeze([
@@ -64,6 +71,7 @@ const DATASET_KEYS = Object.freeze([
 const SURFACE_ATTRIBUTE_NAMES = Object.freeze([
   ...Object.keys(handoverSurfaceIdentityAttributes('scene', null, 'none')),
   ...Object.keys(instructorHandoverTelemetryAttributes('scene', null, null)),
+  ...Object.keys(studentHandoverActivityTelemetryAttributes('scene', null, null, null)),
 ]);
 
 function clearStoryDataset(canvas: HTMLCanvasElement): void {
@@ -84,6 +92,7 @@ export function SceneHandoverStoryCanvasTelemetry({
   lane,
   sharedBindingsRef,
   instructorTransportRef,
+  studentActivityStateRef,
 }: SceneHandoverStoryCanvasTelemetryProps) {
   const gl = useThree(state => state.gl);
   const lastSignatureRef = useRef('');
@@ -127,9 +136,16 @@ export function SceneHandoverStoryCanvasTelemetry({
       instructorTransportRef?.current ?? null,
       teachingBinding,
     );
+    const studentActivityAttributes = studentHandoverActivityTelemetryAttributes(
+      'scene',
+      studentActivityStateRef?.current ?? null,
+      instructorTransportRef?.current ?? null,
+      teachingBinding,
+    );
     const values = {
       surfaceAttributes,
       instructorAttributes,
+      studentActivityAttributes,
       activeSource: currentFrameSet.activeSource,
       availableSources: currentFrameSet.availableSources.join(','),
       id: active?.storyId ?? '',
@@ -161,7 +177,11 @@ export function SceneHandoverStoryCanvasTelemetry({
     if (signature === lastSignatureRef.current) return;
     lastSignatureRef.current = signature;
 
-    for (const attributes of [values.surfaceAttributes, values.instructorAttributes]) {
+    for (const attributes of [
+      values.surfaceAttributes,
+      values.instructorAttributes,
+      values.studentActivityAttributes,
+    ]) {
       for (const [name, value] of Object.entries(attributes)) {
         gl.domElement.setAttribute(name, value);
       }

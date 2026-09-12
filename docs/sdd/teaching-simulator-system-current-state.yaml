@@ -1,19 +1,19 @@
 schema_version: 1
-updated_at: 2026-09-12T20:40:15+08:00
+updated_at: 2026-09-13T02:18:21+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
 integrated_source_commit: d66b816
-branch: integration/teaching-simulator-r5-rehearsal
-worktree: /home/u24/demo/leo-beam-sim-integration-rehearsal
-current_phase: R5-integration-rehearsal-complete
-status: ready_for_R6
+branch: refactor/teaching-simulator-r6-guided-flow
+worktree: /home/u24/demo/leo-beam-sim-r6
+current_phase: R6-complete
+status: product_merge_candidate
 
 parallel_tracks:
   teaching_design:
     status: deferred_by_owner
   system_refactor:
     status: active
-    next_phase: R6
+    next_phase: formal_R6_integration_owner_gate
 
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
@@ -362,6 +362,156 @@ integration_rehearsal:
       failed: 1
       failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_pin
       new_failure_signatures: 0
+r6_goal: >-
+  Build one versioned, pure student guided-flow pilot on the verified R5
+  transport and R4 identity boundary: Predict, Operate, Observe, Explain,
+  Complete, Reset. Keep student commands bounded, preserve the R5 source-time
+  owner, and support teacher-led projection use without multi-user state.
+
+r6_results:
+  base_integration_commit: 1d1564e7b4c5238c76bef0b818ea0ef0ffe8a2ec
+  activity_contract:
+    schema_version: 1
+    activity_id: r6-intra-guided-flow-v1
+    activity_version: 1
+    scenario_id: homepage-seven-beam-intra-inter-v1
+    scenario_version: 1
+    segment: intra
+    entry_point_sec: 0
+    steps:
+      - predict
+      - operate
+      - observe
+      - explain
+      - complete
+    bounded_checkpoints_sec:
+      - 20
+      - 40
+      - 52
+    minimum_comparable_evidence_claims: 1
+    reset_identity: r6-intra-guided-flow-v1:predict:clean
+  public_modules:
+    - src/homepage/teaching/studentHandoverActivityContract.ts
+    - src/homepage/teaching/studentHandoverActivityState.ts
+    - src/homepage/teaching/studentHandoverActivityEvidence.ts
+    - src/homepage/teaching/studentHandoverActivityTelemetry.ts
+    - src/homepage/teaching/useStudentHandoverActivity.ts
+    - src/ui/homepage/StudentHandoverActivityLauncher.tsx
+    - src/ui/homepage/StudentHandoverActivityPanel.tsx
+  acceptance_modules:
+    - scripts/lib/student-handover-acceptance.ts
+    - scripts/lib/student-handover-acceptance.test.ts
+    - scripts/validate-student-handover-browser.ts
+  source_time_owner: instructor_R5_transport
+  production_surfaces:
+    - root
+    - scene
+    - rail
+    - caption
+    - activity_panel
+  safe_controls:
+    - prediction_select_and_lock
+    - start_bounded_observation
+    - advance_declared_checkpoint
+    - explanation_select
+    - observed_evidence_select
+    - complete
+    - reset_after_complete
+    - exit_clean_predict
+  unsafe_control_boundary:
+    unmounted:
+      - shell_visibility_controller
+      - simulation_source_switch
+      - six_acts_entry
+      - direct_instructor_intra_inter_controls
+      - general_control_bar
+      - R5_instructor_rail
+    hidden:
+      - scientific_left_sidebar
+    disabled:
+      - arbitrary_timeline_seek_step_play_speed_and_scrubber
+    preserved:
+      - shared_scene
+      - shared_caption
+      - locale_switch
+      - bounded_student_panel
+      - teacher_led_group_vote_prompt
+  reset_contract:
+    source_time_sec: 0
+    segment: intra
+    step: predict
+    clears:
+      - prediction
+      - explanation
+      - receipt
+      - caption_hold
+      - observations
+      - temporary_selection
+      - activity_telemetry
+    deterministic_equivalence: pass
+    previous_inter_identity_survives: false
+  invariants:
+    - no_second_clock_or_source_time_copy
+    - no_student_winner_phase_pair_or_commit_inference
+    - no_raw_simulation_state_read_by_student_panel
+    - no_power_TTT_offset_ranking_topology_or_physics_mutation
+    - same_R5_source_time_same_story_and_evidence
+    - prediction_locked_before_operate
+    - reset_restarts_R5_run_and_reconstructs_clean_predict
+    - inter_remains_available_only_to_instructor_mode
+    - no_account_leaderboard_persistent_score_or_network_sync
+  independent_acceptance_contract: >-
+    scripts/lib/student-handover-acceptance.ts imports no production activity
+    reducer, evidence projector, R4 projection composer, telemetry composer, or
+    React component. It owns the focused and browser mutation truth.
+
+r6_validation:
+  lint: pass
+  focused_student_handover_tests: 17/17
+  test_all: pass
+  architecture_boundary_checks: 6/6
+  production_build: pass
+  browser_gates:
+    R1_core_scene_surface_plan: pass_12_of_12
+    R2_handover_story_frame: pass
+    R3_full_scene_render_plan: pass_31_of_31
+    R4_handover_surface_binding: pass_with_mutation_red_then_green
+    R5_instructor_handover: pass_intra_to_inter
+    R6_student_guided_flow:
+      full_flow: pass
+      bilingual_projection: pass
+      teacher_led_prompt_readability: pass
+      unsafe_control_boundary: pass
+      deterministic_reset: pass
+  mutation_proof:
+    activity_step: red_then_green
+    activity_run_id: red_then_green
+    prediction_lock: red_then_green
+    story_id: red_then_green
+    pair_key: red_then_green
+    source_time: red_then_green
+    checkpoint: red_then_green
+    explanation_evidence_claim: red_then_green
+    reset_identity: red_then_green
+    checkpoint_scientific_evidence: red_then_green
+  check_baseline:
+    result: known_red
+    tests: 127
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_regex_pin
+    new_failure_signatures: 0
+
+r6_merge_candidate:
+  ready: true
+  branch: refactor/teaching-simulator-r6-guided-flow
+  protected_target: /home/u24/demo/leo-beam-sim
+  protected_target_commit: d66b816b998d591005eccaf4bdcd159f20489314
+  protected_target_unchanged: true
+  eight_act_workstream_merged: false
+  eight_act_external_wip_observed_and_untouched: true
+  R7_started: false
+
 known_baseline_reds:
   - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
   - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
@@ -369,10 +519,8 @@ known_baseline_reds:
   - scripts/lib/browser-gate.test.ts historically outside an aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
 
-next_phase_candidate: R6
+next_phase_candidate: formal_R6_integration
 next_phase_gate: >-
-  Build one student guided-flow pilot on the verified integration branch:
-  predict, operate, observe, explain, and reset. Student controls must be
-  explicitly safe and bounded, instructor R5 transport and identity invariants
-  must remain intact, and the flow must be usable in a teacher-led class even
-  when some students do not have laptops.
+  Stop after publishing this R6 product merge candidate. A separate,
+  owner-authorized phase may rehearse or perform formal integration into the
+  protected target. Do not begin R7 legacy retirement from this checkpoint.

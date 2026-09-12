@@ -566,3 +566,188 @@ it did not consume a server rooted in the refactor worktree. The integration
 branch is therefore a verified R5 merge candidate and the recommended base for
 R6. This rehearsal is not the final merge into the protected target branch;
 that branch remains unchanged at `d66b816`.
+
+## 19. R6 student guided-flow pilot — 2026-09-13
+
+R6 was implemented in the isolated child worktree
+`/home/u24/demo/leo-beam-sim-r6` on
+`refactor/teaching-simulator-r6-guided-flow`, rooted at the verified R5
+integration rehearsal commit `1d1564e7b4c5238c76bef0b818ea0ef0ffe8a2ec`.
+R6 did not reset, stash, check out, merge, cherry-pick, or modify the
+protected parent, refactor, integration-rehearsal, or eight-act worktrees. The
+final audit found independent uncommitted work already present in the eight-act
+worktree; it was left untouched and was not incorporated into R6.
+
+### 19.1 Versioned activity contract
+
+The production contract is
+`src/homepage/teaching/studentHandoverActivityContract.ts`:
+
+```text
+schema version: 1
+activity ID: r6-intra-guided-flow-v1
+activity version: 1
+R5 scenario: homepage-seven-beam-intra-inter-v1 @ version 1
+segment / entry point: Intra / 0 s
+steps: Predict -> Operate -> Observe -> Explain -> Complete -> Reset
+bounded checkpoints: 20 s, 40 s, 52 s
+reset identity: r6-intra-guided-flow-v1:predict:clean
+```
+
+Predict offers `stay-serving`, `switch-target`, and
+`insufficient-evidence`. Entering Operate assigns a per-run activity ID and
+locks the prediction; subsequent prediction changes and second locks are
+rejected. Operate exposes one bounded action only. Observe advances in declared
+order through candidate comparison, conditions/hold, and commit receipt.
+Explain uses a finite choice set and requires at least one observed,
+comparable evidence claim. Complete emits an immutable receipt carrying schema,
+activity, scenario, segment, run, prediction, explanation, evidence, checkpoint,
+and receipt identity.
+
+The reducer is pure and rejects every illegal step transition, out-of-order
+checkpoint, malformed observation, unobserved evidence claim, incomplete
+observation sequence, missing explanation, missing comparable claim, and reset
+before Complete. It owns no source time, phase, winner, accepted snapshot,
+scenario frame, timer, or simulation input.
+
+### 19.2 R5 transport and scientific ownership
+
+The R5 instructor transport remains the only source-time owner. The student
+state machine can only place a pending bounded-checkpoint command. App then:
+
+1. pauses the existing R5 transport;
+2. seeks that transport to the checkpoint's declared source time;
+3. waits for the exact R4/R5 projection to land; and
+4. records evidence claims from that shared projection.
+
+There is no second clock, interval, animation timer, copied source time, local
+winner selection, local phase derivation, local source/target reconstruction,
+or alternate accepted snapshot. `studentHandoverActivityEvidence.ts` fails
+closed unless scenario/version, Intra entry, paused transport, source time,
+teaching phase, story phase, and shared projection all agree. It reads the
+existing teaching EE floor constant and never writes power, TTT, offset,
+ranking, topology, EE, physics, or commit state.
+
+The production activity contract deliberately contains no checkpoint answer
+key. The separately maintained oracle in
+`scripts/lib/student-handover-acceptance.ts` imports no production activity
+reducer, evidence projector, R4 projection composer, telemetry composer, or UI.
+That oracle owns the acceptance truth used by focused and browser mutation
+gates.
+
+### 19.3 Student-safe control boundary
+
+The R6 inventory found these pre-existing control groups on the teaching
+homepage:
+
+- shell visibility controls;
+- six-acts entry, simulation-source switching, direct Intra/Inter instructor
+  entry, and SINR quick controls;
+- general `ControlBar` camera/display controls;
+- left-side signal, handover-policy, power, TTT, offset, topology, candidate,
+  and scientific controls;
+- bottom timeline seek, step, play/pause, and speed controls;
+- R5 instructor rail play/pause, restart, seek, speed, close, and direct Inter
+  workflow.
+
+While student mode is active, the shell visibility controller, six-acts entry,
+simulation-source switch, SINR quick controls, `ControlBar`, direct instructor
+Intra/Inter controls, and R5 instructor rail are not mounted. The scientific
+left sidebar is hidden and `aria-hidden`. The existing bottom timeline may
+remain in layout, but its seek, step, play/pause, speed, and scrubber controls
+are disabled by the active R5 transport. The right rail is forced visible and
+contains only the student allow-list. Inter remains intact for instructor mode
+and R5 regression coverage, but student mode cannot enter it.
+
+Preserved student-safe surfaces are the shared scene, shared caption, bounded
+student activity panel, locale switch, and teacher-led/group-vote prompt. The
+allow-list is limited to prediction selection/lock, starting and advancing the
+bounded observation, choosing an explanation and observed evidence, completing,
+resetting after Complete, and exiting from clean Predict. No account,
+leaderboard, persistent score, multi-user state, or network synchronization was
+introduced.
+
+All projection-facing activity copy, the mode banner, progress labels, teacher
+prompt, choices, evidence labels, receipt, reset, and exit controls support
+zh-TW and English. The production browser gate changes locale in Predict and
+proves the projected title, prompt, banner, and progress labels update without
+changing activity identity or progress.
+
+### 19.4 Raw-state, fallback-truth, and residual-state audit
+
+The student panel does not read raw simulation state. Launch admission reuses
+the existing shell lane/source and exact seven-beam R5 admission predicate;
+scientific evidence comes only from the shell-owned R4/R5 projection. No
+student renderer or component infers winner, phase, source/target, pair key,
+commit state, or checkpoint truth. There is no fallback scientific truth in the
+production contract or reducer.
+
+The teaching caption is stateless with respect to chapter hold: it renders the
+current R5 projection directly and owns no queue, timer, ref, or alternate
+presentation clock. The student panel also owns no timer or caption queue. Its
+only ref is a monotonically increasing activity run sequence, which is an
+identity token rather than a source-time owner.
+
+Reset is accepted only from Complete. It reconstructs the normalized active
+Predict state, clears prediction, lock, activity run ID, pending checkpoint,
+observations, temporary selections, explanation, evidence selections, receipt,
+and activity telemetry, then restarts and pauses the R5 transport at Intra
+source time 0. Scene, rail, caption, activity, story ID, pair key, phase,
+committed state, scenario, and source time return to the same initial identity.
+The R5 instructor run ID intentionally increments, proving that a real restart
+occurred. No previous Inter identity, checkpoint, receipt, evidence selection,
+or presentation owner survives.
+
+### 19.5 Acceptance and mutation evidence
+
+Focused R6 tests cover the full legal and illegal transition matrix, prediction
+lock negatives, checkpoint order and malformed observations, evidence support,
+completion receipt, source-time determinism, reset deep equivalence, source/DOM
+control ownership, production answer-key absence, and acceptance-oracle
+independence: 17/17 pass.
+
+The production browser gate exercises the real UI and completes:
+
+```text
+Predict -> Operate -> Observe(20 s -> 40 s -> 52 s)
+        -> Explain -> Complete -> Reset -> clean exit
+```
+
+It proves the teacher-led prompt has a readable projected box and typography;
+zh-TW and English copy switch in place; unsafe controls are absent, hidden, or
+disabled; the same source time yields the same R5 story; root, scene, rail,
+caption, and activity publish comparable activity/story/scenario telemetry;
+and reset returns to the initial normalized identity while the instructor run
+ID changes from 1 to 2.
+
+Mutation proof is independently RED then GREEN for activity step, activity run
+ID, prediction lock, story ID, pair key, source time, checkpoint, explanation
+evidence claims, reset identity, and checkpoint scientific evidence. The
+production implementation does not define the oracle's expected values.
+
+Final phase evidence:
+
+- `npm run lint`: PASS;
+- `npm run test:student-handover`: 17/17 PASS;
+- `npm run test:all`: PASS, including R1-R6 aggregates;
+- `npm run validate:architecture:boundaries`: 6/6 PASS with no new ratchet
+  violations;
+- `npm run build`: PASS, 1254 modules transformed; only the pre-existing large
+  chunk advisory remains;
+- R1 core scene-surface browser gate: 12/12 PASS;
+- R2 normalized handover-story browser gate: PASS;
+- R3 full scene-render-plan browser gate: 31/31 PASS;
+- R4 shared identity and production mutation browser gate: PASS;
+- R5 deterministic instructor Intra-to-Inter browser gate: PASS;
+- R6 student guided-flow browser gate: PASS, including bilingual projection,
+  full flow, deterministic reset, and ten production mutation cases.
+
+`npm run check:baseline` remains exactly the known baseline difference: 127
+tests, 126 pass, one failure at the obsolete
+`src/app/homepageHandoverControlsOwnership.test.ts` source-text regex pin, and
+zero new failure signatures.
+
+R6 is complete and is a formal product merge candidate. The protected target
+`/home/u24/demo/leo-beam-sim` remains unchanged. R7 legacy retirement has not
+started; any formal integration or later R7 decision requires a separate
+owner-directed phase.
