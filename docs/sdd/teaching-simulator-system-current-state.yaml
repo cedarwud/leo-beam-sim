@@ -1,24 +1,24 @@
 schema_version: 1
-updated_at: 2026-09-13T09:00:18+08:00
+updated_at: 2026-09-13T09:25:35+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
 integrated_source_commit: d66b816
-branch: refactor/teaching-simulator-r7-legacy-retirement
-worktree: /home/u24/demo/leo-beam-sim-r7
-current_phase: R7-complete
-status: product_merge_candidate
+branch: wip/ee-handover-authority-2026-09-05
+worktree: /home/u24/demo/leo-beam-sim
+current_phase: R7-formal-integration-complete
+status: ready_for_R8_owner_gate
 
 parallel_tracks:
   teaching_design:
     status: deferred_by_owner
   system_refactor:
     status: active
-    next_phase: formal_R7_integration_owner_gate
+    next_phase: R8_owner_gate
 
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
   dirty_wip_present: false
-  mutation_policy: do_not_touch_reset_stash_or_overwrite_during_R7
+  mutation_policy: integrated_target_no_reset_stash_force_or_overwrite
 
 fixed_constraints:
   - do_not_change_simulation_physics_or_EE_values
@@ -705,6 +705,63 @@ r7_merge_candidate:
   protected_target_unchanged: true
   eight_act_workstream_merged: false
   R8_started: false
+formal_r7_integration:
+  authorization: owner_authorized_2026-09-13
+  integration_branch: integration/teaching-simulator-r7-formal
+  integration_worktree: /home/u24/demo/leo-beam-sim-r7-formal-integration
+  target_branch: wip/ee-handover-authority-2026-09-05
+  target_before: 4013420bd249c6770ca6acba83d8c59a79cebf45
+  r7_candidate_branch: refactor/teaching-simulator-r7-legacy-retirement
+  r7_candidate_commit: 15f95066bf1f6e0a1d1cd6343124e407179b4f80
+  merge_commit: 73e9e4cb987de864b36e4c81b09386146267fb3f
+  merge_parents:
+    - 4013420bd249c6770ca6acba83d8c59a79cebf45
+    - 15f95066bf1f6e0a1d1cd6343124e407179b4f80
+  merge_conflicts: 0
+  pre_receipt_index_tree: d99bfa78ca4f2997559bb45a07e8bd28cd7a165e
+  r7_candidate_tree: d99bfa78ca4f2997559bb45a07e8bd28cd7a165e
+  pre_receipt_tree_equal_to_r7_candidate: true
+  integration_only_diff_check_signatures: 0
+  validation:
+    lint: pass
+    focused_r7_retirement_tests: 6/6
+    test_all: pass
+    architecture_boundary_checks: 6/6
+    production_build:
+      result: pass
+      modules_transformed: 1253
+      inherited_large_chunk_advisory_only: true
+    browser_gates:
+      R1_core_scene_surface_plan: pass_12_of_12
+      R2_handover_story_frame: pass
+      R3_full_scene_render_plan: pass_31_of_31
+      R4_handover_surface_binding: pass_with_mutation_red_then_green
+      R5_instructor_handover: pass_intra_to_inter_and_direct_inter
+      R6_student_guided_flow: pass_full_flow_and_10_mutations
+      R7_legacy_route_retirement: pass_canonical_redirect_no_legacy_DOM
+    check_baseline:
+      result: known_red
+      tests: 127
+      passed: 126
+      failed: 1
+      failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_regex_pin
+      new_failure_signatures: 0
+    static_ratcheting:
+      test_orphan_signatures_equal_target: true
+      unreferenced_component_signatures_equal_target: true
+      new_failure_signatures: 0
+    broken_script_reference_audit:
+      result: pass
+      scripts_checked: 220
+      missing_references: 0
+  promotion:
+    method: fast_forward_only_after_receipt
+    protected_target_integrated: true
+    remote_push_required: true
+    reset_stash_force_cherry_pick_or_history_rewrite: false
+  eight_act_workstream_merged: false
+  R8_started: false
+
 known_baseline_reds:
   - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
   - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
@@ -712,8 +769,8 @@ known_baseline_reds:
   - scripts/lib/browser-gate.test.ts historically outside an aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
 
-next_phase_candidate: formal_R7_integration
+next_phase_candidate: R8
 next_phase_gate: >-
-  Stop after publishing the R7 product merge candidate. Formal R7
-  integration requires a separate owner authorization. Do not begin R8 or
-  merge the independent eight-act workstream from this checkpoint.
+  R8 maintainability holdout may begin only after a new owner authorization
+  from the formally integrated target. Do not merge the independent eight-act
+  workstream or begin unrelated cleanup as part of this receipt.

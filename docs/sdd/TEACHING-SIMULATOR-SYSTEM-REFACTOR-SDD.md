@@ -969,3 +969,70 @@ R7 is complete and is a product merge candidate. The protected target remains
 at `4013420bd249c6770ca6acba83d8c59a79cebf45`. Formal R7 integration requires a
 separate owner-authorized phase. The eight-act workstream remains independent,
 and R8 maintainability holdout has not started.
+
+## 22. R7 formal integration — 2026-09-13
+
+The owner authorized formal R7 integration after accepting the legacy-retirement
+product candidate. Integration was performed in the isolated worktree
+`/home/u24/demo/leo-beam-sim-r7-formal-integration` on
+`integration/teaching-simulator-r7-formal`; the protected target remained clean
+and unchanged while the merged product tree completed every release gate.
+
+The lineage is explicit:
+
+```text
+target before integration:
+  wip/ee-handover-authority-2026-09-05
+  4013420bd249c6770ca6acba83d8c59a79cebf45
+
+R7 product candidate:
+  refactor/teaching-simulator-r7-legacy-retirement
+  15f95066bf1f6e0a1d1cd6343124e407179b4f80
+
+formal merge:
+  73e9e4cb987de864b36e4c81b09386146267fb3f
+  parents: 4013420bd249c6770ca6acba83d8c59a79cebf45
+           15f95066bf1f6e0a1d1cd6343124e407179b4f80
+```
+
+The merge used `--no-ff --no-commit`, completed with zero conflicts, and was
+validated before commit. Its pre-receipt index tree was
+`d99bfa78ca4f2997559bb45a07e8bd28cd7a165e`, byte-identical to the R7 candidate
+tree. `git diff --cached --check` and the source candidate diff both completed
+cleanly, so formal integration introduced no production, test, package, or
+whitespace drift before this receipt.
+
+The exact merged product tree independently repeated the complete release
+matrix:
+
+- `npm run lint`: PASS;
+- `npm run test:r7-retirement`: 6/6 PASS;
+- `npm run test:all`: PASS, including R1–R7 aggregates;
+- `npm run validate:architecture:boundaries`: 6/6 PASS with no new ratchet
+  violations;
+- `npm run build`: PASS, 1,253 modules transformed; only the inherited large
+  chunk advisory remains;
+- R1 scene-surface browser gate: 12/12 PASS;
+- R2 normalized handover-story browser gate: PASS;
+- R3 full scene-render-plan browser gate: 31/31 PASS;
+- R4 shared-identity browser gate: PASS with production mutation red→green;
+- R5 deterministic instructor Intra-to-Inter and direct-Inter browser gate:
+  PASS;
+- R6 student Predict → Operate → Observe → Explain → Complete → Reset browser
+  gate: PASS with ten production mutation cases;
+- R7 retired-route compatibility browser gate: PASS; the legacy URL resolves to
+  the canonical homepage while the deleted renderer contributes no DOM.
+
+`npm run check:baseline` remains the sealed baseline difference: 127 tests,
+126 pass, and one failure at the obsolete
+`src/app/homepageHandoverControlsOwnership.test.ts` source-text regex pin. The
+orphan-test and unreferenced-component failure signatures are byte-for-byte
+equal to the protected target, and the broken-script-reference audit remains
+GREEN across 220 scripts. There are zero new failure signatures.
+
+After this docs-only receipt, the protected target is advanced only by
+fast-forward to the receipt commit and pushed without reset, stash, force,
+cherry-pick, or history rewriting. The R7 candidate and formal-integration
+branches remain as audit lineages. The independent eight-act worktree is not
+merged or modified. R8 maintainability holdout has not started and requires a
+new owner gate.
