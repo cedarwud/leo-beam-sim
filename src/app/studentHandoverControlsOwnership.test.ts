@@ -11,9 +11,10 @@ function between(source: string, start: string, end: string): string {
 }
 
 test('student mode mounts only the allow-listed surface and hides unsafe shell controls', async () => {
-  const [appSource, panelSource] = await Promise.all([
+  const [appSource, panelSource, surfaceRuntimeSource] = await Promise.all([
     readFile(new URL('../App.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../ui/homepage/StudentHandoverActivityPanel.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('./useAppHandoverSurfaceRuntime.ts', import.meta.url), 'utf8'),
   ]);
 
   const guardedTopControls = between(appSource, '{!studentModeActive && (<>', '</>)}');
@@ -28,8 +29,10 @@ test('student mode mounts only the allow-listed surface and hides unsafe shell c
   assert.match(appSource, /shellVisible=\{shellChromeVisibility\.leftSidebar && !studentModeActive\}/);
   assert.match(appSource, /!studentModeActive && \(\s*<ControlBar/);
   assert.match(appSource, /teachingRail=\{studentModeActive \? \(\s*<StudentHandoverActivityPanel/);
-  assert.match(appSource, /studentHandoverCheckpoint\(pendingCheckpointId\)/);
-  assert.match(appSource, /instructorHandoverTransport\.seek\(checkpoint\.sourceTimeSec\)/);
+  assert.match(appSource, /useAppHandoverSurfaceRuntime\(\{/);
+  assert.doesNotMatch(appSource, /studentHandoverCheckpoint\(pendingCheckpointId\)/);
+  assert.match(surfaceRuntimeSource, /studentHandoverCheckpoint\(pendingCheckpointId\)/);
+  assert.match(surfaceRuntimeSource, /transport\.seek\(checkpoint\.sourceTimeSec\)/);
   assert.doesNotMatch(panelSource, /setPower|setTtt|setOffset|candidateRanking|topologyMutation/);
   assert.doesNotMatch(panelSource, /teaching-seek|teaching-speed|director-inter-focus/);
 });

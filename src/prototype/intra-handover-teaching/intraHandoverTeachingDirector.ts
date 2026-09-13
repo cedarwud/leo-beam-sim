@@ -1,5 +1,4 @@
 export const INTRA_HANDOVER_TEACHING_DURATION_SEC = 78;
-export const INTRA_HANDOVER_TEACHING_ROUTE = '/prototype/intra-handover-teaching';
 
 export const INTRA_HANDOVER_TEACHING_BEATS = Object.freeze([
   {

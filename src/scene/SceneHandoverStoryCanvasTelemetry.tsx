@@ -21,11 +21,11 @@ import {
 } from './handoverStoryFrame';
 import {
   handoverSurfaceIdentityAttributes,
-  resolveHandoverSurfaceBindings,
   type HandoverSurfaceBindingSet,
 } from './handoverSurfaceBinding';
 import {
   resolveBoundSceneHandoverStoryFrameSet,
+  resolveBoundSceneHandoverSurfaceBindingSet,
   type SceneHandoverStoryLane,
 } from './sceneHandoverStoryFrameSet';
 
@@ -34,7 +34,7 @@ export interface SceneHandoverStoryCanvasTelemetryProps {
   readonly frameSet: HandoverStoryFrameSet;
   readonly lane: SceneHandoverStoryLane;
   /** Stable ref lets the canvas read the current teaching frame without a React rerender. */
-  readonly sharedBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  readonly sharedBindingsRef: MutableRefObject<HandoverSurfaceBindingSet>;
   readonly instructorTransportRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   readonly studentActivityStateRef?: MutableRefObject<StudentHandoverActivityState | null>;
 }
@@ -98,34 +98,20 @@ export function SceneHandoverStoryCanvasTelemetry({
   const lastSignatureRef = useRef('');
 
   useFrame(() => {
-    const sharedBindings = sharedBindingsRef?.current ?? null;
-    const currentFrameSet = sharedBindingsRef === undefined
-      ? frameSet
-      : resolveBoundSceneHandoverStoryFrameSet({
-        lane,
-        local: frameSet,
-        sharedBindings,
-      });
+    const sharedBindings = sharedBindingsRef.current;
+    const boundaryInput = {
+      lane,
+      localPresentation: frameSet.presentation,
+      sharedBindings,
+    } as const;
+    const currentFrameSet = resolveBoundSceneHandoverStoryFrameSet(boundaryInput);
+    const composedBindings = resolveBoundSceneHandoverSurfaceBindingSet(boundaryInput);
     const active = currentFrameSet.active;
-    const composedBindings = resolveHandoverSurfaceBindings(currentFrameSet);
-    // When the shell supplies bindings, absence is authoritative and must not
-    // fall back to a scene-local reconstruction. Only presentation remains a
-    // scene-local animation clock; accepted/teaching/replay identity is exact.
-    const acceptedBinding = sharedBindings === null
-      ? composedBindings.accepted
-      : sharedBindings.accepted;
-    const teachingBinding = sharedBindings === null
-      ? composedBindings.teaching
-      : sharedBindings.teaching;
-    const replayBinding = sharedBindings === null
-      ? composedBindings.replay
-      : sharedBindings.replay;
-    const surfaceBinding = sharedBindings === null
-      ? composedBindings.active
-      : sharedBindings.active;
-    const surfaceActiveSource = sharedBindings === null
-      ? composedBindings.activeSource
-      : sharedBindings.activeSource;
+    const acceptedBinding = composedBindings.accepted;
+    const teachingBinding = composedBindings.teaching;
+    const replayBinding = composedBindings.replay;
+    const surfaceBinding = composedBindings.active;
+    const surfaceActiveSource = composedBindings.activeSource;
     const surfaceAttributes = handoverSurfaceIdentityAttributes(
       'scene',
       surfaceBinding,

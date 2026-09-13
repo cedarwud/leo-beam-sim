@@ -1,24 +1,24 @@
 schema_version: 1
-updated_at: 2026-09-13T06:17:51+08:00
+updated_at: 2026-09-13T09:00:18+08:00
 active_sdd: docs/sdd/TEACHING-SIMULATOR-SYSTEM-REFACTOR-SDD.md
 baseline_commit: c12b67c827c598dcd9a680c55f8ef69b2b571a53
 integrated_source_commit: d66b816
-branch: wip/ee-handover-authority-2026-09-05
-worktree: /home/u24/demo/leo-beam-sim
-current_phase: R6-formal-integration-complete
-status: ready_for_R7_owner_gate
+branch: refactor/teaching-simulator-r7-legacy-retirement
+worktree: /home/u24/demo/leo-beam-sim-r7
+current_phase: R7-complete
+status: product_merge_candidate
 
 parallel_tracks:
   teaching_design:
     status: deferred_by_owner
   system_refactor:
     status: active
-    next_phase: R7_owner_gate
+    next_phase: formal_R7_integration_owner_gate
 
 protected_parent_checkout:
   path: /home/u24/demo/leo-beam-sim
   dirty_wip_present: false
-  mutation_policy: integrated_target_no_reset_stash_force_or_overwrite
+  mutation_policy: do_not_touch_reset_stash_or_overwrite_during_R7
 
 fixed_constraints:
   - do_not_change_simulation_physics_or_EE_values
@@ -565,6 +565,146 @@ formal_r6_integration:
   eight_act_workstream_merged: false
   R7_started: false
 
+r7_goal: >-
+  Retire only R1-R6-replaced duplicate story and renderer paths, then decompose
+  App along the R4-R6 teaching contracts.
+r7_scope:
+  base_commit: 4013420bd249c6770ca6acba83d8c59a79cebf45
+  retire_scene_story_reconstruction_fallback: true
+  retire_standalone_intra_teaching_renderer: true
+  preserve_legacy_url_as_canonical_redirect: true
+  extract_app_teaching_runtime_boundaries: true
+  preserve_non_homepage_manual_handover: true
+  preserve_scientific_service_continuity_fallback: true
+  eight_act_workstream_merged: false
+
+r7_results:
+  base_commit: 4013420bd249c6770ca6acba83d8c59a79cebf45
+  mandatory_story_authority:
+    app_owned_binding_set_required_by_main_scene: true
+    app_owned_binding_set_required_by_canvas_telemetry: true
+    scene_local_story_allowed:
+      - presentation_animation_only
+    retired_scene_reconstruction:
+      - accepted_story_from_raw_snapshot
+      - teaching_story_from_raw_inputs
+      - replay_story_from_scene_frame
+      - binding_set_fallback_when_shell_ref_absent
+    exact_shell_binding_references_preserved: true
+  retired_standalone_surface:
+    route: /prototype/intra-handover-teaching
+    compatibility_target: /
+    compatibility_query: retiredSurface=intra-handover-teaching
+    query_and_hash_preserved: true
+    deleted_files:
+      - src/prototype/intra-handover-teaching/IntraHandoverTeachingPrototype.tsx
+      - src/prototype/intra-handover-teaching/IntraHandoverTeachingPrototype.scss
+      - scripts/validate-intra-handover-teaching-browser.ts
+    old_renderer_mountable: false
+    private_clock_and_transport_retired: true
+  app_boundaries:
+    teaching_stage: src/app/useAppHandoverTeachingStage.ts
+    surface_runtime: src/app/useAppHandoverSurfaceRuntime.ts
+    legacy_route_retirement: src/app/legacyRouteRetirement.ts
+    responsibilities_extracted:
+      - R5_transport_mount_and_fixture_latch
+      - R6_activity_mount_open_close_reset
+      - playback_freeze_and_restore_policy
+      - shell_story_normalization_and_binding_composition
+      - accepted_and_teaching_surface_projection
+      - root_scene_rail_caption_activity_telemetry
+      - bounded_student_checkpoint_commands_and_evidence
+    forbidden_ownership:
+      - no_second_source_clock
+      - no_raw_SimState_owner
+      - no_winner_or_candidate_ranking
+      - no_accepted_snapshot_owner
+      - no_physics_EE_TTT_or_commit_mutation
+  shell_reduction:
+    app_lines_before: 3164
+    app_lines_after: 2884
+    app_lines_removed_net: 280
+    main_scene_lines_before: 4300
+    main_scene_lines_after: 4294
+    build_modules_before: 1254
+    build_modules_after: 1253
+  preserved_behavior:
+    - scientific_service_continuity_fallback
+    - non_homepage_manual_handover
+    - route_independent_course_prototypes
+    - R5_instructor_intra_inter_and_direct_inter
+    - R6_student_guided_flow_and_reset
+    - physics_EE_ranking_TTT_commit_palette_geometry_camera_and_copy
+  independent_acceptance:
+    oracle: scripts/lib/r7-legacy-retirement-acceptance.ts
+    oracle_tests: scripts/lib/r7-legacy-retirement-acceptance.test.ts
+    production_browser_gate: scripts/validate-r7-legacy-retirement-browser.ts
+    production_imports_in_oracle: 0
+    ownership_mutations_red_then_green: 9
+
+r7_validation:
+  lint: pass
+  focused_r7_retirement_tests: 6/6
+  handover_surface_binding_tests: 24/24
+  instructor_handover_tests: 33/33
+  student_handover_tests: 17/17
+  test_all: pass
+  architecture_boundary_checks: 6/6
+  production_build:
+    result: pass
+    modules_transformed: 1253
+    inherited_large_chunk_advisory_only: true
+  browser_gates:
+    R1_core_scene_surface_plan: pass_12_of_12
+    R2_handover_story_frame: pass
+    R3_full_scene_render_plan: pass_31_of_31
+    R4_handover_surface_binding: pass_with_mutation_red_then_green
+    R5_instructor_handover: pass_intra_to_inter_and_direct_inter
+    R6_student_guided_flow: pass_full_flow_and_10_mutations
+    R7_legacy_route_retirement:
+      result: pass
+      canonical_path: /
+      preserved_query: controls=1
+      retirement_marker: retiredSurface=intra-handover-teaching
+      preserved_hash: checkpoint
+      legacy_renderer_DOM_count: 0
+  broken_script_reference_audit:
+    result: pass
+    scripts_checked: 220
+    missing_references: 0
+  check_baseline:
+    result: known_red
+    tests: 127
+    passed: 126
+    failed: 1
+    failure: src/app/homepageHandoverControlsOwnership.test.ts_source_text_regex_pin
+    new_failure_signatures: 0
+  unchanged_static_baseline_reds:
+    test_orphans:
+      target_count: 3
+      r7_count: 3
+      new_r7_orphans: 0
+      signatures:
+        - scripts/audit/render-timeline.test.ts
+        - scripts/lib/browser-gate.test.ts
+        - src/appearance/eeIntensityShade.test.ts
+    unreferenced_components:
+      target_unreferenced: 22
+      r7_unreferenced: 22
+      target_scanned_modules: 185
+      r7_scanned_modules: 184
+      retired_component_count: 1
+      new_r7_signatures: 0
+
+r7_merge_candidate:
+  ready: true
+  branch: refactor/teaching-simulator-r7-legacy-retirement
+  worktree: /home/u24/demo/leo-beam-sim-r7
+  protected_target: /home/u24/demo/leo-beam-sim
+  protected_target_commit: 4013420bd249c6770ca6acba83d8c59a79cebf45
+  protected_target_unchanged: true
+  eight_act_workstream_merged: false
+  R8_started: false
 known_baseline_reds:
   - src/app/homepageHandoverControlsOwnership.test.ts source-text pin
   - src/scene/presentation/scenePresentationBoundary.test.ts motion-guide source-text pin
@@ -572,8 +712,8 @@ known_baseline_reds:
   - scripts/lib/browser-gate.test.ts historically outside an aggregate
   - scripts/validate-frame-plan.ts stale IdentitySourcesRecord stub
 
-next_phase_candidate: R7
+next_phase_candidate: formal_R7_integration
 next_phase_gate: >-
-  R7 legacy retirement may begin only after a new owner authorization from the
-  integrated target. Do not merge the independent eight-act workstream or begin
-  general shell cleanup as part of this formal-integration receipt.
+  Stop after publishing the R7 product merge candidate. Formal R7
+  integration requires a separate owner authorization. Do not begin R8 or
+  merge the independent eight-act workstream from this checkpoint.

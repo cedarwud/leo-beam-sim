@@ -30,10 +30,7 @@ import type {
 import type {
   StudentHandoverActivityState,
 } from '../homepage/teaching/studentHandoverActivityState';
-import {
-  resolveHandoverSurfaceBindings,
-  type HandoverSurfaceBindingSet,
-} from './handoverSurfaceBinding';
+import type { HandoverSurfaceBindingSet } from './handoverSurfaceBinding';
 import { useSimulation } from './useSimulation';
 import { useUeTrailHistory } from './useUeTrailHistory';
 import { useBeamViz } from './useBeamViz';
@@ -172,8 +169,9 @@ import { SceneHandoverStoryCanvasTelemetry } from './SceneHandoverStoryCanvasTel
 import { SceneRenderPlanCanvasTelemetry } from './SceneRenderPlanCanvasTelemetry';
 import {
   resolveBoundSceneHandoverStoryFrameSet,
-  resolveSceneHandoverStoryFrameSet,
+  resolveBoundSceneHandoverSurfaceBindingSet,
 } from './sceneHandoverStoryFrameSet';
+import { resolvePresentationHandoverStoryFrame } from './handoverStoryFrame';
 import { resolveSceneRenderPlan } from './sceneRenderPlan';
 import {
   resolveCinematicSpotlightTargets,
@@ -349,7 +347,7 @@ interface SceneContentProps {
   /** App-accepted atomic candidate snapshot shared with the right rail. */
   acceptedHandoverPresentation: AcceptedHandoverPresentationSnapshot | null;
   /** R4 shell-owned normalized frames shared by scene, rail and captions. */
-  handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  handoverSurfaceBindingsRef: MutableRefObject<HandoverSurfaceBindingSet>
   /** R5 single source-time transport published on scene/rail/caption. */
   instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   /** R6 activity identity published beside the same R5 source-time owner. */
@@ -411,7 +409,7 @@ interface ArtifactSceneContentProps {
   campusVisible: boolean;
   sceneFrame: NormalizedSceneFrame;
   presentationPlan: ScenePresentationPlan;
-  handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  handoverSurfaceBindingsRef: MutableRefObject<HandoverSurfaceBindingSet>
   /** R5 single source-time transport published on scene/rail/caption. */
   instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   /** R6 activity identity published beside the same R5 source-time owner. */
@@ -850,7 +848,7 @@ function ArtifactSceneContent({
   instructorHandoverSnapshotRef,
   studentHandoverActivityStateRef,
 }: ArtifactSceneContentProps) {
-  const handoverSurfaceBindings = handoverSurfaceBindingsRef?.current ?? null;
+  const handoverSurfaceBindings = handoverSurfaceBindingsRef.current;
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const sceneConfig = useMemo(() => (
     runtime.appMode === 'sinr-experiment' ? NTPU_CONFIG : NTPU_LARGE_CONFIG
@@ -884,10 +882,9 @@ function ArtifactSceneContent({
     () => sceneFrame.satellites.filter(satellite => satellite.visible),
     [sceneFrame.satellites],
   );
-  const localStoryFrames = resolveSceneHandoverStoryFrameSet({ replayFrame: sceneFrame });
   const storyFrames = resolveBoundSceneHandoverStoryFrameSet({
     lane: 'artifact-replay',
-    local: localStoryFrames,
+    localPresentation: null,
     sharedBindings: handoverSurfaceBindings,
   });
   const sceneRenderPlan = resolveSceneRenderPlan({
@@ -1265,7 +1262,7 @@ function SceneRenderContent({
   onFocusJoinKeyChange,
   teachingNarrativeEnabled = false,
 }: SceneRenderContentProps) {
-  const handoverSurfaceBindings = handoverSurfaceBindingsRef?.current ?? null;
+  const handoverSurfaceBindings = handoverSurfaceBindingsRef.current;
   const teachingSurfaceProjection = teachingSurfaceProjectionRef?.current ?? null;
   const homepageBeamEeByKey = useMemo<ReadonlyMap<string, number | null> | null>(() => {
     if (!homepageVisualIdentity || homepageBeamMetrics === null) return null;
@@ -3375,23 +3372,20 @@ function SceneRenderContent({
       ? canonicalHandoverEvent.reason
       : undefined,
   });
-  const localStoryFrames = resolveSceneHandoverStoryFrameSet({
-    acceptedSnapshot: handoverSurfaceBindings === null
-      ? acceptedHandoverPresentation
-      : null,
-    acceptedProducer: simSource === 'archived-tle' ? 'tle' : 'walker',
-    resolveAcceptedCellId: cellIdFromLinkBudgetBeamId,
-    presentationView: handoverPresentation,
+  const localPresentationStoryFrame = resolvePresentationHandoverStoryFrame({
+    view: handoverPresentation,
   });
-  const sceneHandoverStoryFrames = resolveBoundSceneHandoverStoryFrameSet({
+  const sceneHandoverBoundaryInput = {
     lane: simSource === 'archived-tle' ? 'archived-tle' : 'live',
-    local: localStoryFrames,
+    localPresentation: localPresentationStoryFrame,
     sharedBindings: handoverSurfaceBindings,
-  });
-  // Production receives the App-owned binding set. The fallback exists only
-  // for isolated renders that intentionally omit the shell ref.
-  const sceneHandoverSurfaceBindings = handoverSurfaceBindings
-    ?? resolveHandoverSurfaceBindings(sceneHandoverStoryFrames);
+  } as const;
+  const sceneHandoverStoryFrames = resolveBoundSceneHandoverStoryFrameSet(
+    sceneHandoverBoundaryInput,
+  );
+  const sceneHandoverSurfaceBindings = resolveBoundSceneHandoverSurfaceBindingSet(
+    sceneHandoverBoundaryInput,
+  );
   const sceneRenderPlan = resolveSceneRenderPlan({
     lane: simSource === 'archived-tle' ? 'archived-tle' : 'live',
     presentation: presentationPlan,
@@ -3973,7 +3967,7 @@ interface MainSceneProps {
   /** One App-accepted snapshot instance consumed by both canvas and right rail. */
   acceptedHandoverPresentation: AcceptedHandoverPresentationSnapshot | null;
   /** R4 shell-owned story bindings shared with right-rail and caption surfaces. */
-  handoverSurfaceBindingsRef?: MutableRefObject<HandoverSurfaceBindingSet | null>;
+  handoverSurfaceBindingsRef: MutableRefObject<HandoverSurfaceBindingSet>
   /** R5 single source-time transport published on scene/rail/caption. */
   instructorHandoverSnapshotRef?: MutableRefObject<InstructorHandoverTransportSnapshot | null>;
   /** R6 activity identity published beside the same R5 source-time owner. */

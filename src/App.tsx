@@ -44,6 +44,11 @@ import {
 } from './sceneVisualScale';
 import { ControlBar } from './ui/ControlBar';
 import { AppHandoverRail } from './app/AppHandoverRail';
+import {
+  useAppHandoverTeachingControllers,
+  useAppHandoverTeachingStage,
+} from './app/useAppHandoverTeachingStage';
+import { useAppHandoverSurfaceRuntime } from './app/useAppHandoverSurfaceRuntime';
 import { useHandoverCinema } from './app/useHandoverCinema';
 import { createSinrLiveBeamDisplayFrame } from './scene/sinrLiveBeamDisplayFrame';
 import { TimelineBar, type TimelineSpeedPreset } from './ui/TimelineBar';
@@ -62,53 +67,9 @@ import {
   StudentHandoverModeBanner,
 } from './ui/homepage/StudentHandoverActivityLauncher';
 import { StudentHandoverActivityPanel } from './ui/homepage/StudentHandoverActivityPanel';
-import type {
-  TeachingHandoverKind,
-  TeachingIdentityBinding,
-} from './homepage/teaching/handoverTeachingScript';
 import {
   isInstructorHandoverBeamTopologyAdmitted,
-  resolveInstructorHandoverScenarioFrame,
 } from './homepage/teaching/instructorHandoverScenario';
-import type {
-  InstructorHandoverTransportSnapshot,
-} from './homepage/teaching/instructorHandoverTransport';
-import {
-  instructorHandoverTelemetryAttributes,
-} from './homepage/teaching/instructorHandoverTelemetry';
-import {
-  useInstructorHandoverTransport,
-} from './homepage/teaching/useInstructorHandoverTransport';
-import {
-  useStudentHandoverActivity,
-} from './homepage/teaching/useStudentHandoverActivity';
-import {
-  resolveStudentHandoverActivityEvidence,
-} from './homepage/teaching/studentHandoverActivityEvidence';
-import {
-  studentHandoverCheckpoint,
-} from './homepage/teaching/studentHandoverActivityContract';
-import {
-  currentStudentHandoverCheckpointId,
-  type StudentHandoverActivityState,
-} from './homepage/teaching/studentHandoverActivityState';
-import {
-  studentHandoverActivityTelemetryAttributes,
-} from './homepage/teaching/studentHandoverActivityTelemetry';
-import type { HandoverTeachingSceneStory } from './scene/handoverStoryFrame';
-import {
-  resolveHandoverAcceptedSurfaceProjection,
-} from './scene/handoverAcceptedSurfaceProjection';
-import {
-  resolveHandoverTeachingSurfaceProjection,
-  type HandoverTeachingSurfaceProjection,
-} from './scene/handoverTeachingSurfaceProjection';
-import { resolveSceneHandoverStoryFrameSet } from './scene/sceneHandoverStoryFrameSet';
-import {
-  resolveHandoverSurfaceBindings,
-  type HandoverSurfaceBindingSet,
-} from './scene/handoverSurfaceBinding';
-import { cellIdFromLinkBudgetBeamId } from './scene/sinrLiveCellModel';
 import { InfoPanel } from './ui/InfoPanel';
 import { HomepageCanonicalServingComparison } from './ui/signal-tuning/HomepageCanonicalServingComparison';
 import { HomepageRightRail } from './ui/signal-tuning/HomepageRightRail';
@@ -323,12 +284,14 @@ export function App() {
   // R5 owns one source-time transport for the versioned seven-beam Intra ->
   // Inter instructor scenario. `teachingStageKind` is a projection of that
   // transport; no second component state may select or advance a segment.
-  const instructorHandoverTransport = useInstructorHandoverTransport();
-  const instructorHandoverSnapshot = instructorHandoverTransport.snapshot;
-  const studentHandoverActivity = useStudentHandoverActivity();
-  const studentHandoverActivityState = studentHandoverActivity.state;
-  const studentModeActive = studentHandoverActivityState.active;
-  const teachingStageKind = instructorHandoverSnapshot?.segment.kind ?? null;
+  const appHandoverTeachingControllers = useAppHandoverTeachingControllers();
+  const {
+    snapshot: instructorHandoverSnapshot,
+    student: studentHandoverActivity,
+    studentState: studentHandoverActivityState,
+    studentModeActive,
+    teachingStageKind,
+  } = appHandoverTeachingControllers;
   const [homepageTeachingDetailsVisible, setHomepageTeachingDetailsVisible] = useState(false);
   const [liveTimelineSeekRequest, setLiveTimelineSeekRequest] =
     useState<LiveTimelineSeekRequest | null>(null);
@@ -348,10 +311,6 @@ export function App() {
   const handoverControlBusyRef = useRef(false);
   const handoverBusyRef = useRef(false);
   const manualHandoverWasPausedRef = useRef(false);
-  const instructorPlaybackRestoreRef = useRef<{
-    readonly paused: boolean;
-    readonly speed: number;
-  } | null>(null);
 
   const currentTimeSecRef = useRef(0);
   // ITEM #C live Director focus: the absolute live sim cursor (set in
@@ -2008,174 +1967,31 @@ export function App() {
       teachingStageKind,
     ],
   );
-  // One deterministic fixture is latched per scenario run and segment. The
-  // source simulation is frozen while the instructor scenario is open, and
-  // this latch also prevents a live rail re-rank from changing labels or
-  // elevations when the same scenario source time is replayed at another speed.
-  const teachingFixtureLatchRef = useRef<{
-    readonly key: string;
-    readonly binding: TeachingIdentityBinding;
-    readonly story: HandoverTeachingSceneStory;
-  } | null>(null);
-  const teachingFixtureKey = instructorHandoverSnapshot === null
-    ? null
-    : `${instructorHandoverSnapshot.scenarioId}:${instructorHandoverSnapshot.runId}`
-      + `:${instructorHandoverSnapshot.segment.index}`;
-  const teachingFixture = useMemo(() => {
-    if (teachingFixtureKey === null) {
-      teachingFixtureLatchRef.current = null;
-      return null;
-    }
-    const latched = teachingFixtureLatchRef.current;
-    if (latched?.key === teachingFixtureKey) return latched;
-    if (teachingIdentityBindingCandidate === null || teachingSceneStoryCandidate === null) {
-      return null;
-    }
-    const binding: TeachingIdentityBinding = Object.freeze({
-      serving: teachingIdentityBindingCandidate.serving === null
-        ? null
-        : Object.freeze({ ...teachingIdentityBindingCandidate.serving }),
-      candidates: Object.freeze(
-        teachingIdentityBindingCandidate.candidates.map(candidate => Object.freeze({ ...candidate })),
-      ),
-    });
-    const fixture = Object.freeze({
-      key: teachingFixtureKey,
-      binding,
-      story: teachingSceneStoryCandidate,
-    });
-    teachingFixtureLatchRef.current = fixture;
-    return fixture;
-  }, [
-    teachingFixtureKey,
+  const clearManualHandover = useCallback((): void => {
+    setManualHandoverRequest(null);
+  }, []);
+  const appHandoverTeachingStage = useAppHandoverTeachingStage({
+    controllers: appHandoverTeachingControllers,
     teachingIdentityBindingCandidate,
     teachingSceneStoryCandidate,
-  ]);
-  const teachingIdentityBinding = teachingFixture?.binding ?? null;
-  const teachingSceneStory = teachingFixture?.story ?? null;
-  const teachingScenarioFrame = useMemo(
-    () => instructorHandoverSnapshot === null
-      ? null
-      : resolveInstructorHandoverScenarioFrame(
-        instructorHandoverSnapshot.sourceTimeSec,
-        teachingIdentityBinding,
-      ),
-    [instructorHandoverSnapshot, teachingIdentityBinding],
-  );
-  const teachingLecture = {
-    frame: teachingScenarioFrame?.frame ?? null,
-    setPaused: instructorHandoverTransport.setPaused,
-    restart: instructorHandoverTransport.restart,
-    seek: instructorHandoverTransport.seek,
-    setSpeed: instructorHandoverTransport.setSpeed,
-  } as const;
-
-  /**
-   * Open one handover lecture.
-   *
-   * The live Walker scenario keeps the primary UE's serving link both above the
-   * EE floor and above every replacement, so it never satisfies the homepage's
-   * handover rule and produces no event to narrate. The lecture therefore runs
-   * on its own authored timeline rather than on that scenario. It is a separate
-   * surface with a single data owner, so its diagram and its rail cannot
-   * disagree. The scientific producer is frozen while this authored source-time
-   * transport owns the stage; closing the scenario restores its prior state.
-   *
-   * A click during a run starts the selected declared entry point and replaces
-   * the prior authored run; it never arms a second presentation clock.
-   */
-  const openHandoverTeachingStage = useCallback((kind: TeachingHandoverKind): void => {
-    if (!instructorSevenBeamAdmitted) return;
-    setManualHandoverRequest(null);
-    if (instructorPlaybackRestoreRef.current === null) {
-      instructorPlaybackRestoreRef.current = {
-        paused: playback.paused,
-        speed: playback.speed,
-      };
-    }
-    // Freeze the scientific producer for the entire authored run. The one R5
-    // source clock now controls Intra -> Inter, so changing teaching speed can
-    // never move the spacecraft roster or geometry underneath the fixture.
-    if (!playback.paused) playback.setPaused(true);
-    instructorHandoverTransport.open(kind);
-  }, [
-    instructorHandoverTransport.open,
-    instructorSevenBeamAdmitted,
-    playback.paused,
-    playback.setPaused,
-    playback.speed,
-  ]);
-
-  const closeHandoverTeachingStage = useCallback((): void => {
-    setManualHandoverRequest(null);
-    studentHandoverActivity.forceDeactivate();
-    instructorHandoverTransport.close();
-    const restore = instructorPlaybackRestoreRef.current;
-    instructorPlaybackRestoreRef.current = null;
-    if (restore === null) return;
-    playback.setSpeed(restore.speed);
-    playback.setPaused(restore.paused);
-  }, [
-    instructorHandoverTransport.close,
-    playback.setPaused,
-    playback.setSpeed,
-    studentHandoverActivity.forceDeactivate,
-  ]);
-
-  const studentActivityLaunchEnabled = !studentModeActive
-    && instructorHandoverSnapshot === null
-    && isRootHomepage
-    && sceneSource === 'live-sim'
-    && isWalkerSceneActive
-    && sceneLane === 'sinr-live'
-    && instructorSevenBeamAdmitted;
-
-  const handleStartStudentHandoverActivity = useCallback((): void => {
-    if (!studentActivityLaunchEnabled) return;
-    studentHandoverActivity.activate();
-    openHandoverTeachingStage('intra');
-    // R5 remains the only source-time owner. Student mode starts at the Intra
-    // entry point and holds there until the bounded Observe command seeks it.
-    instructorHandoverTransport.setPaused(true);
-  }, [
-    instructorHandoverTransport.setPaused,
-    openHandoverTeachingStage,
-    studentActivityLaunchEnabled,
-    studentHandoverActivity.activate,
-  ]);
-
-  const handleExitStudentHandoverActivity = useCallback((): void => {
-    studentHandoverActivity.exitCleanPredict();
-    closeHandoverTeachingStage();
-  }, [closeHandoverTeachingStage, studentHandoverActivity.exitCleanPredict]);
-
-  const handleResetStudentHandoverActivity = useCallback((): void => {
-    studentHandoverActivity.reset();
-    instructorHandoverTransport.restart();
-    instructorHandoverTransport.setPaused(true);
-  }, [
-    instructorHandoverTransport.restart,
-    instructorHandoverTransport.setPaused,
-    studentHandoverActivity.reset,
-  ]);
-
-  useEffect(() => {
-    if (instructorHandoverSnapshot === null) return;
-    const instructorLaneAvailable = isRootHomepage
-      && sceneSource === 'live-sim'
-      && isWalkerSceneActive
-      && sceneLane === 'sinr-live'
-      && instructorSevenBeamAdmitted;
-    if (!instructorLaneAvailable) closeHandoverTeachingStage();
-  }, [
-    closeHandoverTeachingStage,
-    instructorHandoverSnapshot,
     instructorSevenBeamAdmitted,
     isRootHomepage,
+    sceneSource,
     isWalkerSceneActive,
     sceneLane,
-    sceneSource,
-  ]);
+    playback,
+    clearManualHandover,
+  });
+  const {
+    teachingSceneStory,
+    teachingLecture,
+    open: openHandoverTeachingStage,
+    close: closeHandoverTeachingStage,
+    studentActivityLaunchEnabled,
+    startStudentActivity: handleStartStudentHandoverActivity,
+    exitStudentActivity: handleExitStudentHandoverActivity,
+    resetStudentActivity: handleResetStudentHandoverActivity,
+  } = appHandoverTeachingStage;
 
   // The R4 teaching cone layer paints the exact shell-owned projection. R5 must
   // not arm the older manual wall-clock interlude at the switching phase: that
@@ -2448,125 +2264,29 @@ export function App() {
     };
   }, [sceneSource, replaySceneFrame, processedUes]);
   const shouldRenderMainScene = sceneSource !== 'artifact-replay' || activeSceneFrame !== undefined;
-  // R4: normalize accepted, teaching and replay stories once in the shell, then
-  // pass the exact same frozen frames to scene, rail and caption projections.
-  // The scene may add its local presentation-clock frame, but it must preserve
-  // these shared source-frame object references.
-  const appHandoverStoryFrames = useMemo(() => resolveSceneHandoverStoryFrameSet({
-    acceptedSnapshot: sceneLane === 'sinr-live' && isWalkerSceneActive
-      ? simState.acceptedHandoverPresentation ?? null
-      : null,
-    acceptedProducer: 'walker',
-    resolveAcceptedCellId: cellIdFromLinkBudgetBeamId,
-    teachingStory: isRootHomepage ? teachingSceneStory : null,
-    teachingFrame: isRootHomepage ? teachingLecture.frame : null,
-    replayFrame: activeSceneFrame ?? null,
-  }), [
-    activeSceneFrame,
+  const appHandoverSurfaceRuntime = useAppHandoverSurfaceRuntime({
+    controllers: appHandoverTeachingControllers,
     isRootHomepage,
     isWalkerSceneActive,
     sceneLane,
-    simState.acceptedHandoverPresentation,
-    teachingLecture.frame,
+    acceptedSnapshot: simState.acceptedHandoverPresentation ?? null,
     teachingSceneStory,
-  ]);
-  const handoverSurfaceBindings = useMemo(
-    () => resolveHandoverSurfaceBindings(appHandoverStoryFrames),
-    [appHandoverStoryFrames],
-  );
-  const acceptedSurfaceProjection = useMemo(
-    () => resolveHandoverAcceptedSurfaceProjection(
-      handoverSurfaceBindings.accepted,
-      homepageRailProjection,
-      'walker',
-    ),
-    [handoverSurfaceBindings.accepted, homepageRailProjection],
-  );
-  const teachingSurfaceProjection = useMemo(
-    () => resolveHandoverTeachingSurfaceProjection(
-      handoverSurfaceBindings.teaching,
-      teachingLecture.frame,
-      teachingStageKind,
-    ),
-    [handoverSurfaceBindings.teaching, teachingLecture.frame, teachingStageKind],
-  );
-  // Keep scene props stable while the authored clock updates. The scene reads
-  // the exact projection object through this ref; rail and caption receive that
-  // same object directly, so none of the three can reinterpret its identity.
-  const teachingSurfaceProjectionRef = useRef<HandoverTeachingSurfaceProjection | null>(null);
-  teachingSurfaceProjectionRef.current = teachingSurfaceProjection;
-  const handoverSurfaceBindingsRef = useRef<HandoverSurfaceBindingSet | null>(null);
-  handoverSurfaceBindingsRef.current = handoverSurfaceBindings;
-  const instructorHandoverSnapshotRef = useRef<InstructorHandoverTransportSnapshot | null>(null);
-  instructorHandoverSnapshotRef.current = instructorHandoverSnapshot;
-  const studentHandoverActivityStateRef = useRef<StudentHandoverActivityState | null>(null);
-  studentHandoverActivityStateRef.current = studentHandoverActivityState;
-  const instructorRootAttributes = instructorHandoverTelemetryAttributes(
-    'root',
-    instructorHandoverSnapshot,
-    teachingSurfaceProjection?.binding ?? null,
-  );
-  const studentRootAttributes = studentHandoverActivityTelemetryAttributes(
-    'root',
-    studentHandoverActivityState,
-    instructorHandoverSnapshot,
-    teachingSurfaceProjection?.binding ?? null,
-  );
-  const studentCurrentCheckpointId = currentStudentHandoverCheckpointId(
-    studentHandoverActivityState,
-  );
-  const studentHandoverEvidence = useMemo(
-    () => studentCurrentCheckpointId === null
-      ? null
-      : resolveStudentHandoverActivityEvidence(
-        studentCurrentCheckpointId,
-        instructorHandoverSnapshot,
-        teachingSurfaceProjection,
-      ),
-    [
-      instructorHandoverSnapshot,
-      studentCurrentCheckpointId,
-      teachingSurfaceProjection,
-    ],
-  );
-
-  useEffect(() => {
-    const pendingCheckpointId = studentHandoverActivityState.pendingCheckpointId;
-    if (!studentModeActive
-      || studentHandoverActivityState.step !== 'observe'
-      || pendingCheckpointId === null
-      || instructorHandoverSnapshot === null) {
-      return;
-    }
-    const checkpoint = studentHandoverCheckpoint(pendingCheckpointId);
-    if (!instructorHandoverSnapshot.paused) {
-      instructorHandoverTransport.setPaused(true);
-      return;
-    }
-    if (Math.abs(instructorHandoverSnapshot.sourceTimeSec - checkpoint.sourceTimeSec) > 0.001) {
-      instructorHandoverTransport.seek(checkpoint.sourceTimeSec);
-      return;
-    }
-    const evidence = resolveStudentHandoverActivityEvidence(
-      pendingCheckpointId,
-      instructorHandoverSnapshot,
-      teachingSurfaceProjection,
-    );
-    if (evidence === null) return;
-    studentHandoverActivity.recordObservation({
-      checkpointId: pendingCheckpointId,
-      evidenceClaims: evidence.evidenceClaims,
-    });
-  }, [
-    instructorHandoverSnapshot,
-    instructorHandoverTransport.seek,
-    instructorHandoverTransport.setPaused,
-    studentHandoverActivity.recordObservation,
-    studentHandoverActivityState.pendingCheckpointId,
-    studentHandoverActivityState.step,
-    studentModeActive,
+    teachingFrame: teachingLecture.frame,
+    teachingStageKind,
+    activeSceneFrame,
+    homepageRailProjection,
+  });
+  const {
+    acceptedSurfaceProjection,
     teachingSurfaceProjection,
-  ]);
+    teachingSurfaceProjectionRef,
+    handoverSurfaceBindingsRef,
+    instructorHandoverSnapshotRef,
+    studentHandoverActivityStateRef,
+    instructorRootAttributes,
+    studentRootAttributes,
+    studentHandoverEvidence,
+  } = appHandoverSurfaceRuntime;
 
   // Sync replay frame state to SimState so InfoPanel/DiagnosticsDrawer reflect
   // the producer-truth playback cursor. We never recompute SINR or handover
