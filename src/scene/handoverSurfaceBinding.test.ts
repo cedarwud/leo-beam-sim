@@ -14,7 +14,10 @@ import {
   resolveHandoverSurfaceBinding,
   resolveHandoverSurfaceBindings,
 } from './handoverSurfaceBinding';
-import { resolveBoundSceneHandoverStoryFrameSet } from './sceneHandoverStoryFrameSet';
+import {
+  resolveBoundSceneHandoverStoryFrameSet,
+  resolveBoundSceneHandoverSurfaceBindingSet,
+} from './sceneHandoverStoryFrameSet';
 
 const endpoint = (
   satelliteId: string,
@@ -238,7 +241,7 @@ test('artifact replay excludes accepted, teaching and presentation bindings', ()
   });
   const bound = resolveBoundSceneHandoverStoryFrameSet({
     lane: 'artifact-replay',
-    local,
+    localPresentation: local.presentation,
     sharedBindings,
   });
 
@@ -272,7 +275,7 @@ test('live scene preserves shared frames, adds local presentation, and drops rep
   });
   const bound = resolveBoundSceneHandoverStoryFrameSet({
     lane: 'live',
-    local,
+    localPresentation: local.presentation,
     sharedBindings,
   });
 
@@ -283,6 +286,53 @@ test('live scene preserves shared frames, adds local presentation, and drops rep
   assert.equal(bound.active, teaching);
   assert.equal(bound.activeSource, 'teaching');
   assert.deepEqual(bound.availableSources, ['accepted', 'presentation', 'teaching']);
+});
+
+test('live binding composition preserves exact shell authority and only creates presentation', () => {
+  const accepted = acceptedFrame();
+  const teaching = teachingFrame();
+  const replay = replayFrame();
+  const presentation = presentationFrame();
+  const sharedBindings = resolveHandoverSurfaceBindings(
+    resolveHandoverStoryFrameSet({
+      accepted, presentation: null, teaching, replay,
+    }),
+  );
+  const bound = resolveBoundSceneHandoverSurfaceBindingSet({
+    lane: 'live',
+    localPresentation: presentation,
+    sharedBindings,
+  });
+
+  assert.equal(bound.accepted, sharedBindings.accepted);
+  assert.equal(bound.teaching, sharedBindings.teaching);
+  assert.equal(bound.replay, null);
+  assert.equal(bound.presentation?.frame, presentation);
+  assert.equal(bound.active, sharedBindings.teaching);
+  assert.equal(bound.activeSource, 'teaching');
+});
+
+test('artifact binding composition preserves the exact shell replay binding', () => {
+  const sharedBindings = resolveHandoverSurfaceBindings(
+    resolveHandoverStoryFrameSet({
+      accepted: acceptedFrame(),
+      presentation: presentationFrame(),
+      teaching: teachingFrame(),
+      replay: replayFrame(),
+    }),
+  );
+  const bound = resolveBoundSceneHandoverSurfaceBindingSet({
+    lane: 'artifact-replay',
+    localPresentation: presentationFrame(),
+    sharedBindings,
+  });
+
+  assert.equal(bound.accepted, null);
+  assert.equal(bound.presentation, null);
+  assert.equal(bound.teaching, null);
+  assert.equal(bound.replay, sharedBindings.replay);
+  assert.equal(bound.active, sharedBindings.replay);
+  assert.equal(bound.activeSource, 'replay');
 });
 
 test('identity key changes when phase, clock basis, or accepted provenance mutates', () => {
@@ -328,7 +378,7 @@ test('shared binding absence is authoritative and never falls back to local acce
   );
   const bound = resolveBoundSceneHandoverStoryFrameSet({
     lane: 'live',
-    local,
+    localPresentation: local.presentation,
     sharedBindings: emptyShared,
   });
 

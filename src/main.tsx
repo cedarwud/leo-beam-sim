@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 
 import { SixActsLauncher } from './course/nav/SixActsLauncher';
 import { isSixActsLightCaptureMode } from './course/nav/lightCapture';
+import { resolveLegacyRouteRetirement } from './app/legacyRouteRetirement';
 
 const root = document.getElementById('root');
 
@@ -11,6 +12,14 @@ if (!root) {
 }
 
 const container = root;
+const retiredRouteTarget = resolveLegacyRouteRetirement(
+  window.location.pathname,
+  window.location.search,
+  window.location.hash,
+);
+if (retiredRouteTarget !== null) {
+  window.history.replaceState(window.history.state, '', retiredRouteTarget);
+}
 const query = new URLSearchParams(window.location.search);
 
 const isC120Route = window.location.pathname === '/course/c120'
@@ -57,7 +66,6 @@ const isStandaloneGlobalConstellationRoute = window.location.pathname === '/prot
 const isVisualFirstGoldenFlowRoute = window.location.pathname === '/prototype/visual-first-golden-flow'
   || window.location.pathname === '/course/off-axis-lab'
   || window.location.pathname === '/course/handover-theater';
-const isIntraHandoverTeachingRoute = window.location.pathname === '/prototype/intra-handover-teaching';
 const isUnifiedVisualLabRoute = window.location.pathname === '/simulator'
   || window.location.pathname === '/visual-lab'
   || window.location.pathname === '/explain'
@@ -82,8 +90,7 @@ const isSixActsSurface = isSixActsIndexRoute
   || isTleJourneyRoute
   || isCanonicalExperimentRoute
   || isStandaloneGlobalConstellationRoute
-  || isVisualFirstGoldenFlowRoute
-  || isIntraHandoverTeachingRoute;
+  || isVisualFirstGoldenFlowRoute;
 const isSixActsTeachingStage = query.get('teaching') === '1'
   || query.get('preset') === 'handover';
 
@@ -265,16 +272,6 @@ async function bootstrap() {
     ReactDOM.createRoot(container).render(
       <Shell>
         <GoldenFlowPrototype />
-      </Shell>,
-    );
-    return;
-  }
-
-  if (isIntraHandoverTeachingRoute) {
-    const { IntraHandoverTeachingPrototype } = await import('./prototype/intra-handover-teaching/IntraHandoverTeachingPrototype');
-    ReactDOM.createRoot(container).render(
-      <Shell>
-        <IntraHandoverTeachingPrototype />
       </Shell>,
     );
     return;

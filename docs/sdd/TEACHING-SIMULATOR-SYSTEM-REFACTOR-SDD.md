@@ -818,3 +818,154 @@ fast-forward to the receipt commit and pushed without reset, stash, force,
 cherry-pick, or history rewriting. The R6 candidate branch and formal-integration
 branch remain as audit lineages. The eight-act worktree is not merged or
 modified. R7 legacy retirement has not started and requires a new owner gate.
+
+## 21. R7 owner gate and exact scope — 2026-09-13
+
+The owner authorized R7 from the formally integrated target at
+`4013420bd249c6770ca6acba83d8c59a79cebf45`. Work occurs only in
+`/home/u24/demo/leo-beam-sim-r7` on
+`refactor/teaching-simulator-r7-legacy-retirement`; the integrated target and
+the independent eight-act worktree remain protected.
+
+R7 is not a general cleanup or file-size campaign. It retires only duplicate
+truth and renderer paths that R1–R6 already replaced, then splits the App shell
+along those proven contracts. The exact authorized slice is:
+
+1. make the App-owned R4 `HandoverSurfaceBindingSet` mandatory for production
+   scene composition and remove `MainScene` reconstruction of accepted,
+   teaching, or replay truth; only the existing scene-local presentation frame
+   may augment a live lane;
+2. retire the standalone `/prototype/intra-handover-teaching` SVG renderer and
+   its private clock/transport, preserving the old URL as a compatibility
+   redirect to the canonical homepage R5/R6 experience;
+3. extract R5/R6 teaching transport, activity, projection, telemetry, and reset
+   orchestration from `App.tsx` into named app boundaries without moving raw
+   simulation state or decision ownership into those modules.
+
+R7 must not delete the scientific service-continuity fallback, change the live
+manual handover behavior used by non-homepage lanes, alter route-independent
+course prototypes, merge eight-act work, or change physics, EE, ranking, TTT,
+commit semantics, palette, geometry, camera, or lesson copy.
+
+Acceptance must independently prove that the retired route cannot mount its old
+renderer, `MainScene` cannot recreate shell-owned story truth, the extracted
+App boundaries own no source clock or decision state, R1–R6 browser gates remain
+green, and the known baseline difference remains exactly 126 pass / one sealed
+source-text regex pin.
+
+## 22. R7 execution record — 2026-09-13
+
+R7 was completed in the isolated worktree
+`/home/u24/demo/leo-beam-sim-r7` on
+`refactor/teaching-simulator-r7-legacy-retirement`, rooted at the formally
+integrated target commit `4013420bd249c6770ca6acba83d8c59a79cebf45`.
+The integrated target and the independent eight-act worktree were not reset,
+stashed, checked out, merged, cherry-picked, or modified.
+
+### 22.1 Mandatory App-owned story authority
+
+`MainScene` and `SceneHandoverStoryCanvasTelemetry` now require a non-null
+`MutableRefObject<HandoverSurfaceBindingSet>`. Production can no longer omit the
+shell boundary and trigger a renderer-local reconstruction. Accepted, teaching,
+and replay bindings retain the exact objects composed by App. The only frame a
+live or archived-TLE scene may add is its existing presentation-animation frame;
+artifact replay accepts only the shell-owned replay binding.
+
+`resolveBoundSceneHandoverSurfaceBindingSet` expresses this rule directly. It
+preserves exact accepted, teaching, and replay binding references, creates at
+most one local presentation binding, and resolves the active binding without
+re-normalizing shell-owned story truth. Focused tests prove both the live and
+artifact lanes preserve the exact shared binding objects. The R7 acceptance
+oracle turns red if MainScene or canvas telemetry makes the ref optional, reads
+it through optional chaining, or imports a local binding-set composer.
+
+### 22.2 Standalone renderer retirement
+
+The standalone `/prototype/intra-handover-teaching` surface duplicated the
+canonical R5/R6 experience with its own SVG renderer and private teaching
+transport. R7 deletes:
+
+```text
+src/prototype/intra-handover-teaching/IntraHandoverTeachingPrototype.tsx
+src/prototype/intra-handover-teaching/IntraHandoverTeachingPrototype.scss
+scripts/validate-intra-handover-teaching-browser.ts
+```
+
+The reusable pure teaching director and source tests remain because they are not
+a renderer or competing runtime owner. Old bookmarks are preserved by
+`src/app/legacyRouteRetirement.ts`: before route classification, the old path is
+replaced with `/`, existing query parameters and the hash are retained, and
+`retiredSurface=intra-handover-teaching` records the compatibility transition.
+The production browser gate opens the real retired URL and proves that the
+canonical homepage and R6 launcher mount while all old renderer test IDs remain
+absent.
+
+### 22.3 App shell decomposition
+
+Two named boundaries now own only the policies already proven by R4–R6:
+
+- `useAppHandoverTeachingStage` mounts the existing R5 transport and R6 activity,
+  latches the deterministic fixture, freezes/restores playback, and exposes the
+  bounded open, close, reset, and clean-exit commands;
+- `useAppHandoverSurfaceRuntime` composes the App-owned story/binding set,
+  accepted and teaching projections, comparable telemetry refs/attributes, and
+  the bounded student checkpoint/evidence effect.
+
+`App.tsx` no longer contains the fixture latch, playback-restore ref, scenario
+frame resolver, story/binding/projection composers, telemetry composers, or
+checkpoint seek/evidence effect. App fell from 3,164 to 2,884 lines, a net
+reduction of 280 lines along proven contracts rather than an arbitrary file-size
+split. The extracted modules contain no `useState`, private timer, animation
+frame, wall-clock read, raw `SimState` owner, candidate ranking, or decision
+state. R5 remains the only source-time owner.
+
+R7 does not remove the scientific service-continuity fallback or the
+non-homepage manual handover path. It changes no physics, EE value, candidate
+ranking, TTT, commit semantics, palette, geometry, camera, or lesson copy.
+
+### 22.4 Independent acceptance and mutation proof
+
+`scripts/lib/r7-legacy-retirement-acceptance.ts` imports no production module.
+It checks source ownership and deletion contracts independently. Six focused
+tests pass, including file-absence and compatibility-route contracts. Nine
+independent mutations turn the gate red when they reintroduce an old renderer,
+remove an App boundary, restore inline App ownership, make a binding optional,
+restore local scene composition, or add a clock/decision owner to an extracted
+module.
+
+The full production matrix passes from an R7-specific server:
+
+- `npm run lint`: PASS;
+- `npm run test:r7-retirement`: 6/6 PASS;
+- handover-surface binding tests: 24/24 PASS;
+- instructor handover tests: 33/33 PASS;
+- student handover tests: 17/17 PASS;
+- `npm run test:all`: PASS, including the R7 aggregate;
+- `npm run validate:architecture:boundaries`: 6/6 PASS with no new ratchet
+  violations;
+- `npm run build`: PASS, 1,253 modules transformed versus 1,254 at R6; only the
+  inherited large-chunk advisory remains;
+- R1 scene-surface browser gate: 12/12 PASS;
+- R2 normalized handover-story browser gate: PASS;
+- R3 full scene-render-plan browser gate: 31/31 PASS;
+- R4 shared-identity and production mutation browser gate: PASS;
+- R5 deterministic instructor Intra-to-Inter and direct-Inter gate: PASS;
+- R6 student guided-flow and ten production mutations: PASS;
+- R7 retired-route compatibility gate: PASS, with the old renderer DOM absent.
+
+The broken-script-reference audit is green across 220 scripts. Two unrelated
+static ratchets remain byte-for-byte equivalent to the integrated target:
+`validate:test-orphans` has the same three orphan signatures, and
+`validate:unreferenced-components` has the same seven red signatures within 22
+unreferenced modules. R7 scans one fewer component because the retired renderer
+was deleted; it introduces no new static-red signature and does not repair
+unrelated baseline debt.
+
+`npm run check:baseline` remains exactly 127 tests, 126 pass, and the single
+sealed `src/app/homepageHandoverControlsOwnership.test.ts` source-text regex pin
+failure. There are zero new failure signatures.
+
+R7 is complete and is a product merge candidate. The protected target remains
+at `4013420bd249c6770ca6acba83d8c59a79cebf45`. Formal R7 integration requires a
+separate owner-authorized phase. The eight-act workstream remains independent,
+and R8 maintainability holdout has not started.

@@ -7,11 +7,16 @@ import {
   resolvePresentationHandoverStoryFrame,
   resolveReplayHandoverStoryFrame,
   resolveTeachingHandoverStoryFrame,
+  type HandoverStoryFrame,
   type HandoverStoryFrameSet,
   type HandoverTeachingFrameInput,
   type HandoverTeachingSceneStory,
 } from './handoverStoryFrame';
-import type { HandoverSurfaceBindingSet } from './handoverSurfaceBinding';
+import {
+  resolveHandoverSurfaceBinding,
+  type HandoverSurfaceBinding,
+  type HandoverSurfaceBindingSet,
+} from './handoverSurfaceBinding';
 
 export interface SceneHandoverStoryFrameSetInput {
   readonly acceptedSnapshot?: AcceptedHandoverPresentationSnapshot | null;
@@ -22,10 +27,9 @@ export interface SceneHandoverStoryFrameSetInput {
   readonly teachingFrame?: HandoverTeachingFrameInput | null;
   readonly replayFrame?: NormalizedSceneFrame | null;
 }
-
 const NO_CELL_MAPPING = (): null => null;
 
-/** One source-normalization entry point shared by production and audit callers. */
+/** One source-normalization entry point shared by the App shell and audit callers. */
 export function resolveSceneHandoverStoryFrameSet(
   input: SceneHandoverStoryFrameSetInput,
 ): HandoverStoryFrameSet {
@@ -45,50 +49,84 @@ export function resolveSceneHandoverStoryFrameSet(
     frame: input.replayFrame ?? null,
   });
 
-  return resolveHandoverStoryFrameSet({
-    accepted,
-    presentation,
-    teaching,
-    replay,
-  });
+  return resolveHandoverStoryFrameSet({ accepted, presentation, teaching, replay });
 }
 
 export type SceneHandoverStoryLane = 'live' | 'archived-tle' | 'artifact-replay';
 
 export interface BoundSceneHandoverStoryFrameSetInput {
   readonly lane: SceneHandoverStoryLane;
-  readonly local: HandoverStoryFrameSet;
-  readonly sharedBindings: HandoverSurfaceBindingSet | null;
+  /** The only scene-local story allowed after R7: presentation animation. */
+  readonly localPresentation: HandoverStoryFrame | null;
+  /** Mandatory App-owned R4 authority for accepted, teaching, and replay truth. */
+  readonly sharedBindings: HandoverSurfaceBindingSet;
 }
 
 /**
- * Preserve exact shell-owned frames while keeping source lanes exclusive.
- * The scene-local presentation clock may augment a live/TLE lane, but accepted
- * or teaching state can never outrank an artifact-replay frame.
+ * Preserve exact shell-owned accepted/teaching/replay frames. A live/TLE lane
+ * may add one scene-local presentation animation, but no scene sink may rebuild
+ * a missing shell source from raw simulation or replay input.
  */
 export function resolveBoundSceneHandoverStoryFrameSet(
   input: BoundSceneHandoverStoryFrameSetInput,
 ): HandoverStoryFrameSet {
   const shared = input.sharedBindings;
-  const sharedAuthorityPresent = shared !== null;
   if (input.lane === 'artifact-replay') {
     return resolveHandoverStoryFrameSet({
       accepted: null,
       presentation: null,
       teaching: null,
-      replay: sharedAuthorityPresent
-        ? shared.replay?.frame ?? null
-        : input.local.replay,
+      replay: shared.replay?.frame ?? null,
     });
   }
   return resolveHandoverStoryFrameSet({
-    accepted: sharedAuthorityPresent
-      ? shared.accepted?.frame ?? null
-      : input.local.accepted,
-    presentation: input.local.presentation ?? shared?.presentation?.frame ?? null,
-    teaching: sharedAuthorityPresent
-      ? shared.teaching?.frame ?? null
-      : input.local.teaching,
+    accepted: shared.accepted?.frame ?? null,
+    presentation: input.localPresentation ?? shared.presentation?.frame ?? null,
+    teaching: shared.teaching?.frame ?? null,
     replay: null,
+  });
+}
+function activeBinding(
+  teaching: HandoverSurfaceBinding | null,
+  presentation: HandoverSurfaceBinding | null,
+  accepted: HandoverSurfaceBinding | null,
+  replay: HandoverSurfaceBinding | null,
+): readonly [HandoverSurfaceBinding | null, HandoverStoryFrameSet['activeSource']] {
+  if (teaching !== null) return [teaching, 'teaching'];
+  if (presentation !== null) return [presentation, 'presentation'];
+  if (accepted !== null) return [accepted, 'accepted'];
+  if (replay !== null) return [replay, 'replay'];
+  return [null, 'none'];
+}
+
+/**
+ * Compose the scene binding set without recreating any shell-owned binding.
+ * Only a local presentation binding may be newly composed.
+ */
+export function resolveBoundSceneHandoverSurfaceBindingSet(
+  input: BoundSceneHandoverStoryFrameSetInput,
+): HandoverSurfaceBindingSet {
+  const shared = input.sharedBindings;
+  const accepted = input.lane === 'artifact-replay' ? null : shared.accepted;
+  const teaching = input.lane === 'artifact-replay' ? null : shared.teaching;
+  const replay = input.lane === 'artifact-replay' ? shared.replay : null;
+  const presentation = input.lane === 'artifact-replay'
+    ? null
+    : input.localPresentation === null
+      ? shared.presentation
+      : resolveHandoverSurfaceBinding('presentation', input.localPresentation);
+  const [active, activeSource] = activeBinding(
+    teaching,
+    presentation,
+    accepted,
+    replay,
+  );
+  return Object.freeze({
+    accepted,
+    presentation,
+    teaching,
+    replay,
+    active,
+    activeSource,
   });
 }
